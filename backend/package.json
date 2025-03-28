@@ -1,0 +1,22 @@
+{
+  "name": "jezarch-be",
+  "module": "index.ts",
+  "type": "module",
+  "private": true,
+  "dependencies": {
+    "bcryptjs": "^3",
+    "zod": "^3.22.4"
+  },
+  "devDependencies": {
+    "@types/bun": "latest",
+    "@types/bcryptjs": "^3"
+  },
+  "peerDependencies": {
+    "typescript": "^5"
+  },
+  "scripts": {
+    "build": "bun build",
+    "test": "bun test ../backend-tests/**/*.test.ts",
+    "dev": "bun run src/main.ts"
+  }
+}
