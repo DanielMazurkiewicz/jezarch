@@ -1,5 +1,6 @@
 # Private files and databases
 *.prv.txt
+*.prv.md
 *.db
 
 # Logs
