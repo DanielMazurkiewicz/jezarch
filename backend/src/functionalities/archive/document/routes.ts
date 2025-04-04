@@ -1,4 +1,3 @@
-// ===> File: backend/src/functionalities/archive/document/routes.ts <===
 import {
     createArchiveDocumentController,
     getArchiveDocumentByIdController,
@@ -8,17 +7,15 @@ import {
 } from './controllers';
 
 export const archiveDocumentRoutes = {
+
     // Create a new document/unit
-    '/api/archive/documents': {
-        POST: createArchiveDocumentController,
+    '/api/archive/document': {
+        PUT: createArchiveDocumentController,
         // GET: getAllDocsController? // Maybe admin only? Add later if needed.
     },
-     // Search documents/units
-    '/api/archive/documents/search': {
-        POST: searchArchiveDocumentsController,
-    },
+
     // Get, Update, Disable (soft delete) a specific document/unit
-    '/api/archive/documents/:id': {
+    '/api/archive/document/id/:id': {
         GET: getArchiveDocumentByIdController,    // Get by ID
         PATCH: updateArchiveDocumentController,   // Update (partial)
         DELETE: disableArchiveDocumentController, // Disable (soft delete)
@@ -26,4 +23,13 @@ export const archiveDocumentRoutes = {
     // Potential future routes:
     // '/api/archive/units/:id/children': { GET: getChildDocumentsController },
     // '/api/archive/documents/by-owner/:userId': { GET: getDocumentsByOwnerController },
+
+
+    '/api/archive/documents/all': {
+        // GET: getAllDocsController? // Maybe admin only? Add later if needed.    
+    },
+     // Search documents/units
+    '/api/archive/documents/search': {
+        POST: searchArchiveDocumentsController,
+    },
 };
