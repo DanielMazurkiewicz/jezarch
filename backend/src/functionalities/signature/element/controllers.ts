@@ -1,4 +1,6 @@
+// backend/src/functionalities/signature/element/controllers.ts
 import { BunRequest } from 'bun';
+import { db } from '../../../initialization/db'; // Import db for transaction
 import {
     createElement,
     getElementById,
@@ -7,11 +9,13 @@ import {
     getElementsByComponentId,
     setParentElementIds,
     elementParentSearchHandler, // Import the handler
-    getParentElements
+    getParentElements,
+    // updateElementIndex // Not directly used here, part of re-index
 } from './db';
-import { getComponentById } from '../component/db'; // Need component DB access
+import { getComponentById, incrementComponentIndexCount } from '../component/db'; // Need component DB access + incrementer
 import { getSessionAndUser, isAllowedRole } from '../../session/controllers';
 import { Log } from '../../log/db';
+import { formatIndex } from '../../../utils/formatIndex'; // Import the formatter
 import {
     createSignatureElementSchema,
     updateSignatureElementSchema,
@@ -29,8 +33,47 @@ const ELEMENT_AREA = 'signature_element';
 export const createElementController = async (req: BunRequest) => {
     const sessionAndUser = await getSessionAndUser(req);
     if (!sessionAndUser) return new Response("Unauthorized", { status: 401 });
-    // Admins or regular users can create?
     if (!isAllowedRole(sessionAndUser, 'admin', 'regular_user')) return new Response("Forbidden", { status: 403 });
+
+    let componentId: number | null = null; // Keep track for logging/rollback info
+    let createdElementId: number | null = null;
+
+    // Use transaction to ensure count increment and element creation are atomic
+    const transaction = db.transaction(async (validatedData: CreateSignatureElementInput) => {
+        const { signatureComponentId, name, description, index: providedIndex, parentIds } = validatedData;
+        componentId = signatureComponentId; // Store for outer scope
+
+        // 1. Verify component exists (essential before incrementing)
+        const component = await getComponentById(signatureComponentId);
+        if (!component) {
+            // Throw error to abort transaction
+            throw new Error(`Component with ID ${signatureComponentId} not found`);
+        }
+
+        let indexToUse: string | null = providedIndex ?? null; // Use provided index if it exists (even if empty string)
+
+        // 2. Increment component's counter regardless of whether index is provided
+        // This keeps the counter accurate for the *next* auto-generation.
+        const newCount = await incrementComponentIndexCount(signatureComponentId);
+
+        // 3. Generate index automatically *only* if not provided by the user
+        if (providedIndex === undefined || providedIndex === null) {
+             // Generate index based on the *new* count and component type
+             indexToUse = formatIndex(newCount, component.index_type);
+        }
+
+        // 4. Create the element record
+        const newElement = await createElement(signatureComponentId, name, description, indexToUse);
+        createdElementId = newElement.signatureElementId!; // Store for potential parent setting
+
+        // 5. Set parent relationships if provided (still inside transaction)
+        if (createdElementId && parentIds && parentIds.length > 0) {
+            await setParentElementIds(createdElementId, parentIds); // Make sure this function doesn't start its own transaction
+        }
+
+        return createdElementId; // Return ID for fetching details later
+    });
+
 
     try {
         const body: CreateSignatureElementInput = await req.json() as CreateSignatureElementInput;
@@ -38,37 +81,26 @@ export const createElementController = async (req: BunRequest) => {
         if (!validation.success) {
             return new Response(JSON.stringify({ message: "Invalid input", errors: validation.error.format() }), { status: 400 });
         }
-        const { signatureComponentId, name, description, index, parentIds } = validation.data; // Extract index
 
-        // Verify component exists
-        const component = await getComponentById(signatureComponentId);
-        if (!component) {
-            return new Response(JSON.stringify({ message: `Component with ID ${signatureComponentId} not found` }), { status: 400 }); // Bad Request - invalid component ID provided
-        }
+        // Execute the transaction
+        const finalElementId = await transaction(validation.data);
 
-        // Optional: Verify parent elements exist (or let DB handle it gracefully)
-        // if (parentIds && parentIds.length > 0) {
-        //    // ... check each parentId ...
-        // }
+        await Log.info(`Element created: ${validation.data.name} (ID: ${finalElementId}) in component ${componentId}`, sessionAndUser.user.login, ELEMENT_AREA);
 
-        const newElement = await createElement(signatureComponentId, name, description, index); // Pass index
-
-        // Set parent relationships if provided
-        if (newElement.signatureElementId && parentIds && parentIds.length > 0) {
-            await setParentElementIds(newElement.signatureElementId, parentIds);
-        }
-
-        await Log.info(`Element created: ${name} (ID: ${newElement.signatureElementId})`, sessionAndUser.user.login, ELEMENT_AREA);
-        // Fetch the element again with parents to return the full representation? Or just the basic element?
-        const createdElementWithDetails = await getElementById(newElement.signatureElementId!, ['parents']);
+        // Fetch the newly created element with details to return
+        const createdElementWithDetails = await getElementById(finalElementId, ['parents', 'component']); // Populate component too
         return new Response(JSON.stringify(createdElementWithDetails), { status: 201 });
 
     } catch (error: any) {
-        await Log.error('Failed to create element', sessionAndUser.user.login, ELEMENT_AREA, error);
-        // Handle potential DB errors (e.g., foreign key if component check was skipped)
-        return new Response(JSON.stringify({ message: 'Failed to create element' }), { status: 500 });
+        await Log.error('Failed to create element', sessionAndUser.user.login, ELEMENT_AREA, { componentId, input: req.json(), error });
+        // Check for specific errors thrown from transaction (like component not found)
+        if (error.message?.includes('Component with ID')) {
+            return new Response(JSON.stringify({ message: error.message }), { status: 400 }); // Bad Request - invalid component ID
+        }
+        return new Response(JSON.stringify({ message: 'Failed to create element', error: error.message }), { status: 500 });
     }
 };
+
 
 // --- Read All by Component ---
 export const getElementsByComponentController = async (req: BunRequest<":componentId">) => {
@@ -88,7 +120,7 @@ export const getElementsByComponentController = async (req: BunRequest<":compone
              return new Response(JSON.stringify({ message: 'Component not found' }), { status: 404 });
          }
 
-        const elements = await getElementsByComponentId(componentId);
+        const elements = await getElementsByComponentId(componentId); // Already sorted by name
         return new Response(JSON.stringify(elements), { status: 200 });
     } catch (error) {
         await Log.error('Failed to fetch elements by component', sessionAndUser.user.login, ELEMENT_AREA, error);
@@ -155,7 +187,8 @@ export const updateElementController = async (req: BunRequest<":id">) => {
              return new Response(JSON.stringify({ message: 'Element not found' }), { status: 404 });
         }
 
-        // Perform the core update
+        // Perform the core update (name, desc, index)
+        // Note: updating index here does NOT affect the component counter
         const updatedElementData = await updateElement(id, updateData);
         if (!updatedElementData) {
              // Should be caught by check above, but handle potential race condition/error
@@ -170,13 +203,13 @@ export const updateElementController = async (req: BunRequest<":id">) => {
 
         await Log.info(`Element updated: ${updatedElementData?.name} (ID: ${id})`, sessionAndUser.user.login, ELEMENT_AREA);
         // Fetch again with parents to return the updated state
-        const updatedElementWithDetails = await getElementById(id, ['parents']);
+        const updatedElementWithDetails = await getElementById(id, ['parents', 'component']); // Fetch component too
         return new Response(JSON.stringify(updatedElementWithDetails), { status: 200 });
 
     } catch (error: any) {
         await Log.error('Error updating element', sessionAndUser.user.login, ELEMENT_AREA, error);
         // Handle potential DB errors
-        return new Response(JSON.stringify({ message: 'Failed to update element' }), { status: 500 });
+        return new Response(JSON.stringify({ message: 'Failed to update element', error: error.message }), { status: 500 });
     }
 };
 
@@ -201,6 +234,9 @@ export const deleteElementController = async (req: BunRequest<":id">) => {
         }
 
         const deleted = await deleteElement(id); // DB handles cascade for parent relationships
+
+        // Note: Deleting an element does NOT decrement the component counter.
+        // Re-indexing is the way to fix potential gaps or reset the count.
 
         if (deleted) {
             await Log.info(`Element deleted: ID ${id}`, sessionAndUser.user.login, ELEMENT_AREA);
@@ -254,6 +290,14 @@ export const searchElementsController = async (req: BunRequest) => {
                             joinClause: `LEFT JOIN signature_components sc ON ${tableAlias}.signatureComponentId = sc.signatureComponentId`,
                             whereCondition: `sc.name LIKE ?`,
                             params: [`%${element.value}%`]
+                        };
+                    }
+                     // Example: search by component name (exact match)
+                    if (element.condition === 'EQ' && typeof element.value === 'string') {
+                         return {
+                            joinClause: `LEFT JOIN signature_components sc ON ${tableAlias}.signatureComponentId = sc.signatureComponentId`,
+                            whereCondition: `sc.name = ?`,
+                            params: [element.value]
                         };
                     }
                     return null; // Handler doesn't apply

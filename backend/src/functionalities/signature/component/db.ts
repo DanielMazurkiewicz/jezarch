@@ -1,7 +1,7 @@
 import { db } from '../../../initialization/db';
-import type { SignatureComponent } from './models';
+import type { SignatureComponent, SignatureComponentIndexType } from './models'; // Import type
 import { Log } from '../../log/db';
-import { sqliteDate, sqliteNow } from '../../../utils/sqlite';
+import { sqliteNow } from '../../../utils/sqlite';
 
 // Initialization function (called in initializeDatabase)
 export async function initializeSignatureComponentTable() {
@@ -10,6 +10,8 @@ export async function initializeSignatureComponentTable() {
             signatureComponentId INTEGER PRIMARY KEY AUTOINCREMENT,
             name TEXT NOT NULL UNIQUE,
             description TEXT,
+            index_count INTEGER NOT NULL DEFAULT 0, -- Added field
+            index_type TEXT NOT NULL DEFAULT 'dec' CHECK(index_type IN ('dec', 'roman', 'small_char', 'capital_char')), -- Added field with constraint
             createdOn DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
             modifiedOn DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
             -- active BOOLEAN NOT NULL DEFAULT TRUE -- For soft deletes
@@ -20,10 +22,14 @@ export async function initializeSignatureComponentTable() {
 }
 
 // --- Helper ---
-const dbToComponent = (data: any): SignatureComponent | undefined => {
+export const dbToComponent = (data: any): SignatureComponent | undefined => {
     if (!data) return undefined;
     return {
-        ...data,
+        signatureComponentId: data.signatureComponentId,
+        name: data.name,
+        description: data.description,
+        index_count: data.index_count, // Map new field
+        index_type: data.index_type as SignatureComponentIndexType, // Map new field with type assertion
         createdOn: new Date(data.createdOn),
         modifiedOn: new Date(data.modifiedOn),
         // active: Boolean(data.active), // If soft delete added
@@ -32,16 +38,17 @@ const dbToComponent = (data: any): SignatureComponent | undefined => {
 
 // --- Operations ---
 
-export async function createComponent(name: string, description: string = ""): Promise<SignatureComponent> {
+// Updated createComponent to handle index_type
+export async function createComponent(name: string, description?: string, index_type: SignatureComponentIndexType = 'dec'): Promise<SignatureComponent> {
     try {
         const now = sqliteNow();
         const statement = db.prepare(
-            `INSERT INTO signature_components (name, description, createdOn, modifiedOn)
-             VALUES (?, ?, ?, ?)
+            `INSERT INTO signature_components (name, description, index_type, createdOn, modifiedOn) -- index_count uses DEFAULT 0
+             VALUES (?, ?, ?, ?, ?)
              RETURNING *`
         );
         // Use null for undefined description to store SQL NULL
-        const newComponent = statement.get(name, description ?? null, now ?? null, now ?? null);
+        const newComponent = statement.get(name, description ?? null, index_type, now ?? null, now ?? null);
         return dbToComponent(newComponent) as SignatureComponent; // Known to exist
     } catch (error: any) {
         await Log.error('Failed to create signature component', 'system', 'database', { name, error });
@@ -71,7 +78,11 @@ export async function getAllComponents(): Promise<SignatureComponent[]> {
     return results.map(dbToComponent).filter(c => c !== undefined) as SignatureComponent[];
 }
 
-export async function updateComponent(id: number, data: Partial<{ name: string; description: string | null /*; active: boolean*/ }>): Promise<SignatureComponent | undefined> {
+// Updated updateComponent to handle index_type
+export async function updateComponent(
+    id: number,
+    data: Partial<{ name: string; description: string | null; index_type: SignatureComponentIndexType /*; active: boolean*/ }>
+): Promise<SignatureComponent | undefined> {
     const fieldsToUpdate: string[] = [];
     const params: any[] = [];
 
@@ -83,6 +94,12 @@ export async function updateComponent(id: number, data: Partial<{ name: string; 
         fieldsToUpdate.push('description = ?');
         params.push(data.description); // Pass null directly if intended
     }
+    if (data.index_type !== undefined) { // Allow updating index_type
+        fieldsToUpdate.push('index_type = ?');
+        params.push(data.index_type);
+    }
+    // NOTE: index_count is NOT updated here, it's managed internally
+
     // if (data.active !== undefined) {
     //     fieldsToUpdate.push('active = ?');
     //     params.push(data.active ? 1 : 0);
@@ -107,6 +124,9 @@ export async function updateComponent(id: number, data: Partial<{ name: string; 
          if (error.message?.includes('UNIQUE constraint failed: signature_components.name')) {
              throw new Error(`Component name '${data.name}' already exists.`);
         }
+         if (error.message?.includes('CHECK constraint failed')) { // Catch index_type constraint violation
+             throw new Error(`Invalid index_type provided: ${data.index_type}`);
+         }
         throw error; // Re-throw
     }
 }
@@ -127,5 +147,75 @@ export async function deleteComponent(id: number): Promise<boolean> {
     } catch (error) {
          await Log.error('Failed to delete signature component', 'system', 'database', { id, error });
          throw error;
+    }
+}
+
+
+// --- Counter Management ---
+
+/**
+ * Increments the index_count for a component and returns the NEW count.
+ * This should be called within a transaction with element creation.
+ */
+export async function incrementComponentIndexCount(componentId: number): Promise<number> {
+    try {
+        const statement = db.prepare(
+            `UPDATE signature_components
+             SET index_count = index_count + 1, modifiedOn = ?
+             WHERE signatureComponentId = ?
+             RETURNING index_count`
+        );
+        const result = statement.get(sqliteNow() ?? null, componentId) as { index_count: number };
+        if (!result) {
+            throw new Error(`Component with ID ${componentId} not found during count increment.`);
+        }
+        return result.index_count;
+    } catch (error) {
+        await Log.error('Failed to increment component index count', 'system', 'database', { componentId, error });
+        throw error;
+    }
+}
+
+/**
+ * Resets the index_count for a component to zero.
+ * Used during re-indexing.
+ */
+export async function resetComponentIndexCount(componentId: number): Promise<void> {
+    try {
+        const statement = db.prepare(
+            `UPDATE signature_components
+             SET index_count = 0, modifiedOn = ?
+             WHERE signatureComponentId = ?`
+        );
+        const result = statement.run(sqliteNow()?? null, componentId);
+        if (result.changes === 0) {
+             // Log or throw if component not found? Depends on context (re-index checks first)
+             await Log.error(`Attempted to reset index count for non-existent component: ${componentId}`, 'system', 'database');
+        }
+    } catch (error) {
+        await Log.error('Failed to reset component index count', 'system', 'database', { componentId, error });
+        throw error;
+    }
+}
+
+/**
+ * Sets the index_count for a component to a specific value.
+ * Used at the end of re-indexing.
+ */
+export async function setComponentIndexCount(componentId: number, count: number): Promise<void> {
+     try {
+        const statement = db.prepare(
+            `UPDATE signature_components
+             SET index_count = ?, modifiedOn = ?
+             WHERE signatureComponentId = ?`
+        );
+        const result = statement.run(count, sqliteNow() ?? null, componentId);
+         if (result.changes === 0) {
+             await Log.error(`Attempted to set index count for non-existent component: ${componentId}`, 'system', 'database');
+             // Or throw error if this indicates a problem in re-indexing logic
+         }
+    } catch (error) {
+        await Log.error('Failed to set component index count', 'system', 'database', { componentId, count, error });
+        throw error;
     }
 }

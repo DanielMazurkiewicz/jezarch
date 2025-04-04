@@ -1,9 +1,11 @@
+// backend/src/functionalities/signature/element/db.ts
 import { db } from '../../../initialization/db';
 import type { SignatureElement, SignatureElementSearchResult } from './models';
 import type { SignatureComponent } from '../component/models';
 import { Log } from '../../log/db';
 import { sqliteNow } from '../../../utils/sqlite';
 import { SearchOnCustomFieldHandlerResult, SearchQueryElement } from '../../../utils/search';
+import { dbToComponent } from '../component/db';
 
 // Initialization function (called in initializeDatabase)
 export async function initializeSignatureElementTable() {
@@ -22,6 +24,7 @@ export async function initializeSignatureElementTable() {
     `);
      // Optional: Index for faster lookup by component or name
     await db.exec(`CREATE INDEX IF NOT EXISTS idx_signature_element_component ON signature_elements (signatureComponentId);`);
+    // Ensure index exists on name for sorting during re-index
     await db.exec(`CREATE INDEX IF NOT EXISTS idx_signature_element_name ON signature_elements (name);`);
     // Optional: Index on index field if searched frequently
     // await db.exec(`CREATE INDEX IF NOT EXISTS idx_signature_element_index ON signature_elements (index);`);
@@ -61,11 +64,12 @@ const dbToElement = (data: any): SignatureElement | undefined => {
 
 // --- Operations ---
 
+// createElement now just takes the index string, generation happens in controller
 export async function createElement(
     componentId: number,
     name: string,
     description?: string,
-    index?: string // Add index parameter
+    index?: string | null // Accept index string (can be null if user provided null/empty)
 ): Promise<SignatureElement> {
     try {
         const now = sqliteNow();
@@ -74,6 +78,7 @@ export async function createElement(
              VALUES (?, ?, ?, ?, ?, ?)
              RETURNING *`
         );
+        // Store provided index (or null)
         const newElement = statement.get(componentId, name, description ?? null, index ?? null, now ?? null, now ?? null);
         return dbToElement(newElement) as SignatureElement; // Known to exist
     } catch (error: any) {
@@ -91,6 +96,7 @@ export async function getElementById(id: number, populate: ('component' | 'paren
 
     if (element && populate.length > 0) {
         if (populate.includes('component')) {
+            // Fetch component with new fields
             element.component = await getComponentForElement(element.signatureComponentId);
         }
         if (populate.includes('parents')) {
@@ -100,9 +106,10 @@ export async function getElementById(id: number, populate: ('component' | 'paren
     return element;
 }
 
+// Ensure sorting by name for re-indexing
 export async function getElementsByComponentId(componentId: number): Promise<SignatureElement[]> {
      // Add "AND active = TRUE" if using soft deletes
-    const statement = db.prepare(`SELECT * FROM signature_elements WHERE signatureComponentId = ? ORDER BY name`);
+    const statement = db.prepare(`SELECT * FROM signature_elements WHERE signatureComponentId = ? ORDER BY name COLLATE NOCASE`); // Added COLLATE NOCASE for consistent sorting
     const results = statement.all(componentId);
     return results.map(dbToElement).filter(e => e !== undefined) as SignatureElement[];
 }
@@ -111,17 +118,9 @@ export async function getElementsByComponentId(componentId: number): Promise<Sig
 async function getComponentForElement(componentId: number): Promise<SignatureComponent | undefined> {
     // This could be optimized with caching if called very frequently
     const statement = db.prepare(`SELECT * FROM signature_components WHERE signatureComponentId = ?`);
-    // Re-use component's dbToModel logic if possible, or define locally
-    const compData = statement.get(componentId) as SignatureComponent;
-     if (!compData) return undefined;
-     return {
-        signatureComponentId: compData.signatureComponentId,
-        name: compData.name,
-        description: compData.description,
-        createdOn: new Date(compData.createdOn),
-        modifiedOn: new Date(compData.modifiedOn),
-        // active: Boolean(compData.active),
-    } as SignatureComponent;
+    // Re-use component's dbToModel logic if possible
+    const compData = statement.get(componentId);
+    return dbToComponent(compData); // Use the updated helper
 }
 
 export async function updateElement(
@@ -139,7 +138,8 @@ export async function updateElement(
         fieldsToUpdate.push('description = ?');
         params.push(data.description);
     }
-    if (data.index !== undefined) { // Check explicitly to allow null for index
+    // Allow explicit update of index via PATCH, but counter is not affected here
+    if (data.index !== undefined) {
         fieldsToUpdate.push('index = ?');
         params.push(data.index);
     }
@@ -167,6 +167,31 @@ export async function updateElement(
         throw error;
     }
 }
+
+
+/**
+ * Specifically updates only the index and modifiedOn fields for an element.
+ * Used during re-indexing.
+ */
+export async function updateElementIndex(elementId: number, index: string): Promise<void> {
+    try {
+        const statement = db.prepare(
+            `UPDATE signature_elements
+             SET index = ?, modifiedOn = ?
+             WHERE signatureElementId = ?`
+        );
+        const result = statement.run(index, sqliteNow() ?? null, elementId);
+        if (result.changes === 0) {
+            // This would indicate an issue during re-indexing if an element disappears mid-process
+            await Log.error(`Attempted to update index for non-existent element: ${elementId}`, 'system', 'database');
+            throw new Error(`Element with ID ${elementId} not found during index update.`);
+        }
+    } catch (error) {
+        await Log.error('Failed to update element index', 'system', 'database', { elementId, index, error });
+        throw error;
+    }
+}
+
 
 export async function deleteElement(id: number): Promise<boolean> {
     // If using soft delete:
@@ -214,12 +239,14 @@ export async function setParentElementIds(childElementId: number, parentElementI
     });
 
     try {
-        await transaction(parentElementIds);
+        // Run the transaction using the provided parentElementIds
+        transaction(parentElementIds); // Removed await, transaction runs synchronously
     } catch (error) {
          await Log.error('Failed to set parent elements', 'system', 'database', { childElementId, parentElementIds, error });
          throw error;
     }
 }
+
 
 export async function getParentElements(childElementId: number): Promise<SignatureElement[]> {
     // Add "AND se.active = TRUE" if using soft deletes
