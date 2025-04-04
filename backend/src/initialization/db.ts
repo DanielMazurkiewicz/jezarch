@@ -9,7 +9,7 @@ import { initializeTagTable } from '../functionalities/tag/db';
 import { initializeNoteTagTable } from '../functionalities/note/tag/db';
 import { initializeSignatureComponentTable } from '../functionalities/signature/component/db';
 import { initializeSignatureElementTable, initializeSignatureElementParentTable } from '../functionalities/signature/element/db';
-
+import { initializeArchiveDocumentTable, initializeArchiveDocumentTagTable } from '../functionalities/archive/document/db';
 
 export const db = new Database(AppParams.dbPath);
 
@@ -20,11 +20,20 @@ export async function initializeDatabase() {
     await initializeUserTable();
     await initializeSessionTable();
 
+
+    // Tags
+    await initializeTagTable(); // Tags first
+
+    // Archive Documents & Tags
+    await initializeArchiveDocumentTable();
+    await initializeArchiveDocumentTagTable(); // Junction table depends on documents and tags
+
+
     // Notes & Tags
     await initializeNoteTable();
-    await initializeTagTable(); // Tags first (referenced by note_tags)
     await initializeNoteTagTable();
 
+    // Signature
     await initializeSignatureComponentTable(); // Components first
     await initializeSignatureElementTable();     // Elements depend on components
     await initializeSignatureElementParentTable(); // Element relationships depend on elements

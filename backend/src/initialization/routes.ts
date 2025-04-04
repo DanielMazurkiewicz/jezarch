@@ -6,15 +6,16 @@ import { apiRoutes } from '../functionalities/api/routes';
 import { tagRoutes } from '../functionalities/tag/routes';
 import { signatureComponentRoutes } from '../functionalities/signature/component/routes';
 import { signatureElementRoutes } from '../functionalities/signature/element/routes';
-
+import { archiveDocumentRoutes } from '../functionalities/archive/document/routes';
 
 export const routes = {
     ...apiRoutes,
     ...userRoutes,
-    ...noteRoutes,
     ...configRoutes,
     ...logRoutes,
     ...tagRoutes,
     ...signatureComponentRoutes,
     ...signatureElementRoutes,
-};
+    ...noteRoutes,
+    ...archiveDocumentRoutes,
+}
