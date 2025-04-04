@@ -13,6 +13,7 @@ export async function initializeSignatureElementTable() {
             signatureComponentId INTEGER NOT NULL,
             name TEXT NOT NULL,
             description TEXT,
+            index TEXT, -- Added index field
             createdOn DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
             modifiedOn DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
             -- active BOOLEAN NOT NULL DEFAULT TRUE, -- For soft deletes
@@ -22,6 +23,8 @@ export async function initializeSignatureElementTable() {
      // Optional: Index for faster lookup by component or name
     await db.exec(`CREATE INDEX IF NOT EXISTS idx_signature_element_component ON signature_elements (signatureComponentId);`);
     await db.exec(`CREATE INDEX IF NOT EXISTS idx_signature_element_name ON signature_elements (name);`);
+    // Optional: Index on index field if searched frequently
+    // await db.exec(`CREATE INDEX IF NOT EXISTS idx_signature_element_index ON signature_elements (index);`);
 }
 
 // Initialization function for the M:N relationship (called in initializeDatabase)
@@ -49,6 +52,7 @@ const dbToElement = (data: any): SignatureElement | undefined => {
         signatureComponentId: data.signatureComponentId,
         name: data.name,
         description: data.description,
+        index: data.index, // Map the index field
         createdOn: new Date(data.createdOn),
         modifiedOn: new Date(data.modifiedOn),
         // active: Boolean(data.active), // If soft delete added
@@ -60,16 +64,17 @@ const dbToElement = (data: any): SignatureElement | undefined => {
 export async function createElement(
     componentId: number,
     name: string,
-    description?: string
+    description?: string,
+    index?: string 
 ): Promise<SignatureElement> {
     try {
         const now = sqliteNow();
         const statement = db.prepare(
-            `INSERT INTO signature_elements (signatureComponentId, name, description, createdOn, modifiedOn)
-             VALUES (?, ?, ?, ?, ?)
+            `INSERT INTO signature_elements (signatureComponentId, name, description, index, createdOn, modifiedOn)
+             VALUES (?, ?, ?, ?, ?, ?)
              RETURNING *`
         );
-        const newElement = statement.get(componentId, name, description ?? null, now ?? null, now ?? null);
+        const newElement = statement.get(componentId, name, description ?? null, index ?? null, now ?? null, now ?? null);
         return dbToElement(newElement) as SignatureElement; // Known to exist
     } catch (error: any) {
          // Catch foreign key violation if componentId doesn't exist? Or let controller handle 404 on component check.
@@ -121,7 +126,7 @@ async function getComponentForElement(componentId: number): Promise<SignatureCom
 
 export async function updateElement(
     id: number,
-    data: Partial<{ name: string; description: string | null /*; active: boolean*/ }>
+    data: Partial<{ name: string; description: string | null; index: string | null /*; active: boolean*/ }>
 ): Promise<SignatureElement | undefined> {
     const fieldsToUpdate: string[] = [];
     const params: any[] = [];
@@ -133,6 +138,10 @@ export async function updateElement(
      if (data.description !== undefined) { // Check explicitly to allow null
         fieldsToUpdate.push('description = ?');
         params.push(data.description);
+    }
+    if (data.index !== undefined) { // Check explicitly to allow null for index
+        fieldsToUpdate.push('index = ?');
+        params.push(data.index);
     }
     // if (data.active !== undefined) {
     //     fieldsToUpdate.push('active = ?');

@@ -6,6 +6,7 @@ export interface SignatureElement {
     signatureComponentId: number;
     name: string;
     description?: string | null; // Allow null from DB
+    index?: string | null; // New text field
     createdOn: Date;
     modifiedOn: Date;
     // active: boolean; // Consider adding later
@@ -22,6 +23,7 @@ export const createSignatureElementSchema = z.object({
     signatureComponentId: z.number().int().positive("Invalid Component ID"),
     name: z.string().min(1, "Name cannot be empty").max(100, "Name too long"),
     description: z.string().max(500, "Description too long").optional(),
+    index: z.string().max(255, "Index too long").optional(), // Max length for index
     parentIds: z.array(z.number().int().positive()).optional().default([]), // Array of parent element IDs
 });
 
@@ -29,6 +31,7 @@ export const createSignatureElementSchema = z.object({
 export const updateSignatureElementSchema = z.object({
     name: z.string().min(1, "Name cannot be empty").max(100, "Name too long").optional(),
     description: z.string().max(500, "Description too long").optional().nullable(), // Allow setting to null
+    index: z.string().max(255, "Index too long").optional().nullable(), // Allow setting index to null
     parentIds: z.array(z.number().int().positive()).optional(), // Allow updating parents
     // active: z.boolean().optional(), // If soft delete is added
 });
