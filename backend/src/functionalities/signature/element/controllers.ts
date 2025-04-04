@@ -38,7 +38,7 @@ export const createElementController = async (req: BunRequest) => {
         if (!validation.success) {
             return new Response(JSON.stringify({ message: "Invalid input", errors: validation.error.format() }), { status: 400 });
         }
-        const { signatureComponentId, name, description, parentIds } = validation.data;
+        const { signatureComponentId, name, description, index, parentIds } = validation.data; // Extract index
 
         // Verify component exists
         const component = await getComponentById(signatureComponentId);
@@ -51,7 +51,7 @@ export const createElementController = async (req: BunRequest) => {
         //    // ... check each parentId ...
         // }
 
-        const newElement = await createElement(signatureComponentId, name, description);
+        const newElement = await createElement(signatureComponentId, name, description, index); // Pass index
 
         // Set parent relationships if provided
         if (newElement.signatureElementId && parentIds && parentIds.length > 0) {
@@ -147,7 +147,7 @@ export const updateElementController = async (req: BunRequest<":id">) => {
             return new Response(JSON.stringify({ message: "Invalid input", errors: validation.error.format() }), { status: 400 });
         }
 
-        const { parentIds, ...updateData } = validation.data;
+        const { parentIds, ...updateData } = validation.data; // updateData includes name, description, index if present
 
         // Ensure element exists before update
         const existingElement = await getElementById(id);
@@ -229,6 +229,7 @@ export const searchElementsController = async (req: BunRequest) => {
             'signatureComponentId',
             'name',
             'description',
+            'index', // Add index to allowed fields
             'createdOn',
             'modifiedOn',
             // 'active' // if using soft delete

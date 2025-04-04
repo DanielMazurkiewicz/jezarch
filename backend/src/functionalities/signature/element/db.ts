@@ -65,7 +65,7 @@ export async function createElement(
     componentId: number,
     name: string,
     description?: string,
-    index?: string 
+    index?: string // Add index parameter
 ): Promise<SignatureElement> {
     try {
         const now = sqliteNow();
