@@ -2,6 +2,7 @@
 *.prv.txt
 *.prv.md
 *.db
+prv_tools
 
 # Logs
 logs

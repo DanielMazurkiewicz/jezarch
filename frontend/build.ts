@@ -5,36 +5,6 @@ import { existsSync } from "fs";
 import { rm } from "fs/promises";
 import path from "path";
 
-// Print help text if requested
-if (process.argv.includes("--help") || process.argv.includes("-h")) {
-  console.log(`
-🏗️  Bun Build Script
-
-Usage: bun run build.ts [options]
-
-Common Options:
-  --outdir <path>          Output directory (default: "dist")
-  --minify                 Enable minification (or --minify.whitespace, --minify.syntax, etc)
-  --source-map <type>      Sourcemap type: none|linked|inline|external
-  --target <target>        Build target: browser|bun|node
-  --format <format>        Output format: esm|cjs|iife
-  --splitting              Enable code splitting
-  --packages <type>        Package handling: bundle|external
-  --public-path <path>     Public path for assets
-  --env <mode>             Environment handling: inline|disable|prefix*
-  --conditions <list>      Package.json export conditions (comma separated)
-  --external <list>        External packages (comma separated)
-  --banner <text>          Add banner text to output
-  --footer <text>          Add footer text to output
-  --define <obj>           Define global constants (e.g. --define.VERSION=1.0.0)
-  --help, -h               Show this help message
-
-Example:
-  bun run build.ts --outdir=dist --minify --source-map=linked --external=react,react-dom
-`);
-  process.exit(0);
-}
-
 // Helper function to convert kebab-case to camelCase
 const toCamelCase = (str: string): string => {
   return str.replace(/-([a-z])/g, g => g[1].toUpperCase());
@@ -121,49 +91,87 @@ const formatFileSize = (bytes: number): string => {
   return `${size.toFixed(2)} ${units[unitIndex]}`;
 };
 
-console.log("\n🚀 Starting build process...\n");
+// Main build function wrapped in async IIFE
+(async () => {
+    // Print help text if requested
+    if (process.argv.includes("--help") || process.argv.includes("-h")) {
+      console.log(`
+    🏗️  Bun Build Script
 
-// Parse CLI arguments with our magical parser
-const cliConfig = parseArgs();
-const outdir = cliConfig.outdir || path.join(process.cwd(), "dist");
+    Usage: bun run build.ts [options]
 
-if (existsSync(outdir)) {
-  console.log(`🗑️ Cleaning previous build at ${outdir}`);
-  await rm(outdir, { recursive: true, force: true });
-}
+    Common Options:
+      --outdir <path>          Output directory (default: "dist")
+      --minify                 Enable minification (or --minify.whitespace, --minify.syntax, etc)
+      --source-map <type>      Sourcemap type: none|linked|inline|external
+      --target <target>        Build target: browser|bun|node
+      --format <format>        Output format: esm|cjs|iife
+      --splitting              Enable code splitting
+      --packages <type>        Package handling: bundle|external
+      --public-path <path>     Public path for assets
+      --env <mode>             Environment handling: inline|disable|prefix*
+      --conditions <list>      Package.json export conditions (comma separated)
+      --external <list>        External packages (comma separated)
+      --banner <text>          Add banner text to output
+      --footer <text>          Add footer text to output
+      --define <obj>           Define global constants (e.g. --define.VERSION=1.0.0)
+      --help, -h               Show this help message
 
-const start = performance.now();
+    Example:
+      bun run build.ts --outdir=dist --minify --source-map=linked --external=react,react-dom
+    `);
+      process.exit(0);
+    }
 
-// Scan for all HTML files in the project
-const entrypoints = [...new Bun.Glob("**.html").scanSync("src")]
-  .map(a => path.resolve("src", a))
-  .filter(dir => !dir.includes("node_modules"));
-console.log(`📄 Found ${entrypoints.length} HTML ${entrypoints.length === 1 ? "file" : "files"} to process\n`);
+    console.log("\n🚀 Starting build process...\n");
 
-// Build all the HTML files
-const result = await build({
-  entrypoints,
-  outdir,
-  plugins: [plugin],
-  minify: true,
-  target: "browser",
-  sourcemap: "linked",
-  define: {
-    "process.env.NODE_ENV": JSON.stringify("production"),
-  },
-  ...cliConfig, // Merge in any CLI-provided options
+    // Parse CLI arguments with our magical parser
+    const cliConfig = parseArgs();
+    const outdir = cliConfig.outdir || path.join(process.cwd(), "dist");
+
+    if (existsSync(outdir)) {
+      console.log(`🗑️ Cleaning previous build at ${outdir}`);
+      await rm(outdir, { recursive: true, force: true });
+    }
+
+    const start = performance.now();
+
+    // Scan for all HTML files in the project
+    // Use Array.from() for proper iteration with downlevelIteration or higher target
+    const entrypoints = Array.from(new Bun.Glob("**.html").scanSync("src"))
+      .map(a => path.resolve("src", a))
+      .filter(dir => !dir.includes("node_modules"));
+    console.log(`📄 Found ${entrypoints.length} HTML ${entrypoints.length === 1 ? "file" : "files"} to process\n`);
+
+    // Build all the HTML files
+    const result = await build({
+      entrypoints,
+      outdir,
+      plugins: [plugin],
+      minify: true,
+      target: "browser",
+      sourcemap: "linked",
+      define: {
+        "process.env.NODE_ENV": JSON.stringify("production"),
+      },
+      ...cliConfig, // Merge in any CLI-provided options
+    });
+
+    // Print the results
+    const end = performance.now();
+
+    const outputTable = result.outputs.map(output => ({
+      "File": path.relative(process.cwd(), output.path),
+      "Type": output.kind,
+      "Size": formatFileSize(output.size),
+    }));
+
+    console.table(outputTable);
+    const buildTime = (end - start).toFixed(2);
+
+    console.log(`\n✅ Build completed in ${buildTime}ms\n`);
+
+})().catch(err => {
+    console.error("\n❌ Build failed:", err);
+    process.exit(1);
 });
-
-// Print the results
-const end = performance.now();
-
-const outputTable = result.outputs.map(output => ({
-  "File": path.relative(process.cwd(), output.path),
-  "Type": output.kind,
-  "Size": formatFileSize(output.size),
-}));
-
-console.table(outputTable);
-const buildTime = (end - start).toFixed(2);
-
-console.log(`\n✅ Build completed in ${buildTime}ms\n`);

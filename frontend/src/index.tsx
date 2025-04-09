@@ -1,3 +1,4 @@
+
 import { serve } from "bun";
 import index from "./index.html";
 
@@ -32,4 +33,5 @@ const server = serve({
   development: process.env.NODE_ENV !== "production",
 });
 
-console.log(`🚀 Server running at ${server.url}`);
+console.log(`🚀 (Placeholder Server) running at ${server.url}`);
+console.log(`ℹ️  Actual frontend dev server started by 'bun --hot src/frontend.tsx'`);
