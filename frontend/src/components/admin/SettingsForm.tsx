@@ -38,14 +38,14 @@ const SettingsForm: React.FC = () => {
             const portConfig = await api.getConfig(AppConfigKeys.PORT, token);
             const langConfig = await api.getConfig(AppConfigKeys.DEFAULT_LANGUAGE, token);
             reset({
-                [AppConfigKeys.PORT]: parseInt(portConfig[AppConfigKeys.PORT] || '0') || 3000, // Provide default
+                [AppConfigKeys.PORT]: parseInt(portConfig[AppConfigKeys.PORT] || '0') || 8080, // Provide default
                 [AppConfigKeys.DEFAULT_LANGUAGE]: langConfig[AppConfigKeys.DEFAULT_LANGUAGE] || 'en', // Provide default
             });
         } catch (err: any) {
              console.error("Failed to load settings:", err);
              setLoadError(err.message || 'Failed to load settings');
              // Reset with defaults on error?
-             reset({ [AppConfigKeys.PORT]: 3000, [AppConfigKeys.DEFAULT_LANGUAGE]: 'en' });
+             reset({ [AppConfigKeys.PORT]: 8080, [AppConfigKeys.DEFAULT_LANGUAGE]: 'en' });
         } finally {
             setIsLoading(false);
         }

@@ -26,7 +26,7 @@ bun run ./dist/server.js
 
 This document outlines the available API endpoints for the JezArch backend application.
 
-**Base URL:** The base URL depends on your server configuration (host, port, protocol - HTTP/HTTPS). Examples assume `http://localhost:3000`.
+**Base URL:** The base URL depends on your server configuration (host, port, protocol - HTTP/HTTPS). Examples assume `http://localhost:8080`.
 
 **Authentication:**
 

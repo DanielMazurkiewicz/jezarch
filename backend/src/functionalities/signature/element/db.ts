@@ -1,4 +1,3 @@
-// backend/src/functionalities/signature/element/db.ts
 import { db } from '../../../initialization/db';
 import type { SignatureElement, SignatureElementSearchResult } from './models';
 import type { SignatureComponent } from '../component/models';
@@ -15,7 +14,7 @@ export async function initializeSignatureElementTable() {
             signatureComponentId INTEGER NOT NULL,
             name TEXT NOT NULL,
             description TEXT,
-            index TEXT, -- Added index field
+            "index" TEXT, -- <<< FIXED: Quoted reserved keyword
             createdOn DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
             modifiedOn DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
             -- active BOOLEAN NOT NULL DEFAULT TRUE, -- For soft deletes
@@ -27,7 +26,7 @@ export async function initializeSignatureElementTable() {
     // Ensure index exists on name for sorting during re-index
     await db.exec(`CREATE INDEX IF NOT EXISTS idx_signature_element_name ON signature_elements (name);`);
     // Optional: Index on index field if searched frequently
-    // await db.exec(`CREATE INDEX IF NOT EXISTS idx_signature_element_index ON signature_elements (index);`);
+    // await db.exec(`CREATE INDEX IF NOT EXISTS idx_signature_element_index ON signature_elements ("index");`); // <<< FIXED: Also quote here if using
 }
 
 // Initialization function for the M:N relationship (called in initializeDatabase)
@@ -74,7 +73,7 @@ export async function createElement(
     try {
         const now = sqliteNow();
         const statement = db.prepare(
-            `INSERT INTO signature_elements (signatureComponentId, name, description, index, createdOn, modifiedOn)
+            `INSERT INTO signature_elements (signatureComponentId, name, description, "index", createdOn, modifiedOn) -- <<< FIXED: Quoted column name
              VALUES (?, ?, ?, ?, ?, ?)
              RETURNING *`
         );
@@ -140,7 +139,7 @@ export async function updateElement(
     }
     // Allow explicit update of index via PATCH, but counter is not affected here
     if (data.index !== undefined) {
-        fieldsToUpdate.push('index = ?');
+        fieldsToUpdate.push('"index" = ?'); // <<< FIXED: Quoted column name
         params.push(data.index);
     }
     // if (data.active !== undefined) {
@@ -177,7 +176,7 @@ export async function updateElementIndex(elementId: number, index: string): Prom
     try {
         const statement = db.prepare(
             `UPDATE signature_elements
-             SET index = ?, modifiedOn = ?
+             SET "index" = ?, modifiedOn = ? -- <<< FIXED: Quoted column name
              WHERE signatureElementId = ?`
         );
         const result = statement.run(index, sqliteNow() ?? null, elementId);

@@ -4,6 +4,7 @@ import { AppParams, AppParamsDefaults } from './app_params';
 
 
 export async function initializeConfigs() {
+    console.log("* initializeConfigs")
     const defaultLanguage = await getConfig(AppConfigKeys.DEFAULT_LANGUAGE);
     if (defaultLanguage) {
         AppParams.defaultLanguage = defaultLanguage

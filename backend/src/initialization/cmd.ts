@@ -9,6 +9,8 @@ export interface CommandLineParams {
 export const CmdParams: CommandLineParams = {};
 
 export function initializeCmdParams() {
+    console.log("* initializeCmdParams")
+
     const args = Bun.argv.slice(2);
 
     for (let i = 0; i < args.length; i++) {

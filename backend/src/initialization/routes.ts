@@ -8,7 +8,18 @@ import { signatureComponentRoutes } from '../functionalities/signature/component
 import { signatureElementRoutes } from '../functionalities/signature/element/routes';
 import { archiveDocumentRoutes } from '../functionalities/archive/document/routes';
 
-export const routes = {
+
+// import app from "../../../frontend/dist/index.html"
+import app from "../../../frontend/src/index.html"
+
+
+import { RouterTypes } from 'bun';
+
+export type Routes = {
+    [x: string]: RouterTypes.RouteValue<string>;
+};
+
+export const routes: Routes = {
     ...apiRoutes,
     ...userRoutes,
     ...configRoutes,
@@ -18,4 +29,6 @@ export const routes = {
     ...signatureElementRoutes,
     ...noteRoutes,
     ...archiveDocumentRoutes,
+    "/": app,
+
 }

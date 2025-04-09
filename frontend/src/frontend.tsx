@@ -10,8 +10,8 @@ if (!container) throw new Error("Failed to find the root element");
 
 const root = createRoot(container);
 root.render(
+  // Temporarily commented out StrictMode for debugging
   <React.StrictMode>
-    {/* Wrap App with BrowserRouter */}
     <BrowserRouter>
       <App />
       {/* Render Toaster globally */}

@@ -25,9 +25,10 @@ export const archiveDocumentRoutes = {
     // '/api/archive/documents/by-owner/:userId': { GET: getDocumentsByOwnerController },
 
 
-    '/api/archive/documents/all': {
-        // GET: getAllDocsController? // Maybe admin only? Add later if needed.    
-    },
+    // '/api/archive/documents/all': {
+    //     // GET: getAllDocsController? // Maybe admin only? Add later if needed.    
+    // },
+    
      // Search documents/units
     '/api/archive/documents/search': {
         POST: searchArchiveDocumentsController,

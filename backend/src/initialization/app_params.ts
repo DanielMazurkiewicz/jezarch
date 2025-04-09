@@ -9,7 +9,7 @@ export interface ApplicationParams {
 
 export const AppParamsDefaults: ApplicationParams = {
     dbPath: './jezarch.sqlite.db',
-    port: 3000,
+    port: 8080,
     defaultLanguage: "en",
 };
 
@@ -25,6 +25,8 @@ export const AppParams: ApplicationParams = {
         || process.env.JEZARCH_DEFAULT_LANGUAGE
         || "",
 };
+console.log("* initializeAppParams (A)")
 
 export const initializeAppParams = () => {
+    console.log("* initializeAppParams (B)")
 }

@@ -47,7 +47,7 @@ This document outlines the requirements for a web application designed to facili
 ## 6. Command Line Arguments
 *   The application shall accept the following command-line arguments:
 *   `--database <path>`:  Specifies the path to the SQLite database file. If not provided, the default is the current working directory.
-*   `--port <number>`: Specifies the port number on which the application should listen. If not provided, a default port (e.g., 3000) shall be used.
+*   `--port <number>`: Specifies the port number on which the application should listen. If not provided, a default port (e.g., 8080) shall be used.
 ## 7. Technology Stack
 *   **Backend:** TypeScript, Bun.js, SQLite
 *   **Frontend:** React, TypeScript
