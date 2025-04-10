@@ -5,47 +5,55 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"; // Import Card components
 import LoadingSpinner from '@/components/shared/LoadingSpinner';
 import ErrorDisplay from '@/components/shared/ErrorDisplay';
 import { useAuth } from '@/hooks/useAuth';
 import api from '@/lib/api';
-import { AppConfigKeys } from '../../../../backend/src/functionalities/config/models';
-
-const settingsSchema = z.object({
-    [AppConfigKeys.PORT]: z.coerce.number().int().min(1).max(65535), // Coerce input to number
-    [AppConfigKeys.DEFAULT_LANGUAGE]: z.string().min(2, "Language code required (e.g., en)"),
-});
-
-type SettingsFormData = z.infer<typeof settingsSchema>;
+import { AppConfigKeys } from '../../../../backend/src/functionalities/config/models'; // Import enum for keys
+import { cn } from '@/lib/utils'; // Import cn for conditional classes
+import { settingsSchema, SettingsFormData } from '@/lib/zodSchemas'; // Import schema and type
 
 const SettingsForm: React.FC = () => {
     const { token } = useAuth();
-    const [isLoading, setIsLoading] = useState(false);
-    const [error, setError] = useState<string | null>(null);
+    const [isLoading, setIsLoading] = useState(true); // Start loading initially
+    const [loadError, setLoadError] = useState<string | null>(null); // Separate error for loading
     const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'success' | 'error'>('idle');
-    const [loadError, setLoadError] = useState<string | null>(null);
+    const [saveError, setSaveError] = useState<string | null>(null); // Separate error for saving
 
     const { register, handleSubmit, reset, formState: { errors, isDirty } } = useForm<SettingsFormData>({
         resolver: zodResolver(settingsSchema),
+        // Default values before fetching
+        defaultValues: {
+            [AppConfigKeys.PORT]: 8080,
+            [AppConfigKeys.DEFAULT_LANGUAGE]: 'en',
+        }
     });
 
+    // Fetch current settings on mount
     const fetchSettings = useCallback(async () => {
-        if (!token) return;
+        if (!token) {
+            setIsLoading(false);
+            setLoadError("Authentication token not found.");
+            return;
+        }
         setIsLoading(true);
         setLoadError(null);
         try {
-            const portConfig = await api.getConfig(AppConfigKeys.PORT, token);
-            const langConfig = await api.getConfig(AppConfigKeys.DEFAULT_LANGUAGE, token);
+            // Fetch settings concurrently
+            const [portConfig, langConfig] = await Promise.all([
+                 api.getConfig(AppConfigKeys.PORT, token),
+                 api.getConfig(AppConfigKeys.DEFAULT_LANGUAGE, token)
+            ]);
+            // Reset form with fetched values or defaults
             reset({
-                [AppConfigKeys.PORT]: parseInt(portConfig[AppConfigKeys.PORT] || '0') || 8080, // Provide default
-                [AppConfigKeys.DEFAULT_LANGUAGE]: langConfig[AppConfigKeys.DEFAULT_LANGUAGE] || 'en', // Provide default
+                [AppConfigKeys.PORT]: parseInt(portConfig?.[AppConfigKeys.PORT] || '8080', 10),
+                [AppConfigKeys.DEFAULT_LANGUAGE]: langConfig?.[AppConfigKeys.DEFAULT_LANGUAGE] || 'en',
             });
         } catch (err: any) {
              console.error("Failed to load settings:", err);
              setLoadError(err.message || 'Failed to load settings');
-             // Reset with defaults on error?
-             reset({ [AppConfigKeys.PORT]: 8080, [AppConfigKeys.DEFAULT_LANGUAGE]: 'en' });
+             // Keep default values in form on error
         } finally {
             setIsLoading(false);
         }
@@ -55,57 +63,83 @@ const SettingsForm: React.FC = () => {
         fetchSettings();
     }, [fetchSettings]);
 
+    // Handle form submission to save settings
     const onSubmit = async (data: SettingsFormData) => {
         if (!token) return;
         setSaveStatus('saving');
-        setError(null);
+        setSaveError(null);
         try {
-            // Save each setting individually
-            await api.setConfig(AppConfigKeys.PORT, String(data[AppConfigKeys.PORT]), token);
-            await api.setConfig(AppConfigKeys.DEFAULT_LANGUAGE, data[AppConfigKeys.DEFAULT_LANGUAGE], token);
+            // Save each setting individually or potentially use a batch endpoint if available
+            await Promise.all([
+                api.setConfig(AppConfigKeys.PORT, String(data[AppConfigKeys.PORT]), token),
+                api.setConfig(AppConfigKeys.DEFAULT_LANGUAGE, data[AppConfigKeys.DEFAULT_LANGUAGE], token)
+            ]);
             setSaveStatus('success');
-             reset(data); // Reset dirty state after successful save
-            setTimeout(() => setSaveStatus('idle'), 2000); // Reset status after a delay
+            reset(data); // Update form's default values and reset dirty state
+            setTimeout(() => setSaveStatus('idle'), 2000); // Reset status indicator after delay
         } catch (err: any) {
-            setError(err.message || 'Failed to save settings');
+            setSaveError(err.message || 'Failed to save settings');
             setSaveStatus('error');
         }
     };
 
+    // Display loading state while fetching initial data
     if (isLoading) {
         return <Card><CardContent className='p-6 flex justify-center'><LoadingSpinner /></CardContent></Card>;
     }
+
+    // Display error if initial loading failed
      if (loadError) {
         return <Card><CardContent className='p-6'><ErrorDisplay message={loadError} /></CardContent></Card>;
      }
 
-
+    // Render the form within a Card
     return (
         <Card>
             <CardHeader>
                 <CardTitle>Application Settings</CardTitle>
-                <CardDescription>Configure server port and default language. Changes may require a server restart.</CardDescription>
+                <CardDescription>Configure server port and default language. Changes may require a server restart to take full effect.</CardDescription>
             </CardHeader>
-            <form onSubmit={handleSubmit(onSubmit)}>
-                <CardContent className="space-y-4">
-                    {error && <ErrorDisplay message={error} />}
-                    <div className="grid gap-2">
+            {/* Put form inside CardContent for proper padding */}
+            <CardContent>
+                <form onSubmit={handleSubmit(onSubmit)} className="space-y-4 max-w-md"> {/* Limit form width */}
+                    {/* Display save errors */}
+                    {saveError && <ErrorDisplay message={saveError} />}
+
+                    {/* Server Port Field */}
+                    <div className="grid gap-1.5">
                         <Label htmlFor="port">Server Port</Label>
-                        <Input id="port" type="number" {...register(AppConfigKeys.PORT)} />
+                        <Input
+                            id="port"
+                            type="number"
+                            {...register(AppConfigKeys.PORT)}
+                            aria-invalid={!!errors[AppConfigKeys.PORT]}
+                            className={cn(errors[AppConfigKeys.PORT] && "border-destructive")}
+                         />
                         {errors[AppConfigKeys.PORT] && <p className="text-xs text-destructive">{errors[AppConfigKeys.PORT]?.message}</p>}
                     </div>
-                    <div className="grid gap-2">
+
+                    {/* Default Language Field */}
+                    <div className="grid gap-1.5">
                         <Label htmlFor="language">Default Language</Label>
-                        <Input id="language" {...register(AppConfigKeys.DEFAULT_LANGUAGE)} placeholder="e.g., en, de" />
+                        <Input
+                            id="language"
+                            {...register(AppConfigKeys.DEFAULT_LANGUAGE)}
+                            placeholder="e.g., en, de"
+                            aria-invalid={!!errors[AppConfigKeys.DEFAULT_LANGUAGE]}
+                            className={cn(errors[AppConfigKeys.DEFAULT_LANGUAGE] && "border-destructive")}
+                         />
                         {errors[AppConfigKeys.DEFAULT_LANGUAGE] && <p className="text-xs text-destructive">{errors[AppConfigKeys.DEFAULT_LANGUAGE]?.message}</p>}
                     </div>
+
+                    {/* Save Button with Status Indicator */}
                      <Button type="submit" disabled={saveStatus === 'saving' || !isDirty}>
                         {saveStatus === 'saving' && <LoadingSpinner size="sm" className="mr-2" />}
                         {saveStatus === 'success' && 'Saved!'}
-                         {(saveStatus === 'idle' || saveStatus === 'error') && 'Save Settings'}
+                        {(saveStatus === 'idle' || saveStatus === 'error') && 'Save Settings'}
                      </Button>
-                </CardContent>
-            </form>
+                </form>
+             </CardContent>
         </Card>
     );
 };

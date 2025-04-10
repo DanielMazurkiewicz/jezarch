@@ -12,22 +12,22 @@ import ArchivePage from '@/components/archive/ArchivePage';
 import AdminPage from '@/components/admin/AdminPage';
 import ProtectedRoute from '@/components/auth/ProtectedRoute';
 import LoadingSpinner from '@/components/shared/LoadingSpinner';
+// Correct the import path assuming backend/src is sibling to frontend/src
 import type { UserRole } from '../../backend/src/functionalities/user/models';
 
-// Simple Dashboard component (can remain the same)
+// Simple Dashboard component
 const DashboardPage = () => {
     const { user } = useAuth();
     return (
         <div className="p-4 md:p-6 space-y-4">
             <h1 className="text-2xl font-semibold">Welcome, {user?.login}!</h1>
             <p className="text-muted-foreground">
-                Select a section from the sidebar to get started.
+                Select a section from the sidebar to get started or manage your account settings.
             </p>
         </div>
     );
 };
 
-// --- Removed PublicRoutes Component ---
 
 // Main App Content manages routing logic
 function AppContent() {
@@ -37,27 +37,34 @@ function AppContent() {
 
     // Display loading spinner while auth state is being determined
     if (isLoading) {
-        return <div className="flex justify-center items-center h-screen"><LoadingSpinner /></div>;
+        // Ensure spinner covers the whole screen during initial load
+        return (
+            <div className="flex justify-center items-center min-h-screen w-full bg-background">
+                <LoadingSpinner />
+            </div>
+        );
     }
 
-    // Define common elements for login/register to avoid duplication
+    // Define a layout wrapper specifically for Auth pages (Login, Register)
+    // This ensures the centering and background styling are applied correctly.
     const AuthLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => (
-        <div className="container mx-auto p-4 flex justify-center items-center min-h-screen">
+        <div className="flex justify-center items-center min-h-screen w-full bg-muted/40 p-4">
+             {/* The children here should be the Card-based LoginForm or RegisterForm */}
             {children}
         </div>
     );
 
     return (
         <Routes>
-            {/* --- Public Routes --- */}
-            {/* Show Login/Register only if NOT authenticated */}
+            {/* --- Public Routes (Login/Register) --- */}
+            {/* Ensure these routes correctly use the AuthLayout */}
             <Route path="/login" element={
                 !isAuthenticated ? (
                     <AuthLayout>
                         <LoginForm onSwitchToRegister={() => navigate('/register', { replace: true, state: location.state })} />
                     </AuthLayout>
                 ) : (
-                    // If authenticated, redirect away from login to intended page or dashboard
+                    // If authenticated, redirect away from login
                     <Navigate to={location.state?.from?.pathname || "/"} replace />
                 )
             } />
@@ -72,41 +79,31 @@ function AppContent() {
                  )
             } />
 
-            {/* --- Protected Routes --- */}
-            {/* All routes below require authentication */}
-            <Route element={<ProtectedRoute />}> {/* Outer protection */}
-                <Route element={<Layout />}> {/* Layout for authenticated users */}
-                    {/* Default page inside layout */}
+            {/* --- Protected Routes (Inside Main Layout) --- */}
+            <Route element={<ProtectedRoute />}>
+                <Route element={<Layout />}> {/* Main App Layout with Sidebar/Header */}
                     <Route index element={<DashboardPage />} />
-
-                    {/* Standard protected routes */}
                     <Route path="notes" element={<NotesPage />} />
                     <Route path="tags" element={<TagsPage />} />
                     <Route path="signatures" element={<SignaturesPage />} />
                     <Route path="archive" element={<ArchivePage />} />
-
-                    {/* Admin-specific routes nested inside Layout and ProtectedRoute */}
-                    <Route element={<ProtectedRoute allowedRoles={['admin']} />}> {/* Inner protection for role */}
+                    {/* Admin Routes */}
+                    <Route element={<ProtectedRoute allowedRoles={['admin']} />}>
                         <Route path="admin" element={<AdminPage />} />
-                        {/* Add other admin-only routes here if needed */}
                     </Route>
-
-                    {/* Fallback for unknown routes *inside* the protected layout */}
-                    {/* Redirects any unmatched path within the layout to the dashboard */}
+                    {/* Fallback inside Layout */}
                     <Route path="*" element={<Navigate to="/" replace />} />
-                </Route> {/* End Layout routes */}
-            </Route> {/* End Protected Routes */}
+                </Route>
+            </Route>
 
-            {/* --- Catch-all Fallback --- */}
-            {/* If no routes matched above (e.g., accessing root '/' when not logged in),
-                redirect to login. This handles the case where ProtectedRoute navigates
-                to /login if not authenticated. */}
-            <Route path="*" element={<Navigate to="/login" replace />} />
+             {/* --- Catch-all Fallback (Redirect to Login if not authenticated and no match) --- */}
+             <Route path="*" element={<Navigate to="/login" replace />} />
 
         </Routes>
     );
 }
 
+// Main App component wrapping everything with AuthProvider
 function App() {
     return (
         <AuthProvider>

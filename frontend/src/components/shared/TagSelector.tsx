@@ -48,13 +48,24 @@ const TagSelector: React.FC<TagSelectorProps> = ({ selectedTagIds, onChange, cla
       : [...selectedTagIds, tagId];
     onChange(newSelectedIds);
     setSearchTerm(""); // Clear search on select
-    // setOpen(false); // Close popover on select? Optional
+    // Keep popover open for multi-select
+    // setOpen(false);
   };
 
    // Memoize selected tags for display to avoid recalculating on every render
    const selectedTags = useMemo(() => {
-       return availableTags.filter(tag => selectedTagIds.includes(tag.tagId!));
+       // Sort available tags once if needed, e.g., alphabetically
+       const sortedAvailable = [...availableTags].sort((a, b) => a.name.localeCompare(b.name));
+       return sortedAvailable.filter(tag => selectedTagIds.includes(tag.tagId!));
    }, [availableTags, selectedTagIds]);
+
+   // Memoize filtered tags for the dropdown
+   const filteredDropdownTags = useMemo(() => {
+       return availableTags
+           .filter(tag => tag.name.toLowerCase().includes(searchTerm.toLowerCase()))
+           .sort((a, b) => a.name.localeCompare(b.name)); // Sort filtered results
+   }, [availableTags, searchTerm]);
+
 
   return (
     <div className={cn('space-y-2', className)}>
@@ -64,11 +75,11 @@ const TagSelector: React.FC<TagSelectorProps> = ({ selectedTagIds, onChange, cla
                     variant="outline"
                     role="combobox"
                     aria-expanded={open}
-                    className="w-full justify-between min-h-[36px]" // Ensure min height
+                    className="w-full justify-between min-h-[36px] font-normal" // Ensure min height, normal font weight
                     disabled={isLoading || !!error}
                 >
                   <span className="truncate">
-                    {isLoading ? 'Loading...' :
+                    {isLoading ? 'Loading tags...' :
                      error ? 'Error loading tags' :
                      selectedTags.length > 0 ? `${selectedTags.length} selected` :
                      'Select tags...'}
@@ -76,51 +87,52 @@ const TagSelector: React.FC<TagSelectorProps> = ({ selectedTagIds, onChange, cla
                    {isLoading ? <LoadingSpinner size="sm" className='ml-2'/> : <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />}
                 </Button>
              </PopoverTrigger>
+             {/* Adjust width based on trigger */}
              <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
-                 <Command shouldFilter={false}> {/* Disable default filtering if doing custom */}
+                 <Command shouldFilter={false}> {/* Disable default filtering, we filter manually */}
                     <CommandInput
                         placeholder="Search tags..."
                         value={searchTerm}
-                        onValueChange={setSearchTerm}
+                        onValueChange={setSearchTerm} // Update search term state
                     />
                     <CommandList>
-                        <CommandEmpty>No tags found.</CommandEmpty>
-                        <CommandGroup>
-                        {availableTags
-                            .filter(tag => tag.name.toLowerCase().includes(searchTerm.toLowerCase())) // Manual filter
-                            .map((tag) => (
-                            <CommandItem
-                                key={tag.tagId}
-                                value={tag.name} // For accessibility and potential keyboard nav
-                                onSelect={() => {
-                                    handleSelect(tag.tagId!);
-                                    // Optionally keep popover open: setOpen(true);
-                                }}
-                                className='cursor-pointer' // Ensure pointer cursor
-                            >
-                                <Check
-                                    className={cn(
-                                    "mr-2 h-4 w-4",
-                                    selectedTagIds.includes(tag.tagId!) ? "opacity-100" : "opacity-0"
-                                    )}
-                                />
-                                {tag.name}
-                            </CommandItem>
-                        ))}
-                        </CommandGroup>
+                        <CommandEmpty>{isLoading ? 'Loading...' : 'No tags found.'}</CommandEmpty>
+                         {!isLoading && (
+                            <CommandGroup>
+                                {filteredDropdownTags.map((tag) => (
+                                <CommandItem
+                                    key={tag.tagId}
+                                    value={tag.name} // Use name for Command's internal value/search
+                                    onSelect={() => {
+                                        handleSelect(tag.tagId!);
+                                    }}
+                                    className='cursor-pointer' // Ensure pointer cursor
+                                >
+                                    <Check
+                                        className={cn(
+                                        "mr-2 h-4 w-4",
+                                        selectedTagIds.includes(tag.tagId!) ? "opacity-100" : "opacity-0"
+                                        )}
+                                    />
+                                    {tag.name}
+                                </CommandItem>
+                                ))}
+                            </CommandGroup>
+                         )}
                     </CommandList>
                  </Command>
              </PopoverContent>
          </Popover>
-         {/* Display selected tags */}
+         {/* Display selected tags as Badges */}
          {selectedTags.length > 0 && (
             <div className="flex flex-wrap gap-1 pt-1">
                 {selectedTags.map(tag => (
-                    <Badge key={tag.tagId} variant="secondary" className='flex items-center'>
-                        <span className='mr-1'>{tag.name}</span>
+                    <Badge key={tag.tagId} variant="secondary" className='items-center'> {/* Use secondary variant */}
+                        <span>{tag.name}</span> {/* Remove mr-1 */}
                          <button
                              type="button"
-                             className="ml-1 rounded-full outline-none ring-offset-background focus:ring-2 focus:ring-ring focus:ring-offset-2 p-0.5 hover:bg-muted"
+                             // Styling for the 'X' button within the badge
+                             className="ml-1 p-0.5 rounded-full text-muted-foreground hover:text-foreground hover:bg-background/50 focus:outline-none focus:ring-1 focus:ring-ring focus:ring-offset-1"
                              onClick={() => handleSelect(tag.tagId!)}
                              aria-label={`Remove ${tag.name} tag`}
                          >

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Check, ChevronsUpDown, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
@@ -11,6 +11,7 @@ import type { SignatureElement } from '../../../../backend/src/functionalities/s
 import { cn } from '@/lib/utils';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"; // For Component selection
 import { Label } from '@/components/ui/label'; // Import Label
+import LoadingSpinner from '@/components/shared/LoadingSpinner'; // Import Spinner
 
 interface ElementSelectorProps {
     selectedElementIds: number[]; // IDs of the selected parent elements
@@ -32,12 +33,14 @@ const ElementSelector: React.FC<ElementSelectorProps> = ({
     const { token } = useAuth();
     const [availableComponents, setAvailableComponents] = useState<SignatureComponent[]>([]);
     const [searchComponentId, setSearchComponentId] = useState<string>(""); // Component ID to search within
-    const [availableElements, setAvailableElements] = useState<SignatureElement[]>([]);
+    const [availableElements, setAvailableElements] = useState<SignatureElement[]>([]); // Elements in the selected component
     const [isLoadingComponents, setIsLoadingComponents] = useState(false);
     const [isLoadingElements, setIsLoadingElements] = useState(false);
+    const [isLoadingSelectedDetails, setIsLoadingSelectedDetails] = useState(false); // Loading for selected badges
     const [error, setError] = useState<string | null>(null);
     const [open, setOpen] = useState(false);
-    const [selectedElementObjects, setSelectedElementObjects] = useState<SignatureElement[]>([]);
+    const [selectedElementObjects, setSelectedElementObjects] = useState<SignatureElement[]>([]); // Holds full objects for selected IDs for badges
+    const [searchTerm, setSearchTerm] = useState(""); // Search within the popover
 
     // Fetch Components
     useEffect(() => {
@@ -47,7 +50,7 @@ const ElementSelector: React.FC<ElementSelectorProps> = ({
             setError(null);
             try {
                 const comps = await api.getAllSignatureComponents(token);
-                setAvailableComponents(comps);
+                setAvailableComponents(comps.sort((a,b) => a.name.localeCompare(b.name))); // Sort components
             } catch (err: any) {
                 setError(err.message || "Failed to load components");
             } finally {
@@ -68,12 +71,11 @@ const ElementSelector: React.FC<ElementSelectorProps> = ({
             setError(null);
             try {
                 const elems = await api.getElementsByComponent(parseInt(searchComponentId), token);
-                 // Filter out the current element being edited and potentially elements from the same component if needed
+                 // Filter out the current element being edited
                  setAvailableElements(
-                    elems.filter(el =>
-                         el.signatureElementId !== currentElementId
-                         // && el.signatureComponentId !== currentComponentId // Uncomment if needed
-                    )
+                    elems
+                        .filter(el => el.signatureElementId !== currentElementId)
+                        .sort((a,b) => (a.index ?? a.name).localeCompare(b.index ?? b.name)) // Sort elements
                  );
             } catch (err: any) {
                 setError(err.message || "Failed to load elements");
@@ -86,42 +88,67 @@ const ElementSelector: React.FC<ElementSelectorProps> = ({
     }, [token, searchComponentId, currentElementId]); // Add currentElementId dependency
 
 
+    // Fetch details for selected elements (for badges) when selected IDs change
+    useEffect(() => {
+        const fetchSelectedDetails = async () => {
+            if (!token || selectedElementIds.length === 0) {
+                setSelectedElementObjects([]);
+                return;
+            }
+            setIsLoadingSelectedDetails(true);
+            try {
+                 // Fetch details for each selected ID
+                 const detailsPromises = selectedElementIds.map(id =>
+                     api.getSignatureElementById(id, [], token).catch(() => null) // Return null on error for one ID
+                 );
+                 const results = await Promise.all(detailsPromises);
+                 setSelectedElementObjects(results.filter((el): el is SignatureElement => el !== null)
+                                            .sort((a,b) => a.name.localeCompare(b.name))); // Filter out nulls and sort
+            } catch (err) {
+                 console.error("Failed to fetch selected element details:", err);
+                 setSelectedElementObjects([]); // Clear on error
+            } finally {
+                 setIsLoadingSelectedDetails(false);
+            }
+        };
+        fetchSelectedDetails();
+    }, [token, selectedElementIds]);
+
+
     const handleSelectElement = (elementId: number) => {
         const newSelectedIds = selectedElementIds.includes(elementId)
             ? selectedElementIds.filter(id => id !== elementId)
             : [...selectedElementIds, elementId];
         onChange(newSelectedIds);
+        setSearchTerm(""); // Clear search within popover
+        // Keep popover open
     };
 
-     // Resolve selected element objects whenever availableElements or selectedElementIds changes
-     useEffect(() => {
-         // We need a combined list of all potential elements across components if we want to display badges
-         // for elements selected from components *other* than the currently searched one.
-         // This is complex. A simpler approach: only display badges for elements belonging
-         // to the currently selected searchComponentId.
-        const currentlyVisibleSelected = availableElements.filter(el => selectedElementIds.includes(el.signatureElementId!));
-        // If you need to show *all* selected regardless of current component search, you'd need
-        // to fetch details for all selectedElementIds separately or maintain a global cache.
-        setSelectedElementObjects(currentlyVisibleSelected);
-
-     }, [selectedElementIds, availableElements]);
+    // Filter elements for the dropdown based on search term
+    const filteredDropdownElements = useMemo(() => {
+         return availableElements.filter(el =>
+             (el.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+             el.index?.toLowerCase().includes(searchTerm.toLowerCase()))
+         );
+    }, [availableElements, searchTerm]);
 
 
     return (
         <div className={cn('space-y-2 p-3 border rounded bg-muted/30', className)}>
-            <Label>{label}</Label> {/* Use Label component */}
+            <Label className='text-sm font-medium'>{label}</Label> {/* Use Label component */}
             {/* Component Selector */}
             <Select value={searchComponentId} onValueChange={setSearchComponentId} disabled={isLoadingComponents}>
-                <SelectTrigger>
+                <SelectTrigger className='h-9 text-sm'>
                     <SelectValue placeholder="Select Component to find parents..." />
                 </SelectTrigger>
                 <SelectContent>
-                    {isLoadingComponents && <SelectItem value="loading" disabled>Loading...</SelectItem>}
+                    {isLoadingComponents && <SelectItem value="loading" disabled><div className='flex items-center'><LoadingSpinner size='sm' className='mr-2'/>Loading...</div></SelectItem>}
                     {availableComponents.map(comp => (
                         <SelectItem key={comp.signatureComponentId} value={String(comp.signatureComponentId)}>
                             {comp.name}
                         </SelectItem>
                     ))}
+                     {!isLoadingComponents && availableComponents.length === 0 && <SelectItem value="no-comps" disabled>No components found</SelectItem>}
                 </SelectContent>
             </Select>
 
@@ -132,35 +159,38 @@ const ElementSelector: React.FC<ElementSelectorProps> = ({
                         variant="outline"
                         role="combobox"
                         aria-expanded={open}
-                        className="w-full justify-between min-h-[36px]" // Ensure min height
+                        className="w-full justify-between min-h-[36px] font-normal" // Ensure min height
                         disabled={isLoadingElements || !searchComponentId || !!error}
                     >
                         <span className='truncate'>
                             {isLoadingElements ? 'Loading elements...' :
-                             selectedElementIds.length > 0 ? `${selectedElementIds.length} selected` : // Show total count
                              !searchComponentId ? 'Select component first' :
                              error ? 'Error loading elements' :
                              'Select elements...'}
                         </span>
-                        <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                        {isLoadingElements ? <LoadingSpinner size='sm' className='ml-2'/> : <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />}
                     </Button>
                 </PopoverTrigger>
                 <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
-                    <Command>
-                        <CommandInput placeholder="Search elements..." />
+                    <Command shouldFilter={false}> {/* Manual filtering */}
+                        <CommandInput
+                            placeholder="Search elements..."
+                            value={searchTerm}
+                            onValueChange={setSearchTerm}
+                        />
                         <CommandList>
-                             {isLoadingElements && <div className='text-center p-2 text-sm text-muted-foreground'>Loading...</div>}
-                             <CommandEmpty>No elements found in this component.</CommandEmpty>
-                             {!isLoadingElements && availableElements.length > 0 && (
+                             {isLoadingElements && <div className='text-center p-2 text-sm text-muted-foreground'><LoadingSpinner size='sm'/></div>}
+                             <CommandEmpty>{!isLoadingElements && 'No elements found.'}</CommandEmpty>
+                             {!isLoadingElements && filteredDropdownElements.length > 0 && (
                                  <CommandGroup>
-                                    {availableElements.map((el) => (
+                                    {filteredDropdownElements.map((el) => (
                                         <CommandItem
                                             key={el.signatureElementId}
                                             value={`${el.index || ''} ${el.name}`} // Search by index + name
                                             onSelect={() => {
                                                 handleSelectElement(el.signatureElementId!);
                                             }}
-                                            className='cursor-pointer'
+                                            className='cursor-pointer text-sm' // Smaller text
                                         >
                                             <Check
                                                 className={cn(
@@ -168,7 +198,7 @@ const ElementSelector: React.FC<ElementSelectorProps> = ({
                                                     selectedElementIds.includes(el.signatureElementId!) ? "opacity-100" : "opacity-0"
                                                 )}
                                             />
-                                            <span className='font-mono text-xs w-10 mr-2 text-right'>{el.index || '-'}</span>
+                                            <span className='font-mono text-xs w-10 mr-2 text-right inline-block'>{el.index || '-'}</span> {/* Styled Index */}
                                             <span>{el.name}</span>
                                         </CommandItem>
                                     ))}
@@ -179,30 +209,28 @@ const ElementSelector: React.FC<ElementSelectorProps> = ({
                 </PopoverContent>
             </Popover>
 
-            {/* Display Selected Badges - Show only those from the currently selected component */}
-             {selectedElementObjects.length > 0 && (
-                <div className="flex flex-wrap gap-1 pt-1">
-                    {selectedElementObjects.map(el => (
-                        <Badge key={el.signatureElementId} variant="secondary">
-                            {el.index ? `[${el.index}] ` : ''}{el.name}
-                            <button
-                                type="button"
-                                className="ml-1 rounded-full outline-none ring-offset-background focus:ring-2 focus:ring-ring focus:ring-offset-2 p-0.5 hover:bg-muted"
-                                onClick={() => handleSelectElement(el.signatureElementId!)}
-                                aria-label={`Remove ${el.name}`}
-                            >
-                               <X className="h-3 w-3"/>
-                            </button>
+            {/* Display Selected Badges */}
+            <div className="flex flex-wrap gap-1 pt-1 min-h-[22px]">
+                 {isLoadingSelectedDetails && <LoadingSpinner size='sm'/>}
+                 {!isLoadingSelectedDetails && selectedElementObjects.length > 0 && (
+                    selectedElementObjects.map(el => (
+                        <Badge key={el.signatureElementId} variant="secondary" className='items-center'>
+                             <span>{el.index ? `[${el.index}] ` : ''}{el.name}</span>
+                             <button
+                                 type="button"
+                                 className="ml-1 p-0.5 rounded-full text-muted-foreground hover:text-foreground hover:bg-background/50 focus:outline-none focus:ring-1 focus:ring-ring focus:ring-offset-1"
+                                 onClick={() => handleSelectElement(el.signatureElementId!)}
+                                 aria-label={`Remove ${el.name}`}
+                             >
+                                <X className="h-3 w-3"/>
+                             </button>
                         </Badge>
-                    ))}
-                     {/* Indicate if there are other selected elements not shown */}
-                    {selectedElementIds.length > selectedElementObjects.length && (
-                        <Badge variant="outline" className='italic text-muted-foreground'>
-                            +{selectedElementIds.length - selectedElementObjects.length} more from other components
-                        </Badge>
-                    )}
-                </div>
-            )}
+                    ))
+                 )}
+                 {!isLoadingSelectedDetails && selectedElementIds.length === 0 && (
+                     <span className='text-xs text-muted-foreground italic'>No parents selected</span>
+                 )}
+            </div>
 
             {error && <p className="text-xs text-destructive mt-1">{error}</p>}
         </div>

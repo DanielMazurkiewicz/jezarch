@@ -5,6 +5,7 @@
   "private": true,
   "dependencies": {
     "bcryptjs": "^3",
+    "bun-plugin-tailwind": "^0.0.15",
     "zod": "^3.22.4"
   },
   "devDependencies": {

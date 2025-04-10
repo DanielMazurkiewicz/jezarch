@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { X, Plus, Search as SearchIcon } from 'lucide-react'; // Added SearchIcon
+import { X, Plus, Search as SearchIcon, ChevronsUpDown } from 'lucide-react'; // Added SearchIcon & ChevronsUpDown
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'; // Added Dialog
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command"; // Added Command
@@ -13,6 +13,7 @@ import api from '@/lib/api';
 import type { SignatureComponent } from '../../../../backend/src/functionalities/signature/component/models'; // Added types
 import type { SignatureElement } from '../../../../backend/src/functionalities/signature/element/models'; // Added types
 import { cn } from '@/lib/utils';
+import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover'; // Use popover for element selection
 
 type ResolvedPath = { idPath: number[]; display: string };
 
@@ -23,12 +24,12 @@ interface SignaturePathSelectorProps {
   className?: string;
 }
 
-// --- Element Browser Component (Internal) ---
-interface ElementBrowserProps {
+// --- Element Browser Component (Internal - now uses Popover content) ---
+interface ElementBrowserPopoverContentProps {
     onSelectPath: (path: number[]) => void;
 }
 
-const ElementBrowser: React.FC<ElementBrowserProps> = ({ onSelectPath }) => {
+const ElementBrowserPopoverContent: React.FC<ElementBrowserPopoverContentProps> = ({ onSelectPath }) => {
     const { token } = useAuth();
     const [components, setComponents] = useState<SignatureComponent[]>([]);
     const [selectedComponentId, setSelectedComponentId] = useState<string>('');
@@ -44,7 +45,7 @@ const ElementBrowser: React.FC<ElementBrowserProps> = ({ onSelectPath }) => {
             if (!token) return;
             setIsLoadingComponents(true);
             try {
-                setComponents(await api.getAllSignatureComponents(token));
+                setComponents((await api.getAllSignatureComponents(token)).sort((a,b) => a.name.localeCompare(b.name)));
             } catch (err) { console.error("Failed to load components", err); }
              finally { setIsLoadingComponents(false); }
         };
@@ -60,21 +61,19 @@ const ElementBrowser: React.FC<ElementBrowserProps> = ({ onSelectPath }) => {
             }
             setIsLoadingElements(true);
             try {
-                // Fetch all elements for the component for browsing
                 const allElements = await api.getElementsByComponent(parseInt(selectedComponentId), token);
-                setElements(allElements);
+                setElements(allElements.sort((a,b) => (a.index ?? a.name).localeCompare(b.index ?? b.name)));
             } catch (err) { console.error("Failed to load elements", err); setElements([]); }
              finally { setIsLoadingElements(false); }
         };
         fetchElems();
+        setCurrentPath([]); // Reset path when component changes
     }, [token, selectedComponentId]);
 
     const handleSelectElement = (element: SignatureElement) => {
         setCurrentPath([...currentPath, element]);
-        // Ideally, fetch next level if hierarchical components exist,
-        // for now, just add to path. Reset component/element lists if needed.
-        setSelectedComponentId(''); // Clear component selection to browse next level? Needs design decision.
-        setSearchTerm('');
+        // Keep the same component selected for potential sibling selection
+        setSearchTerm(''); // Clear search
     };
 
     const handleRemoveLastElement = () => {
@@ -84,7 +83,9 @@ const ElementBrowser: React.FC<ElementBrowserProps> = ({ onSelectPath }) => {
     const handleConfirmPath = () => {
         if (currentPath.length > 0) {
             onSelectPath(currentPath.map(el => el.signatureElementId!));
-            setCurrentPath([]); // Reset after confirming
+            // Reset after confirming? Depends if user wants to build multiple similar paths
+            setCurrentPath([]);
+            setSelectedComponentId('');
         }
     };
 
@@ -94,63 +95,63 @@ const ElementBrowser: React.FC<ElementBrowserProps> = ({ onSelectPath }) => {
         el.index?.toLowerCase().includes(searchTerm.toLowerCase()))
      );
 
+    const selectedComponentName = components.find(c => String(c.signatureComponentId) === selectedComponentId)?.name;
 
     return (
-        <div className="space-y-3 max-h-[60vh] flex flex-col">
+        <div className="space-y-3 p-4 w-full"> {/* Added padding */}
             {/* Current Path Display */}
-             <div className="flex flex-wrap items-center gap-1 border-b pb-2 mb-2 min-h-[30px]">
-                <Label className='mr-2 shrink-0'>Building Path:</Label>
-                {currentPath.map((el, index) => (
-                    <Badge key={el.signatureElementId} variant="secondary">
+             <div className="flex flex-wrap items-center gap-1 border rounded p-2 bg-muted/50 min-h-[40px]">
+                <Label className='mr-2 shrink-0 text-xs font-semibold'>Current Path:</Label>
+                {currentPath.map((el) => (
+                    <Badge key={el.signatureElementId} variant="secondary" className='font-mono text-xs'>
                          {el.index ? `[${el.index}] ` : ''}{el.name}
                     </Badge>
                  ))}
-                 {currentPath.length === 0 && <span className="text-xs text-muted-foreground italic">Select component then elements...</span>}
+                 {currentPath.length === 0 && <span className="text-xs text-muted-foreground italic">Select component & elements below...</span>}
             </div>
 
-             {/* Component Selector */}
-             <div className="flex items-center gap-2">
-                <Label className='w-[100px] shrink-0 text-right pr-2'>Component:</Label>
-                 <Select value={selectedComponentId} onValueChange={setSelectedComponentId} disabled={isLoadingComponents}>
-                     <SelectTrigger className='flex-grow'>
-                         <SelectValue placeholder="Select Component..." />
-                     </SelectTrigger>
-                     <SelectContent>
-                         {isLoadingComponents && <SelectItem value="loading" disabled>Loading...</SelectItem>}
-                         {components.map(comp => (
-                             <SelectItem key={comp.signatureComponentId} value={String(comp.signatureComponentId)}>
-                                 {comp.name}
-                             </SelectItem>
-                         ))}
-                     </SelectContent>
-                 </Select>
-             </div>
+            {/* Component Selector */}
+            <Select value={selectedComponentId} onValueChange={setSelectedComponentId} disabled={isLoadingComponents}>
+                <SelectTrigger className='w-full text-sm h-9'>
+                    <SelectValue placeholder="1. Select Component..." />
+                </SelectTrigger>
+                <SelectContent>
+                    {isLoadingComponents && <SelectItem value="loading" disabled><div className='flex items-center'><LoadingSpinner size='sm' className='mr-2'/>Loading...</div></SelectItem>}
+                    {components.map(comp => (
+                        <SelectItem key={comp.signatureComponentId} value={String(comp.signatureComponentId)}>
+                            {comp.name}
+                        </SelectItem>
+                    ))}
+                    {!isLoadingComponents && components.length === 0 && <SelectItem value="no-comps" disabled>No components found</SelectItem>}
+                </SelectContent>
+            </Select>
 
-            {/* Element Selector/Search */}
+            {/* Element Selector/Search (only if component selected) */}
             {selectedComponentId && (
                 <div className="flex-1 overflow-hidden flex flex-col">
-                    <Command className='rounded-lg border shadow-md'>
+                     <Label className='text-xs mb-1 block'>2. Select Element(s) from "{selectedComponentName}"</Label>
+                    <Command className='rounded-lg border shadow-sm'>
                         <CommandInput
                             placeholder="Search elements by name or index..."
                             value={searchTerm}
                             onValueChange={setSearchTerm}
                         />
-                         <CommandList className="max-h-[250px]">
-                             {isLoadingElements && <div className='p-4 text-center'><LoadingSpinner /></div>}
+                         <CommandList className="max-h-[200px]"> {/* Reduced height */}
+                             {isLoadingElements && <div className='p-4 text-center'><LoadingSpinner size='sm' /></div>}
                              <CommandEmpty>No elements found.</CommandEmpty>
                              {!isLoadingElements && filteredElements.length > 0 && (
-                                 <CommandGroup heading="Select Next Element">
+                                 <CommandGroup heading="Available Elements">
                                      {filteredElements.map((el) => (
                                         <CommandItem
                                             key={el.signatureElementId}
                                             value={`${el.index || ''} ${el.name}`}
                                             onSelect={() => handleSelectElement(el)}
-                                            className="cursor-pointer flex justify-between"
+                                            className="cursor-pointer flex justify-between items-center text-sm"
                                         >
-                                            <span>
-                                                <span className='font-mono text-xs w-10 mr-2 text-right inline-block'>{el.index || '-'}</span>
+                                            <div className='flex items-center'>
+                                                <span className='font-mono text-xs w-10 mr-2 text-right inline-block text-muted-foreground'>{el.index || '-'}</span>
                                                 <span>{el.name}</span>
-                                            </span>
+                                            </div>
                                             <Plus className='h-4 w-4 text-muted-foreground'/>
                                          </CommandItem>
                                      ))}
@@ -167,7 +168,7 @@ const ElementBrowser: React.FC<ElementBrowserProps> = ({ onSelectPath }) => {
                      <X className="mr-1 h-3 w-3" /> Remove Last
                  </Button>
                  <Button type="button" size="sm" onClick={handleConfirmPath} disabled={currentPath.length === 0}>
-                     Confirm Path
+                     Add This Path
                  </Button>
              </div>
          </div>
@@ -193,21 +194,35 @@ const SignaturePathSelector: React.FC<SignaturePathSelectorProps> = ({ label, el
         const resolved: ResolvedPath[] = [];
         try {
             for (const idPath of elementIdPaths) {
+                if (idPath.length === 0) continue; // Skip empty paths
                 // Fetch details for each element in the path
-                const namesAndIndices = await Promise.all(
+                const elementsInPath: (SignatureElement | null)[] = await Promise.all(
                     idPath.map(id =>
                         api.getSignatureElementById(id, [], token)
-                           .then(el => el ? `${el.index ? `[${el.index}]` : ''}${el.name}` : `[ID:${id}? ]`)
-                           .catch(() => `[ID:${id} ERR]`) // Handle fetch errors for individual elements
+                           .catch(() => null) // Handle fetch errors for individual elements
                     )
                 );
-                 resolved.push({ idPath, display: namesAndIndices.join(' / ') });
+
+                 // Format the display string - Refactored for clarity and type safety
+                 const displayString = elementsInPath
+                     .map((el: SignatureElement | null) => {
+                         if (el) {
+                             return `${el.index ? `[${el.index}]` : ''}${el.name}`;
+                         } else {
+                             // Find the original ID that failed if possible (not easily available here without more complex tracking)
+                             // Return a generic error for the segment
+                             return `[Fetch Error]`;
+                         }
+                     })
+                     .join(' / ');
+
+                 resolved.push({ idPath, display: displayString });
             }
-             setResolvedPaths(resolved);
+             setResolvedPaths(resolved.sort((a, b) => a.display.localeCompare(b.display))); // Sort resolved paths
         } catch (error) {
              console.error("Error resolving signature paths:", error);
              // Fallback to showing IDs on error
-             setResolvedPaths(elementIdPaths.map(p => ({idPath: p, display: `[${p.join(' > ')}] (Error)`})));
+             setResolvedPaths(elementIdPaths.map(p => ({idPath: p, display: `[${p.join(' / ')}] (Error)`})));
         } finally {
             setIsLoadingPaths(false);
         }
@@ -222,7 +237,7 @@ const SignaturePathSelector: React.FC<SignaturePathSelectorProps> = ({ label, el
       if (!elementIdPaths.some(p => JSON.stringify(p) === newPathStr)) {
           onChange([...elementIdPaths, newPath]);
       }
-      setIsBrowserOpen(false); // Close dialog after selection
+      setIsBrowserOpen(false); // Close popover after selection
   };
 
   const removePath = (pathToRemove: number[]) => {
@@ -233,28 +248,29 @@ const SignaturePathSelector: React.FC<SignaturePathSelectorProps> = ({ label, el
   return (
     <div className={cn("space-y-2 rounded border p-3 bg-muted/30", className)}>
       <div className="flex justify-between items-center mb-1">
-         <Label>{label}</Label>
-         <Dialog open={isBrowserOpen} onOpenChange={setIsBrowserOpen}>
-             <DialogTrigger asChild>
+         <Label className='text-sm font-medium'>{label}</Label>
+         {/* Use Popover instead of Dialog */}
+         <Popover open={isBrowserOpen} onOpenChange={setIsBrowserOpen}>
+             <PopoverTrigger asChild>
                 <Button type="button" size="sm" variant="outline">
                     <Plus className="mr-1 h-3 w-3" /> Add Path
                 </Button>
-             </DialogTrigger>
-             <DialogContent className="sm:max-w-[500px]">
-                <DialogHeader>
-                    <DialogTitle>Build Signature Path</DialogTitle>
-                </DialogHeader>
-                 <ElementBrowser onSelectPath={addPath} />
-             </DialogContent>
-         </Dialog>
+             </PopoverTrigger>
+             {/* Adjust PopoverContent size */}
+             <PopoverContent className="w-[450px]" align="start">
+                 {/* Element Browser Content is rendered inside */}
+                 <ElementBrowserPopoverContent onSelectPath={addPath} />
+             </PopoverContent>
+         </Popover>
        </div>
-      <div className="space-y-1 min-h-[40px]">
+      {/* Display Area for Selected Paths */}
+      <div className="space-y-1 min-h-[40px] max-h-[150px] overflow-y-auto border rounded bg-background p-2">
          {isLoadingPaths && <div className='flex justify-center p-2'><LoadingSpinner size='sm' /></div>}
          {!isLoadingPaths && resolvedPaths.map((resolved, index) => (
-          <div key={index} className="flex items-center justify-between gap-2 rounded bg-background p-1 px-2 text-sm border">
-            <Badge variant="secondary" className="font-mono truncate flex-grow text-left justify-start h-auto py-0.5 whitespace-normal">
+          <div key={index} className="flex items-center justify-between gap-2 rounded bg-muted/50 p-1 px-2 text-sm">
+            <span className="font-mono text-xs truncate flex-grow"> {/* Use span instead of Badge */}
                 {resolved.display || <span className='italic text-muted-foreground'>Empty Path</span>}
-            </Badge>
+            </span>
             <Button
               type="button"
               variant="ghost"

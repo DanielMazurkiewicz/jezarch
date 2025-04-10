@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useForm, Controller } from 'react-hook-form'; // Import Controller
 import { zodResolver } from '@hookform/resolvers/zod';
-import { noteFormSchema, NoteFormData } from '@/lib/zodSchemas';
+import { noteFormSchema } from '@/lib/zodSchemas'; // Keep type import if needed elsewhere, but rely on inference for useForm
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -14,6 +14,11 @@ import { useAuth } from '@/hooks/useAuth';
 import api from '@/lib/api';
 import type { Note, NoteInput } from '../../../../backend/src/functionalities/note/models'; // Import NoteInput type
 import { toast } from "sonner";
+import { cn } from '@/lib/utils'; // Import cn
+import { z } from 'zod'; // Import z for inferring type in onSubmit
+
+// Infer the form data type directly from the schema
+type NoteFormData = z.infer<typeof noteFormSchema>;
 
 interface NoteEditorProps {
   noteToEdit: Note | null;
@@ -27,7 +32,7 @@ const NoteEditor: React.FC<NoteEditorProps> = ({ noteToEdit, onSave }) => {
   const [error, setError] = useState<string | null>(null);
   const [selectedTagIds, setSelectedTagIds] = useState<number[]>([]);
 
-  const { register, handleSubmit, reset, control, setValue, watch, formState: { errors } } = useForm<NoteFormData>({
+  const { register, handleSubmit, reset, control, setValue, watch, formState: { errors } } = useForm({ // Remove explicit type here
     resolver: zodResolver(noteFormSchema),
     defaultValues: {
       title: '',
@@ -89,6 +94,7 @@ const NoteEditor: React.FC<NoteEditorProps> = ({ noteToEdit, onSave }) => {
     setValue('tagIds', selectedTagIds);
   }, [selectedTagIds, setValue]);
 
+  // Use the inferred type for 'data'
   const onSubmit = async (data: NoteFormData) => {
     if (!token) return;
     setIsLoading(true);
@@ -129,23 +135,23 @@ const NoteEditor: React.FC<NoteEditorProps> = ({ noteToEdit, onSave }) => {
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="grid gap-4 py-4 relative">
         {/* Display fetch/save errors */}
-        {error && <ErrorDisplay message={error} />}
+        {error && <ErrorDisplay message={error} className="mb-4" />}
         {/* Overlay spinner during save operation */}
-        {isLoading && <div className='absolute inset-0 bg-background/50 flex items-center justify-center z-10'><LoadingSpinner/></div>}
+        {isLoading && <div className='absolute inset-0 bg-background/50 flex items-center justify-center z-10 rounded-md'><LoadingSpinner/></div>}
 
-      <div className="grid gap-2">
+      <div className="grid gap-1.5"> {/* Adjusted gap */}
         <Label htmlFor="title">Title</Label>
-        <Input id="title" {...register('title')} aria-invalid={errors.title ? "true" : "false"}/>
+        <Input id="title" {...register('title')} aria-invalid={errors.title ? "true" : "false"} className={cn(errors.title && "border-destructive")}/>
         {errors.title && <p className="text-xs text-destructive">{errors.title.message}</p>}
       </div>
 
-      <div className="grid gap-2">
+      <div className="grid gap-1.5"> {/* Adjusted gap */}
         <Label htmlFor="content">Content</Label>
-        <Textarea id="content" {...register('content')} rows={6} aria-invalid={errors.content ? "true" : "false"}/>
+        <Textarea id="content" {...register('content')} rows={6} aria-invalid={errors.content ? "true" : "false"} className={cn(errors.content && "border-destructive")}/>
         {errors.content && <p className="text-xs text-destructive">{errors.content.message}</p>}
       </div>
 
-       <div className="grid gap-2">
+       <div className="grid gap-1.5"> {/* Adjusted gap */}
          <Label htmlFor="tags">Tags</Label>
          <TagSelector selectedTagIds={selectedTagIds} onChange={setSelectedTagIds} />
          {/* Hidden input registered with RHF for validation */}
@@ -154,7 +160,7 @@ const NoteEditor: React.FC<NoteEditorProps> = ({ noteToEdit, onSave }) => {
        </div>
 
         {/* Use Controller for Shadcn Checkbox */}
-       <div className="flex items-center space-x-2">
+       <div className="flex items-center space-x-2 pt-2"> {/* Added padding top */}
            <Controller
                 name="shared"
                 control={control}
@@ -164,16 +170,19 @@ const NoteEditor: React.FC<NoteEditorProps> = ({ noteToEdit, onSave }) => {
                          checked={field.value}
                          onCheckedChange={field.onChange}
                          aria-invalid={errors.shared ? "true" : "false"}
+                         className={cn(errors.shared && "border-destructive")}
                      />
                  )}
            />
-          <Label htmlFor="shared" className='cursor-pointer'>Share this note publicly</Label>
+          <Label htmlFor="shared" className='cursor-pointer font-normal'> {/* Make label clickable, normal weight */}
+             Share this note publicly
+          </Label>
         </div>
          {errors.shared && <p className="text-xs text-destructive">{errors.shared.message}</p>}
 
 
-      <Button type="submit" disabled={isLoading || isFetchingDetails} className="mt-2">
-        {isLoading ? <LoadingSpinner size="sm" /> : (noteToEdit ? 'Update Note' : 'Create Note')}
+      <Button type="submit" disabled={isLoading || isFetchingDetails} className="mt-4 justify-self-start"> {/* Align button left */}
+        {isLoading ? <LoadingSpinner size="sm" className='mr-2' /> : (noteToEdit ? 'Update Note' : 'Create Note')}
       </Button>
     </form>
   );

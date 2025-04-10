@@ -13,6 +13,7 @@ import { useAuth } from '@/hooks/useAuth';
 import api from '@/lib/api';
 // Correctly import both Create and Update input types
 import type { SignatureComponent, SignatureComponentIndexType, CreateSignatureComponentInput, UpdateSignatureComponentInput } from '../../../../backend/src/functionalities/signature/component/models';
+import { cn } from '@/lib/utils'; // Import cn
 
 interface ComponentFormProps {
   componentToEdit: SignatureComponent | null;
@@ -57,6 +58,10 @@ const ComponentForm: React.FC<ComponentFormProps> = ({ componentToEdit, onSave }
              await api.updateSignatureComponent(componentToEdit.signatureComponentId, updatePayload, token);
         } else {
             console.log("No changes detected for component update.");
+            // Optionally show a toast message indicating no changes
+            // toast.info("No changes detected.");
+            onSave(); // Still call onSave to close the dialog
+            return; // Exit early
         }
       } else {
         // Correctly typed createPayload using the imported type
@@ -78,13 +83,43 @@ const ComponentForm: React.FC<ComponentFormProps> = ({ componentToEdit, onSave }
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="grid gap-4 py-4 relative">
-      {error && <ErrorDisplay message={error} />}
+      {error && <ErrorDisplay message={error} className="mb-4" />}
        {isLoading && <div className='absolute inset-0 bg-background/50 flex items-center justify-center z-10 rounded-md'><LoadingSpinner/></div>}
-      {/* Form fields remain the same */}
-       <div className="grid gap-2"> <Label htmlFor="comp-name">Component Name</Label> <Input id="comp-name" {...register('name')} /> {errors.name && <p className="text-xs text-destructive">{errors.name.message}</p>} </div>
-       <div className="grid gap-2"> <Label htmlFor="comp-description">Description (Optional)</Label> <Textarea id="comp-description" {...register('description')} rows={3} /> {errors.description && <p className="text-xs text-destructive">{errors.description.message}</p>} </div>
-       <div className="grid gap-2"> <Label htmlFor="comp-index-type">Index Formatting</Label> <Controller control={control} name="index_type" render={({ field }) => ( <Select onValueChange={field.onChange} value={field.value}> <SelectTrigger id='comp-index-type'> <SelectValue placeholder="Select index type" /> </SelectTrigger> <SelectContent> <SelectItem value="dec">Decimal (1, 2, 3...)</SelectItem> <SelectItem value="roman">Roman (I, II, III...)</SelectItem> <SelectItem value="small_char">Lowercase Letters (a, b, c...)</SelectItem> <SelectItem value="capital_char">Uppercase Letters (A, B, C...)</SelectItem> </SelectContent> </Select> )} /> {errors.index_type && <p className="text-xs text-destructive">{errors.index_type.message}</p>} </div>
-       <Button type="submit" disabled={isLoading} className="mt-2"> {isLoading ? <LoadingSpinner size="sm" /> : (componentToEdit ? 'Update Component' : 'Create Component')} </Button>
+      {/* Form fields with smaller gaps */}
+       <div className="grid gap-1.5">
+          <Label htmlFor="comp-name">Component Name *</Label>
+          <Input id="comp-name" {...register('name')} aria-invalid={!!errors.name} className={cn(errors.name && "border-destructive")} />
+          {errors.name && <p className="text-xs text-destructive">{errors.name.message}</p>}
+       </div>
+       <div className="grid gap-1.5">
+          <Label htmlFor="comp-description">Description (Optional)</Label>
+          <Textarea id="comp-description" {...register('description')} rows={3} aria-invalid={!!errors.description} className={cn(errors.description && "border-destructive")}/>
+          {errors.description && <p className="text-xs text-destructive">{errors.description.message}</p>}
+       </div>
+       <div className="grid gap-1.5">
+          <Label htmlFor="comp-index-type">Index Formatting *</Label>
+          <Controller
+             control={control}
+             name="index_type"
+             render={({ field }) => (
+                <Select onValueChange={field.onChange} value={field.value}>
+                   <SelectTrigger id='comp-index-type' aria-invalid={!!errors.index_type} className={cn(errors.index_type && "border-destructive")}>
+                     <SelectValue placeholder="Select index type" />
+                   </SelectTrigger>
+                   <SelectContent>
+                     <SelectItem value="dec">Decimal (1, 2, 3...)</SelectItem>
+                     <SelectItem value="roman">Roman (I, II, III...)</SelectItem>
+                     <SelectItem value="small_char">Lowercase Letters (a, b, c...)</SelectItem>
+                     <SelectItem value="capital_char">Uppercase Letters (A, B, C...)</SelectItem>
+                   </SelectContent>
+                </Select>
+             )}
+          />
+          {errors.index_type && <p className="text-xs text-destructive">{errors.index_type.message}</p>}
+       </div>
+       <Button type="submit" disabled={isLoading} className="mt-2 justify-self-start"> {/* Align left */}
+         {isLoading ? <LoadingSpinner size="sm" className='mr-2' /> : (componentToEdit ? 'Update Component' : 'Create Component')}
+       </Button>
     </form>
   );
 };

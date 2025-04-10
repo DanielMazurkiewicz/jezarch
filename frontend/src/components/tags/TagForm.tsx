@@ -11,6 +11,7 @@ import ErrorDisplay from '@/components/shared/ErrorDisplay';
 import { useAuth } from '@/hooks/useAuth';
 import api from '@/lib/api';
 import type { Tag } from '../../../../backend/src/functionalities/tag/models';
+import { cn } from '@/lib/utils'; // Import cn
 
 interface TagFormProps {
   tagToEdit: Tag | null;
@@ -71,30 +72,26 @@ const TagForm: React.FC<TagFormProps> = ({ tagToEdit, onSave }) => {
     }
   };
 
-   if (isLoading && !tagToEdit) { // Show loading only on initial create load if needed
-      return <LoadingSpinner />;
-   }
-
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="grid gap-4 py-4 relative"> {/* Added relative positioning */}
-      {error && <ErrorDisplay message={error} />}
+      {error && <ErrorDisplay message={error} className="mb-4" />}
        {/* Overlay spinner */}
        {isLoading && <div className='absolute inset-0 bg-background/50 flex items-center justify-center z-10 rounded-md'><LoadingSpinner/></div>}
 
-      <div className="grid gap-2">
+      <div className="grid gap-1.5"> {/* Adjusted gap */}
         <Label htmlFor="tag-name">Tag Name</Label>
-        <Input id="tag-name" {...register('name')} />
+        <Input id="tag-name" {...register('name')} aria-invalid={errors.name ? "true" : "false"} className={cn(errors.name && "border-destructive")} />
         {errors.name && <p className="text-xs text-destructive">{errors.name.message}</p>}
       </div>
 
-      <div className="grid gap-2">
+      <div className="grid gap-1.5"> {/* Adjusted gap */}
         <Label htmlFor="tag-description">Description (Optional)</Label>
-        <Textarea id="tag-description" {...register('description')} rows={3} />
+        <Textarea id="tag-description" {...register('description')} rows={3} aria-invalid={errors.description ? "true" : "false"} className={cn(errors.description && "border-destructive")} />
         {errors.description && <p className="text-xs text-destructive">{errors.description.message}</p>}
       </div>
 
-      <Button type="submit" disabled={isLoading} className="mt-2">
-        {isLoading ? <LoadingSpinner size="sm" /> : (tagToEdit ? 'Update Tag' : 'Create Tag')}
+      <Button type="submit" disabled={isLoading} className="mt-2 justify-self-start"> {/* Align left */}
+        {isLoading ? <LoadingSpinner size="sm" className='mr-2'/> : (tagToEdit ? 'Update Tag' : 'Create Tag')}
       </Button>
     </form>
   );

@@ -10,10 +10,11 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 const AdminPage: React.FC = () => {
   const { user } = useAuth();
 
-  // Double check role, though navigation should prevent access
+  // Double check role, though ProtectedRoute should handle access control
   if (user?.role !== 'admin') {
       return (
           <div className='p-4 md:p-6'>
+              {/* Use Card for error display too */}
               <Card className='border-destructive'>
                   <CardHeader>
                       <CardTitle className='text-destructive'>Access Denied</CardTitle>
@@ -27,11 +28,21 @@ const AdminPage: React.FC = () => {
   }
 
   return (
-    <div className="container mx-auto p-4 md:p-6 space-y-6">
-      <h1 className="text-2xl font-bold">Admin Panel</h1>
+    // Add overall spacing for the page content
+    <div className="space-y-6">
+      {/* Page Header */}
+      <div className='flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4'>
+        <div>
+           <h1 className="text-2xl font-bold">Admin Panel</h1>
+           <p className='text-muted-foreground'>Manage application users, settings, and logs.</p>
+        </div>
+        {/* Add global admin actions here if needed, e.g., trigger backup */}
+      </div>
+
+      {/* Tabs for different admin sections */}
       <Tabs defaultValue="users" className="w-full">
-        {/* Make tabs list scrollable on small screens */}
-        <div className="overflow-x-auto pb-1">
+        {/* Make tabs list scrollable on small screens and add bottom border */}
+        <div className="overflow-x-auto pb-1 border-b">
              <TabsList className='grid w-full grid-cols-2 sm:grid-cols-4'>
                 <TabsTrigger value="users">User Management</TabsTrigger>
                 <TabsTrigger value="settings">App Settings</TabsTrigger>
@@ -39,16 +50,18 @@ const AdminPage: React.FC = () => {
                 <TabsTrigger value="logs">System Logs</TabsTrigger>
              </TabsList>
         </div>
-        <TabsContent value="users" className='mt-4'>
+        {/* Add margin top to content areas for spacing below tabs */}
+        {/* Each Tab Content now renders its specific component, which should be wrapped in a Card */}
+        <TabsContent value="users" className='mt-6'>
            <UserManagement />
         </TabsContent>
-        <TabsContent value="settings" className='mt-4'>
+        <TabsContent value="settings" className='mt-6'>
             <SettingsForm />
         </TabsContent>
-        <TabsContent value="ssl" className='mt-4'>
+        <TabsContent value="ssl" className='mt-6'>
             <SslConfig />
         </TabsContent>
-        <TabsContent value="logs" className='mt-4'>
+        <TabsContent value="logs" className='mt-6'>
             <LogViewer />
         </TabsContent>
       </Tabs>

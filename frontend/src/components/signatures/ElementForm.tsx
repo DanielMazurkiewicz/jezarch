@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useForm, Controller } from 'react-hook-form'; // Import Controller
 import { zodResolver } from '@hookform/resolvers/zod';
-import { elementFormSchema, ElementFormData } from '@/lib/zodSchemas'; // Use correct schema import
+import { elementFormSchema } from '@/lib/zodSchemas'; // Use correct schema import, rely on inference for useForm
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -14,6 +14,12 @@ import api from '@/lib/api';
 import type { SignatureElement, CreateSignatureElementInput, UpdateSignatureElementInput } from '../../../../backend/src/functionalities/signature/element/models'; // Import backend input types
 import type { SignatureComponent } from '../../../../backend/src/functionalities/signature/component/models';
 import { toast } from "sonner";
+import { cn } from '@/lib/utils'; // Import cn
+import { Badge } from '@/components/ui/badge'; // Import Badge
+import { z } from 'zod'; // Import z for inferring type in onSubmit
+
+// Infer the form data type directly from the schema
+type ElementFormData = z.infer<typeof elementFormSchema>;
 
 interface ElementFormProps {
     elementToEdit: SignatureElement | null;
@@ -29,7 +35,7 @@ const ElementForm: React.FC<ElementFormProps> = ({ elementToEdit, currentCompone
     const [selectedParentIds, setSelectedParentIds] = useState<number[]>([]);
 
 
-    const { register, handleSubmit, reset, control, setValue, formState: { errors } } = useForm<ElementFormData>({
+    const { register, handleSubmit, reset, control, setValue, formState: { errors } } = useForm({ // Remove explicit type here
         resolver: zodResolver(elementFormSchema),
         defaultValues: {
             name: '',
@@ -85,7 +91,7 @@ const ElementForm: React.FC<ElementFormProps> = ({ elementToEdit, currentCompone
         setValue('parentIds', selectedParentIds);
      }, [selectedParentIds, setValue]);
 
-
+    // Use the inferred type for 'data'
     const onSubmit = async (data: ElementFormData) => {
         if (!token || !currentComponent.signatureComponentId) {
             setError("Component context is missing.");
@@ -122,10 +128,17 @@ const ElementForm: React.FC<ElementFormProps> = ({ elementToEdit, currentCompone
             if (elementToEdit?.signatureElementId) {
                  // Check if there are any actual changes to update (excluding parentIds which are always sent)
                  const hasCoreChanges = Object.keys(updatePayload).some(key => key !== 'parentIds');
-                 if (hasCoreChanges || JSON.stringify(selectedParentIds) !== JSON.stringify(elementToEdit.parentElements?.map(p => p.signatureElementId) ?? [])) {
+                 // Fetch original parent IDs to compare accurately
+                 const originalParentIds = (await api.getSignatureElementById(elementToEdit.signatureElementId, ['parents'], token))
+                                           .parentElements?.map(p => p.signatureElementId!) ?? [];
+
+                 if (hasCoreChanges || JSON.stringify(selectedParentIds.sort()) !== JSON.stringify(originalParentIds.sort())) {
                      await api.updateSignatureElement(elementToEdit.signatureElementId, updatePayload, token);
                  } else {
                      console.log("No changes detected for element update.");
+                     toast.info("No changes detected."); // Inform user
+                     onSave(); // Close dialog even if no changes
+                     return;
                  }
             } else {
                 await api.createSignatureElement(createPayload, token);
@@ -145,15 +158,44 @@ const ElementForm: React.FC<ElementFormProps> = ({ elementToEdit, currentCompone
 
     return (
         <form onSubmit={handleSubmit(onSubmit)} className="grid gap-4 py-4 max-h-[70vh] overflow-y-auto pr-2 relative">
-            {error && <ErrorDisplay message={error} />}
-            {isLoading && <div className='absolute inset-0 bg-background/50 flex items-center justify-center z-10'><LoadingSpinner/></div>}
+            {error && <ErrorDisplay message={error} className="mb-4"/>}
+            {isLoading && <div className='absolute inset-0 bg-background/50 flex items-center justify-center z-10 rounded-md'><LoadingSpinner/></div>}
 
-            <div className='text-sm p-2 bg-muted rounded'> Component: <span className='font-semibold'>{currentComponent.name}</span> ({currentComponent.index_type}) </div>
-            <div className="grid gap-2"> <Label htmlFor="elem-name">Element Name</Label> <Input id="elem-name" {...register('name')} aria-invalid={errors.name ? "true" : "false"} /> {errors.name && <p className="text-xs text-destructive">{errors.name.message}</p>} </div>
-            <div className="grid gap-2"> <Label htmlFor="elem-description">Description (Optional)</Label> <Textarea id="elem-description" {...register('description')} rows={3} aria-invalid={errors.description ? "true" : "false"} /> {errors.description && <p className="text-xs text-destructive">{errors.description.message}</p>} </div>
-            <div className="grid gap-2"> <Label htmlFor="elem-index">Index (Optional - Override Auto-Index)</Label> <Input id="elem-index" {...register('index')} placeholder={`Auto (${currentComponent.index_type})`} aria-invalid={errors.index ? "true" : "false"} /> <p className='text-xs text-muted-foreground'>Leave empty for automatic index.</p> {errors.index && <p className="text-xs text-destructive">{errors.index.message}</p>} </div>
-            <div className="grid gap-2"> <ElementSelector selectedElementIds={selectedParentIds} onChange={setSelectedParentIds} currentElementId={elementToEdit?.signatureElementId} currentComponentId={currentComponent?.signatureComponentId} label="Parent Elements (Optional)" /> <input type="hidden" {...register('parentIds')} /> {errors.parentIds && <p className="text-xs text-destructive">{typeof errors.parentIds.message === 'string' ? errors.parentIds.message : 'Invalid parent selection'}</p>} </div>
-            <Button type="submit" disabled={isLoading || isFetchingDetails} className="mt-2"> {isLoading ? <LoadingSpinner size="sm" /> : (elementToEdit ? 'Update Element' : 'Create Element')} </Button>
+            {/* Display Current Component Info */}
+            <div className='text-sm p-2 bg-muted rounded border'> Component: <Badge variant="secondary">{currentComponent.name}</Badge> ({currentComponent.index_type}) </div>
+
+            {/* Form Fields */}
+            <div className="grid gap-1.5">
+                <Label htmlFor="elem-name">Element Name *</Label>
+                <Input id="elem-name" {...register('name')} aria-invalid={!!errors.name} className={cn(errors.name && "border-destructive")} />
+                {errors.name && <p className="text-xs text-destructive">{errors.name.message}</p>}
+            </div>
+            <div className="grid gap-1.5">
+                <Label htmlFor="elem-description">Description (Optional)</Label>
+                <Textarea id="elem-description" {...register('description')} rows={3} aria-invalid={!!errors.description} className={cn(errors.description && "border-destructive")} />
+                {errors.description && <p className="text-xs text-destructive">{errors.description.message}</p>}
+            </div>
+            <div className="grid gap-1.5">
+                <Label htmlFor="elem-index">Index (Optional - Override Auto-Index)</Label>
+                <Input id="elem-index" {...register('index')} placeholder={`Auto (${currentComponent.index_type})`} aria-invalid={!!errors.index} className={cn(errors.index && "border-destructive")} />
+                <p className='text-xs text-muted-foreground'>Leave empty for automatic index based on component type.</p>
+                {errors.index && <p className="text-xs text-destructive">{errors.index.message}</p>}
+            </div>
+            <div className="grid gap-1.5">
+                 {/* Pass currentElementId to prevent self-selection */}
+                <ElementSelector
+                    selectedElementIds={selectedParentIds}
+                    onChange={setSelectedParentIds}
+                    currentElementId={elementToEdit?.signatureElementId}
+                    currentComponentId={currentComponent?.signatureComponentId}
+                    label="Parent Elements (Optional)"
+                />
+                <input type="hidden" {...register('parentIds')} />
+                {errors.parentIds && <p className="text-xs text-destructive">{typeof errors.parentIds.message === 'string' ? errors.parentIds.message : 'Invalid parent selection'}</p>}
+            </div>
+            <Button type="submit" disabled={isLoading || isFetchingDetails} className="mt-2 justify-self-start">
+                {isLoading ? <LoadingSpinner size="sm" className='mr-2' /> : (elementToEdit ? 'Update Element' : 'Create Element')}
+            </Button>
         </form>
     );
 };

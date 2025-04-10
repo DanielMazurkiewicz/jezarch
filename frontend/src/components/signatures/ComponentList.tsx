@@ -22,14 +22,16 @@ const ComponentList: React.FC<ComponentListProps> = ({
     const { user } = useAuth();
     const isAdmin = user?.role === 'admin';
 
+    // Handle row click for selection/deselection
     const handleRowClick = (component: SignatureComponent) => {
         if (selectedComponentId === component.signatureComponentId) {
-            onSelect(null); // Deselect if clicking the selected one again
+            onSelect(null); // Deselect if clicking the already selected row
         } else {
-            onSelect(component);
+            onSelect(component); // Select the clicked row
         }
     };
 
+    // Map index types to readable labels
     const indexTypeLabels: Record<string, string> = {
         dec: 'Decimal (1, 2)',
         roman: 'Roman (I, II)',
@@ -37,11 +39,13 @@ const ComponentList: React.FC<ComponentListProps> = ({
         capital_char: 'Capital Letters (A, B)'
     };
 
+    // Return null if list is empty (parent handles empty message)
     if (components.length === 0) {
-        return <p className="text-muted-foreground text-center">No components found. {isAdmin ? "Create one!" : ""}</p>;
+        return null;
     }
 
     return (
+        // Wrap in div for border and overflow
         <div className="border rounded-lg overflow-hidden">
             <Table>
                 <TableHeader>
@@ -49,8 +53,10 @@ const ComponentList: React.FC<ComponentListProps> = ({
                         <TableHead>Name</TableHead>
                         <TableHead>Description</TableHead>
                         <TableHead>Index Type</TableHead>
-                        <TableHead>Element Count</TableHead>
-                        {isAdmin && <TableHead className="text-right">Actions</TableHead>}
+                        {/* Header for element count */}
+                        <TableHead className='text-center w-[100px]'>Elements</TableHead>
+                        {/* Actions column only for admins */}
+                        {isAdmin && <TableHead className="text-right w-[150px]">Actions</TableHead>}
                     </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -58,26 +64,35 @@ const ComponentList: React.FC<ComponentListProps> = ({
                         <TableRow
                             key={component.signatureComponentId}
                             onClick={() => handleRowClick(component)}
+                            // Apply styles for hover, selection, and cursor
                             className={cn(
-                                "cursor-pointer hover:bg-muted/50",
-                                selectedComponentId === component.signatureComponentId && "bg-muted"
+                                "cursor-pointer hover:bg-muted/50 transition-colors",
+                                selectedComponentId === component.signatureComponentId && "bg-muted hover:bg-muted" // Highlight selected row
                             )}
+                            aria-selected={selectedComponentId === component.signatureComponentId}
                         >
                             <TableCell className="font-medium">{component.name}</TableCell>
-                            <TableCell className='text-sm text-muted-foreground'>{component.description || <i>None</i>}</TableCell>
+                            {/* Truncate description, show placeholder */}
+                            <TableCell className='text-sm text-muted-foreground max-w-xs truncate' title={component.description || ''}>
+                                {component.description || <i className='not-italic'>None</i>}
+                            </TableCell>
+                            {/* Display index type as a badge */}
                             <TableCell><Badge variant="outline">{indexTypeLabels[component.index_type] || component.index_type}</Badge></TableCell>
-                            <TableCell className="text-center">{component.index_count}</TableCell>
+                            {/* Display element count */}
+                            <TableCell className="text-center">{component.index_count ?? 0}</TableCell>
+                            {/* Admin Actions */}
                             {isAdmin && (
                                 <TableCell className="text-right space-x-1">
-                                     <Button variant="ghost" size="icon" onClick={(e) => { e.stopPropagation(); onReindex(component.signatureComponentId!); }} title="Re-index Elements">
+                                    {/* Stop propagation on button clicks to prevent row selection */}
+                                    <Button variant="ghost" size="icon" onClick={(e) => { e.stopPropagation(); onReindex(component.signatureComponentId!); }} title="Re-index Elements">
                                         <ListRestart className="h-4 w-4" />
-                                     </Button>
-                                     <Button variant="ghost" size="icon" onClick={(e) => { e.stopPropagation(); onEdit(component); }} title="Edit Component">
+                                    </Button>
+                                    <Button variant="ghost" size="icon" onClick={(e) => { e.stopPropagation(); onEdit(component); }} title="Edit Component">
                                         <Edit className="h-4 w-4" />
-                                     </Button>
-                                     <Button variant="ghost" size="icon" onClick={(e) => { e.stopPropagation(); onDelete(component.signatureComponentId!); }} title="Delete Component">
+                                    </Button>
+                                    <Button variant="ghost" size="icon" onClick={(e) => { e.stopPropagation(); onDelete(component.signatureComponentId!); }} title="Delete Component">
                                         <Trash2 className="h-4 w-4 text-destructive" />
-                                     </Button>
+                                    </Button>
                                 </TableCell>
                             )}
                         </TableRow>
