@@ -191,9 +191,25 @@ const SignaturesPage: React.FC = () => {
 
             {/* Components Section */}
             <Card>
-                <CardHeader className="flex flex-row justify-between items-center gap-4">
-                    <div> <CardTitle>Components</CardTitle> <CardDescription>Select a component to view its elements.</CardDescription> </div>
-                    {isAdmin && ( <Dialog open={isComponentFormOpen} onOpenChange={setIsComponentFormOpen}> <DialogTrigger asChild> <Button onClick={handleCreateComponent} size="sm" className='shrink-0'> <PlusCircle className="mr-2 h-4 w-4" /> New Component </Button> </DialogTrigger> <DialogContent className="sm:max-w-[500px]"> <DialogHeader><DialogTitle>{editingComponent ? 'Edit Component' : 'Create New Component'}</DialogTitle></DialogHeader> {isComponentFormOpen && <ComponentForm componentToEdit={editingComponent} onSave={handleComponentSaveSuccess} />} </DialogContent> </Dialog> )}
+                <CardHeader>
+                     {/* Wrap content in a div with flex classes */}
+                     <div className="flex flex-row justify-between items-center gap-4">
+                         <div> <CardTitle>Components</CardTitle> <CardDescription>Select a component to view its elements.</CardDescription> </div>
+                         {isAdmin && (
+                            <Dialog open={isComponentFormOpen} onOpenChange={setIsComponentFormOpen}>
+                                <DialogTrigger asChild>
+                                    <Button onClick={handleCreateComponent} size="sm" className='shrink-0'>
+                                        <PlusCircle className="mr-2 h-4 w-4" /> New Component
+                                    </Button>
+                                </DialogTrigger>
+                                <DialogContent className="sm:max-w-[500px]">
+                                    <DialogHeader><DialogTitle>{editingComponent ? 'Edit Component' : 'Create New Component'}</DialogTitle></DialogHeader>
+                                    {/* CHANGE: Removed conditional rendering wrapper */}
+                                    <ComponentForm componentToEdit={editingComponent} onSave={handleComponentSaveSuccess} />
+                                </DialogContent>
+                            </Dialog>
+                         )}
+                     </div>
                 </CardHeader>
                 <CardContent>
                     {componentsError && <ErrorDisplay message={componentsError} />} {isComponentsLoading && <div className='flex justify-center py-6'><LoadingSpinner /></div>}
@@ -204,10 +220,28 @@ const SignaturesPage: React.FC = () => {
 
             {/* Elements Section */}
             <Card>
-                 <CardHeader className="flex flex-row justify-between items-center gap-4">
-                     <div> <CardTitle>Elements</CardTitle> <CardDescription> {selectedComponent ? <>Elements for: <span className='font-semibold'>{selectedComponent.name}</span></> : 'Select a component above.'} </CardDescription> </div>
-                    <Dialog open={isElementFormOpen} onOpenChange={setIsElementFormOpen}> <DialogTrigger asChild> <Button onClick={handleCreateElement} size="sm" disabled={!selectedComponent} className='shrink-0'> <PlusCircle className="mr-2 h-4 w-4" /> New Element </Button> </DialogTrigger> <DialogContent className="sm:max-w-[600px]"> <DialogHeader><DialogTitle>{editingElement ? 'Edit Element' : 'Create New Element'}</DialogTitle></DialogHeader> {isElementFormOpen && selectedComponent && ( <ElementForm elementToEdit={editingElement} currentComponent={selectedComponent} onSave={handleElementSaveSuccess} /> )} </DialogContent> </Dialog>
-                </CardHeader>
+                 <CardHeader>
+                      {/* Wrap content in a div with flex classes */}
+                      <div className="flex flex-row justify-between items-center gap-4">
+                          <div> <CardTitle>Elements</CardTitle> <CardDescription> {selectedComponent ? <>Elements for: <span className='font-semibold'>{selectedComponent.name}</span></> : 'Select a component above.'} </CardDescription> </div>
+                         <Dialog open={isElementFormOpen} onOpenChange={setIsElementFormOpen}>
+                            <DialogTrigger asChild>
+                                <Button onClick={handleCreateElement} size="sm" disabled={!selectedComponent} className='shrink-0'>
+                                    <PlusCircle className="mr-2 h-4 w-4" /> New Element
+                                </Button>
+                            </DialogTrigger>
+                            <DialogContent className="sm:max-w-[600px]">
+                                <DialogHeader><DialogTitle>{editingElement ? 'Edit Element' : 'Create New Element'}</DialogTitle></DialogHeader>
+                                {/* CHANGE: Removed conditional rendering wrapper, but retain check for selectedComponent */}
+                                {selectedComponent && (
+                                     <ElementForm elementToEdit={editingElement} currentComponent={selectedComponent} onSave={handleElementSaveSuccess} />
+                                )}
+                                {/* Optional: Add a message if selectedComponent is null, though the trigger button is disabled */}
+                                {/* {!selectedComponent && <p className="p-4 text-muted-foreground">Please select a component first.</p>} */}
+                            </DialogContent>
+                         </Dialog>
+                      </div>
+                 </CardHeader>
                  <CardContent className='space-y-4'>
                     {elementsError && <ErrorDisplay message={elementsError} />}
                     {selectedComponent && ( <SearchBar fields={[ { value: 'name', label: 'Name', type: 'text' as const }, { value: 'description', label: 'Description', type: 'text' as const}, { value: 'index', label: 'Index', type: 'text' as const}, { value: 'hasParents', label: 'Has Parents', type: 'boolean' as const }, ]} onSearch={handleElementSearch} isLoading={isElementsLoading} /> )}

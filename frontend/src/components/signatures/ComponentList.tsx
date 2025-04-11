@@ -55,8 +55,8 @@ const ComponentList: React.FC<ComponentListProps> = ({
                         <TableHead>Index Type</TableHead>
                         {/* Header for element count */}
                         <TableHead className='text-center w-[100px]'>Elements</TableHead>
-                        {/* Actions column only for admins */}
-                        {isAdmin && <TableHead className="text-right w-[150px]">Actions</TableHead>}
+                        {/* Actions column header always present, content conditional */}
+                        <TableHead className="text-right w-[150px]">Actions</TableHead>
                     </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -80,21 +80,28 @@ const ComponentList: React.FC<ComponentListProps> = ({
                             <TableCell><Badge variant="outline">{indexTypeLabels[component.index_type] || component.index_type}</Badge></TableCell>
                             {/* Display element count */}
                             <TableCell className="text-center">{component.index_count ?? 0}</TableCell>
-                            {/* Admin Actions */}
-                            {isAdmin && (
-                                <TableCell className="text-right space-x-1">
-                                    {/* Stop propagation on button clicks to prevent row selection */}
-                                    <Button variant="ghost" size="icon" onClick={(e) => { e.stopPropagation(); onReindex(component.signatureComponentId!); }} title="Re-index Elements">
-                                        <ListRestart className="h-4 w-4" />
-                                    </Button>
-                                    <Button variant="ghost" size="icon" onClick={(e) => { e.stopPropagation(); onEdit(component); }} title="Edit Component">
-                                        <Edit className="h-4 w-4" />
-                                    </Button>
-                                    <Button variant="ghost" size="icon" onClick={(e) => { e.stopPropagation(); onDelete(component.signatureComponentId!); }} title="Delete Component">
-                                        <Trash2 className="h-4 w-4 text-destructive" />
-                                    </Button>
-                                </TableCell>
-                            )}
+                            {/* Actions Cell always present, content conditional */}
+                            <TableCell className="text-right space-x-1">
+                                {isAdmin ? (
+                                    // Use fragment for admin buttons
+                                    <>
+                                        <Button variant="ghost" size="icon" onClick={(e) => { e.stopPropagation(); onReindex(component.signatureComponentId!); }} title="Re-index Elements">
+                                            <ListRestart className="h-4 w-4" />
+                                        </Button>
+                                        <Button variant="ghost" size="icon" onClick={(e) => { e.stopPropagation(); onEdit(component); }} title="Edit Component">
+                                            <Edit className="h-4 w-4" />
+                                        </Button>
+                                        <Button variant="ghost" size="icon" onClick={(e) => { e.stopPropagation(); onDelete(component.signatureComponentId!); }} title="Delete Component">
+                                            <Trash2 className="h-4 w-4 text-destructive" />
+                                        </Button>
+                                    </>
+                                ) : (
+                                    // Render nothing or a placeholder if not admin
+                                    // Using null is fine here, or a placeholder span if preferred for layout consistency
+                                    null
+                                    // Example placeholder: <span className="text-xs text-muted-foreground italic">No actions</span>
+                                )}
+                            </TableCell>
                         </TableRow>
                     ))}
                 </TableBody>

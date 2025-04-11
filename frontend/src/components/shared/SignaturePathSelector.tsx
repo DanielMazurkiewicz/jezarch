@@ -82,7 +82,7 @@ const ElementBrowserPopoverContent: React.FC<ElementBrowserPopoverContentProps> 
         if (currentPath.length > 0) {
             onSelectPath(currentPath.map(el => el.signatureElementId!));
             setCurrentPath([]);
-            setSelectedComponentId('');
+            setSelectedComponentId(''); // Optionally reset component selection after adding path
         }
     };
 
@@ -129,7 +129,7 @@ const ElementBrowserPopoverContent: React.FC<ElementBrowserPopoverContentProps> 
             {/* Element Selector/Search (only if component selected) */}
             {selectedComponentId && (
                 <div className="flex-1 overflow-hidden flex flex-col">
-                     <Label className='text-xs mb-1 block'>2. Select Element(s) from "{selectedComponentName}"</Label>
+                     <Label className='text-xs mb-1 block'>2. Select Element(s) from "{selectedComponentName || '...'}"</Label>
                      {/* Command inherits background from PopoverContent */}
                     <Command className='rounded-lg border shadow-sm'>
                         <CommandInput
@@ -200,24 +200,26 @@ const SignaturePathSelector: React.FC<SignaturePathSelectorProps> = ({ label, el
                 const elementsInPath: (SignatureElement | null)[] = await Promise.all(
                     idPath.map(id =>
                         api.getSignatureElementById(id, [], token)
-                           .catch(() => null)
+                           .catch(() => null) // Handle individual fetch errors gracefully
                     )
                 );
-                 const displayString = elementsInPath
-                     .map((el: SignatureElement | null) => {
-                         if (el) {
-                             return `${el.index ? `[${el.index}]` : ''}${el.name}`;
-                         } else {
-                             return `[Fetch Error]`;
-                         }
-                     })
-                     .join(' / ');
-                 resolved.push({ idPath, display: displayString });
+                 // Filter out nulls before joining, indicate errors clearly
+                 const displayParts = elementsInPath.map((el: SignatureElement | null) => {
+                     if (el) {
+                         return `${el.index ? `[${el.index}]` : ''}${el.name}`;
+                     } else {
+                         return `[Error]`; // Indicate if an element failed to load
+                     }
+                 });
+                 // Join parts that were successfully fetched
+                 resolved.push({ idPath, display: displayParts.join(' / ') });
             }
+             // Sort resolved paths alphabetically by display string
              setResolvedPaths(resolved.sort((a, b) => a.display.localeCompare(b.display)));
         } catch (error) {
              console.error("Error resolving signature paths:", error);
-             setResolvedPaths(elementIdPaths.map(p => ({idPath: p, display: `[${p.join(' / ')}] (Error)`})));
+             // Provide fallback display showing raw IDs on error
+             setResolvedPaths(elementIdPaths.map(p => ({idPath: p, display: `[${p.join(' / ')}] (Resolve Error)`})));
         } finally {
             setIsLoadingPaths(false);
         }
@@ -227,11 +229,12 @@ const SignaturePathSelector: React.FC<SignaturePathSelectorProps> = ({ label, el
   }, [elementIdPaths, token]);
 
   const addPath = (newPath: number[]) => {
+      // Prevent adding duplicate paths
       const newPathStr = JSON.stringify(newPath);
       if (!elementIdPaths.some(p => JSON.stringify(p) === newPathStr)) {
           onChange([...elementIdPaths, newPath]);
       }
-      setIsBrowserOpen(false);
+      setIsBrowserOpen(false); // Close popover after adding
   };
 
   const removePath = (pathToRemove: number[]) => {
@@ -240,7 +243,7 @@ const SignaturePathSelector: React.FC<SignaturePathSelectorProps> = ({ label, el
   };
 
   return (
-    // Use flex column layout, REMOVED h-full
+    // Use flex column layout, REMOVED h-full class
     <div className={cn("flex flex-col space-y-2 rounded border p-3 bg-muted", className)}>
       {/* Header row remains flex */}
       <div className="flex justify-between items-center mb-1">
@@ -256,11 +259,11 @@ const SignaturePathSelector: React.FC<SignaturePathSelectorProps> = ({ label, el
              </PopoverContent>
          </Popover>
        </div>
-      {/* Display Area for Selected Paths - Reduced min-h */}
-      <div className="flex-grow space-y-1 min-h-[40px] max-h-[150px] overflow-y-auto border rounded bg-background p-2"> {/* Reduced min-h */}
+      {/* Display Area for Selected Paths - Set min/max height and make scrollable */}
+      <div className="flex-grow space-y-1 min-h-[40px] max-h-[150px] overflow-y-auto border rounded bg-background p-2"> {/* Adjusted min-h, added max-h & overflow */}
          {isLoadingPaths && <div className='flex justify-center p-2'><LoadingSpinner size='sm' /></div>}
-         {!isLoadingPaths && resolvedPaths.map((resolved, index) => (
-          <div key={index} className="flex items-center justify-between gap-2 rounded bg-muted p-1 px-2 text-sm">
+         {!isLoadingPaths && resolvedPaths.map((resolved) => ( // Removed index from map parameters
+          <div key={JSON.stringify(resolved.idPath)} className="flex items-center justify-between gap-2 rounded bg-muted p-1 px-2 text-sm"> {/* Use stringified path as key */}
             <span className="font-mono text-xs flex-grow break-words min-w-0">
                 {resolved.display || <span className='italic text-muted-foreground'>Empty Path</span>}
             </span>
