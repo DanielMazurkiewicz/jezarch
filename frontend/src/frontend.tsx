@@ -16,7 +16,7 @@ root.render(
     <BrowserRouter>
       <App />
       {/* Render Toaster globally - richColors applies preset styles */}
-      <Toaster richColors position="top-right" duration={3000} />
+      <Toaster richColors position="top-right" duration={6000} />
     </BrowserRouter>
   </React.StrictMode>
 );

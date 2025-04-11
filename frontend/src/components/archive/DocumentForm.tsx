@@ -116,45 +116,39 @@ const DocumentForm: React.FC<DocumentFormProps> = ({ docToEdit, onSave }) => {
     try {
         if (docToEdit?.archiveDocumentId) {
             // --- Construct Update Payload ---
-            // UpdateArchiveDocumentInput expects optional fields
             const updatePayload: UpdateArchiveDocumentInput = {
-                 // Only include fields if they changed (optional optimization)
                  ...(coreData.parentUnitArchiveDocumentId !== docToEdit.parentUnitArchiveDocumentId && { parentUnitArchiveDocumentId: coreData.parentUnitArchiveDocumentId }),
                  ...(coreData.type !== docToEdit.type && { type: coreData.type }),
                  ...(coreData.title !== docToEdit.title && { title: coreData.title }),
                  ...(coreData.creator !== docToEdit.creator && { creator: coreData.creator }),
                  ...(coreData.creationDate !== docToEdit.creationDate && { creationDate: coreData.creationDate }),
-                 ...(coreData.numberOfPages !== docToEdit.numberOfPages && { numberOfPages: coreData.numberOfPages || undefined }), // Send undefined to potentially clear
+                 ...(coreData.numberOfPages !== docToEdit.numberOfPages && { numberOfPages: coreData.numberOfPages || undefined }),
                  ...(coreData.documentType !== docToEdit.documentType && { documentType: coreData.documentType || undefined }),
                  ...(coreData.dimensions !== docToEdit.dimensions && { dimensions: coreData.dimensions || undefined }),
                  ...(coreData.binding !== docToEdit.binding && { binding: coreData.binding || undefined }),
                  ...(coreData.condition !== docToEdit.condition && { condition: coreData.condition || undefined }),
                  ...(coreData.documentLanguage !== docToEdit.documentLanguage && { documentLanguage: coreData.documentLanguage || undefined }),
                  ...(coreData.contentDescription !== docToEdit.contentDescription && { contentDescription: coreData.contentDescription || undefined }),
-                 ...(coreData.remarks !== docToEdit.remarks && { remarks: coreData.remarks || null }), // Send null to clear nullable
+                 ...(coreData.remarks !== docToEdit.remarks && { remarks: coreData.remarks || null }),
                  ...(coreData.accessLevel !== docToEdit.accessLevel && { accessLevel: coreData.accessLevel || undefined }),
                  ...(coreData.accessConditions !== docToEdit.accessConditions && { accessConditions: coreData.accessConditions || undefined }),
                  ...(coreData.additionalInformation !== docToEdit.additionalInformation && { additionalInformation: coreData.additionalInformation || null }),
                  ...(coreData.relatedDocumentsReferences !== docToEdit.relatedDocumentsReferences && { relatedDocumentsReferences: coreData.relatedDocumentsReferences || null }),
                  ...(coreData.isDigitized !== docToEdit.isDigitized && { isDigitized: coreData.isDigitized }),
                  ...(coreData.digitizedVersionLink !== docToEdit.digitizedVersionLink && { digitizedVersionLink: coreData.digitizedVersionLink || null }),
-                 // Always send these arrays for update to handle additions/removals
                  tagIds: selectedTagIds,
                  topographicSignatureElementIds: topographicPaths,
                  descriptiveSignatureElementIds: descriptivePaths,
             };
-            // Note: A more robust PATCH would require comparing original vs current arrays for tags/signatures
             await api.updateArchiveDocument(docToEdit.archiveDocumentId, updatePayload, token);
         } else {
              // --- Construct Create Payload ---
-             // CreateArchiveDocumentInput expects required fields and specific types
              const createPayload: CreateArchiveDocumentInput = {
                 type: coreData.type,
                 title: coreData.title,
                 creator: coreData.creator,
                 creationDate: coreData.creationDate,
-                parentUnitArchiveDocumentId: coreData.parentUnitArchiveDocumentId ?? undefined, // Use undefined if null
-                // Provide default empty string for required string fields if value is null/undefined from form
+                parentUnitArchiveDocumentId: coreData.parentUnitArchiveDocumentId ?? undefined,
                 numberOfPages: coreData.numberOfPages ?? '',
                 documentType: coreData.documentType ?? '',
                 dimensions: coreData.dimensions ?? '',
@@ -165,12 +159,10 @@ const DocumentForm: React.FC<DocumentFormProps> = ({ docToEdit, onSave }) => {
                 accessLevel: coreData.accessLevel ?? '',
                 accessConditions: coreData.accessConditions ?? '',
                 isDigitized: coreData.isDigitized ?? false,
-                // Nullable fields can be sent as null or undefined
                 remarks: coreData.remarks ?? undefined,
                 additionalInformation: coreData.additionalInformation ?? undefined,
                 relatedDocumentsReferences: coreData.relatedDocumentsReferences ?? undefined,
                 digitizedVersionLink: coreData.digitizedVersionLink ?? undefined,
-                // Arrays from local state
                 tagIds: selectedTagIds,
                 topographicSignatureElementIds: topographicPaths,
                 descriptiveSignatureElementIds: descriptivePaths,
@@ -197,14 +189,16 @@ const DocumentForm: React.FC<DocumentFormProps> = ({ docToEdit, onSave }) => {
   }
 
   return (
-    // Make form scrollable, add padding
-    <form onSubmit={handleSubmit(onSubmit)} className="space-y-6 py-4 max-h-[calc(90vh-150px)] overflow-y-auto pr-6 pl-2 relative">
+    <form
+        onSubmit={handleSubmit(onSubmit)}
+        className="space-y-6 relative"
+    >
        {/* Loading overlay during save */}
        {isLoading && <div className='absolute inset-0 bg-background/50 flex items-center justify-center z-20 rounded-md'><LoadingSpinner/></div>}
        {/* Sticky error display */}
        {error && <ErrorDisplay message={error} className="mb-4 sticky top-0 z-10 bg-destructive/20 backdrop-blur-sm p-3" />}
 
-       {/* Group fields into logical Cards */}
+       {/* --- Basic Information --- */}
         <Card>
             <CardHeader><CardTitle className='text-lg'>Basic Information</CardTitle></CardHeader>
             <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-3">
@@ -236,6 +230,7 @@ const DocumentForm: React.FC<DocumentFormProps> = ({ docToEdit, onSave }) => {
             </CardContent>
         </Card>
 
+        {/* --- Physical Description --- */}
         <Card>
              <CardHeader><CardTitle className='text-lg'>Physical Description</CardTitle></CardHeader>
              <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-3">
@@ -247,6 +242,7 @@ const DocumentForm: React.FC<DocumentFormProps> = ({ docToEdit, onSave }) => {
              </CardContent>
          </Card>
 
+         {/* --- Content & Context --- */}
          <Card>
              <CardHeader><CardTitle className='text-lg'>Content & Context</CardTitle></CardHeader>
              <CardContent className="grid grid-cols-1 gap-3">
@@ -258,6 +254,7 @@ const DocumentForm: React.FC<DocumentFormProps> = ({ docToEdit, onSave }) => {
              </CardContent>
          </Card>
 
+         {/* --- Access & Digitization --- */}
          <Card>
              <CardHeader><CardTitle className='text-lg'>Access & Digitization</CardTitle></CardHeader>
              <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-3">
@@ -277,21 +274,33 @@ const DocumentForm: React.FC<DocumentFormProps> = ({ docToEdit, onSave }) => {
              </CardContent>
          </Card>
 
+         {/* --- Signatures & Tags --- */}
          <Card>
              <CardHeader><CardTitle className='text-lg'>Signatures & Tags</CardTitle></CardHeader>
-             <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                 <GridItem>
-                     <SignaturePathSelector label="Topographic Signatures" elementIdPaths={topographicPaths} onChange={setTopographicPaths} />
-                 </GridItem>
-                 <GridItem>
-                     <SignaturePathSelector label="Descriptive Signatures" elementIdPaths={descriptivePaths} onChange={setDescriptivePaths} />
-                 </GridItem>
-                 <GridItem className="md:col-span-2">
+             {/* Added items-start to align items at the top of their grid cells */}
+             <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4 items-start">
+                 {/* Added min-w-0 */}
+                 <SignaturePathSelector
+                     label="Topographic Signatures"
+                     elementIdPaths={topographicPaths}
+                     onChange={setTopographicPaths}
+                     className="min-w-0"
+                 />
+                 <br></br>
+                 {/* Added min-w-0 */}
+                 <SignaturePathSelector
+                     label="Descriptive Signatures"
+                     elementIdPaths={descriptivePaths}
+                     onChange={setDescriptivePaths}
+                     className="min-w-0"
+                 />
+                 {/* Tags section spans full width */}
+                 <div className="md:col-span-2 grid gap-1.5">
                      <Label>Tags</Label>
                      <TagSelector selectedTagIds={selectedTagIds} onChange={setSelectedTagIds} />
                      <input type="hidden" {...register('tagIds')} />
                      {errors.tagIds && <p className="text-xs text-destructive">{typeof errors.tagIds.message === 'string' ? errors.tagIds.message : 'Invalid tag selection'}</p>}
-                 </GridItem>
+                 </div>
              </CardContent>
          </Card>
 

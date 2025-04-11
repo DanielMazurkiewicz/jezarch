@@ -88,9 +88,9 @@ const UserManagement: React.FC = () => {
         }
     };
 
-    // Render the user management table within a Card
+    // Render the user management table within a Card - forced white background
     return (
-        <Card>
+        <Card className="bg-white dark:bg-white text-neutral-900 dark:text-neutral-900">
             <CardHeader>
                 <CardTitle>User Management</CardTitle>
                 <CardDescription>View and manage user roles. You cannot change your own role here.</CardDescription>

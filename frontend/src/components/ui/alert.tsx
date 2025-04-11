@@ -4,13 +4,15 @@ import { cva, type VariantProps } from "class-variance-authority"
 import { cn } from "@/lib/utils"
 
 const alertVariants = cva(
-  "relative w-full rounded-lg border px-4 py-3 text-sm grid has-[>svg]:grid-cols-[calc(var(--spacing)*4)_1fr] grid-cols-[0_1fr] has-[>svg]:gap-x-3 gap-y-0.5 items-start [&>svg]:size-4 [&>svg]:translate-y-0.5 [&>svg]:text-current",
+  // Ensure base alert has a background derived from the theme
+  "relative w-full rounded-lg border bg-card px-4 py-3 text-sm grid has-[>svg]:grid-cols-[calc(var(--spacing)*4)_1fr] grid-cols-[0_1fr] has-[>svg]:gap-x-3 gap-y-0.5 items-start [&>svg]:size-4 [&>svg]:translate-y-0.5 [&>svg]:text-current",
   {
     variants: {
       variant: {
-        default: "bg-card text-card-foreground",
+        default: "text-card-foreground", // Default uses bg-card already
         destructive:
-          "text-destructive bg-card [&>svg]:text-current *:data-[slot=alert-description]:text-destructive/90",
+          // Ensure destructive variant also uses card background but with specific text/border colors
+          "bg-card text-destructive border-destructive/50 dark:border-destructive [&>svg]:text-destructive",
       },
     },
     defaultVariants: {
@@ -18,6 +20,9 @@ const alertVariants = cva(
     },
   }
 )
+
+// Removed *:data-[slot=alert-description]:text-destructive/90 from destructive variant for cleaner look
+// Updated destructive variant to use bg-card and specific border/text colors
 
 function Alert({
   className,
@@ -55,6 +60,7 @@ function AlertDescription({
     <div
       data-slot="alert-description"
       className={cn(
+        // Ensure description color contrasts with background (muted-foreground is usually fine)
         "text-muted-foreground col-start-2 grid justify-items-start gap-1 text-sm [&_p]:leading-relaxed",
         className
       )}

@@ -139,7 +139,7 @@ const ArchivePage: React.FC = () => {
    const handleSearch = (newQuery: SearchRequest['query']) => { setSearchQuery(newQuery); setCurrentPage(1); /* Fetch triggered by useEffect */ };
    const handlePageChange = (newPage: number) => { setCurrentPage(newPage); /* Fetch triggered by useEffect */ };
 
-   // Define fields available for searching
+   // Define fields available for searching - Use SearchFieldOption[] type
    const searchFields: SearchFieldOption[] = [
        { value: 'title', label: 'Title', type: 'text' },
        { value: 'creator', label: 'Creator', type: 'text' },
@@ -147,8 +147,13 @@ const ArchivePage: React.FC = () => {
        { value: 'contentDescription', label: 'Description', type: 'text'},
        { value: 'type', label: 'Type', type: 'select', options: [{value: 'unit', label: 'Unit'}, {value:'document', label: 'Document'}]},
        { value: 'isDigitized', label: 'Is Digitized', type: 'boolean'},
-       // Use select for tags - needs ANY_OF condition and number values
-       { value: 'tags', label: 'Tags (Any Of ID)', type: 'select', options: availableTags.map(t => ({value: t.tagId!, label: `${t.name} (ID: ${t.tagId})`}))},
+       // Change type to 'tags' and provide options
+       {
+          value: 'tags', // Backend field name for tag IDs
+          label: 'Tags', // User label
+          type: 'tags', // Use the new 'tags' type
+          options: availableTags.map(t => ({value: t.tagId!, label: t.name})) // Map tags to options
+       },
        // Use text input for signature IDs - needs ANY_OF condition and number values
        { value: 'topographicSignatureElementIds', label: 'Topo Sig (Any ID)', type: 'text' }, // Simplification: user enters comma-separated IDs
        { value: 'descriptiveSignatureElementIds', label: 'Desc Sig (Any ID)', type: 'text' }, // Simplification: user enters comma-separated IDs
@@ -174,8 +179,8 @@ const ArchivePage: React.FC = () => {
                    <PlusCircle className="mr-2 h-4 w-4" /> Create Item
                </Button>
              </DialogTrigger>
-             {/* Wider dialog for the complex form, max height */}
-             <DialogContent className="max-w-4xl max-h-[90vh]">
+             {/* Reduced max width, DialogContent itself handles max-h and scroll */}
+             <DialogContent className="max-w-3xl"> {/* Changed max-w-4xl to max-w-3xl */}
                <DialogHeader>
                  <DialogTitle>{editingDoc ? 'Edit Document/Unit' : 'Create New Document/Unit'}</DialogTitle>
                </DialogHeader>

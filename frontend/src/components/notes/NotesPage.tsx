@@ -5,7 +5,7 @@ import NoteList from './NoteList';
 import NoteEditor from './NoteEditor';
 import LoadingSpinner from '@/components/shared/LoadingSpinner';
 import ErrorDisplay from '@/components/shared/ErrorDisplay';
-import SearchBar from '@/components/shared/SearchBar';
+import SearchBar, { type SearchFieldOption } from '@/components/shared/SearchBar'; // Import SearchFieldOption
 import { Pagination } from '@/components/shared/Pagination';
 import { useAuth } from '@/hooks/useAuth';
 import api from '@/lib/api';
@@ -158,16 +158,17 @@ const NotesPage: React.FC = () => {
   };
 
   // Define fields for the SearchBar
-  const searchFields = [
-      { value: 'title', label: 'Title', type: 'text' as const },
-      { value: 'content', label: 'Content', type: 'text' as const },
-      { value: 'shared', label: 'Is Shared', type: 'boolean' as const },
-      // Add tags search if backend supports 'ANY_OF' or similar for arrays of IDs
+  // Use SearchFieldOption[] type explicitly
+  const searchFields: SearchFieldOption[] = [
+      { value: 'title', label: 'Title', type: 'text' },
+      { value: 'content', label: 'Content', type: 'text' },
+      { value: 'shared', label: 'Is Shared', type: 'boolean' },
+      // Change type to 'tags' and provide options
       {
-        value: 'tags',
-        label: 'Tags (Any Of ID)', // Label clarifies ID input
-        type: 'select' as const, // Use select for tag IDs
-        options: availableTags.map(t => ({value: t.tagId!, label: `${t.name} (${t.tagId})`})) // Show name and ID
+        value: 'tags', // Field name the backend expects for tag ID search
+        label: 'Tags', // User-facing label
+        type: 'tags', // Use the new 'tags' type
+        options: availableTags.map(t => ({value: t.tagId!, label: t.name})) // Map tags to options { value: id, label: name }
       },
   ];
 

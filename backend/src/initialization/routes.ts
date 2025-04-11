@@ -8,9 +8,7 @@ import { signatureComponentRoutes } from '../functionalities/signature/component
 import { signatureElementRoutes } from '../functionalities/signature/element/routes';
 import { archiveDocumentRoutes } from '../functionalities/archive/document/routes';
 
-
-// import app from "../../../frontend/dist/index.html"
-import app from "../../../frontend/src/index.html"
+// Removed incorrect import: import app from "../../../frontend/dist/index.html"
 
 
 import { RouterTypes } from 'bun';
@@ -20,6 +18,7 @@ export type Routes = {
 };
 
 export const routes: Routes = {
+    // API routes should come first to ensure they are matched before the static fallback
     ...apiRoutes,
     ...userRoutes,
     ...configRoutes,
@@ -29,6 +28,6 @@ export const routes: Routes = {
     ...signatureElementRoutes,
     ...noteRoutes,
     ...archiveDocumentRoutes,
-    "/": app,
-
+    // No need to explicitly define "/" route here if handled by static server logic
+    // "/": app, // Removed this line
 }

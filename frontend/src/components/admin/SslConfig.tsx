@@ -67,8 +67,8 @@ const SslConfig: React.FC = () => {
     // Use a grid layout to place cards side-by-side on larger screens
     return (
         <div className='grid grid-cols-1 md:grid-cols-2 gap-6'>
-             {/* Upload Card */}
-             <Card>
+             {/* Upload Card - forced white background */}
+             <Card className="bg-white dark:bg-white text-neutral-900 dark:text-neutral-900">
                  <CardHeader>
                      <CardTitle>Upload Existing SSL</CardTitle>
                      <CardDescription>Paste your private key and certificate (PEM format). Requires server restart.</CardDescription>
@@ -78,7 +78,7 @@ const SslConfig: React.FC = () => {
                          {/* Display upload status/error messages */}
                          {uploadStatus === 'error' && uploadError && <ErrorDisplay message={uploadError} />}
                          {uploadStatus === 'success' && (
-                            <Alert variant="default" className="border-green-600 bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-300">
+                            <Alert variant="default" className="border-green-600 bg-green-50 dark:bg-green-50 text-green-700 dark:text-green-700">
                                 <CheckCircle className="h-5 w-5 text-green-600" />
                                 <AlertTitle>Upload Successful</AlertTitle>
                                 <AlertDescription>SSL configuration uploaded. Server restart needed.</AlertDescription>
@@ -124,8 +124,8 @@ const SslConfig: React.FC = () => {
                 </CardContent>
              </Card>
 
-            {/* Generate Card */}
-            <Card>
+            {/* Generate Card - forced white background */}
+            <Card className="bg-white dark:bg-white text-neutral-900 dark:text-neutral-900">
                 <CardHeader>
                      <CardTitle>Generate Self-Signed SSL</CardTitle>
                      <CardDescription>Generate a new certificate for testing/development (not for production). Requires server restart.</CardDescription>
@@ -134,7 +134,7 @@ const SslConfig: React.FC = () => {
                     {/* Display generate status/error messages */}
                     {generateStatus === 'error' && generateError && <ErrorDisplay message={generateError} />}
                     {generateStatus === 'success' && (
-                       <Alert variant="default" className="border-green-600 bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-300">
+                       <Alert variant="default" className="border-green-600 bg-green-50 dark:bg-green-50 text-green-700 dark:text-green-700">
                            <CheckCircle className="h-5 w-5 text-green-600" />
                            <AlertTitle>Generation Successful</AlertTitle>
                            <AlertDescription>Self-signed certificate generated. Server restart may be required.</AlertDescription>

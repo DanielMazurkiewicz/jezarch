@@ -14,24 +14,36 @@ interface TagSelectorProps {
   selectedTagIds: number[];
   onChange: (selectedIds: number[]) => void;
   className?: string;
+  /** Optional: Provide pre-fetched tags to avoid internal fetching */
+  availableTags?: Tag[];
 }
 
-const TagSelector: React.FC<TagSelectorProps> = ({ selectedTagIds, onChange, className }) => {
+const TagSelector: React.FC<TagSelectorProps> = ({
+  selectedTagIds,
+  onChange,
+  className,
+  availableTags: preFetchedTags // Renamed prop for clarity
+}) => {
   const { token } = useAuth();
-  const [availableTags, setAvailableTags] = useState<Tag[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
+  const [internalTags, setInternalTags] = useState<Tag[]>(preFetchedTags ?? []);
+  const [isLoading, setIsLoading] = useState(!preFetchedTags);
   const [error, setError] = useState<string | null>(null);
   const [open, setOpen] = useState(false);
-  const [searchTerm, setSearchTerm] = useState(""); // Keep track of search term
+  const [searchTerm, setSearchTerm] = useState("");
+
+  const tagsToUse = preFetchedTags ?? internalTags;
 
   useEffect(() => {
     const fetchTags = async () => {
-      if (!token) return;
+      if (preFetchedTags || !token) {
+          setIsLoading(false);
+          return;
+      }
       setIsLoading(true);
       setError(null);
       try {
         const tags = await api.getAllTags(token);
-        setAvailableTags(tags);
+        setInternalTags(tags);
       } catch (err: any) {
         setError(err.message || "Failed to load tags");
         console.error("Failed to load tags:", err);
@@ -40,31 +52,26 @@ const TagSelector: React.FC<TagSelectorProps> = ({ selectedTagIds, onChange, cla
       }
     };
     fetchTags();
-  }, [token]);
+  }, [token, preFetchedTags]);
 
   const handleSelect = (tagId: number) => {
     const newSelectedIds = selectedTagIds.includes(tagId)
       ? selectedTagIds.filter(id => id !== tagId)
       : [...selectedTagIds, tagId];
     onChange(newSelectedIds);
-    setSearchTerm(""); // Clear search on select
-    // Keep popover open for multi-select
-    // setOpen(false);
+    setSearchTerm("");
   };
 
-   // Memoize selected tags for display to avoid recalculating on every render
    const selectedTags = useMemo(() => {
-       // Sort available tags once if needed, e.g., alphabetically
-       const sortedAvailable = [...availableTags].sort((a, b) => a.name.localeCompare(b.name));
+       const sortedAvailable = [...tagsToUse].sort((a, b) => a.name.localeCompare(b.name));
        return sortedAvailable.filter(tag => selectedTagIds.includes(tag.tagId!));
-   }, [availableTags, selectedTagIds]);
+   }, [tagsToUse, selectedTagIds]);
 
-   // Memoize filtered tags for the dropdown
    const filteredDropdownTags = useMemo(() => {
-       return availableTags
+       return tagsToUse
            .filter(tag => tag.name.toLowerCase().includes(searchTerm.toLowerCase()))
-           .sort((a, b) => a.name.localeCompare(b.name)); // Sort filtered results
-   }, [availableTags, searchTerm]);
+           .sort((a, b) => a.name.localeCompare(b.name));
+   }, [tagsToUse, searchTerm]);
 
 
   return (
@@ -75,38 +82,42 @@ const TagSelector: React.FC<TagSelectorProps> = ({ selectedTagIds, onChange, cla
                     variant="outline"
                     role="combobox"
                     aria-expanded={open}
-                    className="w-full justify-between min-h-[36px] font-normal" // Ensure min height, normal font weight
+                    className="w-full justify-between min-h-[36px] font-normal text-sm h-9"
                     disabled={isLoading || !!error}
                 >
                   <span className="truncate">
                     {isLoading ? 'Loading tags...' :
                      error ? 'Error loading tags' :
-                     selectedTags.length > 0 ? `${selectedTags.length} selected` :
+                     selectedTags.length > 0 ? `${selectedTags.length} tags selected` :
                      'Select tags...'}
                   </span>
                    {isLoading ? <LoadingSpinner size="sm" className='ml-2'/> : <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />}
                 </Button>
              </PopoverTrigger>
-             {/* Adjust width based on trigger */}
+             {/* PopoverContent uses bg-popover by default, remove explicit bg override */}
              <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
-                 <Command shouldFilter={false}> {/* Disable default filtering, we filter manually */}
+                 <Command shouldFilter={false}>
                     <CommandInput
                         placeholder="Search tags..."
                         value={searchTerm}
-                        onValueChange={setSearchTerm} // Update search term state
+                        onValueChange={setSearchTerm}
                     />
+                    {/* CommandList uses bg-popover by default */}
                     <CommandList>
                         <CommandEmpty>{isLoading ? 'Loading...' : 'No tags found.'}</CommandEmpty>
+                         {!isLoading && !preFetchedTags && tagsToUse.length === 0 && !error && (
+                             <div className='text-center text-xs text-muted-foreground p-2'>No tags created yet.</div>
+                         )}
                          {!isLoading && (
                             <CommandGroup>
                                 {filteredDropdownTags.map((tag) => (
                                 <CommandItem
                                     key={tag.tagId}
-                                    value={tag.name} // Use name for Command's internal value/search
+                                    value={tag.name}
                                     onSelect={() => {
                                         handleSelect(tag.tagId!);
                                     }}
-                                    className='cursor-pointer' // Ensure pointer cursor
+                                    className='cursor-pointer'
                                 >
                                     <Check
                                         className={cn(
@@ -127,11 +138,10 @@ const TagSelector: React.FC<TagSelectorProps> = ({ selectedTagIds, onChange, cla
          {selectedTags.length > 0 && (
             <div className="flex flex-wrap gap-1 pt-1">
                 {selectedTags.map(tag => (
-                    <Badge key={tag.tagId} variant="secondary" className='items-center'> {/* Use secondary variant */}
-                        <span>{tag.name}</span> {/* Remove mr-1 */}
+                    <Badge key={tag.tagId} variant="secondary" className='items-center'>
+                        <span>{tag.name}</span>
                          <button
                              type="button"
-                             // Styling for the 'X' button within the badge
                              className="ml-1 p-0.5 rounded-full text-muted-foreground hover:text-foreground hover:bg-background/50 focus:outline-none focus:ring-1 focus:ring-ring focus:ring-offset-1"
                              onClick={() => handleSelect(tag.tagId!)}
                              aria-label={`Remove ${tag.name} tag`}

@@ -32,7 +32,8 @@ const LoginForm: React.FC<LoginFormProps> = ({ onSwitchToRegister }) => {
 
   return (
     // Use Card component - Increased shadow for more "window/dialog" like appearance
-    <Card className="w-full max-w-sm shadow-lg border"> {/* Changed shadow-md to shadow-lg and ensured border */}
+    // Forced white background and dark text
+    <Card className="w-full max-w-sm shadow-lg border bg-white dark:bg-white text-neutral-900 dark:text-neutral-900">
       <CardHeader className="text-center pt-8"> {/* Added more top padding */}
         <CardTitle className="text-2xl">Welcome Back</CardTitle>
         <CardDescription>Sign in to access your JezArch account.</CardDescription>
@@ -48,6 +49,7 @@ const LoginForm: React.FC<LoginFormProps> = ({ onSwitchToRegister }) => {
                 placeholder="Your username"
                 {...register("login")}
                 aria-invalid={errors.login ? "true" : "false"}
+                // Ensure input background contrasts with white card, default theme is fine here
                 className={cn(errors.login && "border-destructive focus-visible:ring-destructive")}
              />
             {errors.login && <p className="text-xs text-destructive font-medium">{errors.login.message}</p>}
@@ -61,6 +63,7 @@ const LoginForm: React.FC<LoginFormProps> = ({ onSwitchToRegister }) => {
                 placeholder="••••••••"
                 {...register("password")}
                 aria-invalid={errors.password ? "true" : "false"}
+                // Ensure input background contrasts with white card, default theme is fine here
                 className={cn(errors.password && "border-destructive focus-visible:ring-destructive")}
             />
             {errors.password && <p className="text-xs text-destructive font-medium">{errors.password.message}</p>}

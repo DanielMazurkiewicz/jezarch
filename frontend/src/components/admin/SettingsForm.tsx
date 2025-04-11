@@ -85,17 +85,17 @@ const SettingsForm: React.FC = () => {
 
     // Display loading state while fetching initial data
     if (isLoading) {
-        return <Card><CardContent className='p-6 flex justify-center'><LoadingSpinner /></CardContent></Card>;
+        return <Card className="bg-white dark:bg-white text-neutral-900 dark:text-neutral-900"><CardContent className='p-6 flex justify-center'><LoadingSpinner /></CardContent></Card>;
     }
 
     // Display error if initial loading failed
      if (loadError) {
-        return <Card><CardContent className='p-6'><ErrorDisplay message={loadError} /></CardContent></Card>;
+        return <Card className="bg-white dark:bg-white text-neutral-900 dark:text-neutral-900"><CardContent className='p-6'><ErrorDisplay message={loadError} /></CardContent></Card>;
      }
 
-    // Render the form within a Card
+    // Render the form within a Card - forced white background
     return (
-        <Card>
+        <Card className="bg-white dark:bg-white text-neutral-900 dark:text-neutral-900">
             <CardHeader>
                 <CardTitle>Application Settings</CardTitle>
                 <CardDescription>Configure server port and default language. Changes may require a server restart to take full effect.</CardDescription>

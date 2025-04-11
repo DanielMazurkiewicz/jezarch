@@ -9,13 +9,17 @@ import { cn } from '@/lib/utils';
 // Import only the main SearchQueryElement union type
 import type { SearchRequest, SearchQuery, SearchQueryElement } from '../../../../backend/src/utils/search';
 import LoadingSpinner from './LoadingSpinner';
+import TagSelector from './TagSelector'; // Import TagSelector
+import type { Tag } from '../../../../backend/src/functionalities/tag/models'; // Import Tag type
 
-export type FieldType = 'text' | 'number' | 'boolean' | 'select' | 'date';
+// Added 'tags' type
+export type FieldType = 'text' | 'number' | 'boolean' | 'select' | 'date' | 'tags';
 
 export interface SearchFieldOption {
   value: string;
   label: string;
   type: FieldType;
+  /** Options for 'select' or 'tags' type. For 'tags', expect { value: number, label: string }[] */
   options?: { value: string | number | boolean; label: string }[];
 }
 
@@ -31,12 +35,15 @@ const conditionsByType: Record<FieldType, { value: SearchQueryElement['condition
   boolean: [ { value: 'EQ', label: 'Is' }, ],
   // Updated Select conditions to handle ANY_OF for multi-select like scenarios
   select: [ { value: 'EQ', label: 'Is' }, { value: 'ANY_OF', label: 'Is Any Of' }, ],
+  // 'tags' type should primarily use 'ANY_OF'
+  tags: [ { value: 'ANY_OF', label: 'Has Any Of' }, { value: 'EQ', label: 'Has Only' } /* Maybe? */ ],
   date: [ { value: 'EQ', label: 'Is' }, { value: 'GT', label: 'After' }, { value: 'GTE', label: 'On or After' }, { value: 'LT', label: 'Before' }, { value: 'LTE', label: 'On or Before' }, ],
 };
 
 // Use the main SearchQueryElement type for state, but keep value flexible
+// Value can now be number[] for tags type
 type SearchCriterionState = Partial<Omit<SearchQueryElement, 'value' | 'condition'>> & {
-    value?: string | number | boolean | (string | number | boolean | null)[] | null;
+    value?: string | number | boolean | number[] | (string | number | boolean | null)[] | null;
     condition?: SearchQueryElement['condition']; // Explicitly type condition
     _key?: string; // Internal key for React list rendering
 };
@@ -46,8 +53,9 @@ const initialCriterion = (fieldValue: string = '', fieldType: FieldType = 'text'
     const initialCondition = conditionsByType[fieldType]?.[0]?.value ?? 'EQ';
     let initialValue: SearchCriterionState['value'] = '';
     if (fieldType === 'boolean') initialValue = true;
-    // Default ANY_OF for select to empty array if options exist
-    else if (fieldType === 'select' && initialCondition === 'ANY_OF') initialValue = [];
+    // Default tags/ANY_OF to empty array
+    else if (fieldType === 'tags' || (fieldType === 'select' && initialCondition === 'ANY_OF')) initialValue = [];
+
 
     return {
         field: fieldValue,
@@ -89,15 +97,16 @@ const SearchBar: React.FC<SearchBarProps> = ({ fields, onSearch, isLoading = fal
                 const newCondition = conditionsByType[newType]?.[0]?.value ?? 'EQ';
                 criterion.condition = newCondition;
                 // Reset value based on new type/condition
-                criterion.value = newType === 'boolean' ? true : (newType === 'select' && newCondition === 'ANY_OF' ? [] : '');
+                criterion.value = newType === 'boolean' ? true :
+                                  (newType === 'tags' || (newType === 'select' && newCondition === 'ANY_OF')) ? [] : '';
             } else if (field === 'condition') {
                  const currentFieldDef = fields.find(f => f.value === criterion.field);
                  if (currentFieldDef?.type === 'boolean') criterion.value = true;
-                 // If changing condition for select, reset value appropriately
-                 else if (currentFieldDef?.type === 'select') {
+                 // Reset value appropriately if changing condition for select/tags
+                 else if (currentFieldDef?.type === 'select' || currentFieldDef?.type === 'tags') {
                      criterion.value = value === 'ANY_OF' ? [] : '';
                  }
-                 // Ensure value is reset to string if it was an array previously (e.g., from ANY_OF)
+                 // Ensure value is reset to string if it was an array previously
                  else if (Array.isArray(criterion.value)) criterion.value = '';
                  // Default to empty string if value is somehow null/undefined
                  else if (criterion.value === undefined || criterion.value === null) criterion.value = '';
@@ -123,12 +132,19 @@ const SearchBar: React.FC<SearchBarProps> = ({ fields, onSearch, isLoading = fal
             switch (fieldDef.type) {
                 case 'number': const num = Number(parsedValue); if (isNaN(num)) isValid = false; else parsedValue = num; break;
                 case 'boolean': parsedValue = Boolean(parsedValue); break;
+                case 'tags': // Expects array of numbers
+                    if (!Array.isArray(parsedValue) || !parsedValue.every(id => typeof id === 'number')) {
+                        isValid = false;
+                        console.warn("Invalid value for 'tags' field, expected number[]:", parsedValue);
+                    } else if (parsedValue.length === 0 && crit.condition === 'ANY_OF') {
+                        isValid = false; // Skip empty ANY_OF arrays
+                    }
+                    break;
                 case 'select':
                     if (crit.condition === 'ANY_OF') {
                         // ANY_OF expects an array. If it's not, try to make it one.
                         if (!Array.isArray(parsedValue)) parsedValue = [parsedValue].filter(v => v !== null && v !== undefined && v !== '');
                         // Ensure array elements have correct type if needed (e.g., numbers for ID fields)
-                        // Add explicit type for 'v'
                         parsedValue = parsedValue.map((v: string | number | boolean | null) => /^\d+$/.test(String(v)) ? Number(v) : v);
                         if (parsedValue.length === 0) isValid = false; // Skip empty ANY_OF arrays
                     }
@@ -166,9 +182,22 @@ const SearchBar: React.FC<SearchBarProps> = ({ fields, onSearch, isLoading = fal
     const getFieldType = (fieldName: string | undefined): FieldType => fields.find(f => f.value === fieldName)?.type || 'text';
     const getFieldOptions = (fieldName: string | undefined): SearchFieldOption['options'] => fields.find(f => f.value === fieldName)?.options;
 
+    // Helper to get Tag array from options for TagSelector
+    const getTagsFromOptions = (options: SearchFieldOption['options']): Tag[] => {
+        if (!options) return [];
+        return options.map(opt => ({
+            tagId: typeof opt.value === 'number' ? opt.value : parseInt(String(opt.value), 10), // Ensure ID is number
+            name: opt.label,
+            // description is not needed for selector
+        }));
+    }
+
     return (
         <div className="p-4 border rounded-lg bg-card space-y-3 shadow-sm">
-            {criteria.map((criterion) => (
+            {criteria.map((criterion) => {
+                const fieldType = getFieldType(criterion.field);
+                const fieldOptions = getFieldOptions(criterion.field);
+                return (
                 <div key={criterion._key} className="flex flex-wrap items-end gap-2 p-2 border rounded bg-background">
                     {/* Field */}
                     <div className='flex-grow min-w-[150px]'>
@@ -194,37 +223,48 @@ const SearchBar: React.FC<SearchBarProps> = ({ fields, onSearch, isLoading = fal
                             <Label htmlFor={`condition-${criterion._key}`} className='text-xs mb-1 block'>Condition</Label> {/* Added margin */}
                             <Select value={criterion.condition} onValueChange={(value) => handleCriterionChange(criterion._key!, 'condition', value)} disabled={!criterion.field} >
                                 <SelectTrigger id={`condition-${criterion._key}`} className='h-9 text-sm'><SelectValue /></SelectTrigger> {/* Smaller height */}
-                                <SelectContent> {(conditionsByType[getFieldType(criterion.field)] || []).map(c => ( <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem> ))} </SelectContent>
+                                <SelectContent> {(conditionsByType[fieldType] || []).map(c => ( <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem> ))} </SelectContent>
                             </Select>
                         </div>
                     )}
-                    {/* Value */}
+                    {/* Value Input Area */}
                     {criterion.field && (
                         <div className='flex-grow min-w-[180px]'>
                             <Label htmlFor={`value-${criterion._key}`} className='text-xs mb-1 block'>Value</Label> {/* Added margin */}
-                            { getFieldType(criterion.field) === 'boolean' ? (
+
+                            {/* Conditional Rendering based on Field Type */}
+                            { fieldType === 'boolean' ? (
                                 <Select value={String(criterion.value ?? true)} onValueChange={(value) => handleCriterionChange(criterion._key!, 'value', value === 'true')} disabled={!criterion.field} >
                                     <SelectTrigger id={`value-${criterion._key}`} className='h-9 text-sm'><SelectValue /></SelectTrigger> {/* Smaller height */}
                                     <SelectContent> <SelectItem value="true">True</SelectItem> <SelectItem value="false">False</SelectItem> </SelectContent>
                                 </Select>
-                            ) : getFieldType(criterion.field) === 'select' && criterion.condition !== 'ANY_OF' ? (
+                            ) : fieldType === 'select' && criterion.condition !== 'ANY_OF' ? (
                                 <Select value={String(criterion.value ?? '')} onValueChange={(value) => handleCriterionChange(criterion._key!, 'value', value)} disabled={!criterion.field} >
                                     <SelectTrigger id={`value-${criterion._key}`} className='h-9 text-sm'><SelectValue placeholder="Select value..."/></SelectTrigger> {/* Smaller height */}
-                                    <SelectContent> {(getFieldOptions(criterion.field) || []).map(opt => ( <SelectItem key={String(opt.value)} value={String(opt.value)}>{opt.label}</SelectItem> ))} </SelectContent>
+                                    <SelectContent> {(fieldOptions || []).map(opt => ( <SelectItem key={String(opt.value)} value={String(opt.value)}>{opt.label}</SelectItem> ))} </SelectContent>
                                 </Select>
-                            ) : ( // Render standard input for text, number, date, and select with ANY_OF (user types comma-separated)
+                            // --- Render TagSelector for 'tags' type ---
+                            ) : fieldType === 'tags' ? (
+                                <TagSelector
+                                    selectedTagIds={Array.isArray(criterion.value) ? criterion.value as number[] : []}
+                                    onChange={(selectedIds) => handleCriterionChange(criterion._key!, 'value', selectedIds)}
+                                    availableTags={getTagsFromOptions(fieldOptions)} // Pass tags from options
+                                    className='bg-card border-none p-0' // Adjust styling if needed within search bar
+                                />
+                            // --- Fallback to Input for text, number, date, select with ANY_OF ---
+                            ) : (
                                 <Input
                                     id={`value-${criterion._key}`}
-                                    type={getFieldType(criterion.field) === 'number' ? 'number' : getFieldType(criterion.field) === 'date' ? 'date' : 'text'}
+                                    type={fieldType === 'number' ? 'number' : fieldType === 'date' ? 'date' : 'text'}
                                     value={Array.isArray(criterion.value) ? criterion.value.join(',') : criterion.value as string | number ?? ''}
                                     onChange={(e) => {
                                         const val = e.target.value;
-                                        const isAnyOfSelect = getFieldType(criterion.field) === 'select' && criterion.condition === 'ANY_OF';
+                                        const isAnyOfSelect = fieldType === 'select' && criterion.condition === 'ANY_OF';
                                         handleCriterionChange(criterion._key!, 'value', isAnyOfSelect ? val.split(',').map(s=>s.trim()).filter(Boolean) : val);
                                     }}
                                     placeholder={
-                                        getFieldType(criterion.field) === 'date' ? 'YYYY-MM-DD' :
-                                        (getFieldType(criterion.field) === 'select' && criterion.condition === 'ANY_OF') ? 'value1, value2...' :
+                                        fieldType === 'date' ? 'YYYY-MM-DD' :
+                                        (fieldType === 'select' && criterion.condition === 'ANY_OF') ? 'value1, value2...' :
                                         'Enter value...'
                                     }
                                     disabled={!criterion.field}
@@ -238,7 +278,8 @@ const SearchBar: React.FC<SearchBarProps> = ({ fields, onSearch, isLoading = fal
                         <Trash2 className="h-4 w-4" />
                     </Button>
                 </div>
-            ))}
+                );
+            })}
             {/* Actions */}
             <div className="flex justify-between items-center pt-2">
                 <Button type="button" variant="outline" onClick={handleAddCriterion} size="sm">

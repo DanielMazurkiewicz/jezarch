@@ -39,14 +39,15 @@ const RegisterForm: React.FC<RegisterFormProps> = ({ onSwitchToLogin }) => {
 
   return (
     // Use Card component - Increased shadow for more "window/dialog" like appearance
-    <Card className="w-full max-w-sm shadow-lg border"> {/* Changed shadow-md to shadow-lg and ensured border */}
+    // Forced white background and dark text
+    <Card className="w-full max-w-sm shadow-lg border bg-white dark:bg-white text-neutral-900 dark:text-neutral-900">
       <CardHeader className="text-center pt-8"> {/* Added more top padding */}
         <CardTitle className="text-2xl">Create Account</CardTitle>
         <CardDescription>Enter your details to register.</CardDescription>
       </CardHeader>
       {isSuccess ? (
          <CardContent className="space-y-4 px-6 pb-6"> {/* Adjusted padding */}
-            <Alert variant="default" className="border-green-600 bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-300">
+            <Alert variant="default" className="border-green-600 bg-green-50 dark:bg-green-50 text-green-700 dark:text-green-700">
                 <CheckCircle className="h-5 w-5 text-green-600" />
                 <AlertTitle>Registration Successful!</AlertTitle>
                 <AlertDescription>
@@ -69,6 +70,7 @@ const RegisterForm: React.FC<RegisterFormProps> = ({ onSwitchToLogin }) => {
                         placeholder="Choose a username"
                         {...register("login")}
                         aria-invalid={errors.login ? "true" : "false"}
+                        // Ensure input background contrasts with white card, default theme is fine here
                         className={cn(errors.login && "border-destructive focus-visible:ring-destructive")}
                     />
                     {errors.login && <p className="text-xs text-destructive font-medium">{errors.login.message}</p>}
@@ -82,6 +84,7 @@ const RegisterForm: React.FC<RegisterFormProps> = ({ onSwitchToLogin }) => {
                         placeholder="Create a strong password"
                         {...register("password")}
                         aria-invalid={errors.password ? "true" : "false"}
+                        // Ensure input background contrasts with white card, default theme is fine here
                         className={cn(errors.password && "border-destructive focus-visible:ring-destructive")}
                     />
                     {errors.password && <p className="text-xs text-destructive font-medium">{errors.password.message}</p>}
@@ -95,6 +98,7 @@ const RegisterForm: React.FC<RegisterFormProps> = ({ onSwitchToLogin }) => {
                         placeholder="Re-enter your password"
                         {...register("confirmPassword")}
                         aria-invalid={errors.confirmPassword ? "true" : "false"}
+                        // Ensure input background contrasts with white card, default theme is fine here
                         className={cn(errors.confirmPassword && "border-destructive focus-visible:ring-destructive")}
                     />
                     {errors.confirmPassword && <p className="text-xs text-destructive font-medium">{errors.confirmPassword.message}</p>}

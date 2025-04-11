@@ -98,9 +98,9 @@ const LogViewer: React.FC = () => {
         }
    };
 
-    // Render the component within a Card
+    // Render the component within a Card - forced white background
     return (
-        <Card>
+        <Card className="bg-white dark:bg-white text-neutral-900 dark:text-neutral-900">
             <CardHeader>
                  <CardTitle>System Logs</CardTitle>
                  <CardDescription>View system events, errors, and warnings.</CardDescription>
@@ -134,7 +134,7 @@ const LogViewer: React.FC = () => {
                         <div className='max-h-[60vh] overflow-y-auto relative'> {/* Add relative positioning */}
                              <Table>
                                  {/* Sticky header for scrolling */}
-                                 <TableHeader className='sticky top-0 bg-background z-10'>
+                                 <TableHeader className='sticky top-0 bg-white z-10'> {/* Use white sticky header */}
                                     <TableRow>
                                         <TableHead className='w-[180px]'>Timestamp</TableHead>
                                         <TableHead className='w-[100px]'>Level</TableHead>
