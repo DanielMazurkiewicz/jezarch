@@ -1,0 +1,12 @@
+/home/daniel/Dokumenty/Programowanie/by_language/Javascript/active/jezarch/frontend-rust/target/debug/deps/libmime_guess2-7af32ef948560f95.rmeta: /home/daniel/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/mime_guess2-2.3.0/src/lib.rs /home/daniel/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/mime_guess2-2.3.0/src/impl_bin_search.rs /home/daniel/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/mime_guess2-2.3.0/src/mime_types.rs /home/daniel/Dokumenty/Programowanie/by_language/Javascript/active/jezarch/frontend-rust/target/debug/build/mime_guess2-cd702fc2eccdd7b3/out/mime_types_generated.rs
+
+/home/daniel/Dokumenty/Programowanie/by_language/Javascript/active/jezarch/frontend-rust/target/debug/deps/libmime_guess2-7af32ef948560f95.rlib: /home/daniel/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/mime_guess2-2.3.0/src/lib.rs /home/daniel/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/mime_guess2-2.3.0/src/impl_bin_search.rs /home/daniel/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/mime_guess2-2.3.0/src/mime_types.rs /home/daniel/Dokumenty/Programowanie/by_language/Javascript/active/jezarch/frontend-rust/target/debug/build/mime_guess2-cd702fc2eccdd7b3/out/mime_types_generated.rs
+
+/home/daniel/Dokumenty/Programowanie/by_language/Javascript/active/jezarch/frontend-rust/target/debug/deps/mime_guess2-7af32ef948560f95.d: /home/daniel/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/mime_guess2-2.3.0/src/lib.rs /home/daniel/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/mime_guess2-2.3.0/src/impl_bin_search.rs /home/daniel/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/mime_guess2-2.3.0/src/mime_types.rs /home/daniel/Dokumenty/Programowanie/by_language/Javascript/active/jezarch/frontend-rust/target/debug/build/mime_guess2-cd702fc2eccdd7b3/out/mime_types_generated.rs
+
+/home/daniel/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/mime_guess2-2.3.0/src/lib.rs:
+/home/daniel/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/mime_guess2-2.3.0/src/impl_bin_search.rs:
+/home/daniel/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/mime_guess2-2.3.0/src/mime_types.rs:
+/home/daniel/Dokumenty/Programowanie/by_language/Javascript/active/jezarch/frontend-rust/target/debug/build/mime_guess2-cd702fc2eccdd7b3/out/mime_types_generated.rs:
+
+# env-dep:MIME_TYPES_GENERATED_PATH=/home/daniel/Dokumenty/Programowanie/by_language/Javascript/active/jezarch/frontend-rust/target/debug/build/mime_guess2-cd702fc2eccdd7b3/out/mime_types_generated.rs

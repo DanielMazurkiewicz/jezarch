@@ -1,0 +1,86 @@
+/* src/components/layout/Header.module.css */
+.headerContainer {
+    display: flex;
+    height: auto; /* Auto height based on content */
+    align-items: center;
+    gap: var(--spacing-md);
+    padding-left: var(--spacing-lg); /* Default padding */
+    padding-right: var(--spacing-lg);
+    padding-top: var(--spacing-sm);
+    padding-bottom: var(--spacing-sm);
+    border-style: none; /* Default no border */
+    border-bottom-width: var(--borderWidth-sm);
+    border-color: var(--color-border);
+    background-color: transparent; /* Default transparent */
+    position: static; /* Default static */
+    top: 0;
+    z-index: var(--zIndex-header);
+}
+
+/* Mobile overrides */
+@media (max-width: 639px) { /* sm breakpoint approx */
+    .headerContainer {
+        padding-left: var(--spacing-md);
+        padding-right: var(--spacing-md);
+        border-style: solid;
+        background-color: var(--color-background);
+        position: sticky;
+    }
+}
+
+.pageTitle {
+    font-size: var(--fontSize-lg);
+    font-weight: var(--fontWeight-semibold);
+    flex-grow: 1;
+    line-height: 1.2;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.rightSection {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+    flex-shrink: 0; /* Prevent shrinking */
+}
+
+.userInfo {
+    font-size: var(--fontSize-sm);
+    color: var(--color-muted-foreground);
+    white-space: nowrap;
+}
+
+/* Mobile overrides for user info */
+@media (max-width: 639px) {
+    .userInfo {
+        display: none;
+    }
+}
+@media (min-width: 640px) {
+    .userInfo {
+        display: inline;
+    }
+}
+
+
+/* Styles for buttons within the header (can be shared button styles) */
+.headerButton {
+    /* Uses base Button styles */
+}
+
+.mobileMenuButton {
+    /* Uses base Button styles */
+}
+
+/* Mobile overrides for menu button */
+@media (max-width: 639px) {
+    .mobileMenuButton {
+        display: inline-flex;
+    }
+}
+@media (min-width: 640px) {
+    .mobileMenuButton {
+        display: none;
+    }
+}

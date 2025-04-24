@@ -1,0 +1,53 @@
+/* src/components/auth/LoginPage.module.css */
+.loginCard {
+    width: 100%;
+    max-width: 400px; /* Adjust as needed */
+    /* Inherits base Card styles */
+}
+
+.formContainer {
+    display: flex;
+    flex-direction: column;
+}
+
+.formContent {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-md); /* Spacing between form elements */
+}
+
+.formGroup {
+    display: grid;
+    gap: var(--spacing-xs); /* Space between label and input */
+}
+
+.formFooter {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-md); /* Space between button and link */
+    align-items: center; /* Center footer items */
+    padding-top: var(--spacing-md); /* Add some space above footer */
+}
+
+.switchToRegisterText {
+    text-align: center;
+    font-size: var(--fontSize-sm);
+    color: var(--color-muted-foreground);
+}
+
+/* Error text style directly in module */
+.errorText {
+    font-size: var(--fontSize-xs);
+    color: hsl(var(--destructive));
+    font-weight: var(--fontWeight-medium);
+}
+
+/* Button width utility */
+.fullWidth {
+    width: 100%;
+}
+
+/* Icon margin */
+.iconMargin {
+    margin-right: 0.5rem;
+}

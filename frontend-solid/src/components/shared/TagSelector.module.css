@@ -1,0 +1,196 @@
+/* src/components/shared/TagSelector.module.css */
+
+@keyframes slideDown {
+    from { opacity: 0; transform: translateY(-5px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes slideUp {
+    from { opacity: 1; transform: translateY(0); }
+    to   { opacity: 0; transform: translateY(-5px); }
+}
+
+
+.tagSelectorContainer {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-sm);
+}
+
+/* Style for the trigger button */
+.tagSelectorTrigger {
+    display: inline-flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    height: 36px;
+    border-radius: var(--radius-md);
+    border: var(--borderWidth-sm) solid var(--color-input);
+    background-color: var(--color-background);
+    padding-left: var(--spacing-sm);
+    padding-right: var(--spacing-sm);
+    font-size: var(--fontSize-sm);
+    color: var(--color-foreground);
+    cursor: pointer;
+    outline: none;
+    box-shadow: var(--shadow-sm);
+    transition: border-color 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+    user-select: none;
+}
+.tagSelectorTrigger:focus-visible {
+    border-color: var(--color-ring);
+    box-shadow: 0 0 0 2px var(--color-background), 0 0 0 4px var(--color-ring);
+}
+.tagSelectorTrigger:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+/* Placeholder text color */
+.tagSelectorTrigger[data-placeholder="true"] > span:first-child {
+    color: var(--color-muted-foreground);
+}
+/* Truncate text */
+.tagSelectorTrigger > span:first-child {
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+}
+
+.tagSelectorIcon {
+    margin-left: var(--spacing-sm);
+    opacity: 0.5;
+    flex-shrink: 0;
+    width: 1rem;
+    height: 1rem;
+}
+
+/* Popover content styles */
+.tagSelectorPopoverContent {
+    position: absolute; /* Positioned via Portal/JS */
+    z-index: var(--zIndex-popover);
+    min-width: var(--trigger-width); /* Match trigger width */
+    max-width: calc(100vw - 2rem);
+    overflow: hidden;
+    border-radius: var(--radius-md);
+    border: var(--borderWidth-sm) solid var(--color-border);
+    background-color: var(--color-popover);
+    color: var(--color-popover-foreground);
+    box-shadow: var(--shadow-md);
+}
+/* Animation */
+.tagSelectorPopoverContent[data-state="open"] { animation: slideDown 150ms ease-out; }
+.tagSelectorPopoverContent[data-state="closed"] { animation: slideUp 150ms ease-in forwards; }
+
+
+/* Command input inside popover */
+.tagSelectorCommandInput {
+    padding: var(--spacing-sm);
+    border-bottom: 1px solid var(--color-border);
+}
+
+/* Command list area */
+.tagSelectorCommandList {
+    max-height: 200px;
+    overflow-y: auto;
+    padding: var(--spacing-xs);
+    /* Scrollbar styling */
+    scrollbar-width: thin;
+    scrollbar-color: var(--color-border) var(--color-popover);
+}
+.tagSelectorCommandList::-webkit-scrollbar { width: 6px; }
+.tagSelectorCommandList::-webkit-scrollbar-track { background: var(--color-popover); }
+.tagSelectorCommandList::-webkit-scrollbar-thumb { background-color: var(--color-border); border-radius: var(--radius-lg); }
+
+
+/* Command item style (using div) */
+.tagSelectorCommandItem {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding-left: var(--spacing-sm);
+    padding-right: var(--spacing-sm);
+    padding-top: var(--spacing-xs);
+    padding-bottom: var(--spacing-xs);
+    border-radius: var(--radius-sm);
+    cursor: default; /* Changed from pointer */
+    font-size: var(--fontSize-sm);
+    outline: none;
+    user-select: none;
+    transition: background-color 0.1s ease-in-out, color 0.1s ease-in-out;
+}
+/* Highlight on hover/focus */
+.tagSelectorCommandItem:hover,
+.tagSelectorCommandItem:focus {
+    background-color: var(--color-accent);
+    color: var(--color-accent-foreground);
+}
+/* Style for selected items */
+.tagSelectorCommandItem[aria-selected="true"] {
+    /* Optional: font-weight: var(--fontWeight-medium); */
+}
+
+.tagSelectorItemCheckIcon {
+    width: 1rem;
+    height: 1rem;
+    /* Visibility handled by Show component */
+}
+
+/* Style for the area displaying selected badges */
+.selectedTagsArea {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--spacing-xs);
+    padding-top: var(--spacing-xs);
+    min-height: 22px; /* Ensure area has height */
+}
+
+/* Individual selected tag badge */
+.selectedTagBadge {
+    /* Use Badge component styles implicitly */
+    display: inline-flex;
+    align-items: center;
+}
+
+.removeTagButton {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    margin-left: var(--spacing-xs);
+    padding: 0;
+    border-radius: 9999px; /* full */
+    color: var(--color-muted-foreground);
+    cursor: pointer;
+    border: none;
+    background-color: transparent;
+    width: 14px;
+    height: 14px;
+}
+.removeTagButton:hover {
+    color: var(--color-foreground);
+    background-color: var(--color-background);
+}
+.removeTagButton:focus-visible {
+    outline: 1px solid var(--color-ring);
+    outline-offset: 1px;
+    background-color: var(--color-background);
+}
+.removeTagButton:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.removeTagIcon {
+     width: 10px;
+     height: 10px;
+}
+
+.errorText {
+    font-size: var(--fontSize-xs);
+    color: hsl(var(--destructive));
+    margin-top: var(--spacing-xs);
+}
+
+.emptyText {
+    font-size: var(--fontSize-xs);
+    color: var(--color-muted-foreground);
+    font-style: italic;
+}

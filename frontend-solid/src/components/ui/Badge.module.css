@@ -1,0 +1,58 @@
+/* src/components/ui/Badge.module.css */
+.badgeBase {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--spacing-xs);
+    border-radius: var(--radius-md);
+    border-width: var(--borderWidth-sm);
+    border-style: solid; /* Add border style */
+    padding-left: var(--spacing-sm);
+    padding-right: var(--spacing-sm);
+    font-size: var(--fontSize-xs);
+    font-weight: var(--fontWeight-medium);
+    transition: color 0.15s ease-in-out, background-color 0.15s ease-in-out, border-color 0.15s ease-in-out; /* Added transition */
+    height: 18px;
+    line-height: 16px;
+    white-space: nowrap;
+    user-select: none;
+    flex-shrink: 0;
+}
+
+/* Variants */
+.variantDefault {
+    border-color: transparent;
+    background-color: var(--color-primary);
+    color: var(--color-primary-foreground);
+}
+
+.variantSecondary {
+    border-color: transparent;
+    background-color: var(--color-secondary);
+    color: var(--color-secondary-foreground);
+}
+
+.variantDestructive {
+    border-color: transparent;
+    background-color: var(--color-destructive);
+    color: var(--color-destructive-foreground);
+}
+
+.variantOutline {
+    border-color: var(--color-border);
+    background-color: transparent;
+    color: var(--color-foreground);
+}
+
+/* Custom Variants */
+.variantSuccess {
+    border-color: transparent;
+    background-color: hsl(145 63% 40%);
+    color: white;
+}
+
+.variantWarning {
+    border-color: transparent;
+    background-color: hsl(45 93% 47%);
+    color: black;
+}

@@ -1,0 +1,111 @@
+/* src/context/NotificationContext.module.css */
+
+@keyframes slideInRight {
+    from { transform: translateX(100%); opacity: 0; }
+    to   { transform: translateX(0); opacity: 1; }
+}
+
+@keyframes fadeOut {
+    from { opacity: 1; }
+    to   { opacity: 0; }
+}
+
+.notificationsContainer {
+    position: fixed;
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-sm);
+    z-index: var(--zIndex-popover); /* Often want notifications above most things */
+    top: var(--spacing-md);
+    right: var(--spacing-md);
+    width: auto;
+    max-width: 350px;
+}
+
+.notificationBase {
+    position: relative;
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: var(--spacing-sm);
+    width: 100%;
+    border-radius: var(--radius-md);
+    border-width: var(--borderWidth-sm);
+    border-style: solid; /* Added */
+    padding: var(--spacing-sm);
+    padding-right: var(--spacing-lg); /* Extra space for close button */
+    font-size: var(--fontSize-sm);
+    box-shadow: var(--shadow-md);
+    animation: slideInRight 0.3s ease-out forwards;
+    /* Add fadeOut animation when removing (requires JS state) */
+}
+.notificationBase.removing { /* Example class for removal animation */
+     animation: fadeOut 0.2s ease-in forwards;
+}
+
+
+/* Variant styles */
+.variantInfo {
+    background-color: var(--color-accent);
+    border-color: var(--color-border);
+    color: var(--color-accent-foreground);
+}
+.variantSuccess {
+    background-color: hsl(145 63% 40% / 0.9);
+    border-color: hsl(145 63% 40% / 0.3);
+    color: white;
+}
+.variantWarning {
+    background-color: hsl(45 93% 47% / 0.9);
+    border-color: hsl(45 93% 47% / 0.3);
+    color: black;
+}
+.variantError {
+    background-color: var(--color-destructive);
+    border-color: hsl(var(--destructive) / 0.5);
+    color: var(--color-destructive-foreground);
+}
+
+
+.notificationContent {
+     display: flex;
+     align-items: flex-start;
+     gap: var(--spacing-sm);
+     flex-grow: 1;
+}
+
+.notificationIcon {
+    flex-shrink: 0;
+    margin-top: var(--spacing-xs); /* Align icon slightly lower */
+    width: 1rem;
+    height: 1rem;
+    color: inherit; /* Inherit color by default */
+}
+/* Specific icon colors if needed, relying on data-type */
+[data-type="info"] .notificationIcon { color: var(--color-accent-foreground); }
+/* Success, Warning, Error inherit correct color via parent */
+
+
+.closeButton {
+    position: absolute;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    border-radius: 9999px; /* full */
+    opacity: 0.7;
+    transition: opacity 0.15s ease-in-out;
+    cursor: pointer;
+    background-color: transparent;
+    top: var(--spacing-xs);
+    right: var(--spacing-xs);
+    width: 1.25rem;
+    height: 1.25rem;
+    color: inherit;
+    border: none;
+}
+.closeButton:hover { opacity: 1; }
+.closeButton:focus-visible {
+     outline: 2px solid var(--color-ring);
+     outline-offset: 1px;
+}

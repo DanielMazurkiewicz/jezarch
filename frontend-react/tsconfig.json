@@ -1,0 +1,29 @@
+{
+  "compilerOptions": {
+    "jsx": "react-jsx",
+    "allowJs": true,
+
+    // Bundler mode
+    "moduleResolution": "bundler",
+    "module": "ESNext", // Keep ESNext for top-level await
+    "target": "ES2017", // Keep ES2017 for top-level await
+    "allowImportingTsExtensions": true,
+    "verbatimModuleSyntax": false, // Keep false for flexibility
+    "noEmit": true,
+    "downlevelIteration": true, // Keep for Bun.Glob iteration
+
+    // Strictness & Best Practices
+    "strict": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "noFallthroughCasesInSwitch": true,
+    "esModuleInterop": true,
+
+    // Paths
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["./src/*"]
+    }
+  },
+  "include": ["**/*.ts", "**/*.tsx"]
+}

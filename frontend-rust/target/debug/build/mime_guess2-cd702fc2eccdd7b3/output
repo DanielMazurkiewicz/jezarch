@@ -1,0 +1,1 @@
+cargo:rustc-env=MIME_TYPES_GENERATED_PATH=/home/daniel/Dokumenty/Programowanie/by_language/Javascript/active/jezarch/frontend-rust/target/debug/build/mime_guess2-cd702fc2eccdd7b3/out/mime_types_generated.rs

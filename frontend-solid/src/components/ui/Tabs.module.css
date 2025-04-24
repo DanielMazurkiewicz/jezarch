@@ -1,0 +1,91 @@
+/* src/components/ui/Tabs.module.css */
+.tabsRoot {
+    display: flex;
+    flex-direction: column; /* Default */
+    width: 100%;
+}
+.tabsRoot[data-orientation="vertical"] {
+    flex-direction: row;
+}
+
+.tabsList {
+    display: inline-flex;
+    align-items: center;
+    justify-content: flex-start;
+    border-radius: var(--radius-md);
+    background-color: var(--color-muted);
+    padding: var(--spacing-xs);
+    border-bottom: var(--borderWidth-sm) solid var(--color-border);
+    overflow-x: auto;
+    /* Hide scrollbar visually (optional) */
+     scrollbar-width: none; /* Firefox */
+}
+.tabsList::-webkit-scrollbar { display: none; }
+
+/* Vertical orientation styles */
+.tabsRoot[data-orientation="vertical"] .tabsList {
+    flex-direction: column;
+    justify-content: flex-start;
+    align-items: stretch;
+    border-bottom-width: 0;
+    border-right: var(--borderWidth-sm) solid var(--color-border);
+    height: auto;
+}
+
+
+.tabsTriggerBase {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    white-space: nowrap;
+    border-radius: var(--radius-sm);
+    padding-left: var(--spacing-md);
+    padding-right: var(--spacing-md);
+    padding-top: var(--spacing-sm);
+    padding-bottom: var(--spacing-sm);
+    font-size: var(--fontSize-sm);
+    font-weight: var(--fontWeight-medium);
+    color: var(--color-muted-foreground); /* Default color for inactive */
+    transition: all 0.15s ease-in-out;
+    cursor: pointer;
+    outline: none;
+    border: none;
+    background-color: transparent;
+    line-height: 1.2;
+    flex-shrink: 0;
+}
+.tabsTriggerBase:focus-visible {
+     box-shadow: 0 0 0 2px var(--color-background), 0 0 0 4px var(--color-ring);
+}
+.tabsTriggerBase:disabled {
+     opacity: 0.5;
+     cursor: not-allowed;
+}
+/* Vertical orientation */
+.tabsRoot[data-orientation="vertical"] .tabsTriggerBase {
+    justify-content: flex-start;
+}
+
+/* Active state */
+.tabsTriggerActive {
+    color: var(--color-foreground);
+    background-color: var(--color-background);
+    box-shadow: var(--shadow-sm);
+}
+/* Inactive state (hover) */
+.tabsTriggerInactive:hover {
+    color: var(--color-foreground);
+    /* Optional hover background: background-color: hsl(var(--muted) / 0.5); */
+}
+
+
+.tabsContent {
+    margin-top: var(--spacing-lg);
+    outline: none;
+}
+/* Vertical orientation */
+.tabsRoot[data-orientation="vertical"] .tabsContent {
+    margin-top: 0;
+    margin-left: var(--spacing-lg);
+    flex-grow: 1;
+}

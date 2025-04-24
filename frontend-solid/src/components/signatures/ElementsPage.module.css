@@ -1,0 +1,109 @@
+/* src/components/signatures/ElementsPage.module.css */
+
+/* Reuse styles */
+.elementsPageContainer {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-lg);
+}
+
+.baseHeaderContainer {
+    display: flex;
+    justify-content: space-between;
+    gap: var(--spacing-md);
+}
+
+.pageTitle {
+    font-size: var(--fontSize-xl);
+    font-weight: var(--fontWeight-semibold);
+}
+
+.createButtonContainer {
+    flex-shrink: 0;
+}
+
+.elementsListCard {
+    /* Uses base Card styles */
+}
+
+.emptyStateText {
+    text-align: center;
+    color: var(--color-muted-foreground);
+    padding-top: var(--spacing-lg);
+    padding-bottom: var(--spacing-lg);
+    font-size: var(--fontSize-sm);
+}
+
+
+/* Specific styles */
+.elementsHeaderContainer {
+    composes: baseHeaderContainer; /* Extend base */
+    align-items: center; /* Default alignment */
+    margin-bottom: var(--spacing-lg);
+}
+@media (max-width: 639px) { /* sm */
+    .elementsHeaderContainer {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+}
+@media (min-width: 640px) {
+    .elementsHeaderContainer {
+        flex-direction: row;
+    }
+}
+
+
+.elementsHeaderContent {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-xs);
+    flex-grow: 1;
+}
+
+.pageDescription {
+    font-size: var(--fontSize-sm);
+    color: var(--color-muted-foreground);
+}
+
+.componentInfoBadges {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--spacing-sm);
+    margin-top: var(--spacing-xs);
+}
+
+.elementsSectionCard {
+    /* Inherits Card styles */
+}
+
+.elementsCardHeader {
+    display: flex;
+    justify-content: space-between;
+    align-items: center; /* Default */
+    gap: var(--spacing-md);
+    /* Padding handled by CardHeader component */
+}
+@media (max-width: 767px) { /* md */
+    .elementsCardHeader {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+}
+
+
+.paginationContainer {
+    display: flex;
+    justify-content: center;
+    margin-top: var(--spacing-lg);
+}
+
+.loadingContainer { /* Utility */
+    display: flex;
+    justify-content: center;
+    padding: 2rem 0;
+}
+
+.iconMargin { /* Utility */
+     margin-right: 0.5rem;
+}

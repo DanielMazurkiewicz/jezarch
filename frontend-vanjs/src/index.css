@@ -1,0 +1,172 @@
+/* Removed Tailwind Directives - bun-plugin-tailwind handles this */
+/* Removed @plugin directive - handled by tailwind.config.ts */
+/* Removed @custom-variant - handled by darkMode:'class' */
+
+/* CSS Variables */
+:root {
+  --background: hsl(0 0% 100%);
+  --foreground: hsl(240 10% 3.9%);
+  --card: hsl(0 0% 100%);
+  --card-foreground: hsl(240 10% 3.9%);
+  --popover: hsl(0 0% 100%);
+  --popover-foreground: hsl(240 10% 3.9%);
+  --primary: hsl(240 5.9% 10%);
+  --primary-foreground: hsl(0 0% 98%);
+  --secondary: hsl(240 4.8% 95.9%);
+  --secondary-foreground: hsl(240 5.9% 10%);
+  --muted: hsl(240 4.8% 95.9%);
+  --muted-foreground: hsl(240 3.8% 46.1%);
+  --accent: hsl(240 4.8% 95.9%);
+  --accent-foreground: hsl(240 5.9% 10%);
+  --destructive: hsl(0 84.2% 60.2%);
+  --destructive-foreground: hsl(0 0% 98%);
+  --border: hsl(240 5.9% 90%);
+  --input: hsl(240 5.9% 90%);
+  --ring: hsl(240 10% 3.9%);
+  --chart-1: hsl(12 76% 61%);
+  --chart-2: hsl(173 58% 39%);
+  --chart-3: hsl(197 37% 24%);
+  --chart-4: hsl(43 74% 66%);
+  --chart-5: hsl(27 87% 67%);
+  --radius: 0.6rem;
+
+  /* --- Sidebar Colors --- */
+  --sidebar: hsl(0 0% 100%);
+  --sidebar-foreground: hsl(240 5.3% 26.1%);
+  --sidebar-border: hsl(240 5.9% 90%);
+  --sidebar-accent: hsl(240 4.8% 95.9%);
+  --sidebar-accent-foreground: hsl(240 5.9% 10%);
+}
+
+.dark {
+  --background: hsl(240 6% 10%);
+  --foreground: hsl(0 0% 98%);
+  --card: hsl(240 6% 10%);
+  --card-foreground: hsl(0 0% 98%);
+  --popover: hsl(240 6% 10%);
+  --popover-foreground: hsl(0 0% 98%);
+  --primary: hsl(0 0% 98%);
+  --primary-foreground: hsl(240 5.9% 10%);
+  --secondary: hsl(240 3.7% 15.9%);
+  --secondary-foreground: hsl(0 0% 98%);
+  --muted: hsl(240 3.7% 15.9%);
+  --muted-foreground: hsl(240 5% 64.9%);
+  --accent: hsl(240 3.7% 15.9%);
+  --accent-foreground: hsl(0 0% 98%);
+  --destructive: hsl(0 72% 51%);
+  --destructive-foreground: hsl(0 0% 98%);
+  --border: hsl(240 3.7% 15.9%);
+  --input: hsl(240 3.7% 15.9%);
+  --ring: hsl(240 4.9% 83.9%);
+  --chart-1: hsl(220 70% 50%);
+  --chart-2: hsl(160 60% 45%);
+  --chart-3: hsl(30 80% 55%);
+  --chart-4: hsl(280 65% 60%);
+  --chart-5: hsl(340 75% 55%);
+
+  /* --- Dark Sidebar Colors --- */
+  --sidebar: hsl(240 5% 14%);
+  --sidebar-foreground: hsl(240 5% 85%);
+  --sidebar-border: hsl(240 3.7% 15.9%);
+  --sidebar-accent: hsl(240 3.7% 19.9%);
+  --sidebar-accent-foreground: hsl(0 0% 98%);
+}
+
+/* Base theme definition (Tailwind 4+) */
+@theme {
+  /* Extend existing theme with sidebar colors */
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+
+  /* Animation */
+  --animate-accordion-down: accordion-down 0.2s ease-out;
+  --animate-accordion-up: accordion-up 0.2s ease-out;
+
+  @keyframes accordion-down {
+    from { height: 0 }
+    to { height: var(--radix-accordion-content-height) }
+  }
+
+  @keyframes accordion-up {
+    from { height: var(--radix-accordion-content-height) }
+    to { height: 0 }
+  }
+}
+
+/* Base Layer Styles - REMOVED custom body styles */
+/* Rely on @tailwind base and CSS variables set on :root/.dark */
+/* Ensure html, body have appropriate background via variables */
+@layer base {
+    :root {
+        /* These properties are typically handled by @tailwind base */
+        /* background-color: hsl(var(--background)); */
+        /* color: hsl(var(--foreground)); */
+        /* Apply font smoothing */
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
+    }
+    /* Ensure body inherits */
+    body {
+        /* These properties are typically handled by @tailwind base */
+        min-height: 100vh; /* Use vh instead of screen */
+        min-width: 320px;
+        position: relative; /* Keep for pseudo-element */
+        margin: 0;
+        /* Let Tailwind handle background/color */
+        /* background-color: hsl(var(--background)); */
+        /* color: hsl(var(--foreground)); */
+    }
+    label {
+        cursor: default;
+    }
+    /* Add other base overrides if needed, e.g., */
+    /* html { */
+    /*   font-family: sans-serif; */
+    /* } */
+}
+
+
+/* Custom Styles & Animations */
+
+/* cool Bun background animation 😎 */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  opacity: 0.05;
+  background: url("./logo.svg");
+  background-size: 256px;
+  transform: rotate(-12deg) scale(1.35);
+  animation: slide 30s linear infinite;
+  pointer-events: none;
+}
+
+@keyframes slide {
+  from {
+    background-position: 0 0;
+  }
+  to {
+    background-position: 256px 224px;
+  }
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion) {
+  *,
+  ::before,
+  ::after {
+    animation: none !important;
+  }
+}

@@ -1,0 +1,56 @@
+/* src/components/signatures/ElementForm.module.css */
+
+/* Reuse styles from TagForm.module.css */
+.elementFormContainer {
+    /* Outer container, might not need specific styles if dialog padding suffices */
+}
+
+.elementFormInner {
+    display: grid;
+    gap: var(--spacing-md);
+    padding-top: var(--spacing-md);
+    padding-bottom: var(--spacing-md);
+    position: relative;
+}
+
+.formGroup {
+    display: grid;
+    gap: var(--spacing-xs);
+}
+
+.errorMessage {
+    font-size: var(--fontSize-xs);
+    color: hsl(var(--destructive));
+    font-weight: var(--fontWeight-medium);
+    margin-top: 2px;
+}
+
+.formActions {
+     margin-top: var(--spacing-sm);
+     justify-self: start;
+}
+
+.loadingOverlay {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: hsl(var(--background) / 0.5);
+    border-radius: var(--radius-md);
+    z-index: 10;
+}
+
+.iconMargin {
+    margin-right: 0.5rem;
+}
+
+/* Specific styles */
+.componentInfo {
+    font-size: var(--fontSize-sm);
+    padding: var(--spacing-sm);
+    background-color: var(--color-muted);
+    border-radius: var(--radius-md);
+    border: var(--borderWidth-sm) solid var(--color-border);
+    color: var(--color-muted-foreground);
+}

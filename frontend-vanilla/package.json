@@ -1,0 +1,21 @@
+{
+  "name": "jezarch-fe-vanilla",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "bun run build.ts",
+    "build:debug": "bun run build.ts --debug",
+    "build:single": "bun run build.ts --single",
+    "dev": "bun run build.ts --debug && bunx serve dist --listen 3000 --single",
+    "start": "bunx serve dist --listen 8080 --single",
+    "preview": "bun run build && bun run start"
+  },
+  "dependencies": {
+    "zod": "^3.24.2"
+  },
+  "devDependencies": {
+    "@types/bun": "latest",
+    "typescript": "^5.5.4"
+  }
+}

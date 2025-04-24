@@ -1,0 +1,74 @@
+/* src/components/ui/Alert.module.css */
+.alertBase {
+    position: relative;
+    width: 100%;
+    border-radius: var(--radius-md);
+    border-width: var(--borderWidth-sm);
+    border-style: solid; /* Ensure border style is set */
+    padding: var(--spacing-sm);
+    padding-left: var(--spacing-lg); /* More padding left for icon */
+    font-size: var(--fontSize-sm);
+    display: flex;
+    align-items: flex-start; /* Align icon top */
+    gap: var(--spacing-sm); /* Gap between icon and text content */
+}
+
+/* Variant styles */
+.variantDefault {
+    background-color: var(--color-background);
+    border-color: var(--color-border);
+    color: var(--color-foreground);
+}
+
+.variantDestructive {
+    background-color: hsl(var(--destructive) / 0.1);
+    border-color: hsl(var(--destructive) / 0.3);
+    color: hsl(var(--destructive));
+}
+
+.variantSuccess {
+    background-color: hsl(145 63% 40% / 0.1);
+    border-color: hsl(145 63% 40% / 0.3);
+    color: hsl(145 63% 49%);
+}
+
+.variantWarning {
+    background-color: hsl(45 93% 47% / 0.1);
+    border-color: hsl(45 93% 47% / 0.3);
+    color: hsl(38 92% 50%);
+}
+
+
+.alertIcon {
+    flex-shrink: 0;
+    margin-top: 2px; /* Position icon slightly better */
+    width: 1rem; /* 16px */
+    height: 1rem;
+}
+/* Icon color based on parent variant */
+.variantDestructive .alertIcon { color: hsl(var(--destructive)); }
+.variantSuccess .alertIcon { color: hsl(145 63% 49%); }
+.variantWarning .alertIcon { color: hsl(38 92% 50%); }
+/* Default variant inherits foreground */
+
+
+.alertContent {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-xs); /* Space between title and description */
+    flex-grow: 1; /* Allow content to take space */
+}
+
+.alertTitle {
+    font-weight: var(--fontWeight-medium);
+    line-height: 1.2; /* Tighten line height */
+    /* Inherits color from parent alert variant */
+}
+
+.alertDescription {
+    font-size: var(--fontSize-sm);
+    color: var(--color-muted-foreground);
+}
+/* Description color override for variants */
+.variantDestructive .alertDescription { color: hsl(var(--destructive) / 0.9); }
+/* Add overrides for success, warning etc. if needed */

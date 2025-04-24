@@ -1,0 +1,25 @@
+{
+  "name": "jezarch-fe-vanjs",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "src/main.ts",
+  "module": "src/main.ts",
+  "scripts": {
+    "dev": "bun --watch src/dev-server.ts",
+    "build:css": "bun run src/styles/compile-css.ts",
+    "build:js": "bun run build.ts",
+    "build": "bun build:css && bun build:js",
+    "start": "bun dist/server.js"
+  },
+  "dependencies": {
+    "@vanilla-extract/css": "^1.15.3",
+    "vanjs-core": "^1.5.1",
+    "zod": "^3.24.2"
+  },
+  "devDependencies": {
+    "@types/bun": "latest",
+    "@vanilla-extract/integration": "^7.0.0",
+    "typescript": "^5"
+  }
+}

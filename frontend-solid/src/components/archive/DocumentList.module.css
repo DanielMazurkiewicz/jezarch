@@ -1,0 +1,75 @@
+/* src/components/archive/DocumentList.module.css */
+
+/* Reuse styles from ComponentList/TagList if applicable */
+/* Base table styles are inherited from the Table component */
+.documentListTable {
+    /* Inherits base table styles */
+}
+
+.clickableRow {
+    cursor: pointer;
+    transition: background-color 0.15s ease-in-out;
+}
+.clickableRow:hover {
+    background-color: var(--color-muted);
+}
+
+.actionsCell {
+    text-align: right;
+    padding-right: var(--spacing-md) !important; /* Ensure space for buttons */
+    white-space: nowrap;
+    width: 120px; /* Fixed width */
+}
+
+.readOnlyText {
+    font-style: italic;
+    font-size: var(--fontSize-xs);
+    color: var(--color-muted-foreground);
+}
+
+/* Specific styles */
+.typeIconCell {
+    text-align: center;
+    width: 50px; /* Fixed width for type icon */
+}
+
+.typeIcon {
+    display: inline-block; /* Allow centering via text-align */
+    width: 16px; /* size-4 */
+    height: 16px;
+    vertical-align: middle; /* Align with text */
+}
+
+.documentTitleCell {
+    font-weight: var(--fontWeight-medium);
+}
+
+.mutedTextCell {
+    font-size: var(--fontSize-sm);
+    color: var(--color-muted-foreground);
+}
+
+.signatureCell {
+    font-family: var(--font-mono);
+    font-size: var(--fontSize-xs);
+    max-width: 200px; /* Limit width */
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.noSignatureText {
+    font-style: italic;
+    color: var(--color-muted-foreground);
+}
+
+/* Ensure action buttons in the cell don't wrap */
+.documentActionsCell {
+    /* compose action cell styles using cn in component */
+    white-space: nowrap;
+}
+
+/* Utility class for destructive text */
+.textDestructive {
+    color: hsl(var(--destructive));
+}

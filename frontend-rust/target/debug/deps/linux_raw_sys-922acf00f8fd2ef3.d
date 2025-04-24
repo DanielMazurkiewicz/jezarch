@@ -1,0 +1,10 @@
+/home/daniel/Dokumenty/Programowanie/by_language/Javascript/active/jezarch/frontend-rust/target/debug/deps/liblinux_raw_sys-922acf00f8fd2ef3.rmeta: /home/daniel/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/linux-raw-sys-0.3.8/src/lib.rs /home/daniel/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/linux-raw-sys-0.3.8/src/x86_64/errno.rs /home/daniel/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/linux-raw-sys-0.3.8/src/x86_64/general.rs /home/daniel/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/linux-raw-sys-0.3.8/src/x86_64/ioctl.rs
+
+/home/daniel/Dokumenty/Programowanie/by_language/Javascript/active/jezarch/frontend-rust/target/debug/deps/liblinux_raw_sys-922acf00f8fd2ef3.rlib: /home/daniel/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/linux-raw-sys-0.3.8/src/lib.rs /home/daniel/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/linux-raw-sys-0.3.8/src/x86_64/errno.rs /home/daniel/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/linux-raw-sys-0.3.8/src/x86_64/general.rs /home/daniel/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/linux-raw-sys-0.3.8/src/x86_64/ioctl.rs
+
+/home/daniel/Dokumenty/Programowanie/by_language/Javascript/active/jezarch/frontend-rust/target/debug/deps/linux_raw_sys-922acf00f8fd2ef3.d: /home/daniel/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/linux-raw-sys-0.3.8/src/lib.rs /home/daniel/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/linux-raw-sys-0.3.8/src/x86_64/errno.rs /home/daniel/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/linux-raw-sys-0.3.8/src/x86_64/general.rs /home/daniel/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/linux-raw-sys-0.3.8/src/x86_64/ioctl.rs
+
+/home/daniel/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/linux-raw-sys-0.3.8/src/lib.rs:
+/home/daniel/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/linux-raw-sys-0.3.8/src/x86_64/errno.rs:
+/home/daniel/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/linux-raw-sys-0.3.8/src/x86_64/general.rs:
+/home/daniel/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/linux-raw-sys-0.3.8/src/x86_64/ioctl.rs:

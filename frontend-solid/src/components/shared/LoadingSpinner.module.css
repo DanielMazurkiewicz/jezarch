@@ -1,0 +1,15 @@
+/* src/components/shared/LoadingSpinner.module.css */
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+
+.spinnerBase {
+  color: var(--color-primary); /* Use theme color */
+  animation: spin 1s linear infinite;
+}
+
+/* Size variants */
+.sizeSm { width: 1rem; height: 1rem; }   /* 16px */
+.sizeMd { width: 1.5rem; height: 1.5rem; } /* 24px */
+.sizeLg { width: 2.5rem; height: 2.5rem; }   /* 40px */

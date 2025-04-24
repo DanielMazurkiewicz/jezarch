@@ -1,0 +1,127 @@
+/* src/components/admin/LogViewer.module.css */
+.logViewerCard {
+    /* Styles for the containing card if needed */
+}
+
+.searchBarContainer {
+    margin-bottom: var(--spacing-md);
+}
+
+.loadingContainer {
+    display: flex;
+    justify-content: center;
+    padding-top: var(--spacing-2xl);
+    padding-bottom: var(--spacing-2xl);
+}
+
+.tableContainer {
+    border-width: var(--borderWidth-sm);
+    border-style: solid;
+    border-color: var(--color-border);
+    border-radius: var(--radius-md);
+    overflow: hidden; /* For rounded corners + potential overflow */
+}
+
+.tableScrollWrapper {
+     max-height: 60vh; /* Limit height and make scrollable */
+     overflow-y: auto;
+     position: relative; /* Needed for sticky header */
+     /* Scrollbar styles */
+     scrollbar-width: thin;
+     scrollbar-color: var(--color-border) var(--color-background);
+}
+.tableScrollWrapper::-webkit-scrollbar { width: 8px; }
+.tableScrollWrapper::-webkit-scrollbar-track { background: var(--color-background); }
+.tableScrollWrapper::-webkit-scrollbar-thumb { background-color: var(--color-border); border-radius: var(--radius-lg); }
+
+
+/* Sticky header style */
+.stickyHeader {
+    position: sticky;
+    top: 0;
+    background-color: var(--color-background); /* Background for sticky header */
+    z-index: 10; /* Ensure header is above content */
+     /* Add a subtle shadow or border to indicate separation when scrolling */
+     box-shadow: 0 1px 0 var(--color-border); /* Bottom border effect */
+}
+
+/* Cell styles */
+.timestampCell {
+    font-size: var(--fontSize-xs);
+    width: 180px;
+    padding-top: var(--spacing-sm);
+    padding-bottom: var(--spacing-sm);
+}
+.levelCell {
+    width: 100px;
+    padding-top: var(--spacing-sm);
+    padding-bottom: var(--spacing-sm);
+}
+.userCell {
+    font-size: var(--fontSize-xs);
+    width: 120px;
+    padding-top: var(--spacing-sm);
+    padding-bottom: var(--spacing-sm);
+}
+.categoryCell {
+    font-size: var(--fontSize-xs);
+    width: 120px;
+    padding-top: var(--spacing-sm);
+    padding-bottom: var(--spacing-sm);
+}
+.messageCell {
+    font-size: var(--fontSize-sm);
+    padding-top: var(--spacing-sm);
+    padding-bottom: var(--spacing-sm);
+    white-space: normal; /* Allow message wrapping */
+}
+.dataCell {
+    width: 150px; /* Approx width for details toggle */
+    padding-top: var(--spacing-sm);
+    padding-bottom: var(--spacing-sm);
+}
+
+/* System/General text styles */
+.mutedItalic {
+    font-style: italic;
+    color: var(--color-muted-foreground);
+}
+
+/* Details/Summary styles for log data */
+.dataDetails {
+    /* Base styles for <details> if needed */
+}
+.dataSummary {
+    cursor: pointer;
+    font-size: var(--fontSize-xs);
+    color: var(--color-primary);
+}
+.dataSummary:hover {
+    text-decoration: underline;
+}
+.dataPre {
+    margin-top: var(--spacing-xs);
+    padding: var(--spacing-xs);
+    font-size: var(--fontSize-xs);
+    background-color: var(--color-muted);
+    border-radius: var(--radius-sm);
+    overflow: auto; /* Scroll within pre if needed */
+    max-width: 300px; /* Limit width */
+    max-height: 160px; /* Limit height */
+    white-space: pre-wrap; /* Wrap long lines */
+    word-break: break-all; /* Break long words */
+    /* Scrollbar styles */
+    scrollbar-width: thin;
+    scrollbar-color: var(--color-border) var(--color-muted);
+}
+.dataPre::-webkit-scrollbar { width: 6px; }
+.dataPre::-webkit-scrollbar-track { background: var(--color-muted); }
+.dataPre::-webkit-scrollbar-thumb { background-color: var(--color-border); border-radius: var(--radius-lg); }
+
+
+/* Pagination container style */
+.paginationContainer {
+     padding-top: var(--spacing-md);
+     display: flex;
+     justify-content: center;
+}

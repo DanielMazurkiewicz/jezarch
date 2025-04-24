@@ -1,0 +1,107 @@
+/* src/components/archive/ArchivePage.module.css */
+
+/* Reused/Base styles (equivalent to previous NotesPage/TagsPage styles) */
+.archivePageContainer {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-lg);
+}
+
+.headerContainer { /* Base for archiveHeaderContainer */
+    display: flex;
+    justify-content: space-between;
+    gap: var(--spacing-md);
+}
+
+.headerTextContent { /* Base for text */
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-xs);
+    flex-grow: 1;
+}
+
+.pageTitle {
+    font-size: var(--fontSize-xl);
+    font-weight: var(--fontWeight-semibold);
+}
+
+.pageDescription {
+    font-size: var(--fontSize-sm);
+    color: var(--color-muted-foreground);
+}
+
+.createButtonContainer {
+    flex-shrink: 0;
+}
+
+.archiveListCard {
+    /* Uses base Card styles */
+}
+
+.emptyStateText {
+    text-align: center;
+    color: var(--color-muted-foreground);
+    padding-top: var(--spacing-lg);
+    padding-bottom: var(--spacing-lg);
+    font-size: var(--fontSize-sm);
+}
+
+/* Specific Archive Styles */
+.archiveHeaderContainer { /* Extends headerContainer */
+    align-items: center; /* Default align center, override below for mobile */
+}
+@media (max-width: 639px) { /* sm breakpoint */
+    .archiveHeaderContainer {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+}
+@media (min-width: 640px) {
+    .archiveHeaderContainer {
+        flex-direction: row;
+        align-items: center;
+    }
+}
+
+.archiveTitleContainer {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+}
+
+.archiveIcon {
+    width: 20px;
+    height: 20px;
+    flex-shrink: 0;
+}
+
+.backButton {
+    flex-shrink: 0;
+}
+
+.unitTitleHighlight {
+    color: var(--color-primary);
+    font-weight: var(--fontWeight-semibold);
+}
+
+.searchBarContainer {
+    /* Styles for search bar placement */
+     margin-bottom: var(--spacing-lg);
+}
+
+.loadingContainer {
+    display: flex;
+    justify-content: center;
+    padding-top: var(--spacing-2xl);
+    padding-bottom: var(--spacing-2xl);
+}
+
+.paginationContainer {
+    display: flex;
+    justify-content: center;
+    margin-top: var(--spacing-lg);
+}
+
+.iconMargin {
+     margin-right: 0.5rem;
+}

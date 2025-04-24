@@ -1,0 +1,19 @@
+/* src/components/shared/ErrorDisplay.module.css */
+.errorDisplayContainer {
+    display: flex;
+    align-items: center; /* Center vertically */
+    gap: var(--spacing-sm);
+    padding: var(--spacing-sm);
+    border-radius: var(--radius-md);
+    font-size: var(--fontSize-sm);
+    background-color: hsl(var(--destructive) / 0.1);
+    color: hsl(var(--destructive));
+    border: 1px solid hsl(var(--destructive) / 0.3);
+}
+
+.errorIconStyle {
+    width: 1rem;
+    height: 1rem;
+    flex-shrink: 0;
+    /* Color is inherited */
+}

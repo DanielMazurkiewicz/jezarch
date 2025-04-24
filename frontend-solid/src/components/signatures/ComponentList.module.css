@@ -1,0 +1,65 @@
+/* src/components/signatures/ComponentList.module.css */
+
+/* Reuse styles */
+.actionsCell {
+    text-align: right;
+    padding-right: var(--spacing-md) !important;
+    white-space: nowrap;
+    width: 120px;
+}
+
+/* Specific styles */
+.componentListTable {
+    /* Inherits base table styles */
+}
+
+/* Style for clickable rows */
+.clickableRow {
+    cursor: pointer;
+    transition: background-color 0.15s ease-in-out;
+}
+.clickableRow:hover {
+    background-color: var(--color-muted);
+}
+
+.componentNameCell {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm); /* Space between icon and name */
+    font-weight: var(--fontWeight-medium);
+}
+
+.componentIcon {
+    color: var(--color-muted-foreground); /* Icon color */
+    flex-shrink: 0;
+    width: 1rem; /* 16px */
+    height: 1rem;
+}
+
+.descriptionCell {
+    font-size: var(--fontSize-sm);
+    color: var(--color-muted-foreground);
+    max-width: 300px; /* Limit width and truncate */
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.noDescriptionText {
+    font-style: italic;
+}
+
+.indexCountCell {
+    text-align: center;
+    width: 100px; /* Fixed width for element count */
+}
+
+.readOnlyText {
+    font-style: italic;
+    font-size: var(--fontSize-xs);
+    color: var(--color-muted-foreground);
+}
+
+.textDestructive { /* Utility class for icons */
+    color: hsl(var(--destructive));
+}

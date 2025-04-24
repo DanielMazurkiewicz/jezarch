@@ -1,0 +1,52 @@
+{
+  "compilerOptions": {
+    /* Base Options: */
+    "esModuleInterop": true, // Enables compatibility with CommonJS modules
+    "skipLibCheck": true, // Skip type checking of declaration files (speeds up compilation)
+    "target": "ES2022", // Target modern JavaScript features supported by current browsers
+    "allowJs": false, // Disallow JavaScript files in the project
+    "resolveJsonModule": true, // Allow importing JSON files
+    "moduleDetection": "force", // Treat files as modules even without imports/exports
+    "isolatedModules": true, // Ensure each file can be safely transpiled without relying on others
+
+    /* Strictness */
+    "strict": true, // Enable all strict type-checking options
+    "noUncheckedIndexedAccess": true, // Add extra checks for potentially undefined array/object access
+    "noImplicitAny": true, // Require explicit types rather than defaulting to 'any'
+    "strictNullChecks": true, // Be explicit about null/undefined values
+    "forceConsistentCasingInFileNames": true, // Prevent case-related import issues
+
+    /* Bundler & Module Options */
+    "module": "ESNext", // Use modern ES module system
+    "moduleResolution": "bundler", // Use modern module resolution strategy for bundlers
+    "noEmit": true, // Let Bun handle the final JS emit/bundle process
+
+    /* DOM & Library Options */
+    "lib": [
+      "DOM",
+      "DOM.Iterable",
+      "ES2022" // Include modern ES features and DOM types
+    ],
+    "jsx": "preserve", // Although not using JSX, this prevents errors if JSX syntax accidentally appears
+
+    /* Path Aliases (Optional, add if needed) */
+    // "baseUrl": ".",
+    // "paths": {
+    //   "@/*": ["./src/*"]
+    // }
+
+    /* Bun Type Support (Important!) */
+    "types": [
+      "@types/bun"
+    ]
+  },
+  "include": [
+    "src/**/*.ts",
+    "src/types/**/*.d.ts" // Include global type declarations
+  ],
+  "exclude": [
+    "node_modules",
+    "dist",
+    ".tmp-build" // Exclude build output/temp directories
+  ]
+}

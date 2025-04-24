@@ -1,0 +1,24 @@
+/* src/components/dashboard/DashboardPage.module.css */
+.dashboardContainer {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-md); /* Spacing between elements */
+    padding: var(--spacing-lg); /* Padding consistent with Layout main area */
+}
+
+/* Responsive padding */
+@media (max-width: 767px) { /* Below md */
+    .dashboardContainer {
+        padding: var(--spacing-md);
+    }
+}
+
+
+.dashboardTitle {
+    font-size: var(--fontSize-2xl);
+    font-weight: var(--fontWeight-semibold);
+}
+
+.dashboardText {
+    color: var(--color-muted-foreground);
+}

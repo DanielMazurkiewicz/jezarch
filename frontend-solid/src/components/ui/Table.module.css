@@ -1,0 +1,82 @@
+/* src/components/ui/Table.module.css */
+.tableContainer {
+    position: relative; /* For potential sticky header/footer */
+    width: 100%;
+    overflow-x: auto; /* Enable horizontal scroll if needed */
+}
+
+.table {
+    width: 100%;
+    font-size: var(--fontSize-sm);
+    caption-side: bottom;
+    border-collapse: collapse;
+    table-layout: auto;
+}
+
+.tableHeader tr {
+    border-bottom: var(--borderWidth-sm) solid var(--color-border);
+}
+
+.tableBody tr {
+     border-bottom: var(--borderWidth-sm) solid var(--color-border);
+     transition: background-color 0.15s ease-in-out; /* Added transition */
+}
+.tableBody tr:last-child {
+    border-bottom: none;
+}
+/* Hover effect */
+.tableBody tr:not([data-state="selected"]):hover {
+    background-color: var(--color-muted);
+}
+/* Selected state */
+.tableBody tr[data-state="selected"] {
+     background-color: var(--color-muted); /* Or a different selected color */
+}
+
+
+.tableFooter {
+    background-color: var(--color-muted);
+    color: var(--color-muted-foreground);
+    font-weight: var(--fontWeight-medium);
+    border-top: var(--borderWidth-sm) solid var(--color-border);
+}
+.tableFooter tr:last-child {
+    border-bottom: none;
+}
+
+/* Rows are styled via tbody/thead/tfoot */
+.tableRow {
+    /* Base row styles if needed, but most are handled by parent */
+}
+
+.tableHead {
+    height: 40px;
+    padding-left: var(--spacing-md); /* px-4 */
+    padding-right: var(--spacing-md);
+    padding-top: var(--spacing-sm); /* py-2 */
+    padding-bottom: var(--spacing-sm);
+    text-align: left;
+    font-weight: var(--fontWeight-medium);
+    color: var(--color-muted-foreground);
+    vertical-align: middle;
+    white-space: nowrap;
+}
+.tableHead:has([role=checkbox]) { padding-right: 0; }
+
+
+.tableCell {
+    padding-left: var(--spacing-md); /* p-4 */
+    padding-right: var(--spacing-md);
+    padding-top: var(--spacing-sm); /* py-2 */
+    padding-bottom: var(--spacing-sm);
+    vertical-align: middle;
+    white-space: nowrap; /* Default, override per cell if needed */
+}
+.tableCell:has([role=checkbox]) { padding-right: 0; }
+
+
+.tableCaption {
+    margin-top: var(--spacing-md);
+    font-size: var(--fontSize-sm);
+    color: var(--color-muted-foreground);
+}

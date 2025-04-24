@@ -1,0 +1,59 @@
+/* src/components/admin/AdminPage.module.css */
+.adminPageContainer {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-lg); /* lg gap */
+}
+
+.pageHeaderContainer {
+    display: flex;
+    justify-content: space-between;
+    gap: var(--spacing-md);
+}
+
+/* Responsive adjustments for header */
+@media (max-width: 639px) { /* sm breakpoint approx */
+    .pageHeaderContainer {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+}
+@media (min-width: 640px) {
+    .pageHeaderContainer {
+        flex-direction: row;
+        align-items: center;
+    }
+}
+
+
+.pageHeaderText {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-xs);
+    flex-grow: 1; /* Allow text to take space */
+}
+
+.pageTitle {
+    font-size: var(--fontSize-xl);
+    font-weight: var(--fontWeight-semibold);
+}
+
+.pageDescription {
+    font-size: var(--fontSize-sm);
+    color: var(--color-muted-foreground);
+}
+
+.tabsWrapper {
+    width: 100%;
+}
+
+.accessDeniedCard {
+    /* Uses base Card styles */
+    margin-top: var(--spacing-lg);
+    border-color: hsl(var(--destructive));
+    background-color: hsl(var(--destructive) / 0.05);
+}
+
+.accessDeniedTitle {
+    color: hsl(var(--destructive));
+}

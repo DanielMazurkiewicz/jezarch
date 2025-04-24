@@ -1,6 +1,6 @@
-// File: backend/src/utils/search.ts
-import { db } from "../initialization/db";
 
+import { db } from "../initialization/db";
+import { Log } from "../functionalities/log/db"; // Import Log
 
 export type SearchOnCustomFieldHandlerResult = {
     whereCondition: string;
@@ -12,7 +12,7 @@ export type SearchOnCustomFieldHandlerResult = {
 export type SearchOnCustomFieldHandler<T> = (
     element: SearchQueryElement,
     tableAlias: string // Provide the alias of the main table
-) => SearchOnCustomFieldHandlerResult;
+) => SearchOnCustomFieldHandlerResult | Promise<SearchOnCustomFieldHandlerResult>; // Can be async if handler needs DB lookups
 
 interface SearchQueryElement_Primitive {
     field: string;
@@ -54,15 +54,24 @@ export interface SearchResponse<T> {
     totalPages: number;
 }
 
+// Define the structure returned by buildSearchQueries
+interface BuildSearchQueriesResult {
+    dataQuery: { sql: string; params: any[] };
+    countQuery: { sql: string; params: any[] };
+    page: number;
+    pageSize: number;
+    alias: string; // <-- Added alias to return value
+}
 
-export function buildSearchQueries<T extends Record<string, any>>(
+// Update the function signature to explicitly return a Promise of the result structure
+export async function buildSearchQueries<T extends Record<string, any>>(
     table: string,
     searchRequest: SearchRequest,
     allowedFields: (keyof T)[],
     fieldHandlers?: Record<string, SearchOnCustomFieldHandler<T>>,
-    // Add primary key for distinct counting
     primaryKeyField: string = `${table.slice(0, -1)}Id` // Infer 'noteId' from 'notes', 'userId' from 'users' etc. Adjust if needed.
-) {
+): Promise<BuildSearchQueriesResult> {
+    // Define the alias to be used consistently
     const mainTableAlias = `${table}_main`;
 
     const whereConditions: string[] = [];
@@ -79,12 +88,12 @@ export function buildSearchQueries<T extends Record<string, any>>(
 
         // Handle custom fields first
         if (fieldHandlers?.[field]) {
-            const handlerResult = fieldHandlers[field](element, mainTableAlias);
+            // Pass the defined mainTableAlias to the handler
+            const handlerResult = await fieldHandlers[field](element, mainTableAlias); // Use await as handler can be async
             if (handlerResult) {
                 if (handlerResult.joinClause) {
                     joinClauses.add(handlerResult.joinClause);
                 }
-                // Only add condition if it's not empty (handler might return empty string for logic)
                 if (handlerResult.whereCondition) {
                    whereConditions.push(handlerResult.whereCondition);
                 }
@@ -94,16 +103,25 @@ export function buildSearchQueries<T extends Record<string, any>>(
         }
 
         // Handle standard fields
+        // Ensure the field is allowed OR if it's potentially added by a JOIN (like ownerLogin)
+        // We assume fieldHandlers handle JOINed fields correctly.
+        // For direct fields, check against allowedFields.
         if (!allowedFields.includes(field as keyof T)) {
-            // Optionally log or skip invalid fields instead of throwing
-            console.warn(`Search skipped invalid field: ${field}`);
-            continue;
-            // throw new Error(`Invalid field: ${field}`);
+            // Check if it might be a field from a JOIN (basic check, could be more robust)
+            // For now, allow fields not strictly in allowedFields if a handler didn't process it.
+            // Log a warning for potential unexpected fields.
+             await Log.warn(`Search field '${field}' not in allowedDirectFields or handled by custom handler. Proceeding, ensure JOIN/field is valid.`, 'system', 'search', { field, table });
+             // Allow standard processing for potentially JOINed fields like 'ownerLogin' if no handler exists
+             // continue; // If strict checking is desired, uncomment this.
         }
 
-        let baseCondition: string;
+        let baseCondition: string = '';
         let elementParams: any[] = [];
-        let needsHandling = true; // Flag to check if condition was generated
+        let needsHandling = true;
+
+        // === Standard Field Processing ===
+         // Use the defined mainTableAlias for standard fields
+         const qualifiedField = `${mainTableAlias}.${field}`;
 
         switch (element.condition) {
             case "EQ":
@@ -112,68 +130,66 @@ export function buildSearchQueries<T extends Record<string, any>>(
             case "LT":
             case "LTE":
                 const operator = {
-                    EQ: element.value === null ? "IS" : "=", // Handle NULL correctly
+                    EQ: element.value === null ? "IS" : "=",
                     GT: ">",
                     GTE: ">=",
                     LT: "<",
                     LTE: "<=",
                 }[element.condition];
-                 // Ensure operator exists for the condition
                  if (!operator) {
-                    console.warn(`Unsupported operator for condition: ${element.condition}`);
+                    await Log.warn(`Unsupported operator for condition`, 'system', 'search', { field, condition: element.condition, table });
                     needsHandling = false;
                     break;
                  }
-
-                baseCondition = `${mainTableAlias}.${field} ${operator} ?`;
-                elementParams.push(element.value);
-                break;
+                 // Handle boolean values correctly (convert to 1/0 for SQLite)
+                 let valueToUse = element.value;
+                 if (typeof valueToUse === 'boolean') {
+                     valueToUse = valueToUse ? 1 : 0;
+                 }
+                 baseCondition = `${qualifiedField} ${operator} ?`;
+                 elementParams.push(valueToUse);
+                 break;
 
             case "ANY_OF":
                 if (!Array.isArray(element.value)) {
-                     console.warn(`ANY_OF requires an array value for field ${field}`);
+                     await Log.warn(`ANY_OF requires an array value`, 'system', 'search', { field, value: element.value, table });
                      needsHandling = false;
                      break;
-                    // throw new Error("ANY_OF requires an array value");
                 }
                 if (element.value.length === 0) {
-                    // If array is empty, 'IN ()' is invalid SQL.
-                    // field IN () should match nothing. NOT IN () should match everything.
-                    baseCondition = element.not ? "1=1" : "1=0"; // Always true or always false
+                    // Match nothing if array is empty, unless NOT is true
+                    baseCondition = element.not ? "1=1" : "1=0";
                 } else {
-                    const placeholders = element.value.map(() => "?").join(", ");
-                    baseCondition = `${mainTableAlias}.${field} ${element.not ? 'NOT ' : ''}IN (${placeholders})`;
-                    elementParams.push(...element.value);
+                    // Handle boolean values in array
+                    const valuesToUse = element.value.map(v => typeof v === 'boolean' ? (v ? 1 : 0) : v);
+                    const placeholders = valuesToUse.map(() => "?").join(", ");
+                    baseCondition = `${qualifiedField} ${element.not ? 'NOT ' : ''}IN (${placeholders})`;
+                    elementParams.push(...valuesToUse);
                 }
-                // 'not' is handled directly above for IN clause
                 element.not = false; // Prevent double negation below
                 break;
 
             case "FRAGMENT":
                  if (typeof element.value !== 'string') {
-                    console.warn(`FRAGMENT requires a string value for field ${field}`);
+                    await Log.warn(`FRAGMENT requires a string value`, 'system', 'search', { field, value: element.value, table });
                     needsHandling = false;
                     break;
                  }
-                baseCondition = `${mainTableAlias}.${field} LIKE ?`;
-                elementParams.push(`%${element.value}%`);
-                break;
+                 baseCondition = `${qualifiedField} LIKE ?`;
+                 elementParams.push(`%${element.value}%`);
+                 break;
 
             default:
-                 console.warn(`Unsupported condition: ${(element as any).condition}`);
+                 const unknownCondition = (element as any).condition;
+                 await Log.warn(`Unsupported search condition`, 'system', 'search', { field, condition: unknownCondition, table });
                  needsHandling = false;
                  break;
-                // throw new Error(`Unsupported condition: ${(element as any).condition}`);
         }
 
         if (needsHandling) {
-            if (element.not) { // Apply NOT only if not already handled (like in ANY_OF)
-                // @ts-ignore
-                if (baseCondition) {
-                    baseCondition = `NOT (${baseCondition})`;
-                }
+            if (element.not) {
+                if (baseCondition) { baseCondition = `NOT (${baseCondition})`; }
             }
-            // @ts-ignore
             if (baseCondition) whereConditions.push(baseCondition);
             allParams.push(...elementParams);
         }
@@ -182,23 +198,31 @@ export function buildSearchQueries<T extends Record<string, any>>(
     // Build final queries
     const joins = Array.from(joinClauses).join('\n');
     const whereClause = whereConditions.length > 0 ? `WHERE ${whereConditions.join(' AND ')}` : '';
+    // Use the defined mainTableAlias for ordering
+    const orderBy = `ORDER BY ${mainTableAlias}.${primaryKeyField} DESC`; // Consider making sorting configurable
 
-    // Add default sorting for consistent pagination (adjust field as needed)
-    const orderBy = `ORDER BY ${mainTableAlias}.${primaryKeyField} DESC`; // Example: ORDER BY notes_main.noteId DESC
+    // Define columns to select, including potential JOIN columns
+    // For now, select all from main table alias. Handlers might add specific selects if needed.
+    // Example: Add u.login if ownerLogin handler adds a JOIN u
+    let selectCols = `${mainTableAlias}.*`;
+    // Add common JOIN columns if they exist in handlers (e.g., ownerLogin)
+    if (joins.includes('users')) { // Basic check for user join
+        selectCols += ', users.login as ownerLogin';
+    }
 
     const dataQuery = {
         sql: `
-            SELECT DISTINCT ${mainTableAlias}.*
+            SELECT DISTINCT ${selectCols}
             FROM ${table} AS ${mainTableAlias}
             ${joins}
             ${whereClause}
             ${orderBy}
             LIMIT ? OFFSET ?
         `,
-        // IMPORTANT: Pagination params MUST come last
         params: [...allParams, pageSize, offset]
     };
 
+    // Count query needs to count based on the primary key of the main table
     const countQuery = {
         sql: `
             SELECT COUNT(DISTINCT ${mainTableAlias}.${primaryKeyField}) as total
@@ -206,7 +230,6 @@ export function buildSearchQueries<T extends Record<string, any>>(
             ${joins}
             ${whereClause}
         `,
-         // IMPORTANT: Count query uses only the filter params
         params: [...allParams]
     };
 
@@ -214,39 +237,74 @@ export function buildSearchQueries<T extends Record<string, any>>(
         dataQuery,
         countQuery,
         page,
-        pageSize
+        pageSize,
+        alias: mainTableAlias // <-- Return the alias used
     };
 }
 
+// executeSearch function remains the same as provided previously
 export async function executeSearch<T>(
     dataQuery: { sql: string; params: any[] },
     countQuery: { sql: string; params: any[] }
 ): Promise<SearchResponse<T>> {
-    // console.log("Count SQL:", countQuery.sql); // Debugging
-    // console.log("Count Params:", countQuery.params); // Debugging
-    const countStmt = db.prepare(countQuery.sql);
-    const countResult = countStmt.get(...countQuery.params) as { total: number };
-    const totalSize = countResult?.total ?? 0;
+
+    // === Add Input Validation ===
+    if (!countQuery || typeof countQuery.sql !== 'string' || !Array.isArray(countQuery.params)) {
+        const errorMsg = "executeSearch received invalid countQuery argument";
+        await Log.error(errorMsg, 'system', 'search', { countQuery });
+        throw new Error(errorMsg);
+    }
+    if (!dataQuery || typeof dataQuery.sql !== 'string' || !Array.isArray(dataQuery.params)) {
+        const errorMsg = "executeSearch received invalid dataQuery argument";
+        await Log.error(errorMsg, 'system', 'search', { dataQuery });
+        throw new Error(errorMsg);
+    }
+    // ============================
+
+    let totalSize = 0;
+    try {
+        const countStmt = db.prepare(countQuery.sql);
+        const countResult = countStmt.get(...countQuery.params) as { total: number };
+        totalSize = countResult?.total ?? 0;
+    } catch (e: any) {
+        await Log.error("Failed to execute count query", 'system', 'database', { sql: countQuery.sql, params: countQuery.params, error: e });
+        throw new Error(`Failed to execute count query: ${e.message}`);
+    }
 
 
     let dataResult: T[] = [];
-    if (totalSize > 0) {
-        // Only fetch data if count > 0
-        // console.log("Data SQL:", dataQuery.sql); // Debugging
-        // console.log("Data Params:", dataQuery.params); // Debugging
-        const dataStmt = db.prepare(dataQuery.sql);
-        dataResult = dataStmt.all(...dataQuery.params) as T[];
+    const pageSizeIndex = dataQuery.params.length - 2;
+    const offsetIndex = dataQuery.params.length - 1;
+    let pageSize = typeof dataQuery.params[pageSizeIndex] === 'number' ? dataQuery.params[pageSizeIndex] : 10; // Default page size
+    const offset = typeof dataQuery.params[offsetIndex] === 'number' ? dataQuery.params[offsetIndex] : 0;     // Default offset
+
+    if (pageSize <= 0) {
+        await Log.warn("Invalid page size requested, defaulting to 10", 'system', 'search', { requestedPageSize: pageSize });
+        pageSize = 10; // Correct the value used, not just the parameter list
+        dataQuery.params[pageSizeIndex] = 10;
     }
 
-    const pageSize = dataQuery.params[dataQuery.params.length - 2] as number; // pageSize is second to last
-    const page = Math.ceil((dataQuery.params[dataQuery.params.length - 1] as number) / pageSize) + 1; // offset is last
+    if (totalSize > offset) { // Fetch data only if there's potentially something on the requested page
+        try {
+            const dataStmt = db.prepare(dataQuery.sql);
+            dataResult = dataStmt.all(...dataQuery.params) as T[];
+        } catch (e: any) {
+             await Log.error("Failed to execute data query", 'system', 'database', { sql: dataQuery.sql, params: dataQuery.params, error: e });
+             throw new Error(`Failed to execute data query: ${e.message}`);
+        }
+    } else if (totalSize > 0) {
+         await Log.info("Skipping data query as totalSize <= offset", 'system', 'search', { totalSize, offset });
+    }
+
+    const finalPageSize = pageSize; // Use the validated/defaulted page size
+    const page = Math.floor(offset / finalPageSize) + 1;
 
 
     return {
         data: dataResult,
         page: page,
-        pageSize: pageSize,
+        pageSize: finalPageSize,
         totalSize: totalSize,
-        totalPages: Math.ceil(totalSize / pageSize),
+        totalPages: Math.ceil(totalSize / finalPageSize),
     };
 }

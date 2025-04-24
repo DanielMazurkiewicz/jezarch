@@ -1,0 +1,156 @@
+/* src/components/archive/UnitSelector.module.css */
+
+/* Reuse styles from TagSelector/ElementSelector if possible */
+.unitSelectorContainer {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-sm);
+}
+
+.unitSelectorLabel {
+    font-size: var(--fontSize-sm);
+    font-weight: var(--fontWeight-medium);
+    display: block;
+    margin-bottom: var(--spacing-xs);
+}
+
+.unitSelectorTrigger {
+    /* Reuses styles from SelectTrigger */
+    display: inline-flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--spacing-sm);
+    width: 100%;
+    height: 36px;
+    border-radius: var(--radius-md);
+    border: var(--borderWidth-sm) solid var(--color-input);
+    background-color: var(--color-background);
+    padding-left: var(--spacing-sm);
+    padding-right: var(--spacing-sm);
+    font-size: var(--fontSize-sm);
+    color: var(--color-foreground);
+    transition: all 0.2s ease-in-out;
+    cursor: pointer;
+    outline: none;
+    box-shadow: var(--shadow-sm);
+    user-select: none;
+}
+.unitSelectorTrigger:focus-visible {
+    border-color: var(--color-ring);
+    box-shadow: 0 0 0 2px var(--color-background), 0 0 0 4px var(--color-ring);
+}
+.unitSelectorTrigger:disabled,
+.unitSelectorTrigger[aria-disabled="true"] {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+.unitSelectorTrigger[data-placeholder="true"] > span:first-child { /* Target the text span */
+     color: var(--color-muted-foreground);
+}
+
+.unitSelectorIcon {
+    margin-left: var(--spacing-sm);
+    opacity: 0.5;
+    flex-shrink: 0;
+    width: 1rem;
+    height: 1rem;
+}
+
+.unitSelectorPopoverContent {
+    /* Reuses styles from SelectContent */
+    position: absolute; /* Positioned via Portal/JS */
+    z-index: var(--zIndex-popover);
+    min-width: var(--trigger-width);
+    max-width: calc(100vw - 2rem);
+    max-height: 250px;
+    overflow: hidden;
+    border-radius: var(--radius-md);
+    border: var(--borderWidth-sm) solid var(--color-border);
+    background-color: var(--color-popover);
+    color: var(--color-popover-foreground);
+    box-shadow: var(--shadow-md);
+    /* Add animation if desired */
+}
+.unitSelectorPopoverContent[data-state="open"] {
+    /* animation: slideDown 150ms ease-out; */
+}
+.unitSelectorPopoverContent[data-state="closed"] {
+    /* animation: slideUp 150ms ease-in; */
+}
+
+.unitSelectorCommandInput {
+    padding: var(--spacing-sm);
+    border-bottom: 1px solid var(--color-border);
+}
+
+.unitSelectorCommandList {
+    max-height: 200px;
+    overflow-y: auto;
+    padding: var(--spacing-xs);
+    /* Scrollbar styling */
+    scrollbar-width: thin;
+    scrollbar-color: var(--color-border) var(--color-popover);
+}
+.unitSelectorCommandList::-webkit-scrollbar { width: 6px; }
+.unitSelectorCommandList::-webkit-scrollbar-track { background: var(--color-popover); }
+.unitSelectorCommandList::-webkit-scrollbar-thumb { background-color: var(--color-border); border-radius: var(--radius-lg); }
+
+
+/* Command item style (using div) */
+.unitSelectorCommandItem {
+    position: relative;
+    display: flex;
+    align-items: center;
+    /* justify-content: space-between; */ /* No check icon on right by default? */
+    width: 100%;
+    border-radius: var(--radius-sm);
+    padding-top: var(--spacing-xs);
+    padding-bottom: var(--spacing-xs);
+    padding-left: var(--spacing-lg); /* More space for potential icon */
+    padding-right: var(--spacing-sm);
+    font-size: var(--fontSize-sm);
+    outline: none;
+    cursor: default;
+    transition: background-color 0.1s ease-in-out, color 0.1s ease-in-out;
+    user-select: none;
+}
+.unitSelectorCommandItem:hover,
+.unitSelectorCommandItem:focus,
+.unitSelectorCommandItem[data-highlighted="true"] {
+    background-color: var(--color-accent);
+    color: var(--color-accent-foreground);
+}
+.unitSelectorCommandItem[data-clear-selection="true"] {
+    color: var(--color-muted-foreground);
+    font-style: italic;
+}
+.unitSelectorCommandItem[aria-disabled="true"],
+.unitSelectorCommandItem[data-disabled] {
+    opacity: 0.5;
+    pointer-events: none;
+}
+
+.unitSelectorItemIcon { /* For the check or X icon */
+    position: absolute;
+    left: var(--spacing-sm); /* Position icon on the left */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 1rem;
+    height: 1rem;
+    opacity: 0; /* Hidden by default */
+}
+/* Show check if selected */
+.unitSelectorCommandItem[aria-selected="true"] .unitSelectorItemIcon {
+    opacity: 1;
+}
+/* Make X icon always visible for clear item */
+.unitSelectorCommandItem[data-clear-selection="true"] .unitSelectorItemIcon {
+    opacity: 0.7;
+}
+
+.unitSelectorErrorText {
+    font-size: var(--fontSize-xs);
+    color: hsl(var(--destructive));
+    margin-top: var(--spacing-xs);
+}

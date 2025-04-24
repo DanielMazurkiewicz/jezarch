@@ -12,19 +12,24 @@ export const searchLogsController = async (req: BunRequest) => {
 
     try {
         const searchRequest = await req.json() as SearchRequest;
-        const allowedFields: (keyof LogEntry)[] = ['level', 'createdOn', 'userId', 'category', 'message'];
-        
-        const { dataQuery, countQuery } = buildSearchQueries<LogEntry>(
+        const allowedFields: (keyof LogEntry)[] = ['level', 'createdOn', 'userId', 'category', 'message', 'id']; // 'id' is the PK
+        const primaryKey = 'id'; // <-- Specify the correct primary key
+
+        // --- FIX: Added await and specified primaryKey ---
+        const { dataQuery, countQuery } = await buildSearchQueries<LogEntry>(
             'logs',
             searchRequest,
-            allowedFields
+            allowedFields,
+            undefined, // No custom handlers needed for logs currently
+            primaryKey // Pass the correct primary key here
         );
+        // -----------------------------------------------
 
         const response = await executeSearch<LogEntry>(dataQuery, countQuery);
         return new Response(JSON.stringify(response), { status: 200 });
     } catch (error) {
         await Log.error('Log search failed', sessionAndUser.user.login, 'log', error);
-        return new Response(JSON.stringify({ 
+        return new Response(JSON.stringify({
             message: 'Failed to search logs',
             error: error instanceof Error ? error.message : 'Unknown error'
         }), { status: 500 });

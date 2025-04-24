@@ -273,7 +273,8 @@ export const searchElementsController = async (req: BunRequest) => {
         // Define the primary key for distinct counting/sorting
         const primaryKey = 'signatureElementId';
 
-        const { dataQuery, countQuery, page, pageSize } = buildSearchQueries<SignatureElement>(
+        // --- FIX: Added await ---
+        const { dataQuery, countQuery } = await buildSearchQueries<SignatureElement>(
             'signature_elements', // The main table to search
             searchRequest,
             allowedDirectFields,
@@ -305,6 +306,7 @@ export const searchElementsController = async (req: BunRequest) => {
             },
             primaryKey
         );
+        // ----------------------
 
         // Execute the search using the generic utility
         const searchResponse = await executeSearch<SignatureElementSearchResult>(dataQuery, countQuery);

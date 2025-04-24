@@ -1,0 +1,59 @@
+/* src/components/ui/Textarea.module.css */
+.textareaBase {
+    display: flex;
+    width: 100%;
+    min-height: 80px;
+    border-radius: var(--radius-md);
+    border-width: var(--borderWidth-sm);
+    border-style: solid; /* Added */
+    border-color: var(--color-input);
+    background-color: var(--color-background);
+    padding-left: var(--spacing-sm);
+    padding-right: var(--spacing-sm);
+    padding-top: var(--spacing-sm);
+    padding-bottom: var(--spacing-sm);
+    font-size: var(--fontSize-sm); /* Default size */
+    color: var(--color-foreground);
+    transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
+    outline: none;
+    line-height: 1.5;
+    box-shadow: var(--shadow-sm);
+    resize: vertical; /* Default resize */
+}
+/* Responsive font size */
+@media (min-width: 768px) { /* md */
+    .textareaBase {
+        /* font-size: var(--fontSize-sm); Already default */
+    }
+}
+@media (max-width: 767px) {
+    .textareaBase {
+        font-size: var(--fontSize-base);
+    }
+}
+
+.textareaBase::placeholder {
+    color: var(--color-muted-foreground);
+}
+
+.textareaBase:focus-visible {
+    border-color: var(--color-ring);
+    box-shadow: 0 0 0 2px var(--color-background), 0 0 0 4px var(--color-ring);
+}
+
+.textareaBase:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    resize: none;
+}
+
+.textareaBase[aria-invalid="true"] {
+    border-color: hsl(var(--destructive));
+    box-shadow: 0 0 0 2px var(--color-background), 0 0 0 4px hsl(var(--destructive) / 0.4);
+}
+
+/* Resize variants */
+.resizeNone { resize: none; }
+.resizeVertical { resize: vertical; }
+.resizeHorizontal { resize: horizontal; }
+.resizeBoth { resize: both; }

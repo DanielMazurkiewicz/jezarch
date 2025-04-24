@@ -1,0 +1,68 @@
+/* src/components/notes/NoteList.module.css */
+
+/* Reused styles */
+.actionsCell {
+    text-align: right;
+    padding-right: var(--spacing-md) !important;
+    white-space: nowrap;
+    width: 120px;
+}
+
+/* Specific styles for NoteList */
+.noteTitleCell {
+    font-weight: var(--fontWeight-medium);
+    cursor: pointer;
+}
+.noteTitleCell:hover {
+    color: var(--color-primary);
+    text-decoration: underline;
+}
+
+.authorCell {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-xs);
+    font-size: var(--fontSize-sm);
+    color: var(--color-muted-foreground);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.authorIcon {
+    width: 0.75rem; /* 12px */
+    height: 0.75rem;
+    flex-shrink: 0;
+}
+
+.ownerText {
+    font-weight: var(--fontWeight-medium);
+    color: var(--color-foreground); /* Make owner's name stand out */
+}
+
+.tagsCell {
+    /* Limit width and handle overflow for tags */
+    max-width: 200px; /* Adjust as needed */
+}
+
+.tagsContainer {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--spacing-xs);
+}
+
+.noTagsText {
+    font-style: italic;
+    font-size: var(--fontSize-xs);
+    color: var(--color-muted-foreground);
+}
+
+.readOnlyText { /* From ComponentList */
+    font-style: italic;
+    font-size: var(--fontSize-xs);
+    color: var(--color-muted-foreground);
+}
+
+.textDestructive { /* Utility class for icons */
+    color: hsl(var(--destructive));
+}

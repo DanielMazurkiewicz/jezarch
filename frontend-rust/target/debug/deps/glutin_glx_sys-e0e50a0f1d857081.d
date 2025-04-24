@@ -1,0 +1,11 @@
+/home/daniel/Dokumenty/Programowanie/by_language/Javascript/active/jezarch/frontend-rust/target/debug/deps/libglutin_glx_sys-e0e50a0f1d857081.rmeta: /home/daniel/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/glutin_glx_sys-0.5.0/src/lib.rs /home/daniel/Dokumenty/Programowanie/by_language/Javascript/active/jezarch/frontend-rust/target/debug/build/glutin_glx_sys-3e679fab401c91f8/out/glx_bindings.rs /home/daniel/Dokumenty/Programowanie/by_language/Javascript/active/jezarch/frontend-rust/target/debug/build/glutin_glx_sys-3e679fab401c91f8/out/glx_extra_bindings.rs
+
+/home/daniel/Dokumenty/Programowanie/by_language/Javascript/active/jezarch/frontend-rust/target/debug/deps/libglutin_glx_sys-e0e50a0f1d857081.rlib: /home/daniel/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/glutin_glx_sys-0.5.0/src/lib.rs /home/daniel/Dokumenty/Programowanie/by_language/Javascript/active/jezarch/frontend-rust/target/debug/build/glutin_glx_sys-3e679fab401c91f8/out/glx_bindings.rs /home/daniel/Dokumenty/Programowanie/by_language/Javascript/active/jezarch/frontend-rust/target/debug/build/glutin_glx_sys-3e679fab401c91f8/out/glx_extra_bindings.rs
+
+/home/daniel/Dokumenty/Programowanie/by_language/Javascript/active/jezarch/frontend-rust/target/debug/deps/glutin_glx_sys-e0e50a0f1d857081.d: /home/daniel/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/glutin_glx_sys-0.5.0/src/lib.rs /home/daniel/Dokumenty/Programowanie/by_language/Javascript/active/jezarch/frontend-rust/target/debug/build/glutin_glx_sys-3e679fab401c91f8/out/glx_bindings.rs /home/daniel/Dokumenty/Programowanie/by_language/Javascript/active/jezarch/frontend-rust/target/debug/build/glutin_glx_sys-3e679fab401c91f8/out/glx_extra_bindings.rs
+
+/home/daniel/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/glutin_glx_sys-0.5.0/src/lib.rs:
+/home/daniel/Dokumenty/Programowanie/by_language/Javascript/active/jezarch/frontend-rust/target/debug/build/glutin_glx_sys-3e679fab401c91f8/out/glx_bindings.rs:
+/home/daniel/Dokumenty/Programowanie/by_language/Javascript/active/jezarch/frontend-rust/target/debug/build/glutin_glx_sys-3e679fab401c91f8/out/glx_extra_bindings.rs:
+
+# env-dep:OUT_DIR=/home/daniel/Dokumenty/Programowanie/by_language/Javascript/active/jezarch/frontend-rust/target/debug/build/glutin_glx_sys-3e679fab401c91f8/out

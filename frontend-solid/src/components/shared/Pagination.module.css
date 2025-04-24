@@ -1,0 +1,49 @@
+/* src/components/shared/Pagination.module.css */
+/* Placeholder styles - copy from ui/Pagination.module.css */
+.paginationNav {
+    display: flex;
+    justify-content: center; /* Center the pagination controls */
+    width: 100%;
+}
+
+.paginationContent {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-xs); /* Small gap between items */
+}
+
+.paginationItem {
+    list-style: none; /* Ensure no list bullets */
+    padding: 0;
+    margin: 0;
+}
+
+/* Button component handles link styles */
+
+.paginationEllipsis {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 36px; /* Match icon size */
+    width: 36px; /* Match icon size */
+}
+
+.ellipsisIcon {
+    width: 1rem;
+    height: 1rem;
+    color: var(--color-muted-foreground);
+}
+
+/* Specific styles for prev/next icons/text if needed */
+.prevNextIcon {
+    width: 1rem;
+    height: 1rem;
+}
+.prevNextText {
+    /* display: block; Default */
+}
+@media (max-width: 639px) { /* sm breakpoint */
+    .prevNextText {
+        display: none; /* Hide text on mobile */
+    }
+}

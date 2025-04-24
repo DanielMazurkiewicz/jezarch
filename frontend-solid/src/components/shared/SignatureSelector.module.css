@@ -1,0 +1,320 @@
+/* src/components/shared/SignatureSelector.module.css */
+
+/* Container for the entire selector component */
+.signatureSelectorContainer {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-sm);
+    border-radius: var(--radius-md);
+    border: var(--borderWidth-sm) solid var(--color-input);
+    padding: var(--spacing-sm);
+}
+
+/* Header row containing label and add button */
+.headerRow {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: var(--spacing-xs);
+}
+
+.selectorLabel {
+    font-size: var(--fontSize-sm);
+    font-weight: var(--fontWeight-medium);
+}
+
+.addButton {
+    flex-shrink: 0;
+    /* Base button styles */
+    background: none;
+    border: none;
+    padding: 0;
+    font: inherit;
+    color: var(--color-primary);
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: var(--spacing-xs);
+}
+.addButton:hover { text-decoration: underline; }
+.addButton:disabled { opacity: 0.5; cursor: not-allowed; text-decoration: none; }
+.addButton:focus-visible { outline: 2px solid var(--color-ring); border-radius: var(--radius-sm); outline-offset: 2px; }
+
+
+/* Area displaying the selected signatures */
+.signaturesDisplayArea {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-xs);
+    min-height: 40px;
+    max-height: 150px;
+    overflow-y: auto;
+    border-radius: var(--radius-sm);
+    padding: var(--spacing-xs);
+    /* Scrollbar styling */
+    scrollbar-width: thin;
+    scrollbar-color: var(--color-border) var(--color-background);
+}
+.signaturesDisplayArea::-webkit-scrollbar { width: 6px; }
+.signaturesDisplayArea::-webkit-scrollbar-track { background: var(--color-background); }
+.signaturesDisplayArea::-webkit-scrollbar-thumb { background-color: var(--color-border); border-radius: var(--radius-lg); }
+
+
+/* Row for each individual signature */
+.signatureRow {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--spacing-sm);
+    border-radius: var(--radius-sm);
+    background-color: var(--color-muted);
+    padding: var(--spacing-xs) var(--spacing-sm);
+    font-size: var(--fontSize-xs);
+}
+
+.signatureText {
+    font-family: var(--font-mono);
+    flex-grow: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* Reuse styles similar to TagSelector remove button */
+.removeSignatureButton {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    margin-left: var(--spacing-xs);
+    padding: 0;
+    border-radius: 9999px; /* full */
+    color: var(--color-muted-foreground);
+    cursor: pointer;
+    border: none;
+    background-color: transparent;
+    width: 14px;
+    height: 14px;
+}
+.removeSignatureButton:hover {
+    color: var(--color-foreground);
+    background-color: var(--color-background);
+}
+.removeSignatureButton:focus-visible {
+    outline: 1px solid var(--color-ring);
+    outline-offset: 1px;
+    background-color: var(--color-background);
+}
+.removeSignatureButton:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.removeSignatureIcon {
+     width: 10px;
+     height: 10px;
+}
+
+
+/* Empty state text */
+.emptyText {
+    font-size: var(--fontSize-xs);
+    font-style: italic;
+    color: var(--color-muted-foreground);
+    text-align: center;
+    padding-top: var(--spacing-xs);
+    padding-bottom: var(--spacing-xs);
+}
+
+/* Loading state inside display area */
+.loadingContainer {
+    display: flex;
+    justify-content: center;
+    padding: var(--spacing-sm);
+}
+
+/* --- Browser Specific Styles (Inside Popover) --- */
+.browserContainer {
+    /* Reused styles from ElementSelector.module.css for browser popover content */
+    position: absolute; /* Positioned via Portal/JS */
+    z-index: var(--zIndex-popover);
+    /* Override width for browser */
+    width: 500px;
+    max-width: calc(100vw - 2rem);
+    max-height: 70vh;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    border-radius: var(--radius-md);
+    border: var(--borderWidth-sm) solid var(--color-border);
+    background-color: var(--color-popover);
+    color: var(--color-popover-foreground);
+    box-shadow: var(--shadow-md);
+}
+
+.currentPathContainer {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: var(--spacing-xs);
+    padding: var(--spacing-sm);
+    border-bottom: 1px solid var(--color-border);
+    flex-shrink: 0; /* Prevent shrinking */
+}
+.currentPathLabel {
+    font-size: var(--fontSize-xs);
+    color: var(--color-muted-foreground);
+    margin-right: var(--spacing-xs);
+}
+.currentPathBadge {
+    font-size: var(--fontSize-xs); /* Smaller badge text */
+}
+.pathSeparator {
+     color: var(--color-muted-foreground);
+     margin: 0 2px;
+}
+.emptyPathText {
+     font-size: var(--fontSize-xs);
+     color: var(--color-muted-foreground);
+     font-style: italic;
+}
+
+.elementSelectionArea {
+     padding: var(--spacing-sm);
+     flex-grow: 1;
+     overflow: hidden; /* Prevent overflow */
+     display: flex;
+     flex-direction: column;
+}
+.elementSelectionLabel {
+     /* Reused style from ElementSelector.module.css */
+     font-size: var(--fontSize-sm);
+     font-weight: var(--fontWeight-medium);
+     display: block;
+     margin-bottom: var(--spacing-xs); /* Reduce margin */
+}
+
+/* Simulate CommandPrimitive Root */
+.elementCommand {
+    flex-grow: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden; /* Ensure list respects container bounds */
+}
+
+.elementCommandList {
+    /* Reused style from ElementSelector.module.css */
+    max-height: none; /* Override max-height from composition */
+    flex-grow: 1; /* Allow list to take remaining space */
+    overflow-y: auto;
+    padding: var(--spacing-xs);
+    /* Scrollbar styling */
+    scrollbar-width: thin;
+    scrollbar-color: var(--color-border) var(--color-popover);
+}
+.elementCommandList::-webkit-scrollbar { width: 6px; }
+.elementCommandList::-webkit-scrollbar-track { background: var(--color-popover); }
+.elementCommandList::-webkit-scrollbar-thumb { background-color: var(--color-border); border-radius: var(--radius-lg); }
+
+
+.elementCommandItem {
+    /* Reused style from ElementSelector.module.css */
+    position: relative;
+    display: flex;
+    align-items: center;
+    width: 100%;
+    border-radius: var(--radius-sm);
+    padding-top: var(--spacing-xs);
+    padding-bottom: var(--spacing-xs);
+    padding-left: var(--spacing-sm); /* Adjusted */
+    padding-right: var(--spacing-sm); /* Adjusted */
+    font-size: var(--fontSize-sm);
+    outline: none;
+    cursor: default;
+    transition: background-color 0.1s ease-in-out, color 0.1s ease-in-out;
+    user-select: none;
+    /* Additional styles for add icon */
+    justify-content: space-between;
+}
+.elementCommandItem:hover,
+.elementCommandItem:focus {
+    background-color: var(--color-accent);
+    color: var(--color-accent-foreground);
+}
+.elementCommandItem[aria-disabled="true"],
+.elementCommandItem[data-disabled] {
+    opacity: 0.5;
+    pointer-events: none;
+}
+
+
+.elementItemContent {
+    /* Reused style from ElementSelector.module.css */
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+    flex-grow: 1;
+    overflow: hidden;
+}
+.elementItemIndex {
+     /* Reused style from ElementSelector.module.css */
+     font-family: var(--font-mono);
+     color: var(--color-muted-foreground);
+     width: 4ch; /* Fixed width for index */
+     text-align: right;
+     flex-shrink: 0;
+}
+.elementItemName {
+     /* Reused style from ElementSelector.module.css */
+     flex-grow: 1;
+     overflow: hidden;
+     text-overflow: ellipsis;
+     white-space: nowrap;
+}
+.elementItemAddIcon {
+     /* Reused style from ElementSelector.module.css */
+     /* Similar to selectItemIndicator */
+     display: flex;
+     align-items: center;
+     justify-content: center;
+     flex-shrink: 0;
+     width: 1rem;
+     height: 1rem;
+     opacity: 0.5; /* Make '+' icon slightly visible */
+     color: var(--color-muted-foreground);
+}
+.elementCommandItem:hover .elementItemAddIcon,
+.elementCommandItem:focus .elementItemAddIcon {
+     opacity: 1;
+     color: var(--color-accent-foreground); /* Match text color on hover */
+}
+
+
+.commandLoading, .commandError, .commandEmpty {
+    padding: var(--spacing-lg);
+    text-align: center;
+    font-size: var(--fontSize-sm);
+    color: var(--color-muted-foreground);
+}
+.commandError { color: hsl(var(--destructive)); }
+
+.moreElementsText {
+    font-size: var(--fontSize-xs);
+    font-style: italic;
+    color: var(--color-muted-foreground);
+    text-align: center;
+    padding: var(--spacing-xs);
+    border-top: 1px dashed var(--color-border); /* Separator */
+}
+
+.actionsFooter {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: var(--spacing-sm);
+    border-top: 1px solid var(--color-border);
+    flex-shrink: 0; /* Prevent shrinking */
+}
+.footerActionGroup {
+     display: flex;
+     gap: var(--spacing-sm);
+}

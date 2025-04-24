@@ -3,6 +3,7 @@ import { routes, Routes } from "./routes"; // Import the Routes type
 import { AppConfigKeys } from '../functionalities/config/models';
 import { getConfig } from '../functionalities/config/db';
 import { AppParams, AppParamsDefaults } from "./app_params";
+import { Log } from '../functionalities/log/db'; // Import Log
 
 import path from 'node:path';
 // Import necessary types
@@ -11,7 +12,9 @@ import { ServeOptions, Server, TLSServeOptions, FileBlob } from 'bun'; // Includ
 let server: Server;
 
 const currentDir = import.meta.dir;
-const publicDir = path.resolve(currentDir, '../../../frontend/dist');
+const publicDir = path.resolve(currentDir, '../../../frontend-react/dist');
+// const publicDir = path.resolve(currentDir, '../../../frontend-solid/dist');
+// const publicDir = path.resolve(currentDir, '../../../frontend-vanilla/dist');
 console.log(`* Serving static files from: ${publicDir}`);
 
 
@@ -54,12 +57,12 @@ export async function initializeServer() {
             let pathname = url.pathname;
 
             // Fetch handler is the fallback when no API route matches
-            console.log(`No API route matched ${pathname}, attempting static file serve...`);
+            // Log.info(`No API route matched ${pathname}, attempting static file serve...`, 'system', 'server'); // Optional: more verbose logging
 
             try {
                 pathname = decodeURIComponent(pathname);
-            } catch (e) {
-                console.error("Failed to decode pathname:", pathname);
+            } catch (e: any) {
+                await Log.error("Failed to decode pathname", 'system', 'server', { pathname, error: e });
                 return new Response("Bad Request", { status: 400 });
             }
 
@@ -71,8 +74,9 @@ export async function initializeServer() {
             const filePath = path.join(publicDir, requestedPath);
             const resolvedPath = path.resolve(filePath);
 
+            // Security check: Ensure resolved path is still within the public directory
             if (!resolvedPath.startsWith(publicDir)) {
-                console.warn(`Forbidden path access attempt: ${requestedPath} resolved outside public directory (${publicDir})`);
+                await Log.warn(`Forbidden path access attempt: ${requestedPath}`, 'system', 'security', { resolvedPath, publicDir });
                 return new Response("Forbidden", { status: 403 });
             }
 
@@ -81,25 +85,29 @@ export async function initializeServer() {
                 const exists = await file.exists();
 
                 if (exists && (await file.stat()).isFile()) {
-                    console.log(`Serving static file: ${requestedPath} -> ${resolvedPath}`);
+                    // Log.info(`Serving static file: ${requestedPath}`, 'system', 'server', { resolvedPath }); // Optional: log successful serves
                     return new Response(file);
                 } else {
-                     console.log(`Static file not found or is directory: ${requestedPath} -> ${resolvedPath}`);
+                     // Log.info(`Static file not found or is directory: ${requestedPath}`, 'system', 'server', { resolvedPath }); // Optional: log not found
+                     // Check if it's an asset request or potential SPA route
                      const isAssetRequest = /\.(css|js|json|png|jpg|jpeg|gif|svg|ico|woff|woff2|ttf|eot|map)$/i.test(requestedPath);
                      if (!isAssetRequest) {
+                         // If not an asset, try serving index.html for SPA routing
                          const indexPath = path.join(publicDir, 'index.html');
                          const indexFile = Bun.file(indexPath);
                          if (await indexFile.exists()) {
-                            console.log(`Serving SPA fallback: ${requestedPath} -> ${indexPath}`);
+                            // Log.info(`Serving SPA fallback: ${requestedPath}`, 'system', 'server', { indexPath }); // Optional: log SPA fallback
                             return new Response(indexFile);
                          }
                      }
-                    console.log(`Final fallback: 404 Not Found for ${requestedPath}`);
+                    // If it's an asset or index.html doesn't exist, return 404
+                    // Log.info(`Final fallback: 404 Not Found for ${requestedPath}`, 'system', 'server'); // Optional: log final 404
                     return new Response("Not Found", { status: 404 });
                 }
             } catch (error: any) {
-                 console.error(`Error accessing file ${resolvedPath}:`, error);
+                 await Log.error(`Error accessing file ${resolvedPath}`, 'system', 'server', error);
                  if (error.code === 'ENOENT') {
+                      // Return 404 if file doesn't exist after checks
                       return new Response("Not Found", { status: 404 });
                  }
                  // Ensure error cases also return a Response
@@ -107,10 +115,8 @@ export async function initializeServer() {
             }
         },
         // error handler definition
-        error(error: Error): Response { // Explicitly return Response
-            console.error("--- Bun Serve Runtime Error ---");
-            console.error(error);
-            console.error("-------------------------------");
+        async error(error: Error): Promise<Response> { // Can be async to use Log
+            await Log.error("Bun Serve Runtime Error", 'system', 'server', error);
             return new Response(`Internal Server Error`, { status: 500 });
         },
         // tls definition using Bun.file
@@ -127,10 +133,15 @@ export async function initializeServer() {
         if (server) {
             console.log(`Server listening on ${server.url?.protocol}//${server.hostname}:${server.port}`);
         } else {
+            // This case should ideally use Log.error, but if Log itself failed, console.error is the fallback
             console.error("!!! Bun.serve() did not return a server instance.");
+            await Log.error("Bun.serve() did not return a server instance", 'system', 'startup');
         }
-    } catch (error) {
+    } catch (error: any) {
+         // Use console.error here as logging might not be available if server start fails critically
         console.error("Failed to start server:", error);
+        // Attempt to log, but it might fail if the error is DB-related
+        await Log.error('Failed to start server', 'system', 'startup', error).catch(console.error);
         process.exit(1);
     }
 }
