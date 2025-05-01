@@ -94,7 +94,11 @@ export const createArchiveDocumentSchema = archiveDocumentBaseSchema;
 
 // Schema for updating an existing document (all fields optional, uses PATCH semantics)
 // Use .partial() to make all fields optional
-export const updateArchiveDocumentSchema = archiveDocumentBaseSchema.partial();
+// --- FIX: Explicitly add ownerUserId as optional ---
+export const updateArchiveDocumentSchema = archiveDocumentBaseSchema.extend({
+    ownerUserId: z.number().int().positive().optional(),
+}).partial();
+// --- End FIX ---
 
 // Type definitions for input data based on the Zod schemas
 export type CreateArchiveDocumentInput = z.infer<typeof createArchiveDocumentSchema>;

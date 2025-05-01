@@ -149,8 +149,11 @@ export const updateArchiveDocumentController = async (req: BunRequest<":id">) =>
             return new Response(JSON.stringify({ message: 'Invalid document ID' }), { status: 400 });
         }
 
-        const body: UpdateArchiveDocumentInput = await req.json() as UpdateArchiveDocumentInput;
-        const validation = updateArchiveDocumentSchema.safeParse(body);
+        // Keep the raw body for owner check
+        const rawBody = await req.json() as Record<string, any>;
+        // Validate against the schema that DOES NOT include ownerUserId
+        const validation = updateArchiveDocumentSchema.safeParse(rawBody);
+
         if (!validation.success) {
             await Log.warn('Invalid input for update archive document', sessionAndUser.user.login, AREA, { documentId: id, errors: validation.error.format() });
             return new Response(JSON.stringify({ message: "Invalid input", errors: validation.error.format() }), { status: 400 });
@@ -162,17 +165,35 @@ export const updateArchiveDocumentController = async (req: BunRequest<":id">) =>
             return new Response(JSON.stringify({ message: 'Document not found' }), { status: 404 });
         }
 
-        if (validation.data.ownerUserId !== undefined && !isAllowedRole(sessionAndUser, 'admin')) {
-            await Log.error(`Forbidden attempt to change owner by non-admin on document ${id}`, sessionAndUser.user.login, AREA);
-            return new Response("Forbidden: Only admins can change ownership.", { status: 403 });
-        }
-
+        // validation.data contains only the valid fields *excluding* ownerUserId
         const { tagIds, ...updateData } = validation.data;
-        const updatedDocData = await updateArchiveDocument(id, updateData);
 
-        if (tagIds !== undefined) {
-            await setTagsForArchiveDocument(id, tagIds);
+        // Explicitly define the type for the data being sent to the DB update function
+        // This type *includes* the optional ownerUserId
+        let finalUpdateData: UpdateArchiveDocumentInput = { ...updateData };
+
+        // Check if ownerUserId is present in the RAW input body AND is different from existing
+        const requestedOwnerId = rawBody.ownerUserId;
+        if (requestedOwnerId !== undefined && typeof requestedOwnerId === 'number' && existingDoc.ownerUserId !== requestedOwnerId) {
+            // Attempting to change owner
+            if (!isAllowedRole(sessionAndUser, 'admin')) {
+                await Log.error(`Forbidden attempt to change owner by non-admin on document ${id}`, sessionAndUser.user.login, AREA);
+                return new Response("Forbidden: Only admins can change ownership.", { status: 403 });
+            }
+            // If admin, add ownerUserId to the final update payload
+            finalUpdateData.ownerUserId = requestedOwnerId;
         }
+
+        // Pass the correctly typed finalUpdateData to the DB function
+        const updatedDocData = await updateArchiveDocument(id, finalUpdateData);
+
+        // Handle tags separately using the validated tagIds
+        // Ensure tagIds from validation data is used if present
+        const validatedTagIds = rawBody.tagIds; // Use tagIds from raw body if it passed validation implicitly
+        if (validatedTagIds !== undefined && Array.isArray(validatedTagIds)) {
+            await setTagsForArchiveDocument(id, validatedTagIds.filter((tid): tid is number => typeof tid === 'number'));
+        }
+
 
         await Log.info(`Archive document updated: ${updatedDocData?.title} (ID: ${id})`, sessionAndUser.user.login, AREA);
 
@@ -265,7 +286,7 @@ export const searchArchiveDocumentsController = async (req: BunRequest) => {
         if (activeFilterIndex !== -1) {
             const activeFilter = queryClone[activeFilterIndex];
              // Non-admin/employee (i.e., 'user' role) tried to search by 'active'. Force it to 'active=true'.
-             if (!isAdmin && !isEmployee) {
+             if (!isAdmin && !isEmployee && activeFilter) { // Added check for activeFilter existence
                  if ((activeFilter.condition === 'EQ' && activeFilter.value === false) || (activeFilter.condition !== 'EQ' || activeFilter.value !== true)) {
                      queryClone[activeFilterIndex] = { field: 'active', condition: 'EQ', value: true, not: false };
                      await Log.warn(`'user' role search forced to 'active=true'.`, sessionAndUser.user.login, AREA);

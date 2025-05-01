@@ -16,6 +16,13 @@ export function initializeCmdParams() {
 
     for (let i = 0; i < args.length; i++) {
         const arg = args[i];
+
+        // Add a check for undefined `arg` at the beginning of the loop, although technically unreachable with the loop condition.
+        if (arg === undefined) {
+            console.warn(`Undefined argument encountered at index ${i}. Skipping.`);
+            continue;
+        }
+
         switch (arg) {
             case '--db-path':
                 CmdParams.dbPath = args[++i];
@@ -23,13 +30,18 @@ export function initializeCmdParams() {
 
             case '--port':
                 const portArg = args[++i];
-                const parsedPort = parseInt(portArg);
-                if (!isNaN(parsedPort)) {
-                    CmdParams.port = parsedPort;
+                // Check if portArg is defined before parsing
+                if (portArg !== undefined) {
+                    const parsedPort = parseInt(portArg);
+                    if (!isNaN(parsedPort)) {
+                        CmdParams.port = parsedPort;
+                    } else {
+                        console.error(`Invalid port number: ${portArg}`);
+                        // Keep going or exit? For now, let it potentially be overridden by config/defaults.
+                        // process.exit(1);
+                    }
                 } else {
-                    console.error(`Invalid port number: ${portArg}`);
-                    // Keep going or exit? For now, let it potentially be overridden by config/defaults.
-                    // process.exit(1);
+                    console.error(`Missing port number after --port argument.`);
                 }
                 break;
 
@@ -84,9 +96,17 @@ export function initializeCmdParams() {
                 break; // Though exit() prevents reaching here
 
             default:
-                console.error(`Unknown argument: ${arg}`);
-                printHelp(); // Show help on unknown argument
-                process.exit(1);
+                // Check if the argument looks like a value without a preceding flag
+                // `arg` is guaranteed to be defined here due to the loop condition and earlier check.
+                if (i > 0 && !arg.startsWith('--')) {
+                    console.warn(`Potential value without a preceding flag: ${arg}. Check arguments.`);
+                    // Decide whether to ignore or error out
+                    // continue; // Ignore for now
+                } else {
+                    console.error(`Unknown argument: ${arg}`);
+                    printHelp(); // Show help on unknown argument
+                    process.exit(1);
+                }
         }
     }
 }

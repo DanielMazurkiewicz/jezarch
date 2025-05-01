@@ -329,7 +329,7 @@ export const updateNoteController = async (req: BunRequest<":noteId">) => {
         const currentContent = existingNote.content ?? '';
         const newContent = body.content ?? '';
         if (body.content !== undefined && newContent !== currentContent) {
-            updatePayload.content = newContent;
+            updatePayload.content = newContent; // Pass null or string
         }
         if (body.shared !== undefined && body.shared !== existingNote.shared) {
             // Specific Authorization for 'shared' field: Only owner or admin can change it
@@ -351,6 +351,7 @@ export const updateNoteController = async (req: BunRequest<":noteId">) => {
         let coreUpdatePerformed = false;
         // Update core note fields only if changed
         if (Object.keys(updatePayload).length > 0) {
+            // Pass content which can be null/undefined/string here
             await updateNote(noteId, updatePayload.title, updatePayload.content, updatePayload.shared);
             coreUpdatePerformed = true;
         }

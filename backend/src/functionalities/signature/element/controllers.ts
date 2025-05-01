@@ -23,7 +23,8 @@ import {
     SignatureElement,
     SignatureElementSearchResult
 } from './models';
-import { SearchOnCustomFieldHandlerResult, SearchRequest, buildSearchQueries, executeSearch } from '../../../utils/search'; // Import search utilities
+// Import search utilities, including SearchQueryElement
+import { SearchQueryElement, SearchOnCustomFieldHandlerResult, SearchRequest, buildSearchQueries, executeSearch } from '../../../utils/search';
 
 
 const ELEMENT_AREA = 'signature_element';

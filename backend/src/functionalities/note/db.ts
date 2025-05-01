@@ -74,7 +74,15 @@ export async function createNote(
            RETURNING noteId`
         );
         // Use null for empty content? For now, store empty string.
-        const result = statement.get(title, content, ownerUserId, shared ? 1 : 0, now, now) as { noteId: number };
+        // Explicitly cast timestamps to string | null for compatibility
+        const result = statement.get(
+            title,
+            content,
+            ownerUserId,
+            shared ? 1 : 0,
+            now as string | null,
+            now as string | null
+        ) as { noteId: number };
         return result.noteId;
     } catch (error) {
          await Log.error('Failed to create note in DB', 'system', 'database', { title, ownerUserId, error });
@@ -139,7 +147,13 @@ export async function getNotesForUser(userId: number): Promise<(Note & { ownerLo
 
 
 // Update function - simplified, tags are handled separately
-export async function updateNote(noteId: number, title?: string, content?: string, shared?: boolean) {
+// Adjusted content type to accept string | null | undefined
+export async function updateNote(
+    noteId: number,
+    title?: string,
+    content?: string | null | undefined, // Allow null/undefined here
+    shared?: boolean
+) {
     const fieldsToUpdate: string[] = [];
     const params: any[] = [];
     const now = sqliteNow();
@@ -148,9 +162,9 @@ export async function updateNote(noteId: number, title?: string, content?: strin
         fieldsToUpdate.push('title = ?');
         params.push(title);
     }
-    if (content !== undefined) {
+    if (content !== undefined) { // Check for undefined only
         fieldsToUpdate.push('content = ?');
-        params.push(content); // Store null or empty string as passed
+        params.push(content); // Pass null or string directly to DB
     }
     if (shared !== undefined) {
         fieldsToUpdate.push('shared = ?');

@@ -4,7 +4,7 @@ import { z } from 'zod'; // Import Zod
 export interface Note {
   noteId?: number;
   title: string;
-  content: string; // Can be empty string
+  content: string; // Stored as TEXT, which can be empty string. Nulls handled on input/output.
   shared: boolean;
   ownerUserId: number;
   createdOn: Date;
@@ -18,9 +18,11 @@ export interface NoteWithDetails extends Note {
 }
 
 
-// Input for creating/updating a note - Now allows nullable content
-export interface NoteInput extends Omit<Note, 'noteId' | 'ownerUserId' | 'createdOn' | 'modifiedOn'> {
+// Input for creating/updating a note - Removed extends Omit
+export interface NoteInput {
+    title: string;
     content?: string | null; // Allow null content from input
+    shared: boolean;
     tagIds?: number[]; // Array of tag IDs to associate
 }
 
