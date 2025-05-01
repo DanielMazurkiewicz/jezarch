@@ -6,13 +6,13 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Link } from 'react-router-dom';
 import { FileText, Folder, Trash2, Edit } from 'lucide-react';
 // Updated type import to include search result type
-import type { ArchiveDocument, ArchiveDocumentSearchResult } from '../../../../backend/src/functionalities/archive/document/models';
+import type { ArchiveDocument, ArchiveDocumentSearchResult } from '../../../../backend/src/functionalities/archive/document/models'; // Type now includes topographicSignature
 import { useAuth } from '@/hooks/useAuth';
 
 // Define a local type extending the search result to include optional resolved fields
 // This acknowledges the backend might not always send them or the type definition is out of sync
 type PreviewDocumentType = ArchiveDocumentSearchResult & {
-    resolvedTopographicSignatures?: string[];
+    // resolvedTopographicSignatures?: string[]; // Removed
     resolvedDescriptiveSignatures?: string[];
 };
 
@@ -56,7 +56,10 @@ const DocumentPreviewDialog: React.FC<DocumentPreviewDialogProps> = ({
         return null;
     }
 
-    const isOwnerOrAdmin = user?.role === 'admin' || user?.userId === previewingDoc.ownerUserId;
+    // --- UPDATED: Allow employees to modify ---
+    const isOwnerOrAdminOrEmployee = user?.role === 'admin' || user?.role === 'employee';
+    // Previous logic:
+    // const isOwnerOrAdmin = user?.role === 'admin' || user?.userId === previewingDoc.ownerUserId;
 
     const handleEditClick = () => {
         onOpenChange(false); // Close preview
@@ -94,16 +97,14 @@ const DocumentPreviewDialog: React.FC<DocumentPreviewDialogProps> = ({
                                 ))}
                             </div>
                         )}
-                        {/* Display Signatures (using optional chaining on the potentially resolved fields) */}
-                        {previewingDoc?.resolvedTopographicSignatures && previewingDoc.resolvedTopographicSignatures.length > 0 && (
-                            <div className='flex flex-wrap gap-1 pt-1 items-center'>
-                                 <strong className='mr-1'>Topo Sigs:</strong>
-                                 {/* Explicitly type sig and idx */}
-                                 {previewingDoc.resolvedTopographicSignatures.map((sig: string, idx: number) => (
-                                     <Badge key={`topo-${idx}`} variant="outline" className='font-mono text-xs'>{sig}</Badge>
-                                 ))}
+                         {/* --- UPDATED: Display topographic signature string --- */}
+                         {previewingDoc.topographicSignature && (
+                             <div className='flex flex-wrap gap-1 pt-1 items-center'>
+                                 <strong className='mr-1'>Topo Sig:</strong>
+                                 <Badge variant="outline" className='font-mono text-xs'>{previewingDoc.topographicSignature}</Badge>
                              </div>
-                        )}
+                         )}
+                        {/* Display Descriptive Signatures (using optional chaining on the potentially resolved fields) */}
                         {previewingDoc?.resolvedDescriptiveSignatures && previewingDoc.resolvedDescriptiveSignatures.length > 0 && (
                              <div className='flex flex-wrap gap-1 pt-1 items-center'>
                                  <strong className='mr-1'>Desc Sigs:</strong>
@@ -166,7 +167,7 @@ const DocumentPreviewDialog: React.FC<DocumentPreviewDialogProps> = ({
                 <DialogFooter className='gap-2 sm:justify-between pt-4'>
                     {/* Disable button placed on the left */}
                     <div>
-                        {isOwnerOrAdmin && (
+                        {isOwnerOrAdminOrEmployee && ( // Updated check
                              <Button variant="outline" className='border-destructive text-destructive hover:bg-destructive/10 hover:text-destructive' size="sm" onClick={handleDisableClick}>
                                  <Trash2 className='h-4 w-4 mr-2'/> Disable Item
                             </Button>
@@ -174,7 +175,7 @@ const DocumentPreviewDialog: React.FC<DocumentPreviewDialogProps> = ({
                     </div>
                     {/* Edit and Close buttons on the right */}
                     <div className='flex gap-2'>
-                         {isOwnerOrAdmin && (
+                         {isOwnerOrAdminOrEmployee && ( // Updated check
                             <Button variant="secondary" size="sm" onClick={handleEditClick}>
                                 <Edit className='h-4 w-4 mr-2'/> Edit
                             </Button>

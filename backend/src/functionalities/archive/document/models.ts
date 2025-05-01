@@ -3,7 +3,7 @@ import { Tag } from '../../tag/models'; // Import Tag model
 
 // Represents a sequence of signature element IDs forming a single signature path
 // Example: [component1_element5, component3_element12] -> [5, 12] (assuming element IDs are 5 and 12)
-export type SignatureElementIdPath = number[];
+export type SignatureElementIdPath = number[]; // Kept for descriptive signatures
 
 // Define allowed document types
 export const ArchiveDocumentType = z.enum(["unit", "document"]);
@@ -17,9 +17,10 @@ export interface ArchiveDocument {
     type: ArchiveDocumentType;
     active: boolean; // For soft delete
 
-    // Signatures stored as JSON arrays of element ID paths
-    topographicSignatureElementIds: SignatureElementIdPath[];
-    descriptiveSignatureElementIds: SignatureElementIdPath[];
+    // --- UPDATED: Simplified topographic signature ---
+    topographicSignature: string | null; // Simple text field for topographic signature
+    // --- Kept descriptive signature as is ---
+    descriptiveSignatureElementIds: SignatureElementIdPath[]; // JSON array of element ID paths
 
     // Core metadata fields
     title: string;
@@ -52,7 +53,7 @@ export interface ArchiveDocument {
     // Populated fields (not stored directly in main table)
     tags?: Tag[];
     ownerLogin?: string; // Added owner login for display
-    // resolvedTopographicSignatures?: string[]; // Could be added if needed (potentially expensive)
+    // resolvedTopographicSignatures?: string[]; // Removed, now a single string
     // resolvedDescriptiveSignatures?: string[]; // Could be added if needed
 }
 
@@ -62,8 +63,9 @@ export interface ArchiveDocument {
 const archiveDocumentBaseSchema = z.object({
     parentUnitArchiveDocumentId: z.number().int().positive().optional().nullable(),
     type: ArchiveDocumentType,
-    // Accept arrays of numbers for input, backend will serialize
-    topographicSignatureElementIds: z.array(z.array(z.number().int().positive())).optional().default([]),
+    // --- UPDATED: Topographic signature is now a string ---
+    topographicSignature: z.string().max(500, "Topographic signature too long").optional().nullable(),
+    // --- Kept descriptive signature ---
     descriptiveSignatureElementIds: z.array(z.array(z.number().int().positive())).optional().default([]),
     title: z.string().min(1, "Title cannot be empty"),
     creator: z.string().min(1, "Creator cannot be empty"),
@@ -94,11 +96,10 @@ export const createArchiveDocumentSchema = archiveDocumentBaseSchema;
 
 // Schema for updating an existing document (all fields optional, uses PATCH semantics)
 // Use .partial() to make all fields optional
-// --- FIX: Explicitly add ownerUserId as optional ---
+// Explicitly add ownerUserId as optional
 export const updateArchiveDocumentSchema = archiveDocumentBaseSchema.extend({
     ownerUserId: z.number().int().positive().optional(),
 }).partial();
-// --- End FIX ---
 
 // Type definitions for input data based on the Zod schemas
 export type CreateArchiveDocumentInput = z.infer<typeof createArchiveDocumentSchema>;
@@ -108,6 +109,5 @@ export type UpdateArchiveDocumentInput = z.infer<typeof updateArchiveDocumentSch
 // Interface for search results potentially including resolved data if needed later
 export interface ArchiveDocumentSearchResult extends ArchiveDocument {
    // Add any specific search result fields here if needed
-   // resolvedTopographicSignatures?: string[];
    // resolvedDescriptiveSignatures?: string[];
 }

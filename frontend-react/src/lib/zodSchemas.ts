@@ -98,7 +98,9 @@ export const createArchiveDocumentFormSchema = z.object({
         z.number().int().positive().nullable().optional()
     ),
     type: z.enum(["unit", "document"]),
-    topographicSignatureElementIds: z.array(z.array(z.number().int().positive())).optional().default([]),
+    // --- UPDATED: Replaced topographicSignatureElementIds with topographicSignature ---
+    topographicSignature: z.string().max(500, "Topographic signature too long").optional().nullable(),
+    // --- Kept descriptive signature ---
     descriptiveSignatureElementIds: z.array(z.array(z.number().int().positive())).optional().default([]),
     title: z.string().min(1, "Title cannot be empty"),
     creator: z.string().min(1, "Creator cannot be empty"),

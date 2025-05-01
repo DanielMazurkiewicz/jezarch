@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { useForm, Controller, SubmitHandler } from 'react-hook-form'; // Import SubmitHandler
 import { zodResolver } from '@hookform/resolvers/zod';
-import { createArchiveDocumentFormSchema } from '@/lib/zodSchemas'; // Keep type import if needed elsewhere, but rely on inference for useForm
+import { createArchiveDocumentFormSchema } from '@/lib/zodSchemas'; // Schema updated here
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -12,8 +12,8 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import LoadingSpinner from '@/components/shared/LoadingSpinner';
 import ErrorDisplay from '@/components/shared/ErrorDisplay';
 import TagSelector from '@/components/shared/TagSelector';
-// Updated import name
-import SignatureSelector from '@/components/shared/SignatureSelector';
+// --- UPDATED: Removed SignatureSelector import for topographic ---
+import SignatureSelector from '@/components/shared/SignatureSelector'; // Keep for descriptive
 import UnitSelector from './UnitSelector'; // Added UnitSelector import
 import { useAuth } from '@/hooks/useAuth';
 import api from '@/lib/api';
@@ -54,14 +54,11 @@ const DocumentForm: React.FC<DocumentFormProps> = ({
 
   // Separate state for complex inputs
   const [selectedTagIds, setSelectedTagIds] = useState<number[]>([]);
-  // Updated state names for signatures
-  const [topographicSignatures, setTopographicSignatures] = useState<number[][]>([]);
+  // --- REMOVED: State for topographicSignatures ---
+  // --- Kept state for descriptiveSignatures ---
   const [descriptiveSignatures, setDescriptiveSignatures] = useState<number[][]>([]);
   // State for UnitSelector
   const [selectedParentUnitId, setSelectedParentUnitId] = useState<number | null>(forcedParentId ?? null);
-
-  // Removed state related to external element creation dialog
-
 
   // Fixed: Remove explicit type from useForm, let inference work with zodResolver
   const { register, handleSubmit, reset, control, setValue, watch, formState: { errors } } = useForm({
@@ -75,8 +72,9 @@ const DocumentForm: React.FC<DocumentFormProps> = ({
         documentLanguage: null, contentDescription: null, remarks: null, accessLevel: null,
         accessConditions: null, additionalInformation: null, relatedDocumentsReferences: null,
         isDigitized: false, digitizedVersionLink: null, tagIds: [],
-        // Initialize signature fields in RHF although managed by state
-        topographicSignatureElementIds: [],
+        // --- UPDATED: Initialize topographicSignature string ---
+        topographicSignature: null,
+        // Initialize descriptive signature field in RHF although managed by state
         descriptiveSignatureElementIds: [],
     },
   });
@@ -105,8 +103,8 @@ const DocumentForm: React.FC<DocumentFormProps> = ({
                 const fullDoc = await api.getArchiveDocumentById(docToEdit.archiveDocumentId, token);
                 const tagIds = fullDoc.tags?.map(t => t.tagId!) ?? [];
                 const parentId = fullDoc.parentUnitArchiveDocumentId ?? null;
-                // Use fetched signatures
-                const topoSignatures = fullDoc.topographicSignatureElementIds ?? [];
+                // --- UPDATED: Use topographicSignature string ---
+                const topoSignature = fullDoc.topographicSignature ?? null;
                 const descSignatures = fullDoc.descriptiveSignatureElementIds ?? [];
 
                 reset({
@@ -129,11 +127,12 @@ const DocumentForm: React.FC<DocumentFormProps> = ({
                     isDigitized: fullDoc.isDigitized ?? false,
                     digitizedVersionLink: fullDoc.digitizedVersionLink ?? null,
                     tagIds: tagIds,
-                    topographicSignatureElementIds: topoSignatures,
+                    // --- UPDATED: Set topographicSignature ---
+                    topographicSignature: topoSignature,
                     descriptiveSignatureElementIds: descSignatures,
                 });
                 setSelectedTagIds(tagIds);
-                setTopographicSignatures(topoSignatures);
+                // --- REMOVED: setTopographicSignatures ---
                 setDescriptiveSignatures(descSignatures);
                 if (forcedParentId === undefined) {
                      setSelectedParentUnitId(parentId);
@@ -146,11 +145,12 @@ const DocumentForm: React.FC<DocumentFormProps> = ({
                     title: docToEdit.title ?? '', creator: docToEdit.creator ?? '',
                     creationDate: docToEdit.creationDate ?? '',
                     tagIds: docToEdit.tags?.map(t => t.tagId!) ?? [],
-                    topographicSignatureElementIds: docToEdit.topographicSignatureElementIds ?? [],
+                    // --- UPDATED: Set topographicSignature ---
+                    topographicSignature: docToEdit.topographicSignature ?? null,
                     descriptiveSignatureElementIds: docToEdit.descriptiveSignatureElementIds ?? [],
                  });
                  setSelectedTagIds(docToEdit.tags?.map(t => t.tagId!) ?? []);
-                 setTopographicSignatures(docToEdit.topographicSignatureElementIds ?? []);
+                 // --- REMOVED: setTopographicSignatures ---
                  setDescriptiveSignatures(docToEdit.descriptiveSignatureElementIds ?? []);
                  setSelectedParentUnitId(forcedParentId ?? docToEdit.parentUnitArchiveDocumentId ?? null);
             } finally { setIsFetchingDetails(false); }
@@ -160,10 +160,13 @@ const DocumentForm: React.FC<DocumentFormProps> = ({
                 type: forceType ?? 'document',
                 title: '', creator: '', creationDate: '',
                 tagIds: [],
-                topographicSignatureElementIds: [],
+                // --- UPDATED: topographicSignature ---
+                topographicSignature: null,
                 descriptiveSignatureElementIds: [],
             });
-            setSelectedTagIds([]); setTopographicSignatures([]); setDescriptiveSignatures([]);
+            setSelectedTagIds([]);
+            // --- REMOVED: setTopographicSignatures ---
+            setDescriptiveSignatures([]);
             setSelectedParentUnitId(forcedParentId ?? null);
             setError(null); setIsFetchingDetails(false);
         }
@@ -173,21 +176,22 @@ const DocumentForm: React.FC<DocumentFormProps> = ({
 
   // Sync RHF hidden fields with local state for validation purposes if needed
   useEffect(() => { setValue('tagIds', selectedTagIds); }, [selectedTagIds, setValue]);
-  useEffect(() => { setValue('topographicSignatureElementIds', topographicSignatures); }, [topographicSignatures, setValue]);
+  // --- REMOVED: Sync for topographicSignatures ---
   useEffect(() => { setValue('descriptiveSignatureElementIds', descriptiveSignatures); }, [descriptiveSignatures, setValue]);
 
 
   // Handle form submission (Create or Update)
-  // Explicitly type the onSubmit function with SubmitHandler and the inferred form data type
   const onSubmit: SubmitHandler<CreateArchiveDocumentFormData> = async (data) => {
     if (!token) return;
     setIsLoading(true); setError(null);
 
     const finalParentId = forcedParentId !== undefined ? forcedParentId : selectedParentUnitId;
-    const { tagIds: _, parentUnitArchiveDocumentId: __, topographicSignatureElementIds: ___, descriptiveSignatureElementIds: ____, ...coreData } = data;
+    // --- UPDATED: Destructure includes topographicSignature, excludes element IDs ---
+    const { tagIds: _, parentUnitArchiveDocumentId: __, topographicSignatureElementIds: ____, descriptiveSignatureElementIds: _____, ...coreData } = data;
 
     try {
         if (docToEdit?.archiveDocumentId) {
+            // --- UPDATED: Include topographicSignature in update payload ---
             const updatePayload: UpdateArchiveDocumentInput = {
                  ...(finalParentId !== (docToEdit.parentUnitArchiveDocumentId ?? null) && { parentUnitArchiveDocumentId: finalParentId ?? undefined }),
                  ...(coreData.title !== docToEdit.title && { title: coreData.title }),
@@ -207,17 +211,18 @@ const DocumentForm: React.FC<DocumentFormProps> = ({
                  ...(coreData.relatedDocumentsReferences !== docToEdit.relatedDocumentsReferences && { relatedDocumentsReferences: coreData.relatedDocumentsReferences || undefined }),
                  ...(coreData.isDigitized !== docToEdit.isDigitized && { isDigitized: coreData.isDigitized }),
                  ...(coreData.digitizedVersionLink !== docToEdit.digitizedVersionLink && { digitizedVersionLink: coreData.digitizedVersionLink || undefined }),
+                 // --- UPDATED: Include topographicSignature if changed ---
+                 ...(coreData.topographicSignature !== docToEdit.topographicSignature && { topographicSignature: coreData.topographicSignature ?? null }),
                  tagIds: selectedTagIds,
-                 topographicSignatureElementIds: topographicSignatures,
                  descriptiveSignatureElementIds: descriptiveSignatures,
             };
-            const hasCoreChanges = Object.keys(updatePayload).some(k => !['tagIds', 'topographicSignatureElementIds', 'descriptiveSignatureElementIds', 'parentUnitArchiveDocumentId'].includes(k));
+            // --- UPDATED: Check logic needs to account for topographicSignature ---
+            const hasCoreChanges = Object.keys(updatePayload).some(k => !['tagIds', 'descriptiveSignatureElementIds', 'parentUnitArchiveDocumentId'].includes(k));
             const tagsChanged = JSON.stringify(selectedTagIds.sort()) !== JSON.stringify((docToEdit.tags?.map(t => t.tagId!) ?? []).sort());
-            const topoChanged = JSON.stringify(topographicSignatures) !== JSON.stringify(docToEdit.topographicSignatureElementIds ?? []);
             const descChanged = JSON.stringify(descriptiveSignatures) !== JSON.stringify(docToEdit.descriptiveSignatureElementIds ?? []);
             const parentChanged = finalParentId !== (docToEdit.parentUnitArchiveDocumentId ?? null);
 
-            if (hasCoreChanges || tagsChanged || topoChanged || descChanged || parentChanged) {
+            if (hasCoreChanges || tagsChanged || descChanged || parentChanged) {
                  await api.updateArchiveDocument(docToEdit.archiveDocumentId, updatePayload, token);
             } else {
                 toast.info("No changes detected.");
@@ -227,6 +232,7 @@ const DocumentForm: React.FC<DocumentFormProps> = ({
             }
 
         } else {
+             // --- UPDATED: Create payload includes topographicSignature ---
              const createPayload: CreateArchiveDocumentInput = {
                 type: coreData.type,
                 title: coreData.title,
@@ -247,8 +253,9 @@ const DocumentForm: React.FC<DocumentFormProps> = ({
                 additionalInformation: coreData.additionalInformation ?? undefined,
                 relatedDocumentsReferences: coreData.relatedDocumentsReferences ?? undefined,
                 digitizedVersionLink: coreData.digitizedVersionLink ?? undefined,
+                // --- UPDATED: Pass topographicSignature ---
+                topographicSignature: coreData.topographicSignature ?? undefined,
                 tagIds: selectedTagIds,
-                topographicSignatureElementIds: topographicSignatures,
                 descriptiveSignatureElementIds: descriptiveSignatures,
              };
             await api.createArchiveDocument(createPayload, token);
@@ -262,8 +269,6 @@ const DocumentForm: React.FC<DocumentFormProps> = ({
     }
   };
 
-  // Removed callbacks related to external element creation dialog
-
 
   // Helper for consistent form item layout
   const GridItem: React.FC<{ children: React.ReactNode; className?: string }> = ({ children, className }) => (
@@ -276,15 +281,13 @@ const DocumentForm: React.FC<DocumentFormProps> = ({
 
   return (
     <form
-        // Fixed: Cast should use the inferred form data type now
         onSubmit={handleSubmit(onSubmit as SubmitHandler<CreateArchiveDocumentFormData>)}
-        // Removed max-h and overflow-y
         className="space-y-6 relative p-1 pr-3"
     >
         {isLoading && <div className='absolute inset-0 bg-background/50 flex items-center justify-center z-20 rounded-md'><LoadingSpinner/></div>}
         {error && <ErrorDisplay message={error} className="mb-4 sticky top-0 z-10 bg-destructive/20 backdrop-blur-sm p-3" />}
 
-        {/* --- Basic Information --- */}
+        {/* --- Basic Information --- (Parent Unit logic unchanged) */}
         <Card>
             <CardHeader><CardTitle className='text-lg'>Basic Information</CardTitle></CardHeader>
             <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-3">
@@ -335,7 +338,7 @@ const DocumentForm: React.FC<DocumentFormProps> = ({
             </CardContent>
         </Card>
 
-        {/* --- Physical Description --- */}
+        {/* --- Physical Description --- (Unchanged) */}
         <Card>
             <CardHeader><CardTitle className='text-lg'>Physical Description</CardTitle></CardHeader>
             <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-3">
@@ -347,7 +350,7 @@ const DocumentForm: React.FC<DocumentFormProps> = ({
             </CardContent>
         </Card>
 
-        {/* --- Content & Context --- */}
+        {/* --- Content & Context --- (Unchanged) */}
         <Card>
             <CardHeader><CardTitle className='text-lg'>Content & Context</CardTitle></CardHeader>
             <CardContent className="grid grid-cols-1 gap-3">
@@ -359,7 +362,7 @@ const DocumentForm: React.FC<DocumentFormProps> = ({
             </CardContent>
         </Card>
 
-        {/* --- Access & Digitization --- */}
+        {/* --- Access & Digitization --- (Unchanged) */}
         <Card>
             <CardHeader><CardTitle className='text-lg'>Access & Digitization</CardTitle></CardHeader>
             <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-3">
@@ -383,25 +386,30 @@ const DocumentForm: React.FC<DocumentFormProps> = ({
         <Card>
             <CardHeader><CardTitle className='text-lg'>Indexing</CardTitle></CardHeader>
             <CardContent className="grid grid-cols-1 gap-4 items-start">
-                {/* Signature Selectors - Removed props related to external dialog management */}
-                <SignatureSelector
-                    label="Topographic Signatures"
-                    signatures={topographicSignatures}
-                    onChange={setTopographicSignatures}
-                    className="min-w-0"
-                />
+                 {/* --- UPDATED: Simple Input for Topographic Signature --- */}
+                 <GridItem>
+                     <Label htmlFor="doc-topo-sig">Topographic Signature (Optional)</Label>
+                     <Input
+                        id="doc-topo-sig"
+                        {...register('topographicSignature')}
+                        placeholder="e.g., Box 1, Folder 5, Item 3"
+                        aria-invalid={!!errors.topographicSignature}
+                        className={cn(errors.topographicSignature && "border-destructive")}
+                     />
+                    {errors.topographicSignature && <p className="text-xs text-destructive">{errors.topographicSignature.message}</p>}
+                 </GridItem>
+
+                {/* --- Kept SignatureSelector for Descriptive Signatures --- */}
                 <SignatureSelector
                     label="Descriptive Signatures"
                     signatures={descriptiveSignatures}
                     onChange={setDescriptiveSignatures}
                     className="min-w-0"
                 />
-                <input type="hidden" {...register('topographicSignatureElementIds')} />
-                {errors.topographicSignatureElementIds && <p className="text-xs text-destructive">{errors.topographicSignatureElementIds.message}</p>}
                 <input type="hidden" {...register('descriptiveSignatureElementIds')} />
                 {errors.descriptiveSignatureElementIds && <p className="text-xs text-destructive">{errors.descriptiveSignatureElementIds.message}</p>}
 
-                {/* Tag Selector */}
+                {/* Tag Selector (Unchanged) */}
                 <div className="grid gap-1.5">
                     <Label>Tags</Label>
                     <TagSelector selectedTagIds={selectedTagIds} onChange={setSelectedTagIds} />
@@ -411,7 +419,7 @@ const DocumentForm: React.FC<DocumentFormProps> = ({
             </CardContent>
         </Card>
 
-        {/* Submit button */}
+        {/* Submit button (Unchanged) */}
         <div className="pt-2 flex justify-start sticky bottom-0 bg-background pb-1">
             <Button type="submit" disabled={isLoading || isFetchingDetails}>
                 {isLoading ? <LoadingSpinner size="sm" className='mr-2' /> : (docToEdit ? 'Update Item' : 'Create Item')}

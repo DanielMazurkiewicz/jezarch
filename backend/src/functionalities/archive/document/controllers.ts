@@ -6,8 +6,9 @@ import {
     disableArchiveDocument,
     setTagsForArchiveDocument,
     getTagsForArchiveDocument,
-    archiveDocumentTagSearchHandler,
-    archiveDocumentSignatureSearchHandler,
+    // --- UPDATED: Removed topographic prefix handler ---
+    // archiveDocumentTagSearchHandler,
+    archiveDocumentSignatureSearchHandler, // Keep for descriptive
     getArchiveDocumentByIdInternal, // For updates/disables
     getTagsForArchiveDocumentByIds, // Optimize tag fetching
 } from './db';
@@ -18,13 +19,14 @@ import {
     UpdateArchiveDocumentInput,
     ArchiveDocument,
     ArchiveDocumentSearchResult
-} from './models';
+} from './models'; // Types updated here
 import { getSessionAndUser, isAllowedRole, isOwner } from '../../session/controllers';
 import { Log } from '../../log/db';
 import { buildSearchQueries, executeSearch, SearchQueryElement, SearchRequest, SearchResponse } from '../../../utils/search';
 import { Tag } from '../../tag/models';
 // Added imports for user tag checks
 import { getAssignedTagIdsForUser } from '../../user/db';
+import { archiveDocumentTagSearchHandler } from './db'; // Re-import the handler directly
 
 const AREA = 'archive_document';
 
@@ -37,22 +39,26 @@ export const createArchiveDocumentController = async (req: BunRequest) => {
 
     try {
         const body: CreateArchiveDocumentInput = await req.json() as CreateArchiveDocumentInput;
-        const validation = createArchiveDocumentSchema.safeParse(body);
+        const validation = createArchiveDocumentSchema.safeParse(body); // Schema now uses topographicSignature string
 
         if (!validation.success) {
             await Log.warn('Invalid input for create archive document', sessionAndUser.user.login, AREA, { errors: validation.error.format() });
             return new Response(JSON.stringify({ message: "Invalid input", errors: validation.error.format() }), { status: 400 });
         }
 
+        // Destructure validated data (includes topographicSignature)
         const { tagIds, ...docData } = validation.data;
         const ownerUserId = sessionAndUser.user.userId;
 
+        // Prepare data for DB, ensuring topographicSignature is passed
         const inputForDb = {
-            ...docData,
+            ...docData, // Includes topographicSignature (string | null | undefined)
             ownerUserId: ownerUserId,
+            // descriptiveSignatureElementIds is already handled by docData if present
         };
 
-        const newDocumentId = await createArchiveDocument(inputForDb as any);
+        // Call create function (DB function now expects topographicSignature)
+        const newDocumentId = await createArchiveDocument(inputForDb as any); // Cast needed due to Omit in DB function? Check DB function signature.
 
         if (tagIds && tagIds.length > 0) {
             await setTagsForArchiveDocument(newDocumentId, tagIds);
@@ -73,7 +79,7 @@ export const createArchiveDocumentController = async (req: BunRequest) => {
     }
 };
 
-// --- Read One ---
+// --- Read One --- (No changes needed, DB function handles structure)
 export const getArchiveDocumentByIdController = async (req: BunRequest<":id">) => {
     const sessionAndUser = await getSessionAndUser(req);
     if (!sessionAndUser) return new Response("Unauthorized", { status: 401 });
@@ -149,9 +155,9 @@ export const updateArchiveDocumentController = async (req: BunRequest<":id">) =>
             return new Response(JSON.stringify({ message: 'Invalid document ID' }), { status: 400 });
         }
 
-        // Keep the raw body for owner check
+        // Keep the raw body for owner check and tagIds
         const rawBody = await req.json() as Record<string, any>;
-        // Validate against the schema that DOES NOT include ownerUserId
+        // Validate against the schema that DOES NOT include ownerUserId but DOES include topographicSignature
         const validation = updateArchiveDocumentSchema.safeParse(rawBody);
 
         if (!validation.success) {
@@ -165,11 +171,12 @@ export const updateArchiveDocumentController = async (req: BunRequest<":id">) =>
             return new Response(JSON.stringify({ message: 'Document not found' }), { status: 404 });
         }
 
-        // validation.data contains only the valid fields *excluding* ownerUserId
+        // validation.data contains only the valid fields *excluding* ownerUserId but including optional fields like topographicSignature
         const { tagIds, ...updateData } = validation.data;
 
         // Explicitly define the type for the data being sent to the DB update function
         // This type *includes* the optional ownerUserId
+        // topographicSignature and descriptiveSignatureElementIds are already part of updateData if validated
         let finalUpdateData: UpdateArchiveDocumentInput = { ...updateData };
 
         // Check if ownerUserId is present in the RAW input body AND is different from existing
@@ -185,11 +192,11 @@ export const updateArchiveDocumentController = async (req: BunRequest<":id">) =>
         }
 
         // Pass the correctly typed finalUpdateData to the DB function
+        // DB function now handles topographicSignature string
         const updatedDocData = await updateArchiveDocument(id, finalUpdateData);
 
-        // Handle tags separately using the validated tagIds
-        // Ensure tagIds from validation data is used if present
-        const validatedTagIds = rawBody.tagIds; // Use tagIds from raw body if it passed validation implicitly
+        // Handle tags separately using the validated tagIds from the raw body
+        const validatedTagIds = rawBody.tagIds;
         if (validatedTagIds !== undefined && Array.isArray(validatedTagIds)) {
             await setTagsForArchiveDocument(id, validatedTagIds.filter((tid): tid is number => typeof tid === 'number'));
         }
@@ -211,7 +218,7 @@ export const updateArchiveDocumentController = async (req: BunRequest<":id">) =>
 };
 
 
-// --- Disable (Soft Delete) ---
+// --- Disable (Soft Delete) --- (No changes needed)
 export const disableArchiveDocumentController = async (req: BunRequest<":id">) => {
     const sessionAndUser = await getSessionAndUser(req);
     if (!sessionAndUser) return new Response("Unauthorized", { status: 401 });
@@ -269,19 +276,22 @@ export const searchArchiveDocumentsController = async (req: BunRequest) => {
         const isEmployee = isAllowedRole(sessionAndUser, 'employee');
         const isUserRole = sessionAndUser.user.role === 'user'; // Specific check for 'user'
 
+        // --- UPDATED: Include topographicSignature, remove topographicSignatureElementIds ---
         const allowedDirectFields: (keyof ArchiveDocument)[] = [
             'archiveDocumentId', 'parentUnitArchiveDocumentId', 'ownerUserId', 'type',
             'title', 'creator', 'creationDate', 'numberOfPages', 'documentType',
             'dimensions', 'binding', 'condition', 'documentLanguage', 'contentDescription',
             'remarks', 'accessLevel', 'accessConditions', 'additionalInformation',
             'relatedDocumentsReferences', 'isDigitized', 'digitizedVersionLink',
-            'createdOn', 'modifiedOn', 'active'
+            'createdOn', 'modifiedOn', 'active',
+            'topographicSignature' // Added string field
+            // 'descriptiveSignatureElementIds' // JSON field, handled by custom handler
         ];
         const primaryKey = 'archiveDocumentId';
 
         let queryClone = searchRequest.query ? [...searchRequest.query] : [];
 
-        // --- Active Filter Logic ---
+        // --- Active Filter Logic (unchanged) ---
         const activeFilterIndex = queryClone.findIndex(el => el.field === 'active');
         if (activeFilterIndex !== -1) {
             const activeFilter = queryClone[activeFilterIndex];
@@ -303,17 +313,10 @@ export const searchArchiveDocumentsController = async (req: BunRequest) => {
         }
         // --- End Active Filter ---
 
-        // --- REMOVE ownerUserId filter ---
-        // Do NOT filter by ownerUserId for any role by default. Users should search across all documents
-        // (subject to active and tag filters for 'user' role).
-        // If a user *explicitly* adds an ownerUserId filter in their query, let it pass through
-        // (buildSearchQueries will handle it if 'ownerUserId' is in allowedDirectFields).
-        // const ownerFilterIndex = queryClone.findIndex(q => q.field === 'ownerUserId');
-        // if (!ownerFilterExists && !isAdmin && !isEmployee) { // PREVIOUS LOGIC - REMOVED
-        //     queryClone.push({ field: 'ownerUserId', condition: 'EQ', value: user.userId, not: false });
-        // }
+        // --- Owner Filtering Logic (unchanged) ---
+        // Do NOT filter by ownerUserId by default.
 
-        // --- 'user' Role Tag Filtering ---
+        // --- 'user' Role Tag Filtering (unchanged) ---
         let allowedTagIds: number[] | null = null; // Null means no tag restriction (admin/employee)
         if (isUserRole) {
             allowedTagIds = await getAssignedTagIdsForUser(sessionAndUser.user.userId);
@@ -322,25 +325,22 @@ export const searchArchiveDocumentsController = async (req: BunRequest) => {
                 const emptyResponse: SearchResponse<ArchiveDocumentSearchResult> = { data: [], page: 1, pageSize: searchRequest.pageSize, totalPages: 0, totalSize: 0 };
                 return new Response(JSON.stringify(emptyResponse), { status: 200 });
             }
-
-            // Force results to include at least one allowed tag.
-            // Remove any pre-existing 'tags' filter from the clone, as we will add the definitive one.
             queryClone = queryClone.filter(q => q.field !== 'tags');
             queryClone.push({ field: 'tags', condition: 'ANY_OF', value: allowedTagIds, not: false });
             await Log.info(`Adding mandatory allowed tag filter for 'user' role.`, sessionAndUser.user.login, AREA, { allowed: allowedTagIds });
-
         }
         // --- End 'user' Role Tag Filtering ---
 
         const finalSearchRequest = { ...searchRequest, query: queryClone };
 
+        // --- UPDATED: Removed topographicSignaturePrefix from custom handlers ---
         const { dataQuery, countQuery } = await buildSearchQueries<ArchiveDocumentSearchResult>(
             'archive_documents',
             finalSearchRequest,
             allowedDirectFields,
             {
                 'tags': archiveDocumentTagSearchHandler,
-                'topographicSignaturePrefix': archiveDocumentSignatureSearchHandler,
+                // 'topographicSignaturePrefix': ..., // Removed
                 'descriptiveSignaturePrefix': archiveDocumentSignatureSearchHandler,
             },
             primaryKey

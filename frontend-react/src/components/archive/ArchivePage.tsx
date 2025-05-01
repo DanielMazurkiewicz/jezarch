@@ -184,16 +184,20 @@ const ArchivePage: React.FC = () => {
         navigate(`/archive?unitId=${unit.archiveDocumentId}`);
     }, [navigate]);
 
-   const searchFields: SearchFieldOption[] = useMemo(() => { // Now correctly uses imported useMemo
+   // --- UPDATED: Search fields for topographic signature ---
+   const searchFields: SearchFieldOption[] = useMemo(() => {
        const baseFields: SearchFieldOption[] = [
            { value: 'title', label: 'Title', type: 'text' },
            { value: 'creator', label: 'Creator', type: 'text' },
            { value: 'creationDate', label: 'Creation Date', type: 'text' },
            { value: 'contentDescription', label: 'Description', type: 'text'},
+           // --- UPDATED: Add topographicSignature search ---
+           { value: 'topographicSignature', label: 'Topo Sig', type: 'text' },
+           { value: 'descriptiveSignaturePrefix', label: 'Desc Sig Prefix', type: 'text' }, // Keep descriptive prefix search
            ...(!parentUnitId ? [{ value: 'type', label: 'Type', type: 'select', options: [{value: 'unit', label: 'Unit'}, {value:'document', label: 'Document'}]}] as SearchFieldOption[] : []),
            { value: 'isDigitized', label: 'Is Digitized', type: 'boolean'},
-           { value: 'topographicSignaturePrefix', label: 'Topo Sig Prefix', type: 'text' },
-           { value: 'descriptiveSignaturePrefix', label: 'Desc Sig Prefix', type: 'text' },
+           // --- REMOVED: topographicSignaturePrefix ---
+           // { value: 'topographicSignaturePrefix', label: 'Topo Sig Prefix', type: 'text' },
        ];
        if (isAdmin || isEmployee) {
            baseFields.push(

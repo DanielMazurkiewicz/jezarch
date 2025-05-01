@@ -1,5 +1,6 @@
 import { db } from '../../../initialization/db';
-import type { ArchiveDocument, SignatureElementIdPath, ArchiveDocumentType, UpdateArchiveDocumentInput } from './models';
+// --- UPDATED: Removed SignatureElementIdPath, updated UpdateInput ---
+import type { ArchiveDocument, ArchiveDocumentType, UpdateArchiveDocumentInput } from './models';
 import { Log } from '../../log/db';
 import { sqliteNow } from '../../../utils/sqlite';
 import { SearchQueryElement, SearchOnCustomFieldHandlerResult } from '../../../utils/search';
@@ -16,8 +17,9 @@ export async function initializeArchiveDocumentTable() {
             type TEXT NOT NULL CHECK(type IN ('unit', 'document')),
             active BOOLEAN NOT NULL DEFAULT TRUE,
 
-            -- Signatures stored as JSON text
-            topographicSignatureElementIds TEXT NOT NULL DEFAULT '[]', -- JSON array of arrays: [[id1, id2], [id3]]
+            -- --- UPDATED: Simple text field for topographic signature ---
+            topographicSignature TEXT,
+            -- Kept descriptive signature as JSON
             descriptiveSignatureElementIds TEXT NOT NULL DEFAULT '[]', -- JSON array of arrays
 
             -- Core metadata
@@ -60,6 +62,8 @@ export async function initializeArchiveDocumentTable() {
     await db.exec(`CREATE INDEX IF NOT EXISTS idx_ad_title ON archive_documents (title);`); // For searching/sorting
     // Add index for searching by content description (can be large, consider FTS if needed)
     await db.exec(`CREATE INDEX IF NOT EXISTS idx_ad_content ON archive_documents (contentDescription);`);
+     // --- ADDED: Index for topographicSignature string ---
+     await db.exec(`CREATE INDEX IF NOT EXISTS idx_ad_topo_sig ON archive_documents (topographicSignature);`);
 }
 
 // Initialization function for the document-tag junction table
@@ -90,9 +94,10 @@ export const dbToArchiveDocument = async (row?: any): Promise<ArchiveDocument | 
             ownerUserId: row.ownerUserId,
             type: row.type as ArchiveDocumentType,
             active: Boolean(row.active),
-            // Parse JSON signature arrays safely
-            topographicSignatureElementIds: JSON.parse(row.topographicSignatureElementIds || '[]') as SignatureElementIdPath[],
-            descriptiveSignatureElementIds: JSON.parse(row.descriptiveSignatureElementIds || '[]') as SignatureElementIdPath[],
+            // --- UPDATED: Read topographic signature as string ---
+            topographicSignature: row.topographicSignature ?? null, // Default to null if undefined/null in DB
+            // --- Kept descriptive signature parsing ---
+            descriptiveSignatureElementIds: JSON.parse(row.descriptiveSignatureElementIds || '[]'), // Parse JSON safely
             title: row.title,
             creator: row.creator,
             creationDate: row.creationDate,
@@ -148,16 +153,20 @@ export const dbToArchiveDocument = async (row?: any): Promise<ArchiveDocument | 
 // --- Operations ---
 
 export async function createArchiveDocument(
+    // --- UPDATED: Input type adjusted (topographicSignature now string) ---
     input: Omit<ArchiveDocument, 'archiveDocumentId' | 'createdOn' | 'modifiedOn' | 'active' | 'tags' | 'ownerLogin'>
 ): Promise<number> {
     const now = sqliteNow();
-    const topographicJson = JSON.stringify(input.topographicSignatureElementIds || []);
+    // --- REMOVED: Topographic JSON stringify ---
     const descriptiveJson = JSON.stringify(input.descriptiveSignatureElementIds || []);
 
     try {
         const statement = db.prepare(
             `INSERT INTO archive_documents (
-                parentUnitArchiveDocumentId, ownerUserId, type, topographicSignatureElementIds, descriptiveSignatureElementIds,
+                parentUnitArchiveDocumentId, ownerUserId, type,
+                -- --- UPDATED: Insert topographicSignature directly ---
+                topographicSignature,
+                descriptiveSignatureElementIds,
                 title, creator, creationDate, numberOfPages, documentType, dimensions, binding, condition,
                 documentLanguage, contentDescription, remarks, accessLevel, accessConditions, additionalInformation,
                 relatedDocumentsReferences, recordChangeHistory, isDigitized, digitizedVersionLink, createdOn, modifiedOn
@@ -165,7 +174,10 @@ export async function createArchiveDocument(
              RETURNING archiveDocumentId`
         );
         const result = statement.get(
-            input.parentUnitArchiveDocumentId ?? null, input.ownerUserId, input.type, topographicJson, descriptiveJson,
+            input.parentUnitArchiveDocumentId ?? null, input.ownerUserId, input.type,
+            // --- UPDATED: Pass topographicSignature string (or null) ---
+            input.topographicSignature ?? null,
+            descriptiveJson,
             input.title, input.creator, input.creationDate, input.numberOfPages, input.documentType, input.dimensions,
             input.binding, input.condition, input.documentLanguage, input.contentDescription, input.remarks ?? null,
             input.accessLevel, input.accessConditions, input.additionalInformation ?? null, input.relatedDocumentsReferences ?? null,
@@ -207,15 +219,15 @@ export async function getArchiveDocumentByIdInternal(id: number): Promise<Archiv
 
 export async function updateArchiveDocument(
     id: number,
-    data: UpdateArchiveDocumentInput
+    data: UpdateArchiveDocumentInput // Type already updated in models.ts
 ): Promise<ArchiveDocument | undefined> {
     const fieldsToUpdate: string[] = [];
     const params: any[] = [];
 
-    // Map input fields to DB columns, handling JSON serialization
+    // Map input fields to DB columns, handling JSON serialization and topographic string
     Object.entries(data).forEach(([key, value]) => {
-        // Skip fields handled separately or undefined
-        if (value === undefined || key === 'tagIds' || key === 'topographicSignatureElementIds' || key === 'descriptiveSignatureElementIds') return;
+        // --- UPDATED: Skip topographicSignature here, handle below ---
+        if (value === undefined || key === 'tagIds' || key === 'descriptiveSignatureElementIds' || key === 'topographicSignature') return;
 
         let dbKey = key;
         let dbValue = value;
@@ -226,20 +238,18 @@ export async function updateArchiveDocument(
              dbValue = null; // Pass explicit nulls
         }
          // Add mapping for other keys if needed (e.g., different input vs db names)
-         // Example: Allow changing owner (carefully, maybe admin only)
-         if (key === 'ownerUserId') {
-            // Potentially add validation here if not admin? Controller should handle this.
-         }
+         if (key === 'ownerUserId') { /* No change needed */ }
 
         fieldsToUpdate.push(`${dbKey} = ?`);
         params.push(dbValue);
     });
 
-    // Handle JSON fields separately to ensure they are always included if present in input, even if empty array
-    if (data.topographicSignatureElementIds !== undefined) {
-        fieldsToUpdate.push('topographicSignatureElementIds = ?');
-        params.push(JSON.stringify(data.topographicSignatureElementIds));
+    // --- UPDATED: Handle topographicSignature string field ---
+    if (data.topographicSignature !== undefined) { // Check for undefined to allow setting to null
+        fieldsToUpdate.push('topographicSignature = ?');
+        params.push(data.topographicSignature); // Pass string or null
     }
+    // --- Kept descriptive signature handling ---
     if (data.descriptiveSignatureElementIds !== undefined) {
         fieldsToUpdate.push('descriptiveSignatureElementIds = ?');
         params.push(JSON.stringify(data.descriptiveSignatureElementIds));
@@ -252,7 +262,7 @@ export async function updateArchiveDocument(
              // Fetch current state as no core fields changed, tags handled separately
              return getArchiveDocumentByIdInternal(id);
         }
-        // No core fields or JSON fields changed
+        // No core fields or JSON/string fields changed
         return getArchiveDocumentByIdInternal(id);
     }
 
@@ -279,7 +289,7 @@ export async function updateArchiveDocument(
     }
 }
 
-// Soft delete
+// Soft delete (unchanged)
 export async function disableArchiveDocument(id: number): Promise<boolean> {
     try {
         const statement = db.prepare(
@@ -306,7 +316,7 @@ export async function disableArchiveDocument(id: number): Promise<boolean> {
 }
 
 
-// --- Tag Management ---
+// --- Tag Management (unchanged) ---
 export async function getTagsForArchiveDocument(archiveDocumentId: number): Promise<Tag[]> {
     const statement = db.prepare(`
         SELECT t.* FROM tags t
@@ -317,7 +327,6 @@ export async function getTagsForArchiveDocument(archiveDocumentId: number): Prom
     return statement.all(archiveDocumentId) as Tag[];
 }
 
-// --- New: Optimized tag fetching for multiple documents ---
 export async function getTagsForArchiveDocumentByIds(archiveDocumentIds: number[]): Promise<Map<number, Tag[]>> {
     const tagsMap = new Map<number, Tag[]>();
     if (archiveDocumentIds.length === 0) return tagsMap;
@@ -384,7 +393,7 @@ export async function setTagsForArchiveDocument(archiveDocumentId: number, tagId
 
 // --- Search Handlers ---
 
-// Handler for searching by tags
+// Handler for searching by tags (unchanged)
 export const archiveDocumentTagSearchHandler: (element: SearchQueryElement, tableAlias: string) => SearchOnCustomFieldHandlerResult = (
     element, tableAlias
 ): SearchOnCustomFieldHandlerResult => {
@@ -409,17 +418,18 @@ export const archiveDocumentTagSearchHandler: (element: SearchQueryElement, tabl
 };
 
 
-// Handler for searching by signature prefix (remains the same)
+// Handler for searching by signature prefix (JSON descriptive signatures only)
 export const archiveDocumentSignatureSearchHandler: (element: SearchQueryElement, tableAlias: string) => SearchOnCustomFieldHandlerResult = (
     element, tableAlias
 ): SearchOnCustomFieldHandlerResult => {
     const signatureFieldMap: Record<string, string> = {
-        'topographicSignaturePrefix': 'topographicSignatureElementIds',
+        // --- REMOVED: Topographic prefix searching ---
+        // 'topographicSignaturePrefix': 'topographicSignatureElementIds',
         'descriptiveSignaturePrefix': 'descriptiveSignatureElementIds',
     };
 
     const dbColumn = signatureFieldMap[element.field];
-    if (!dbColumn) return null;
+    if (!dbColumn) return null; // Only handle descriptiveSignaturePrefix now
 
     const value = element.value as unknown; // Value type depends on condition
 
