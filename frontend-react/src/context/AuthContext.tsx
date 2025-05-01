@@ -1,12 +1,14 @@
 import React, { createContext, useState, useEffect, ReactNode, useCallback } from 'react';
 import api from '@/lib/api';
 // Correct the import path assuming backend/src is sibling to frontend/src
+// UserRole now includes 'employee' and 'user'
 import type { UserCredentials, UserRole } from '../../../backend/src/functionalities/user/models';
 import { toast } from "sonner"; // Import toast
 
 interface AuthState {
   token: string | null;
-  user: { userId?: number; login: string; role: UserRole | null } | null; // Added userId potentially
+  // Include userId in the user object type
+  user: { userId: number; login: string; role: UserRole | null } | null;
   isAuthenticated: boolean;
   isLoading: boolean;
   error: string | null;
@@ -36,96 +38,89 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   useEffect(() => {
     const storedToken = localStorage.getItem('authToken');
     const storedUserLogin = localStorage.getItem('authUserLogin');
+    // Cast the role correctly based on the updated UserRole type
     const storedUserRole = localStorage.getItem('authUserRole') as UserRole | null;
-    const storedUserIdStr = localStorage.getItem('authUserId'); // Get User ID if stored
+    const storedUserIdStr = localStorage.getItem('authUserId');
 
     console.log("AuthContext: Initial load check. Token:", !!storedToken, "Login:", storedUserLogin, "Role:", storedUserRole, "UserID Str:", storedUserIdStr);
 
-    if (storedToken && storedUserLogin) {
-        const parsedUserId = storedUserIdStr ? parseInt(storedUserIdStr, 10) : undefined;
+    if (storedToken && storedUserLogin && storedUserIdStr) {
+        const parsedUserId = parseInt(storedUserIdStr, 10);
         console.log("AuthContext: Initial load - Parsed UserID:", parsedUserId);
 
-        if (storedUserRole === 'admin' || storedUserRole === 'regular_user') {
-             // Check if parsedUserId is a valid number or undefined
-             if (parsedUserId === undefined || !isNaN(parsedUserId)) {
-                 console.log("AuthContext: Initial load - Setting state from storage.");
-                 setState({
-                    token: storedToken,
-                    user: {
-                        login: storedUserLogin,
-                        role: storedUserRole,
-                        userId: parsedUserId // Use the parsed value
-                    },
-                    isAuthenticated: true,
-                    isLoading: false,
-                    error: null,
-                 });
-             } else {
-                 console.error("AuthContext: Initial load - Invalid UserID found in storage:", storedUserIdStr);
-                 // Clear invalid stored data
-                 localStorage.removeItem('authToken');
-                 localStorage.removeItem('authUserLogin');
-                 localStorage.removeItem('authUserRole');
-                 localStorage.removeItem('authUserId');
-                 setState(prevState => ({ ...prevState, isLoading: false }));
-             }
+        // Validate role and userId
+        const validRoles: (UserRole | null)[] = ['admin', 'employee', 'user', null];
+        if (validRoles.includes(storedUserRole) && !isNaN(parsedUserId)) {
+            console.log("AuthContext: Initial load - Setting state from storage.");
+            setState({
+                token: storedToken,
+                user: {
+                    login: storedUserLogin,
+                    role: storedUserRole,
+                    userId: parsedUserId // Use the parsed value
+                },
+                isAuthenticated: true,
+                isLoading: false,
+                error: null,
+             });
         } else {
-            console.warn("AuthContext: Initial load - Invalid Role found in storage:", storedUserRole);
+            console.error("AuthContext: Initial load - Invalid UserID or Role found in storage. Role:", storedUserRole, "UserID:", parsedUserId);
             // Clear invalid stored data
-             localStorage.removeItem('authToken');
-             localStorage.removeItem('authUserLogin');
-             localStorage.removeItem('authUserRole');
-             localStorage.removeItem('authUserId');
-             setState(prevState => ({ ...prevState, isLoading: false }));
+            localStorage.removeItem('authToken');
+            localStorage.removeItem('authUserLogin');
+            localStorage.removeItem('authUserRole');
+            localStorage.removeItem('authUserId');
+            setState(prevState => ({ ...prevState, isLoading: false }));
         }
     } else {
-        console.log("AuthContext: Initial load - No token or login found.");
+        console.log("AuthContext: Initial load - Missing token, login, or userId.");
+        // Ensure isLoading is set to false even if nothing is loaded
         setState(prevState => ({ ...prevState, isLoading: false }));
     }
-  }, []);
+  }, []); // Run only once on mount
 
 
   const login = useCallback(async (credentials: UserCredentials): Promise<boolean> => {
     setState(prevState => ({ ...prevState, isLoading: true, error: null }));
     try {
-      // Assuming backend login might return userId along with token, role, login
       const response = await api.login(credentials);
-      const { token, role, login, userId } = response; // Destructure directly
-      console.log("AuthContext: Login API response - Token:", !!token, "Role:", role, "Login:", login, "UserID:", userId); // Log received userId
+      // Ensure userId is returned and is a number
+      const { token, role, login, userId } = response;
+      console.log("AuthContext: Login API response - Token:", !!token, "Role:", role, "Login:", login, "UserID:", userId);
 
-      if (!token || !login) {
-         throw new Error("Login response missing token or login name.");
+      if (!token || !login || userId === undefined || typeof userId !== 'number' || isNaN(userId)) {
+         throw new Error("Login response missing token, login name, or valid User ID.");
       }
-      // Basic validation for role if present
-      if (role && !(role === 'admin' || role === 'regular_user')) {
+      // Validate role
+      const validRoles: (UserRole | null)[] = ['admin', 'employee', 'user', null];
+      if (!validRoles.includes(role)) {
           console.warn("AuthContext: Login received invalid role:", role);
-          // Decide how to handle: reject login, default role, or ignore?
-          // For now, let's proceed but log the warning. The context state will reflect the potentially null/invalid role.
-      }
-       // Basic validation for userId if present
-      if (userId !== undefined && (typeof userId !== 'number' || isNaN(userId))) {
-          console.error("AuthContext: Login received invalid userId type:", userId);
-          throw new Error("Received invalid user ID format during login.");
+           throw new Error("Received invalid user role during login."); // Treat invalid role as error
       }
 
       localStorage.setItem('authToken', token);
       localStorage.setItem('authUserLogin', login);
-      if (role) localStorage.setItem('authUserRole', role); else localStorage.removeItem('authUserRole');
-      if (userId !== undefined) localStorage.setItem('authUserId', String(userId)); else localStorage.removeItem('authUserId'); // Store userId if returned, remove if not
+      localStorage.setItem('authUserRole', role); // Store the validated role
+      localStorage.setItem('authUserId', String(userId)); // Store valid userId
 
       console.log("AuthContext: Setting state after successful login with UserID:", userId);
       setState({
         token,
-        user: { login, role: role || null, userId }, // Include userId in state, handle potentially null role
+        user: { login, role, userId }, // Set user with validated role and ID
         isAuthenticated: true,
         isLoading: false,
         error: null,
       });
       toast.success(`Welcome back, ${login}!`);
-      return true; // Indicate success
+      return true;
     } catch (err: any) {
       const errorMessage = err.message || 'Login failed';
       console.error("AuthContext: Login failed -", errorMessage);
+      // Clear local storage on login failure
+       localStorage.removeItem('authToken');
+       localStorage.removeItem('authUserLogin');
+       localStorage.removeItem('authUserRole');
+       localStorage.removeItem('authUserId');
       setState(prevState => ({
         ...prevState,
         token: null,
@@ -135,7 +130,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         error: errorMessage,
       }));
       toast.error(errorMessage);
-      return false; // Indicate failure
+      return false;
     }
   }, []);
 
@@ -148,7 +143,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
      localStorage.removeItem('authUserLogin');
      localStorage.removeItem('authUserRole');
      localStorage.removeItem('authUserId');
-     setState({ ...initialState, isLoading: false });
+     setState({ ...initialState, isLoading: false }); // Reset state but keep isLoading false
 
      if (currentLogin) toast.info(`User ${currentLogin} logged out.`);
      else toast.info("Logged out.");
@@ -167,10 +162,11 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const register = useCallback(async (credentials: UserCredentials): Promise<boolean> => {
     setState(prevState => ({ ...prevState, isLoading: true, error: null }));
     try {
-      await api.register(credentials);
+      // Assuming API now returns the created user object including ID and assigned role
+      const newUser = await api.register(credentials);
       setState(prevState => ({ ...prevState, isLoading: false, error: null }));
-      toast.success("Registration successful! Please log in.");
-      return true; // Indicate success
+      toast.success(`Registration successful for ${newUser.login}! Please log in.`);
+      return true;
     } catch (err: any) {
       const errorMessage = err.message || 'Registration failed';
        console.error("AuthContext: Registration failed -", errorMessage);
@@ -180,7 +176,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         error: errorMessage,
       }));
       toast.error(errorMessage);
-      return false; // Indicate failure
+      return false;
     }
   }, []);
 
@@ -197,6 +193,3 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 };
 
 export default AuthContext;
-
-// Export useAuth hook from here for convenience
-export { useAuth } from '@/hooks/useAuth';

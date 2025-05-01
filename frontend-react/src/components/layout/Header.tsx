@@ -1,62 +1,83 @@
-import React from 'react';
-import { useLocation, useNavigate } from 'react-router-dom'; // Import useLocation
+import React, { useState } from 'react';
+import { useLocation, useNavigate, Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { LogOut, Menu } from 'lucide-react';
+import { LogOut, Menu, Settings, User as UserIcon } from 'lucide-react'; // Added Settings, UserIcon
 import { useAuth } from '@/hooks/useAuth';
+import ChangePasswordDialog from '@/components/user/ChangePasswordDialog'; // Import the new dialog
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"; // Import Dropdown components
+
 
 interface HeaderProps {
   toggleSidebar?: () => void; // For mobile sidebar toggle (optional)
 }
 
-// Function to derive a user-friendly title from the pathname
 const getTitleFromPath = (pathname: string): string => {
-    const segments = pathname.split('/').filter(Boolean); // Remove empty strings, e.g., from '/'
-    if (segments.length === 0) return 'Dashboard'; // Default for root path
-
-    // Capitalize first letter, replace dashes with spaces for multi-word segments
+    const segments = pathname.split('/').filter(Boolean);
+    if (segments.length === 0) return 'Dashboard';
     const title = segments[0].replace(/-/g, ' ');
     return title.charAt(0).toUpperCase() + title.slice(1);
 };
 
-
 const Header: React.FC<HeaderProps> = ({ toggleSidebar }) => {
   const { logout, user } = useAuth();
-  const location = useLocation(); // Get current location object
+  const location = useLocation();
   const navigate = useNavigate();
-  const currentPageTitle = getTitleFromPath(location.pathname); // Derive title from current path
+  const currentPageTitle = getTitleFromPath(location.pathname);
+  const [isChangePasswordOpen, setIsChangePasswordOpen] = useState(false); // State for dialog
 
   const handleLogout = async () => {
       await logout();
-      // Navigation is handled by AuthContext/App.tsx after state change
-      // navigate('/login'); // No longer needed here
+      // Navigation handled by AuthContext/App.tsx
   }
 
-
   return (
-    // Sticky header for scrolling pages, flex layout, border, padding
     <header className="sticky top-0 z-30 flex h-14 items-center gap-4 border-b bg-background px-4 sm:static sm:h-auto sm:border-0 sm:bg-transparent sm:px-6">
-       {/* Mobile menu button (optional, requires state management in Layout) */}
        {toggleSidebar && (
          <Button size="icon" variant="outline" className="sm:hidden" onClick={toggleSidebar}>
-           <Menu className="h-5 w-5" />
-           <span className="sr-only">Toggle Menu</span>
+           <Menu className="h-5 w-5" /> <span className="sr-only">Toggle Menu</span>
          </Button>
        )}
-       {/* Page Title */}
        <h1 className="text-xl font-semibold flex-1">{currentPageTitle}</h1>
 
-       {/* Right-aligned items (User info, Logout) */}
        <div className="flex items-center gap-2">
-           {/* Display user login/role - hidden on small screens */}
-           <span className="text-sm text-muted-foreground hidden sm:inline">
-              {user?.login} ({user?.role})
-           </span>
-           {/* Logout Button */}
-           <Button variant="outline" size="icon" onClick={handleLogout} title="Logout">
-             <LogOut className="h-4 w-4" />
-             <span className="sr-only">Logout</span>
-           </Button>
+         {/* User Dropdown Menu */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" size="icon" className="rounded-full">
+                <UserIcon className="h-4 w-4" />
+                <span className="sr-only">User Menu</span>
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuLabel className='text-sm font-normal'>
+                Signed in as <span className='font-medium'>{user?.login}</span> ({user?.role})
+              </DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              {/* Add Settings/Profile link/button here if needed */}
+              {/* <DropdownMenuItem onSelect={() => navigate('/profile')}> <Settings className="mr-2 h-4 w-4" /> Profile </DropdownMenuItem> */}
+              <DropdownMenuItem onSelect={() => setIsChangePasswordOpen(true)}>
+                 <Settings className="mr-2 h-4 w-4" /> Change Password
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onSelect={handleLogout} className='text-destructive focus:text-destructive focus:bg-destructive/10'>
+                <LogOut className="mr-2 h-4 w-4" /> Logout
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
        </div>
+
+        {/* Change Password Dialog */}
+        <ChangePasswordDialog
+            isOpen={isChangePasswordOpen}
+            onOpenChange={setIsChangePasswordOpen}
+        />
     </header>
   );
 };

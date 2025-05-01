@@ -1,12 +1,10 @@
 {
   "scripts": {
-    "dump-frontend-rust": "bun ./prv_tools/dump ./frontend-rust/ --filter codestyle > code_fe.prv.txt",
-    "dump-frontend-react": "bun ./prv_tools/dump ./frontend-react/ --filter codestyle > code_fe.prv.txt",
-    "dump-frontend": "bun ./prv_tools/dump ./frontend-vanilla/ --filter codestyle > code_fe.prv.txt",
-    "dump-backend": "bun ./prv_tools/dump ./backend/ --filter codestyle > code_be.prv.txt",
-    "dump": "bun ./prv_tools/dump ./backend/ --filter codestyle > code_all.prv.txt && bun ./prv_tools/dump ./frontend-vanilla/ --filter codestyle >> code_all.prv.txt && bun ./prv_tools/dump ./backend/ --filter codestyle > code_be.prv.txt && bun ./prv_tools/dump ./frontend-vanilla/ --filter codestyle > code_fe.prv.txt",
-    "check-frontend": "bun ./prv_tools/check ./frontend-vanilla/  > errors_fe.prv.txt",
-    "check-backend": "bun ./prv_tools/check ./backend/  > errors_be.prv.txt"
+    "dump-frontend": "~/task/code/dump ./backend/",
+    "dump-backend": "~/task/code/dump ./frontend-react",
+    "dump": "~/task/code/dump ./backend/ && ~/task/code/dump ./frontend-react -a",
+    "check-frontend": "~/task/code/dump",
+    "check-backend": "~/task/code/dump"
   },
   "dependencies": {
     "typescript": "^5.8.3"

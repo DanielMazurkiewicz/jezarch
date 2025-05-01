@@ -7,15 +7,13 @@ import LoginForm from '@/components/auth/LoginForm';
 import RegisterForm from '@/components/auth/RegisterForm';
 import NotesPage from '@/components/notes/NotesPage';
 import TagsPage from '@/components/tags/TagsPage';
-// Renamed import: SignaturesPage -> ComponentsPage
 import ComponentsPage from '@/components/signatures/ComponentsPage';
-// Added import for the new ElementsPage
 import ElementsPage from '@/components/signatures/ElementsPage';
 import ArchivePage from '@/components/archive/ArchivePage';
 import AdminPage from '@/components/admin/AdminPage';
 import ProtectedRoute from '@/components/auth/ProtectedRoute';
 import LoadingSpinner from '@/components/shared/LoadingSpinner';
-// Correct the import path assuming backend/src is sibling to frontend/src
+// UserRole includes 'employee', 'user'
 import type { UserRole } from '../../backend/src/functionalities/user/models';
 
 // Simple Dashboard component
@@ -25,8 +23,11 @@ const DashboardPage = () => {
         <div className="p-4 md:p-6 space-y-4">
             <h1 className="text-2xl font-semibold">Welcome, {user?.login}!</h1>
             <p className="text-muted-foreground">
-                Select a section from the sidebar to get started or manage your account settings.
+                 {user?.role === 'user'
+                    ? "Use the sidebar to search the archive."
+                    : "Select a section from the sidebar to get started."}
             </p>
+             {/* Optionally add role-specific dashboard info here */}
         </div>
     );
 };
@@ -38,9 +39,7 @@ function AppContent() {
     const location = useLocation();
     const navigate = useNavigate();
 
-    // Display loading spinner while auth state is being determined
     if (isLoading) {
-        // Ensure spinner covers the whole screen during initial load
         return (
             <div className="flex justify-center items-center min-h-screen w-full bg-background">
                 <LoadingSpinner />
@@ -48,11 +47,8 @@ function AppContent() {
         );
     }
 
-    // Define a layout wrapper specifically for Auth pages (Login, Register)
-    // This ensures the centering and background styling are applied correctly.
     const AuthLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => (
         <div className="flex justify-center items-center min-h-screen w-full bg-muted/40 p-4">
-             {/* The children here should be the Card-based LoginForm or RegisterForm */}
             {children}
         </div>
     );
@@ -60,40 +56,31 @@ function AppContent() {
     return (
         <Routes>
             {/* --- Public Routes (Login/Register) --- */}
-            {/* Ensure these routes correctly use the AuthLayout */}
             <Route path="/login" element={
                 !isAuthenticated ? (
-                    <AuthLayout>
-                        <LoginForm onSwitchToRegister={() => navigate('/register', { replace: true, state: location.state })} />
-                    </AuthLayout>
-                ) : (
-                    // If authenticated, redirect away from login
-                    <Navigate to={location.state?.from?.pathname || "/"} replace />
-                )
+                    <AuthLayout> <LoginForm onSwitchToRegister={() => navigate('/register', { replace: true, state: location.state })} /> </AuthLayout>
+                ) : ( <Navigate to={location.state?.from?.pathname || "/"} replace /> )
             } />
             <Route path="/register" element={
                  !isAuthenticated ? (
-                    <AuthLayout>
-                        <RegisterForm onSwitchToLogin={() => navigate('/login', { replace: true, state: location.state })} />
-                    </AuthLayout>
-                 ) : (
-                    // If authenticated, redirect away from register
-                    <Navigate to={location.state?.from?.pathname || "/"} replace />
-                 )
+                    <AuthLayout> <RegisterForm onSwitchToLogin={() => navigate('/login', { replace: true, state: location.state })} /> </AuthLayout>
+                 ) : ( <Navigate to={location.state?.from?.pathname || "/"} replace /> )
             } />
 
             {/* --- Protected Routes (Inside Main Layout) --- */}
             <Route element={<ProtectedRoute />}>
-                <Route element={<Layout />}> {/* Main App Layout with Sidebar/Header */}
+                <Route element={<Layout />}> {/* Main App Layout */}
                     <Route index element={<DashboardPage />} />
-                    <Route path="notes" element={<NotesPage />} />
-                    <Route path="tags" element={<TagsPage />} />
-                    {/* Updated Signatures route to point to ComponentsPage */}
-                    <Route path="signatures" element={<ComponentsPage />} />
-                     {/* Added route for the new ElementsPage */}
-                     <Route path="signatures/:componentId/elements" element={<ElementsPage />} />
+                    {/* Archive access for all roles (permissions handled inside) */}
                     <Route path="archive" element={<ArchivePage />} />
-                    {/* Admin Routes */}
+                    {/* Employee & Admin Routes */}
+                    <Route element={<ProtectedRoute allowedRoles={['admin', 'employee']} />}>
+                        <Route path="signatures" element={<ComponentsPage />} />
+                        <Route path="signatures/:componentId/elements" element={<ElementsPage />} />
+                        <Route path="tags" element={<TagsPage />} />
+                        <Route path="notes" element={<NotesPage />} />
+                    </Route>
+                    {/* Admin Only Routes */}
                     <Route element={<ProtectedRoute allowedRoles={['admin']} />}>
                         <Route path="admin" element={<AdminPage />} />
                     </Route>
@@ -102,7 +89,7 @@ function AppContent() {
                 </Route>
             </Route>
 
-             {/* --- Catch-all Fallback (Redirect to Login if not authenticated and no match) --- */}
+             {/* --- Catch-all Fallback (Redirect to Login if not authenticated) --- */}
              <Route path="*" element={<Navigate to="/login" replace />} />
 
         </Routes>

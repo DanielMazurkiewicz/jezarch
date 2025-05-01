@@ -7,8 +7,8 @@ import { Tag } from './models'; // Import the Tag model
 export const createTagController = async (req: BunRequest) => {
     const sessionAndUser = await getSessionAndUser(req);
     if (!sessionAndUser) return new Response("Unauthorized", { status: 401 });
-    // Decide who can create tags (e.g., anyone or just admins)
-    if (!isAllowedRole(sessionAndUser, 'admin', 'regular_user')) return new Response("Forbidden", { status: 403 });
+    // Allow admins and employees to create tags
+    if (!isAllowedRole(sessionAndUser, 'admin', 'employee')) return new Response("Forbidden", { status: 403 });
 
     try {
         const body = await req.json() as Pick<Tag, 'name' | 'description'>;
@@ -19,23 +19,16 @@ export const createTagController = async (req: BunRequest) => {
             return new Response(JSON.stringify({ message: 'Tag name is required' }), { status: 400 });
         }
 
-        // Optional: Check if tag already exists by name before creating
-        // const existingTag = await getTagByName(name);
-        // if (existingTag) {
-        //     return new Response(JSON.stringify({ message: `Tag '${name}' already exists` }), { status: 409 }); // Conflict
-        // }
-
         const newTag = await createTag(name, description);
          if (!newTag) {
-             // This might happen if findOrCreateTag logic is used and it finds an existing one
              const existing = await getTagByName(name);
-             if (existing) return new Response(JSON.stringify(existing), { status: 200 }); // Or 409 if strict creation expected
+             if (existing) return new Response(JSON.stringify(existing), { status: 200 });
              else throw new Error("Tag creation failed unexpectedly");
          }
+        await Log.info(`Tag created: ${name}`, sessionAndUser.user.login, 'tag');
         return new Response(JSON.stringify(newTag), { status: 201 });
     } catch (error: any) {
         await Log.error('Failed to create tag', sessionAndUser.user.login, 'tag', error);
-         // Check for specific errors thrown from db layer
         if (error.message?.includes('already exists')) {
              return new Response(JSON.stringify({ message: error.message }), { status: 409 });
         }
@@ -46,7 +39,8 @@ export const createTagController = async (req: BunRequest) => {
 export const getAllTagsController = async (req: BunRequest) => {
     const sessionAndUser = await getSessionAndUser(req);
     if (!sessionAndUser) return new Response("Unauthorized", { status: 401 });
-    if (!isAllowedRole(sessionAndUser, 'admin', 'regular_user')) return new Response("Forbidden", { status: 403 });
+    // Allow admin and employees to get all tags. 'user' role cannot list all tags.
+    if (!isAllowedRole(sessionAndUser, 'admin', 'employee')) return new Response("Forbidden", { status: 403 });
 
     try {
         const tags = await getAllTags();
@@ -60,7 +54,8 @@ export const getAllTagsController = async (req: BunRequest) => {
 export const getTagByIdController = async (req: BunRequest<":tagId">) => {
     const sessionAndUser = await getSessionAndUser(req);
     if (!sessionAndUser) return new Response("Unauthorized", { status: 401 });
-    if (!isAllowedRole(sessionAndUser, 'admin', 'regular_user')) return new Response("Forbidden", { status: 403 });
+    // Allow admin and employees to get tag by ID. 'user' role cannot.
+    if (!isAllowedRole(sessionAndUser, 'admin', 'employee')) return new Response("Forbidden", { status: 403 });
 
     try {
         const tagId = parseInt(req.params.tagId);
@@ -81,7 +76,7 @@ export const getTagByIdController = async (req: BunRequest<":tagId">) => {
 export const updateTagController = async (req: BunRequest<":tagId">) => {
     const sessionAndUser = await getSessionAndUser(req);
     if (!sessionAndUser) return new Response("Unauthorized", { status: 401 });
-    // Only admins can update tags?
+    // Only admins can update tags? Or employees too? Let's restrict to admin for now.
     if (!isAllowedRole(sessionAndUser, 'admin')) return new Response("Forbidden", { status: 403 });
 
     try {
@@ -97,19 +92,18 @@ export const updateTagController = async (req: BunRequest<":tagId">) => {
              return new Response(JSON.stringify({ message: 'Tag name cannot be empty' }), { status: 400 });
         }
 
-        // Fetch tag first to ensure it exists before updating
         const existingTag = await getTagById(tagId);
         if (!existingTag) {
              return new Response(JSON.stringify({ message: 'Tag not found' }), { status: 404 });
         }
 
         await updateTag(tagId, name, description);
+        await Log.info(`Tag updated: ID ${tagId}`, sessionAndUser.user.login, 'tag');
         const updatedTag = await getTagById(tagId); // Fetch again to return updated data
         return new Response(JSON.stringify(updatedTag), { status: 200 });
 
     } catch (error: any) {
         await Log.error('Error updating tag', sessionAndUser.user.login, 'tag', error);
-        // Check for specific errors thrown from db layer
         if (error.message?.includes('already exists')) {
              return new Response(JSON.stringify({ message: error.message }), { status: 409 });
         }
@@ -120,7 +114,7 @@ export const updateTagController = async (req: BunRequest<":tagId">) => {
 export const deleteTagController = async (req: BunRequest<":tagId">) => {
     const sessionAndUser = await getSessionAndUser(req);
     if (!sessionAndUser) return new Response("Unauthorized", { status: 401 });
-    // Only admins can delete tags?
+    // Only admins can delete tags
     if (!isAllowedRole(sessionAndUser, 'admin')) return new Response("Forbidden", { status: 403 });
 
     try {
@@ -129,14 +123,13 @@ export const deleteTagController = async (req: BunRequest<":tagId">) => {
             return new Response(JSON.stringify({ message: 'Invalid tag ID' }), { status: 400 });
         }
 
-        // Optional: Check if tag exists before attempting delete
         const existingTag = await getTagById(tagId);
         if (!existingTag) {
              return new Response(JSON.stringify({ message: 'Tag not found' }), { status: 404 });
         }
 
         await deleteTag(tagId);
-        // Cascade delete in DB handles associations
+        await Log.info(`Tag deleted: ID ${tagId}`, sessionAndUser.user.login, 'tag');
         return new Response(JSON.stringify({ message: 'Tag deleted successfully' }), { status: 200 });
     } catch (error) {
         await Log.error('Failed to delete tag', sessionAndUser.user.login, 'tag', error);

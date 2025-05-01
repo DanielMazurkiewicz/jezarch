@@ -2,7 +2,10 @@
 *.prv.txt
 *.prv.md
 *.db
-prv_tools
+*.db-shm
+*.db-wal
+
+
 
 # Logs
 logs

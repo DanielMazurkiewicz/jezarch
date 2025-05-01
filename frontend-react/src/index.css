@@ -72,66 +72,25 @@
   --sidebar-accent-foreground: hsl(0 0% 98%);
 }
 
-/* Base theme definition (Tailwind 4+) */
-@theme {
-  /* Extend existing theme with sidebar colors */
-  --color-sidebar: var(--sidebar);
-  --color-sidebar-foreground: var(--sidebar-foreground);
-  --color-sidebar-border: var(--sidebar-border);
-  --color-sidebar-accent: var(--sidebar-accent);
-  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
-
-  /* Animation */
-  --animate-accordion-down: accordion-down 0.2s ease-out;
-  --animate-accordion-up: accordion-up 0.2s ease-out;
-
-  @keyframes accordion-down {
-    from { height: 0 }
-    to { height: var(--radix-accordion-content-height) }
-  }
-
-  @keyframes accordion-up {
-    from { height: var(--radix-accordion-content-height) }
-    to { height: 0 }
-  }
-}
-
-/* Base Layer Styles - REMOVED custom body styles */
-/* Rely on @tailwind base and CSS variables set on :root/.dark */
-/* Ensure html, body have appropriate background via variables */
+/* Base Layer Styles - REMOVED @theme block */
 @layer base {
     :root {
-        /* These properties are typically handled by @tailwind base */
-        /* background-color: hsl(var(--background)); */
-        /* color: hsl(var(--foreground)); */
-        /* Apply font smoothing */
         -webkit-font-smoothing: antialiased;
         -moz-osx-font-smoothing: grayscale;
     }
-    /* Ensure body inherits */
     body {
-        /* These properties are typically handled by @tailwind base */
-        min-height: 100vh; /* Use vh instead of screen */
+        min-height: 100vh;
         min-width: 320px;
-        position: relative; /* Keep for pseudo-element */
+        position: relative;
         margin: 0;
-        /* Let Tailwind handle background/color */
-        /* background-color: hsl(var(--background)); */
-        /* color: hsl(var(--foreground)); */
+        /* Rely on Tailwind base styles + CSS variables for background/color */
     }
     label {
         cursor: default;
     }
-    /* Add other base overrides if needed, e.g., */
-    /* html { */
-    /*   font-family: sans-serif; */
-    /* } */
 }
 
-
 /* Custom Styles & Animations */
-
-/* cool Bun background animation 😎 */
 body::before {
   content: "";
   position: fixed;

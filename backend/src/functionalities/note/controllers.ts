@@ -12,7 +12,8 @@ import { getTagsForNote, setTagsForNote } from './tag/db'; // Use note-specific 
 export const getNoteByIdController = async (req: BunRequest<":noteId">) => {
     const sessionAndUser = await getSessionAndUser(req);
     if (!sessionAndUser) return new Response("Unauthorized", { status: 401 });
-    if (!isAllowedRole(sessionAndUser, 'admin', 'regular_user')) return new Response("Forbidden", { status: 403 });
+    // Allow admin and employees to read notes based on ownership/shared status. 'user' role cannot access notes.
+    if (!isAllowedRole(sessionAndUser, 'admin', 'employee')) return new Response("Forbidden", { status: 403 });
 
     try {
         const noteId = parseInt(req.params.noteId);
@@ -33,6 +34,7 @@ export const getNoteByIdController = async (req: BunRequest<":noteId">) => {
         // 1. The user is the owner.
         // 2. The note is shared.
         // 3. The user is an admin.
+        // (Employee role access is covered by the initial role check and the conditions below)
         if (!isOwner(sessionAndUser, note.ownerUserId) && !note.shared && !isAllowedRole(sessionAndUser, 'admin')) {
             await Log.error(`Forbidden attempt to read note`, sessionAndUser.user.login, 'note', { noteId });
             return new Response("Forbidden", { status: 403 });
@@ -59,12 +61,11 @@ export const getAllNotesByUserIdController = async (req: BunRequest<":userId">) 
         return new Response(JSON.stringify({ message: 'Invalid user ID' }), { status: 400 });
     }
 
-    // Authorization: Only allow admin to see other users' notes, or users see their own
+    // Authorization: Only allow admin to see other users' notes, or users see their own (employees included here)
     if (!isAllowedRole(sessionAndUser, 'admin') && sessionAndUser.user.userId !== targetUserId) {
          await Log.error(`Forbidden attempt to get notes for user ID ${targetUserId}`, sessionAndUser.user.login, 'note');
          return new Response("Forbidden", { status: 403 });
     }
-
 
     try {
         // getAllNotesByOwnerUserId now fetches tags and ownerLogin
@@ -83,9 +84,17 @@ export const getAllNotesByUserIdController = async (req: BunRequest<":userId">) 
 export const getAllNotesByLoginController = async (req: BunRequest<":login">) => {
     const sessionAndUser = await getSessionAndUser(req);
     if (!sessionAndUser) return new Response("Unauthorized", { status: 401 });
+     // Allow admin and employees to fetch notes by login (but only their own unless admin)
+    if (!isAllowedRole(sessionAndUser, 'admin', 'employee')) return new Response("Forbidden", { status: 403 });
 
     try {
         const targetLogin = req.params.login;
+
+        // Authorization: Only allow admin to see other users' notes, employees see their own
+        if (!isAllowedRole(sessionAndUser, 'admin') && sessionAndUser.user.login !== targetLogin) {
+            await Log.error(`Forbidden attempt to get notes for user login ${targetLogin}`, sessionAndUser.user.login, 'note');
+            return new Response("Forbidden", { status: 403 });
+        }
 
         const targetUser = await getUserByLogin(targetLogin);
         if (!targetUser) {
@@ -93,11 +102,6 @@ export const getAllNotesByLoginController = async (req: BunRequest<":login">) =>
             return new Response("User not found", { status: 404 });
         }
 
-        // Authorization: Only allow admin to see other users' notes, or users see their own
-        if (!isAllowedRole(sessionAndUser, 'admin') && sessionAndUser.user.login !== targetLogin) {
-            await Log.error(`Forbidden attempt to get notes for user login ${targetLogin}`, sessionAndUser.user.login, 'note');
-            return new Response("Forbidden", { status: 403 });
-        }
 
         // getAllNotesByOwnerUserId now fetches tags and ownerLogin
         const notes = await getAllNotesByOwnerUserId(targetUser.userId);
@@ -110,18 +114,23 @@ export const getAllNotesByLoginController = async (req: BunRequest<":login">) =>
 };
 
 
-// Handler for searching by tags - remains the same
+// Handler for searching by tags - remains the same logic, access controlled by searchNotesController
 export const noteTagSearchHandler: SearchOnCustomFieldHandler<Note> = (
     element: SearchQueryElement,
     tableAlias: string
 ): SearchOnCustomFieldHandlerResult => {
     if (element.field === 'tags' && element.condition === 'ANY_OF' && Array.isArray(element.value)) {
-        const tagIds = element.value.filter(id => typeof id === 'number' && Number.isInteger(id) && id > 0);
+        const tagIds = element.value.filter((id): id is number => typeof id === 'number' && Number.isInteger(id) && id > 0);
         if (tagIds.length === 0) return { whereCondition: element.not ? '1=1' : '1=0', params: [] };
         const placeholders = tagIds.map(() => '?').join(', ');
-        const joinClause = `INNER JOIN note_tags ON ${tableAlias}.noteId = note_tags.noteId`;
-        const whereCondition = `note_tags.tagId ${element.not ? 'NOT ' : ''}IN (${placeholders})`;
-        return { joinClause, whereCondition, params: tagIds };
+        // Use EXISTS subquery for potentially better performance
+        const whereCondition = `
+            ${element.not ? 'NOT ' : ''}EXISTS (
+                SELECT 1 FROM note_tags nt
+                WHERE nt.noteId = ${tableAlias}.noteId AND nt.tagId IN (${placeholders})
+            )
+        `;
+        return { whereCondition, params: tagIds };
     }
     return null;
 };
@@ -131,7 +140,8 @@ export const noteTagSearchHandler: SearchOnCustomFieldHandler<Note> = (
 export const searchNotesController = async (req: BunRequest) => {
     const sessionAndUser = await getSessionAndUser(req);
     if (!sessionAndUser) return new Response("Unauthorized", { status: 401 });
-    if (!isAllowedRole(sessionAndUser, 'admin', 'regular_user')) return new Response("Forbidden", { status: 403 });
+    // Allow admin and employees to search notes
+    if (!isAllowedRole(sessionAndUser, 'admin', 'employee')) return new Response("Forbidden", { status: 403 });
 
     const currentUserId = sessionAndUser.user.userId;
 
@@ -142,34 +152,24 @@ export const searchNotesController = async (req: BunRequest) => {
         const allowedDirectFields: (keyof NoteWithDetails)[] = ['noteId', 'title', 'content', 'shared', 'ownerUserId', 'createdOn', 'modifiedOn', 'ownerLogin'];
         const primaryKey = 'noteId';
 
+        // Define handlers for custom fields or JOINed fields
+        const customHandlers: Record<string, SearchOnCustomFieldHandler<NoteWithDetails>> = {
+            tags: noteTagSearchHandler, // Use the updated tag handler
+            ownerLogin: (element, tableAlias): SearchOnCustomFieldHandlerResult => {
+                const userJoin = `LEFT JOIN users ON ${tableAlias}.ownerUserId = users.userId`;
+                if (element.condition === 'FRAGMENT' && typeof element.value === 'string') {
+                     return { joinClause: userJoin, whereCondition: `users.login LIKE ?`, params: [`%${element.value}%`] };
+                 }
+                 if (element.condition === 'EQ' && typeof element.value === 'string') {
+                      return { joinClause: userJoin, whereCondition: `users.login = ?`, params: [element.value] };
+                 }
+                 return null;
+            }
+        };
+
         // --- Build base search queries ---
-        // buildSearchQueries now returns the alias used
         const { dataQuery, countQuery, alias: notesTableAlias } = await buildSearchQueries<NoteWithDetails>(
-            'notes',
-            searchRequest,
-            allowedDirectFields,
-            {
-                tags: noteTagSearchHandler, // Custom handler for tags
-                 // Add handler for ownerLogin if searching by it is allowed
-                 ownerLogin: (element, tableAlias): SearchOnCustomFieldHandlerResult => {
-                    if (element.condition === 'FRAGMENT' && typeof element.value === 'string') {
-                         return {
-                             joinClause: `LEFT JOIN users ON ${tableAlias}.ownerUserId = users.userId`,
-                             whereCondition: `users.login LIKE ?`,
-                             params: [`%${element.value}%`]
-                         };
-                     }
-                     if (element.condition === 'EQ' && typeof element.value === 'string') {
-                          return {
-                             joinClause: `LEFT JOIN users ON ${tableAlias}.ownerUserId = users.userId`,
-                             whereCondition: `users.login = ?`,
-                             params: [element.value]
-                         };
-                     }
-                     return null;
-                }
-            },
-            primaryKey
+            'notes', searchRequest, allowedDirectFields, customHandlers, primaryKey
         );
 
         // --- Modify queries to enforce visibility rules (own OR shared) ---
@@ -180,63 +180,54 @@ export const searchNotesController = async (req: BunRequest) => {
         // Modify Data Query
         let modifiedDataSql = dataQuery.sql;
         let modifiedDataParams = [...dataQuery.params];
-        const whereIndexData = modifiedDataSql.indexOf('WHERE');
-        const orderByIndexData = modifiedDataSql.indexOf('ORDER BY');
+        // Check if ownerLogin handler already added the JOIN
+        const needsUserJoin = !modifiedDataSql.includes('LEFT JOIN users ON') && !modifiedDataSql.includes('INNER JOIN users ON');
+        if (needsUserJoin) {
+             modifiedDataSql = modifiedDataSql.replace(/FROM notes AS \w+/i, `FROM notes AS ${notesTableAlias} LEFT JOIN users ON ${notesTableAlias}.ownerUserId = users.userId`);
+        }
+        // Ensure ownerLogin is selected
+        if (!modifiedDataSql.includes('users.login as ownerLogin')) {
+            modifiedDataSql = modifiedDataSql.replace(`SELECT DISTINCT ${notesTableAlias}.*`, `SELECT DISTINCT ${notesTableAlias}.*, users.login as ownerLogin`);
+        }
+        // Add visibility condition
+        const whereIndexData = modifiedDataSql.search(/WHERE/i); // Case-insensitive search
+        const orderByIndexData = modifiedDataSql.search(/ORDER BY/i);
+        const limitIndexData = modifiedDataSql.search(/LIMIT/i);
 
         if (whereIndexData !== -1) {
              modifiedDataSql = modifiedDataSql.slice(0, whereIndexData + 5) + ` (${visibilityCondition}) AND ` + modifiedDataSql.slice(whereIndexData + 6);
-             modifiedDataParams.splice(0, 0, visibilityParam);
+             modifiedDataParams.splice(0, 0, visibilityParam); // Insert param at the beginning
         } else {
-             const insertionPoint = (orderByIndexData !== -1) ? orderByIndexData : modifiedDataSql.indexOf('LIMIT');
+             let insertionPoint = -1;
+             if (orderByIndexData !== -1) insertionPoint = orderByIndexData;
+             else if (limitIndexData !== -1) insertionPoint = limitIndexData;
+
              if (insertionPoint !== -1) {
                   modifiedDataSql = modifiedDataSql.slice(0, insertionPoint) + `WHERE ${visibilityCondition} ` + modifiedDataSql.slice(insertionPoint);
-                  modifiedDataParams.splice(modifiedDataParams.length - 2, 0, visibilityParam);
+                  // Find the position of LIMIT ?, OFFSET ? parameters (usually last two)
+                  const limitParamIndex = modifiedDataParams.length - 2;
+                  modifiedDataParams.splice(limitParamIndex, 0, visibilityParam);
              } else {
                  modifiedDataSql += ` WHERE ${visibilityCondition}`;
-                 modifiedDataParams.push(visibilityParam);
+                 modifiedDataParams.push(visibilityParam); // Add to end if no ORDER BY/LIMIT
              }
         }
 
         // Modify Count Query
         let modifiedCountSql = countQuery.sql;
         let modifiedCountParams = [...countQuery.params];
-        const whereIndexCount = modifiedCountSql.indexOf('WHERE');
+        // Add JOIN if needed
+        if (needsUserJoin) { // Use the same check as for data query
+             modifiedCountSql = modifiedCountSql.replace(/FROM notes AS \w+/i, `FROM notes AS ${notesTableAlias} LEFT JOIN users ON ${notesTableAlias}.ownerUserId = users.userId`);
+        }
+        // Add visibility condition
+        const whereIndexCount = modifiedCountSql.search(/WHERE/i);
         if (whereIndexCount !== -1) {
              modifiedCountSql = modifiedCountSql.slice(0, whereIndexCount + 5) + ` (${visibilityCondition}) AND ` + modifiedCountSql.slice(whereIndexCount + 6);
-             modifiedCountParams.splice(0, 0, visibilityParam);
+             modifiedCountParams.splice(0, 0, visibilityParam); // Insert param at the beginning
         } else {
              modifiedCountSql += ` WHERE ${visibilityCondition}`;
-             modifiedCountParams.push(visibilityParam);
-        }
-
-        // --- Add JOIN for ownerLogin (if not already added by handler) ---
-        // Check if the JOIN was already added by a custom handler
-        const userJoin = `LEFT JOIN users ON ${notesTableAlias}.ownerUserId = users.userId`;
-        const needsJoin = !modifiedDataSql.includes('LEFT JOIN users') && !modifiedDataSql.includes('INNER JOIN users'); // Basic check
-
-        if (needsJoin) {
-            // Add user login to SELECT list
-             modifiedDataSql = modifiedDataSql.replace(`SELECT DISTINCT ${notesTableAlias}.*`, `SELECT DISTINCT ${notesTableAlias}.*, users.login as ownerLogin`);
-             // Add JOIN clause (before WHERE or ORDER BY)
-             const dataJoinInsertionPoint = modifiedDataSql.indexOf('WHERE') !== -1 ? modifiedDataSql.indexOf('WHERE') : modifiedDataSql.indexOf('ORDER BY');
-             if (dataJoinInsertionPoint !== -1) {
-                 modifiedDataSql = modifiedDataSql.slice(0, dataJoinInsertionPoint) + `${userJoin} ` + modifiedDataSql.slice(dataJoinInsertionPoint);
-             } else {
-                 modifiedDataSql = modifiedDataSql.replace('LIMIT ? OFFSET ?', `${userJoin} LIMIT ? OFFSET ?`);
-             }
-
-             // Add JOIN to Count query
-             const countJoinInsertionPoint = modifiedCountSql.indexOf('WHERE');
-             if (countJoinInsertionPoint !== -1) {
-                 modifiedCountSql = modifiedCountSql.slice(0, countJoinInsertionPoint) + `${userJoin} ` + modifiedCountSql.slice(countJoinInsertionPoint);
-             } else {
-                 modifiedCountSql = modifiedCountSql.replace(/$/, ` ${userJoin}`);
-             }
-        } else {
-            // Ensure ownerLogin is selected even if JOIN added by handler
-             if (!modifiedDataSql.includes('users.login as ownerLogin')) {
-                 modifiedDataSql = modifiedDataSql.replace(`SELECT DISTINCT ${notesTableAlias}.*`, `SELECT DISTINCT ${notesTableAlias}.*, users.login as ownerLogin`);
-             }
+             modifiedCountParams.push(visibilityParam); // Add to end
         }
 
 
@@ -250,22 +241,18 @@ export const searchNotesController = async (req: BunRequest) => {
         if (response.data.length > 0) {
             const noteIds = response.data.map(note => note.noteId!);
             const tagsMap = new Map<number, Awaited<ReturnType<typeof getTagsForNote>>>();
+            // Consider optimizing tag fetching in bulk if performance is an issue
             for (const noteId of noteIds) {
                 tagsMap.set(noteId, await getTagsForNote(noteId));
             }
             response.data.forEach(note => {
                  note.tags = tagsMap.get(note.noteId!) || [];
-                 // Ensure ownerLogin from JOIN is correctly mapped (or handle if not joined)
-                 // The SELECT alias 'ownerLogin' should map directly if JOIN was present.
-                 // If the JOIN didn't happen (e.g., no ownerLogin search), ownerLogin will be undefined.
-                 // We might want to fetch it here as a fallback if needed, but the JOIN should cover it.
             });
         }
 
         return new Response(JSON.stringify(response), { status: 200 });
     } catch (error) {
         await Log.error('Note Search failed', sessionAndUser.user.login, 'note', error);
-        // Ensure error object is serializable
         const errorMessage = error instanceof Error ? error.message : 'Unknown error';
         return new Response(JSON.stringify({ message: 'Note search failed', error: errorMessage }), { status: 500 });
     }
@@ -275,7 +262,8 @@ export const searchNotesController = async (req: BunRequest) => {
 export const createNoteController = async (req: BunRequest) => {
     const sessionAndUser = await getSessionAndUser(req);
     if (!sessionAndUser) return new Response("Unauthorized", { status: 401 });
-    if (!isAllowedRole(sessionAndUser, 'admin', 'regular_user')) return new Response("Forbidden", { status: 403 });
+    // Allow admin and employees to create notes
+    if (!isAllowedRole(sessionAndUser, 'admin', 'employee')) return new Response("Forbidden", { status: 403 });
 
     try {
         const body = await req.json() as NoteInput;
@@ -307,7 +295,8 @@ export const createNoteController = async (req: BunRequest) => {
 export const updateNoteController = async (req: BunRequest<":noteId">) => {
     const sessionAndUser = await getSessionAndUser(req);
     if (!sessionAndUser) return new Response("Unauthorized", { status: 401 });
-    if (!isAllowedRole(sessionAndUser, 'admin', 'regular_user')) return new Response("Forbidden", { status: 403 });
+    // Allow admin and employees to update notes (with ownership/admin checks below)
+    if (!isAllowedRole(sessionAndUser, 'admin', 'employee')) return new Response("Forbidden", { status: 403 });
 
     try {
         const noteId = parseInt(req.params.noteId);
@@ -337,7 +326,6 @@ export const updateNoteController = async (req: BunRequest<":noteId">) => {
         if (body.title !== undefined && body.title !== existingNote.title) {
             updatePayload.title = body.title;
         }
-        // Handle content potentially being null/undefined vs empty string
         const currentContent = existingNote.content ?? '';
         const newContent = body.content ?? '';
         if (body.content !== undefined && newContent !== currentContent) {
@@ -345,7 +333,7 @@ export const updateNoteController = async (req: BunRequest<":noteId">) => {
         }
         if (body.shared !== undefined && body.shared !== existingNote.shared) {
             // Specific Authorization for 'shared' field: Only owner or admin can change it
-            if (!isOwner(sessionAndUser, existingNote.ownerUserId) && !isAllowedRole(sessionAndUser, 'admin')) {
+             if (!isOwner(sessionAndUser, existingNote.ownerUserId) && !isAllowedRole(sessionAndUser, 'admin')) {
                  await Log.error(`Forbidden attempt to change 'shared' status on note ${noteId}`, sessionAndUser.user.login, 'note');
                  return new Response("Forbidden: Only the owner or an admin can change the shared status.", { status: 403 });
              }
@@ -394,7 +382,8 @@ export const updateNoteController = async (req: BunRequest<":noteId">) => {
 export const deleteNoteController = async (req: BunRequest<":noteId">) => {
     const sessionAndUser = await getSessionAndUser(req);
     if (!sessionAndUser) return new Response("Unauthorized", { status: 401 });
-    // No need for specific role check here, logic below handles owner/admin
+    // Allow admin and employees to attempt delete (ownership check below)
+    if (!isAllowedRole(sessionAndUser, 'admin', 'employee')) return new Response("Forbidden", { status: 403 });
 
     try {
         const noteId = parseInt(req.params.noteId);
@@ -414,7 +403,6 @@ export const deleteNoteController = async (req: BunRequest<":noteId">) => {
              await Log.error(`Forbidden note delete attempt: ${noteId}`, sessionAndUser.user.login, 'note');
              return new Response("Forbidden", { status: 403 });
         }
-        // --- End of update ---
 
         await deleteNote(noteId);
         await Log.info(`Note deleted: ID ${noteId}`, sessionAndUser.user.login, 'note');

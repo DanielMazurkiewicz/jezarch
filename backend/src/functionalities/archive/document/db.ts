@@ -1,4 +1,3 @@
-
 import { db } from '../../../initialization/db';
 import type { ArchiveDocument, SignatureElementIdPath, ArchiveDocumentType, UpdateArchiveDocumentInput } from './models';
 import { Log } from '../../log/db';
@@ -49,7 +48,7 @@ export async function initializeArchiveDocumentTable() {
             createdOn DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
             modifiedOn DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
-            FOREIGN KEY (ownerUserId) REFERENCES users(userId),
+            FOREIGN KEY (ownerUserId) REFERENCES users(userId) ON DELETE CASCADE, -- Cascade delete documents if owner is deleted
             FOREIGN KEY (parentUnitArchiveDocumentId) REFERENCES archive_documents(archiveDocumentId) ON DELETE SET NULL -- Or CASCADE? Decide policy. SET NULL allows reparenting.
         )
     `);
@@ -59,6 +58,8 @@ export async function initializeArchiveDocumentTable() {
     await db.exec(`CREATE INDEX IF NOT EXISTS idx_ad_type ON archive_documents (type);`);
     await db.exec(`CREATE INDEX IF NOT EXISTS idx_ad_active ON archive_documents (active);`);
     await db.exec(`CREATE INDEX IF NOT EXISTS idx_ad_title ON archive_documents (title);`); // For searching/sorting
+    // Add index for searching by content description (can be large, consider FTS if needed)
+    await db.exec(`CREATE INDEX IF NOT EXISTS idx_ad_content ON archive_documents (contentDescription);`);
 }
 
 // Initialization function for the document-tag junction table
@@ -72,11 +73,14 @@ export async function initializeArchiveDocumentTagTable() {
             FOREIGN KEY (tagId) REFERENCES tags(tagId) ON DELETE CASCADE
         )
     `);
+    // Index for faster tag lookups per document (covered by PK)
+    // Index for faster document lookups per tag (important for tag-based searches)
+    await db.exec(`CREATE INDEX IF NOT EXISTS idx_adt_tag ON archive_document_tags (tagId);`);
 }
 
 
 // --- Helper ---
-// Now accepts an optional row argument and joins with users for ownerLogin
+// Parses DB row into ArchiveDocument object, handling potential JSON errors
 export const dbToArchiveDocument = async (row?: any): Promise<ArchiveDocument | undefined> => {
     if (!row) return undefined;
     try {
@@ -86,7 +90,7 @@ export const dbToArchiveDocument = async (row?: any): Promise<ArchiveDocument | 
             ownerUserId: row.ownerUserId,
             type: row.type as ArchiveDocumentType,
             active: Boolean(row.active),
-            // Parse JSON signature arrays
+            // Parse JSON signature arrays safely
             topographicSignatureElementIds: JSON.parse(row.topographicSignatureElementIds || '[]') as SignatureElementIdPath[],
             descriptiveSignatureElementIds: JSON.parse(row.descriptiveSignatureElementIds || '[]') as SignatureElementIdPath[],
             title: row.title,
@@ -116,12 +120,16 @@ export const dbToArchiveDocument = async (row?: any): Promise<ArchiveDocument | 
 
         // If ownerLogin wasn't joined, fetch it (less efficient but ensures it's populated)
         if (!document.ownerLogin && document.ownerUserId) {
-            const owner = await getUserByUserId(document.ownerUserId);
-            document.ownerLogin = owner?.login;
+            try {
+                const owner = await getUserByUserId(document.ownerUserId);
+                document.ownerLogin = owner?.login;
+            } catch (ownerError) {
+                 await Log.error(`Failed to fetch owner login for doc ${document.archiveDocumentId}, user ${document.ownerUserId}`, "system", "database", ownerError);
+            }
         }
 
-        // If tags weren't joined/populated, fetch them (less efficient)
-        // This part might be redundant if the calling function populates tags separately
+        // Tags are typically populated by the calling function (e.g., controller after search)
+        // to allow for optimized bulk fetching. This fallback is less efficient.
         if (!row.tags && document.archiveDocumentId) {
              try {
                  document.tags = await getTagsForArchiveDocument(document.archiveDocumentId);
@@ -130,10 +138,9 @@ export const dbToArchiveDocument = async (row?: any): Promise<ArchiveDocument | 
              }
         }
 
-
         return document;
-    } catch (e) {
-        await Log.error("Failed to parse archive document data from DB", "system", "database", { data: row, error: e });
+    } catch (e: any) {
+        await Log.error("Failed to parse archive document data from DB", "system", "database", { data: row, error: e.message, stack: e.stack });
         return undefined; // Return undefined if parsing fails
     }
 };
@@ -178,11 +185,10 @@ export async function getArchiveDocumentById(id: number): Promise<ArchiveDocumen
      const statement = db.prepare(`
         SELECT ad.*, u.login as ownerLogin
         FROM archive_documents ad
-        JOIN users u ON ad.ownerUserId = u.userId
+        LEFT JOIN users u ON ad.ownerUserId = u.userId -- Use LEFT JOIN in case user was deleted but doc remains temporarily
         WHERE ad.archiveDocumentId = ? AND ad.active = TRUE
     `);
     const row = statement.get(id);
-    // dbToArchiveDocument doesn't need to fetch tags/ownerLogin again if JOINed
     return await dbToArchiveDocument(row);
 }
 
@@ -191,11 +197,10 @@ export async function getArchiveDocumentByIdInternal(id: number): Promise<Archiv
      const statement = db.prepare(`
         SELECT ad.*, u.login as ownerLogin
         FROM archive_documents ad
-        JOIN users u ON ad.ownerUserId = u.userId
+        LEFT JOIN users u ON ad.ownerUserId = u.userId -- Use LEFT JOIN in case user was deleted
         WHERE ad.archiveDocumentId = ?
     `);
     const row = statement.get(id);
-     // dbToArchiveDocument doesn't need to fetch tags/ownerLogin again if JOINed
     return await dbToArchiveDocument(row);
 }
 
@@ -221,6 +226,10 @@ export async function updateArchiveDocument(
              dbValue = null; // Pass explicit nulls
         }
          // Add mapping for other keys if needed (e.g., different input vs db names)
+         // Example: Allow changing owner (carefully, maybe admin only)
+         if (key === 'ownerUserId') {
+            // Potentially add validation here if not admin? Controller should handle this.
+         }
 
         fieldsToUpdate.push(`${dbKey} = ?`);
         params.push(dbValue);
@@ -261,9 +270,8 @@ export async function updateArchiveDocument(
     try {
         const statement = db.prepare(query);
         const updatedRow = statement.get(...params);
-        // Need to fetch ownerLogin separately as RETURNING doesn't join
-        const result = await dbToArchiveDocument(updatedRow);
-        // Fetch again to get joined ownerLogin if needed (or pass it if already known)
+        // RETURNING * doesn't include joined ownerLogin.
+        // Fetch again to get the full object including ownerLogin.
         return getArchiveDocumentByIdInternal(id); // Return the final state with ownerLogin
     } catch (error: any) {
         await Log.error('Failed to update archive document', 'system', 'database', { id, data, error });
@@ -297,10 +305,6 @@ export async function disableArchiveDocument(id: number): Promise<boolean> {
     }
 }
 
-// Potentially add functions like:
-// - getAllArchiveDocumentsByOwnerUserId(ownerUserId: number) -> Promise<ArchiveDocument[]>
-// - getChildDocuments(parentUnitId: number) -> Promise<ArchiveDocument[]>
-
 
 // --- Tag Management ---
 export async function getTagsForArchiveDocument(archiveDocumentId: number): Promise<Tag[]> {
@@ -308,10 +312,42 @@ export async function getTagsForArchiveDocument(archiveDocumentId: number): Prom
         SELECT t.* FROM tags t
         JOIN archive_document_tags adt ON t.tagId = adt.tagId
         WHERE adt.archiveDocumentId = ?
-        ORDER BY t.name
+        ORDER BY t.name COLLATE NOCASE -- Added case-insensitive sort
     `);
     return statement.all(archiveDocumentId) as Tag[];
 }
+
+// --- New: Optimized tag fetching for multiple documents ---
+export async function getTagsForArchiveDocumentByIds(archiveDocumentIds: number[]): Promise<Map<number, Tag[]>> {
+    const tagsMap = new Map<number, Tag[]>();
+    if (archiveDocumentIds.length === 0) return tagsMap;
+
+    const placeholders = archiveDocumentIds.map(() => '?').join(',');
+    const statement = db.prepare(`
+        SELECT adt.archiveDocumentId, t.*
+        FROM tags t
+        JOIN archive_document_tags adt ON t.tagId = adt.tagId
+        WHERE adt.archiveDocumentId IN (${placeholders})
+        ORDER BY adt.archiveDocumentId, t.name COLLATE NOCASE
+    `);
+
+    try {
+         const rows = statement.all(...archiveDocumentIds) as ({ archiveDocumentId: number } & Tag)[];
+         rows.forEach(row => {
+             const { archiveDocumentId, ...tagData } = row;
+             if (!tagsMap.has(archiveDocumentId)) {
+                 tagsMap.set(archiveDocumentId, []);
+             }
+             tagsMap.get(archiveDocumentId)!.push(tagData);
+         });
+    } catch (error) {
+         await Log.error('Failed to bulk fetch tags for archive documents', 'system', 'database', { error });
+         // Return empty map on error? Or rethrow?
+    }
+
+    return tagsMap;
+}
+
 
 export async function setTagsForArchiveDocument(archiveDocumentId: number, tagIds: number[]): Promise<void> {
     const transaction = db.transaction((tagsToSet: number[]) => { // Synchronous transaction function
@@ -322,11 +358,18 @@ export async function setTagsForArchiveDocument(archiveDocumentId: number, tagId
             return;
         }
 
-        // Ensure tags exist before inserting? Optional, adds overhead.
-        const insertStmt = db.prepare(`INSERT OR IGNORE INTO archive_document_tags (archiveDocumentId, tagId) VALUES (?, ?)`);
+        const insertStmt = db.prepare(`
+            INSERT OR IGNORE INTO archive_document_tags (archiveDocumentId, tagId)
+            SELECT ?, ?
+            WHERE EXISTS (SELECT 1 FROM tags WHERE tagId = ?) -- Ensure tag exists
+        `);
         for (const tagId of tagsToSet) {
              // Consider checking if tagId exists in 'tags' table first if strictness is needed
-            insertStmt.run(archiveDocumentId, tagId);
+             if (typeof tagId === 'number' && Number.isInteger(tagId) && tagId > 0) {
+                 insertStmt.run(archiveDocumentId, tagId, tagId); // Pass tagId again for EXISTS check
+             } else {
+                 Log.warn(`Skipping invalid tagId ${tagId} for archive document ${archiveDocumentId}`, 'system', 'database');
+             }
         }
     });
 
@@ -341,13 +384,13 @@ export async function setTagsForArchiveDocument(archiveDocumentId: number, tagId
 
 // --- Search Handlers ---
 
-// Handler for searching by tags (similar to notes)
+// Handler for searching by tags
 export const archiveDocumentTagSearchHandler: (element: SearchQueryElement, tableAlias: string) => SearchOnCustomFieldHandlerResult = (
     element, tableAlias
 ): SearchOnCustomFieldHandlerResult => {
     if (element.field === 'tags' && element.condition === 'ANY_OF' && Array.isArray(element.value)) {
-        const tagIds = element.value.filter(id => typeof id === 'number' && Number.isInteger(id) && id > 0);
-        if (tagIds.length === 0) return { whereCondition: element.not ? '1=1' : '1=0', params: [] };
+        const tagIds = element.value.filter((id): id is number => typeof id === 'number' && Number.isInteger(id) && id > 0);
+        if (tagIds.length === 0) return { whereCondition: element.not ? '1=1' : '1=0', params: [] }; // Match nothing if no valid IDs, unless NOT
 
         const placeholders = tagIds.map(() => '?').join(', ');
         // Use EXISTS for potentially better performance than JOIN on large tables
@@ -361,11 +404,12 @@ export const archiveDocumentTagSearchHandler: (element: SearchQueryElement, tabl
 
         return { whereCondition, params: tagIds };
     }
+    // Could add other conditions like 'ALL_OF' or 'NONE_OF' if needed
     return null;
 };
 
 
-// Handler for searching by signature prefix
+// Handler for searching by signature prefix (remains the same)
 export const archiveDocumentSignatureSearchHandler: (element: SearchQueryElement, tableAlias: string) => SearchOnCustomFieldHandlerResult = (
     element, tableAlias
 ): SearchOnCustomFieldHandlerResult => {
@@ -375,83 +419,47 @@ export const archiveDocumentSignatureSearchHandler: (element: SearchQueryElement
     };
 
     const dbColumn = signatureFieldMap[element.field];
-
-    // We handle ANY_OF condition where value is an array of ID paths (prefixes)
-    // Example: field: 'topographicSignaturePrefix', condition: 'ANY_OF', value: [[1, 5], [2, 8, 3]]
-    // Example: field: 'topographicSignaturePrefix', condition: 'EQ', value: [1, 5] (Search for exact full signature)
-    const value = element.value as unknown as number[][] | number[]; // Allow single path for EQ
-
     if (!dbColumn) return null;
 
+    const value = element.value as unknown; // Value type depends on condition
+
     if (element.condition === 'ANY_OF' && Array.isArray(value)) {
-         // Ensure value is array of arrays for ANY_OF
+         // Handle ANY_OF condition for prefix search (value is array of number arrays)
          const validPrefixes = (value as number[][])
-             .filter(path => Array.isArray(path) && path.every(id => typeof id === 'number' && Number.isInteger(id) && id > 0))
+             .filter(path => Array.isArray(path) && path.every(id => typeof id === 'number' && Number.isInteger(id) && id > 0));
 
-
-         if (validPrefixes.length === 0) {
-             return { whereCondition: element.not ? '1=1' : '1=0', params: [] };
-         }
+         if (validPrefixes.length === 0) return { whereCondition: element.not ? '1=1' : '1=0', params: [] };
 
          const conditions: string[] = [];
          const params: string[] = [];
 
          validPrefixes.forEach(prefix => {
-             // Simple JSON string prefix matching using LIKE
-             // Matches '[1,5,...' for prefix [1, 5]
-             // Also matches exact '[1,5]'
-             const likePatternPrefix = '[' + prefix.join(',') + (prefix.length > 0 ? ',' : ''); // e.g., "[1,5," or "["
-             const likePatternExact = '[' + prefix.join(',') + ']'; // e.g., "[1,5]"
-
-             // Condition for a single prefix: Check if *any* signature in the JSON array starts with this prefix
-             // This uses json_each to iterate through the outer array of signatures.
-             // It checks if the string representation of the signature path starts with the pattern.
-             conditions.push(`
-                 EXISTS (
-                     SELECT 1 FROM json_each(${tableAlias}.${dbColumn}) je
-                     WHERE (je.value LIKE ? OR je.value = ?)
-                 )
-             `);
+             const likePatternPrefix = '[' + prefix.join(',') + (prefix.length > 0 ? ',' : '');
+             const likePatternExact = '[' + prefix.join(',') + ']';
+             conditions.push(`EXISTS (SELECT 1 FROM json_each(${tableAlias}.${dbColumn}) je WHERE (je.value LIKE ? OR je.value = ?))`);
              params.push(likePatternPrefix + '%', likePatternExact);
-
-             // SQLite LIKE is case-sensitive by default unless overridden by PRAGMA.
-             // JSON string matching here is inherently exact on numbers/commas/brackets.
          });
 
-         // Combine conditions for multiple prefixes with OR
          let combinedCondition = conditions.join(' OR ');
-         if (element.not) {
-             combinedCondition = `NOT (${combinedCondition})`;
-         }
+         if (element.not) combinedCondition = `NOT (${combinedCondition})`;
+         return { whereCondition: `(${combinedCondition})`, params: params };
 
-         return {
-             whereCondition: `(${combinedCondition})`, // Wrap in parentheses
-             params: params // Pass all LIKE patterns
-         };
-    }
-     // --- Added EQ Condition Handler ---
-    else if (element.condition === 'EQ' && Array.isArray(value)) {
-        // Ensure value is a single array of numbers for EQ
+    } else if (element.condition === 'EQ' && Array.isArray(value)) {
+        // Handle EQ condition for exact path match (value is single number array)
         const exactPath = value as number[];
         if (!exactPath.every(id => typeof id === 'number' && Number.isInteger(id) && id > 0)) {
             return { whereCondition: element.not ? '1=1' : '1=0', params: [] }; // Invalid path format
         }
-        const exactPathJsonString = JSON.stringify(exactPath); // e.g., "[1,5]"
+        const exactPathJsonString = JSON.stringify(exactPath);
 
-        // Condition for exact path match: Check if the JSON string exists within the JSON array
-        // Use json_each for iteration.
         const whereCondition = `
             ${element.not ? 'NOT ' : ''}EXISTS (
                 SELECT 1 FROM json_each(${tableAlias}.${dbColumn}) je
                 WHERE je.value = ?
             )
         `;
-        return {
-            whereCondition: `(${whereCondition})`,
-            params: [exactPathJsonString]
-        };
+        return { whereCondition: `(${whereCondition})`, params: [exactPathJsonString] };
     }
-    // --- End EQ Condition Handler ---
 
-    return null; // Handler doesn't apply to this field/condition/value type
+    return null; // Handler doesn't apply to other conditions for these fields
 };

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react'; // Added useMemo import
 import { useSearchParams, useNavigate, Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
@@ -12,11 +12,11 @@ import api from '@/lib/api';
 import type { Tag } from '../../../../backend/src/functionalities/tag/models';
 import type { ArchiveDocument, ArchiveDocumentSearchResult, ArchiveDocumentType } from '../../../../backend/src/functionalities/archive/document/models';
 import type { SearchRequest, SearchResponse, SearchQueryElement } from '../../../../backend/src/utils/search';
-import { PlusCircle, ArrowLeft, Folder, FileText } from 'lucide-react'; // Removed unused icons
+import { PlusCircle, ArrowLeft, Folder, FileText } from 'lucide-react';
 import { Pagination } from '@/components/shared/Pagination';
 import { toast } from "sonner";
-import { Card, CardContent, CardHeader, CardDescription } from '@/components/ui/card'; // Removed unused CardTitle/Badge
-import DocumentPreviewDialog from './DocumentPreviewDialog'; // Import the extracted component
+import { Card, CardContent, CardHeader, CardDescription } from '@/components/ui/card';
+import DocumentPreviewDialog from './DocumentPreviewDialog';
 import { cn } from '@/lib/utils';
 
 const ARCHIVE_PAGE_SIZE = 10;
@@ -39,85 +39,59 @@ const ArchivePage: React.FC = () => {
   const [formInitialParentTitle, setFormInitialParentTitle] = useState<string | undefined>(undefined);
   const [formDialogTitle, setFormDialogTitle] = useState("Create Item");
 
-  // --- State for Preview ---
   const [previewingDoc, setPreviewingDoc] = useState<ArchiveDocument | null>(null);
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
-  // -------------------------
 
-  // Search & Pagination State
   const [searchQuery, setSearchQuery] = useState<SearchRequest['query']>([]);
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(ARCHIVE_PAGE_SIZE);
   const [totalDocs, setTotalDocs] = useState(0);
   const [totalPages, setTotalPages] = useState(1);
 
-  // Fetch parent unit details if parentUnitId is set
+  const isAdmin = user?.role === 'admin';
+  const isEmployee = user?.role === 'employee';
+  const isUserRole = user?.role === 'user';
+
   useEffect(() => {
     const fetchParentUnit = async () => {
-        if (!token || !parentUnitId) {
-            setParentUnit(null);
-            return;
-        }
-        setIsLoading(true);
-        setError(null);
+        if (!token || !parentUnitId) { setParentUnit(null); return; }
+        setIsLoading(true); setError(null);
         try {
             const unit = await api.getArchiveDocumentById(parentUnitId, token);
-            if (unit.type !== 'unit') {
-                 throw new Error(`Item ID ${parentUnitId} is not a Unit.`);
-            }
+            if (unit.type !== 'unit') throw new Error(`Item ID ${parentUnitId} is not a Unit.`);
             setParentUnit(unit);
         } catch (err: any) {
-            const msg = `Failed to load parent unit: ${err.message}`;
-            setError(msg);
-            toast.error(msg);
-            setParentUnit(null);
-        } finally {
-            setIsLoading(false);
-        }
+            const msg = `Failed to load parent unit: ${err.message}`; setError(msg); toast.error(msg); setParentUnit(null);
+        } finally { setIsLoading(false); }
     };
     fetchParentUnit();
-  }, [token, parentUnitId, navigate]);
+  }, [token, parentUnitId]);
 
-  // Fetch available tags for search options
   useEffect(() => {
     const fetchTags = async () => {
         if (!token) return;
         try {
-            const tags = await api.getAllTags(token);
-            setAvailableTags(tags.sort((a, b) => a.name.localeCompare(b.name)));
+            if (isAdmin || isEmployee) {
+                 const tags = await api.getAllTags(token);
+                 setAvailableTags(tags.sort((a, b) => a.name.localeCompare(b.name)));
+            } else {
+                 setAvailableTags([]);
+            }
         } catch (err) { console.error("Failed to fetch tags for search options:", err); }
     };
     fetchTags();
-  }, [token]);
+  }, [token, isAdmin, isEmployee]);
 
-  // Combined fetch/search function
    const fetchDocuments = useCallback(async (page = currentPage, query = searchQuery) => {
        if (!token) return;
        setIsLoading(true); setError(null);
        try {
            let finalQuery: SearchQueryElement[] = [...query];
-            if (parentUnitId) {
-                finalQuery = finalQuery.filter(q => q.field !== 'parentUnitArchiveDocumentId');
-                finalQuery.push({ field: 'parentUnitArchiveDocumentId', condition: 'EQ', value: parentUnitId, not: false });
-            }
-            if (!parentUnitId) {
-                const activeFilterExists = finalQuery.some(q => q.field === 'active');
-                if (!activeFilterExists && user?.role !== 'admin') {
-                    finalQuery.push({ field: 'active', condition: 'EQ', value: true, not: false });
-                } else if (activeFilterExists && user?.role !== 'admin') {
-                    finalQuery = finalQuery.map(q =>
-                         q.field === 'active' ? { ...q, value: true } : q
-                    ) as SearchQueryElement[];
-                }
-                const ownerFilterExists = finalQuery.some(q => q.field === 'ownerUserId');
-                if (!ownerFilterExists && user?.role !== 'admin' && user?.userId) {
-                    finalQuery.push({ field: 'ownerUserId', condition: 'EQ', value: user.userId, not: false });
-                }
-            }
-
-           const searchRequest: SearchRequest = {
-               query: finalQuery, page: page, pageSize: pageSize,
-           };
+           if (parentUnitId) {
+               finalQuery = finalQuery.filter(q => q.field !== 'parentUnitArchiveDocumentId');
+               finalQuery.push({ field: 'parentUnitArchiveDocumentId', condition: 'EQ', value: parentUnitId, not: false });
+           }
+           const searchRequest: SearchRequest = { query: finalQuery, page: page, pageSize: pageSize };
            const response = await api.searchArchiveDocuments(searchRequest, token);
            setDocuments(response.data);
            setTotalDocs(response.totalSize);
@@ -127,9 +101,8 @@ const ArchivePage: React.FC = () => {
            const msg = err.message || 'Failed to fetch documents'; setError(msg); toast.error(msg); console.error("Fetch Error:", err);
            setDocuments([]); setTotalDocs(0); setTotalPages(1);
        } finally { setIsLoading(false); }
-   }, [token, pageSize, currentPage, searchQuery, user?.role, user?.userId, parentUnitId]);
+   }, [token, pageSize, currentPage, searchQuery, parentUnitId]);
 
-   // Trigger fetch on mount and changes
    useEffect(() => {
        if (!parentUnitId || parentUnit) {
            fetchDocuments(currentPage, searchQuery);
@@ -137,55 +110,37 @@ const ArchivePage: React.FC = () => {
    }, [fetchDocuments, currentPage, searchQuery, parentUnitId, parentUnit]);
 
 
-   // --- CRUD Handlers ---
     const handleEdit = (doc: ArchiveDocument) => {
-        if (user?.role !== 'admin' && user?.userId !== doc.ownerUserId) {
-            toast.error("You can only edit items you own."); return;
-        }
+        if (!isAdmin && !isEmployee) { toast.error("You do not have permission to edit items."); return; }
         setEditingDoc(doc);
-        setFormInitialType(undefined);
-        setFormInitialParentId(undefined);
-        setFormInitialParentTitle(undefined);
+        setFormInitialType(undefined); setFormInitialParentId(undefined); setFormInitialParentTitle(undefined);
         setFormDialogTitle(`Edit ${doc.type === 'unit' ? 'Unit' : 'Document'}`);
         setIsFormOpen(true);
     };
 
     const handleCreateNew = () => {
+        if (!isAdmin && !isEmployee) { toast.error("You do not have permission to create items."); return; }
         if (parentUnitId && parentUnit) {
-            setEditingDoc(null);
-            setFormInitialType('document');
-            setFormInitialParentId(parentUnitId);
-            setFormInitialParentTitle(parentUnit.title);
-            setFormDialogTitle(`Create Document in Unit "${parentUnit.title}"`);
+            setEditingDoc(null); setFormInitialType('document'); setFormInitialParentId(parentUnitId);
+            setFormInitialParentTitle(parentUnit.title); setFormDialogTitle(`Create Document in Unit "${parentUnit.title}"`);
         } else {
-            setEditingDoc(null);
-            setFormInitialType(undefined);
-            setFormInitialParentId(undefined);
-            setFormInitialParentTitle(undefined);
-            setFormDialogTitle("Create New Item");
+            setEditingDoc(null); setFormInitialType(undefined); setFormInitialParentId(undefined);
+            setFormInitialParentTitle(undefined); setFormDialogTitle("Create New Item");
         }
         setIsFormOpen(true);
     };
 
     const updateDialogTitle = useCallback((type?: ArchiveDocumentType) => {
-         if (editingDoc) {
-             setFormDialogTitle(`Edit ${type === 'unit' ? 'Unit' : 'Document'}`);
-         } else if (parentUnitId && parentUnit) {
-             setFormDialogTitle(`Create Document in Unit "${parentUnit.title}"`);
-         } else {
-             setFormDialogTitle(`Create New ${type === 'unit' ? 'Unit' : 'Document'}`);
-         }
+         if (editingDoc) setFormDialogTitle(`Edit ${type === 'unit' ? 'Unit' : 'Document'}`);
+         else if (parentUnitId && parentUnit) setFormDialogTitle(`Create Document in Unit "${parentUnit.title}"`);
+         else setFormDialogTitle(`Create New ${type === 'unit' ? 'Unit' : 'Document'}`);
     }, [editingDoc, parentUnitId, parentUnit]);
 
-    // Updated handleDisable to use the previewingDoc if available
     const handleDisable = async (docId: number) => {
+        if (!isAdmin && !isEmployee) { toast.error("You do not have permission to disable items."); return; }
         if (!token || !docId) return;
         const docToDisable = documents.find(d => d.archiveDocumentId === docId) ?? editingDoc ?? previewingDoc;
         if (!docToDisable) return;
-
-        if (user?.role !== 'admin' && user?.userId !== docToDisable.ownerUserId) {
-            toast.error("You are not authorized to disable this item."); return;
-        }
         if (!window.confirm(`Are you sure you want to disable this ${docToDisable.type}? It will be hidden but can be recovered by an admin.`)) return;
 
         setError(null); setIsLoading(true);
@@ -196,7 +151,6 @@ const ArchivePage: React.FC = () => {
             const newCurrentPage = (currentPage > newTotalPages) ? Math.max(1, newTotalPages) : currentPage;
             await fetchDocuments(newCurrentPage, searchQuery);
             if (currentPage !== newCurrentPage) setCurrentPage(newCurrentPage);
-            // Close preview if the disabled item was being previewed
             if (previewingDoc?.archiveDocumentId === docId) setIsPreviewOpen(false);
         } catch (err: any) {
              const msg = err.message || 'Failed to disable item'; setError(msg); toast.error(`Disable failed: ${msg}`); console.error("Disable Error:", err);
@@ -206,14 +160,12 @@ const ArchivePage: React.FC = () => {
     const handleSaveSuccess = async () => {
         setIsFormOpen(false); setEditingDoc(null);
         toast.success(editingDoc ? "Item updated." : "Item created.");
-        await fetchDocuments(currentPage, searchQuery); // Refresh list
+        await fetchDocuments(currentPage, searchQuery);
     };
 
-   // --- Search & Pagination Handlers ---
    const handleSearch = (newQuery: SearchRequest['query']) => { setSearchQuery(newQuery); setCurrentPage(1); };
    const handlePageChange = (newPage: number) => { setCurrentPage(newPage); };
 
-    // --- Preview/Open Handlers ---
     const handlePreview = useCallback(async (doc: ArchiveDocumentSearchResult) => {
         if (!token) return;
         try {
@@ -223,31 +175,37 @@ const ArchivePage: React.FC = () => {
             setIsPreviewOpen(true);
         } catch (err: any) {
             toast.error(`Failed to load document details: ${err.message}`);
-        } finally {
-            setIsLoading(false);
-        }
+             setPreviewingDoc(null);
+             setIsPreviewOpen(false);
+        } finally { setIsLoading(false); }
     }, [token]);
 
     const handleOpenUnit = useCallback((unit: ArchiveDocumentSearchResult) => {
         navigate(`/archive?unitId=${unit.archiveDocumentId}`);
     }, [navigate]);
 
-   // Define fields available for searching
-   const searchFields: SearchFieldOption[] = [
-       { value: 'title', label: 'Title', type: 'text' },
-       { value: 'creator', label: 'Creator', type: 'text' },
-       { value: 'creationDate', label: 'Creation Date', type: 'text' },
-       { value: 'contentDescription', label: 'Description', type: 'text'},
-       ...(!parentUnitId ? [{ value: 'type', label: 'Type', type: 'select', options: [{value: 'unit', label: 'Unit'}, {value:'document', label: 'Document'}]}] as SearchFieldOption[] : []),
-       { value: 'isDigitized', label: 'Is Digitized', type: 'boolean'},
-       { value: 'tags', label: 'Tags', type: 'tags', options: availableTags.map(t => ({value: t.tagId!, label: t.name})) },
-       { value: 'topographicSignatureElementIds', label: 'Topo Sig (Any ID)', type: 'text' },
-       { value: 'descriptiveSignatureElementIds', label: 'Desc Sig (Any ID)', type: 'text' },
-   ];
-    if (user?.role === 'admin' && !parentUnitId) {
-        searchFields.push({ value: 'active', label: 'Is Active', type: 'boolean' });
-        searchFields.push({ value: 'ownerUserId', label: 'Owner User ID', type: 'number' });
-    }
+   const searchFields: SearchFieldOption[] = useMemo(() => { // Now correctly uses imported useMemo
+       const baseFields: SearchFieldOption[] = [
+           { value: 'title', label: 'Title', type: 'text' },
+           { value: 'creator', label: 'Creator', type: 'text' },
+           { value: 'creationDate', label: 'Creation Date', type: 'text' },
+           { value: 'contentDescription', label: 'Description', type: 'text'},
+           ...(!parentUnitId ? [{ value: 'type', label: 'Type', type: 'select', options: [{value: 'unit', label: 'Unit'}, {value:'document', label: 'Document'}]}] as SearchFieldOption[] : []),
+           { value: 'isDigitized', label: 'Is Digitized', type: 'boolean'},
+           { value: 'topographicSignaturePrefix', label: 'Topo Sig Prefix', type: 'text' },
+           { value: 'descriptiveSignaturePrefix', label: 'Desc Sig Prefix', type: 'text' },
+       ];
+       if (isAdmin || isEmployee) {
+           baseFields.push(
+               { value: 'tags', label: 'Tags (Any Of)', type: 'tags', options: availableTags.map(t => ({value: t.tagId!, label: t.name})) },
+               { value: 'ownerUserId', label: 'Owner User ID', type: 'number' }
+           );
+       }
+       if (isAdmin) {
+            baseFields.push({ value: 'active', label: 'Is Active', type: 'boolean' });
+       }
+       return baseFields;
+   }, [isAdmin, isEmployee, availableTags, parentUnitId]);
 
   return (
     <div className="space-y-6">
@@ -265,34 +223,35 @@ const ArchivePage: React.FC = () => {
                                    : <><FileText className='h-5 w-5 text-gray-600'/> Archive</>}
                     </h1>
                     <p className='text-muted-foreground'>
-                       {parentUnit ? `Browsing items within "${parentUnit.title}".` : 'Manage archival documents and units.'}
+                       {parentUnit ? `Browsing items within "${parentUnit.title}".`
+                        : isUserRole ? 'Search documents based on your assigned tags.'
+                        : 'Manage archival documents and units.'}
                     </p>
                 </div>
            </div>
-           {/* Create Item Button & Dialog */}
-           <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
-             <DialogTrigger asChild>
-               <Button onClick={handleCreateNew} className='shrink-0'>
-                   <PlusCircle className="mr-2 h-4 w-4" />
-                   {parentUnitId ? 'Create Document Here' : 'Create Item'}
-               </Button>
-             </DialogTrigger>
-             <DialogContent className="max-w-3xl">
-               <DialogHeader>
-                 <DialogTitle>{formDialogTitle}</DialogTitle>
-               </DialogHeader>
-               {isFormOpen && (
-                   <DocumentForm
-                       docToEdit={editingDoc}
-                       onSave={handleSaveSuccess}
-                       forceType={formInitialType}
-                       forcedParentId={formInitialParentId}
-                       forcedParentTitle={formInitialParentTitle}
-                       onTypeChange={updateDialogTitle}
-                    />
-                )}
-             </DialogContent>
-           </Dialog>
+            {(isAdmin || isEmployee) && (
+                <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
+                    <DialogTrigger asChild>
+                    <Button onClick={handleCreateNew} className='shrink-0'>
+                        <PlusCircle className="mr-2 h-4 w-4" />
+                        {parentUnitId ? 'Create Document Here' : 'Create Item'}
+                    </Button>
+                    </DialogTrigger>
+                    <DialogContent className="max-w-3xl">
+                    <DialogHeader> <DialogTitle>{formDialogTitle}</DialogTitle> </DialogHeader>
+                    {isFormOpen && (
+                        <DocumentForm
+                            docToEdit={editingDoc}
+                            onSave={handleSaveSuccess}
+                            forceType={formInitialType}
+                            forcedParentId={formInitialParentId}
+                            forcedParentTitle={formInitialParentTitle}
+                            onTypeChange={updateDialogTitle}
+                            />
+                        )}
+                    </DialogContent>
+                </Dialog>
+            )}
        </div>
 
        {/* Search Bar Section */}
@@ -327,7 +286,9 @@ const ArchivePage: React.FC = () => {
                          <p className="text-center text-muted-foreground pt-6">
                              {searchQuery.length > 0 ? 'No items found matching your search criteria.' :
                               parentUnitId ? `No items found in unit "${parentUnit?.title || 'this unit'}".` :
-                              'The archive is empty. Click "Create Item" to start.'}
+                              isUserRole ? 'No documents found matching your assigned tags.' :
+                              'The archive is empty.'}
+                              {(isAdmin || isEmployee) && !parentUnitId && documents.length === 0 && searchQuery.length === 0 && ' Click "Create Item" to start.'}
                          </p>
                       )}
                    </>
@@ -335,17 +296,15 @@ const ArchivePage: React.FC = () => {
             </CardContent>
         </Card>
 
-         {/* --- Document Preview Dialog --- */}
+         {/* Document Preview Dialog */}
          <DocumentPreviewDialog
             isOpen={isPreviewOpen}
             onOpenChange={setIsPreviewOpen}
             document={previewingDoc}
             onEdit={handleEdit}
             onDisable={handleDisable}
-            // Pass the parent unit's title if available for better link display
             parentUnitTitle={parentUnit?.archiveDocumentId === previewingDoc?.parentUnitArchiveDocumentId ? parentUnit?.title : undefined}
          />
-         {/* --- End Preview Dialog --- */}
     </div>
   );
 };

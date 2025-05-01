@@ -1,5 +1,6 @@
 import { Database } from 'bun:sqlite';
-import { initializeUserTable } from '../functionalities/user/db';
+// Added initializeUserAllowedTagTable import
+import { initializeUserTable, initializeUserAllowedTagTable } from '../functionalities/user/db';
 import { initializeNoteTable } from '../functionalities/note/db';
 import { initializeConfigTable } from '../functionalities/config/db';
 import { initializeLogTable } from '../functionalities/log/db';
@@ -38,24 +39,31 @@ export async function initializeDatabase() {
          process.exit(1);
     }
 
+    // IMPORTANT: Enable write-ahead logging for better concurrency
+    try {
+        db.exec('PRAGMA journal_mode = WAL;');
+        console.log("  - PRAGMA journal_mode = WAL; set successfully.");
+    } catch (error) {
+         console.warn("*** Could not set PRAGMA journal_mode = WAL; continuing with default ***");
+         console.warn(error);
+    }
+
+
     // Initialize core tables first, order matters for dependencies/logging
     await tryInitialize('logs', initializeLogTable);
     await tryInitialize('config', initializeConfigTable);
-    await tryInitialize('users', initializeUserTable); // Depends on logs potentially for default user creation log
+    // Initialize users and tags before tables that depend on them
+    await tryInitialize('users', initializeUserTable);
+    await tryInitialize('tags', initializeTagTable);
+    // Initialize the new user_allowed_tags table
+    await tryInitialize('user_allowed_tags', initializeUserAllowedTagTable); // Depends on users, tags
     await tryInitialize('sessions', initializeSessionTable); // Depends on users
 
     // Feature-specific tables
-    await tryInitialize('tags', initializeTagTable); // Tags need to exist before junction tables
-
-    // Archive Documents & Tags
     await tryInitialize('archive_documents', initializeArchiveDocumentTable); // Depends on users
     await tryInitialize('archive_document_tags', initializeArchiveDocumentTagTable); // Depends on archive_documents, tags
-
-    // Notes & Tags
     await tryInitialize('notes', initializeNoteTable); // Depends on users
     await tryInitialize('note_tags', initializeNoteTagTable); // Depends on notes, tags
-
-    // Signature Components & Elements
     await tryInitialize('signature_components', initializeSignatureComponentTable);
     await tryInitialize('signature_elements', initializeSignatureElementTable); // Depends on signature_components
     await tryInitialize('signature_element_parents', initializeSignatureElementParentTable); // Depends on signature_elements

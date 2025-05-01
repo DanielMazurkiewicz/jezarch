@@ -4,6 +4,7 @@ import UserManagement from './UserManagement';
 import SettingsForm from './SettingsForm';
 import SslConfig from './SslConfig';
 import LogViewer from './LogViewer';
+import DatabaseManagement from './DatabaseManagement'; // Import the new component
 import { useAuth } from '@/hooks/useAuth';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'; // Use Card for consistency
 
@@ -34,7 +35,7 @@ const AdminPage: React.FC = () => {
       <div className='flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4'>
         <div>
            <h1 className="text-2xl font-bold">Admin Panel</h1>
-           <p className='text-muted-foreground'>Manage application users, settings, and logs.</p>
+           <p className='text-muted-foreground'>Manage application users, settings, database, and logs.</p> {/* Updated description */}
         </div>
         {/* Add global admin actions here if needed, e.g., trigger backup */}
       </div>
@@ -49,6 +50,8 @@ const AdminPage: React.FC = () => {
                 <TabsTrigger value="users">User Management</TabsTrigger>
                 <TabsTrigger value="settings">App Settings</TabsTrigger>
                 <TabsTrigger value="ssl">SSL Config</TabsTrigger>
+                 {/* --- NEW: Database Tab --- */}
+                 <TabsTrigger value="database">Database</TabsTrigger>
                 <TabsTrigger value="logs">System Logs</TabsTrigger>
             </TabsList>
         </div>
@@ -63,6 +66,10 @@ const AdminPage: React.FC = () => {
         <TabsContent value="ssl" className='mt-6'>
             <SslConfig />
         </TabsContent>
+         {/* --- NEW: Database Tab Content --- */}
+         <TabsContent value="database" className='mt-6'>
+             <DatabaseManagement />
+         </TabsContent>
         <TabsContent value="logs" className='mt-6'>
             <LogViewer />
         </TabsContent>
