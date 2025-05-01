@@ -73,30 +73,34 @@ async function fetchApi<T>(
     let response: Response;
 
     try {
+        console.log(`fetchApi: Requesting ${method} ${url}`); // Log request initiation
         response = await fetch(url, config);
+         console.log(`fetchApi: Received response for ${url} - Status: ${response.status}, OK: ${response.ok}`); // Log response status
     } catch (networkError: any) {
-        console.error("Network Error:", networkError);
+        console.error(`fetchApi: Network Error for ${url}:`, networkError); // Log network errors
         throw new Error(`Network error: ${networkError.message || 'Failed to connect to API'}`);
     }
 
     if (!response.ok) {
         let errorData: any = { message: `API request failed: ${response.status} ${response.statusText}` };
+        let errorText = '(Failed to read error body)';
         try {
-             const textResponse = await response.text();
+             errorText = await response.text(); // Try to get error text
+             console.warn(`fetchApi: Error Response Text for ${url}:`, errorText); // Log raw error text
              try {
-                  const parsed = JSON.parse(textResponse);
+                  const parsed = JSON.parse(errorText);
                   if (typeof parsed === 'object' && parsed !== null && typeof parsed.message === 'string' && parsed.message.length > 0) {
                       errorData = { ...parsed, message: parsed.message, errors: parsed.errors };
-                  } else if (textResponse.trim().length > 0) {
-                     errorData = { message: textResponse.trim() };
+                  } else if (errorText.trim().length > 0) {
+                     errorData = { message: errorText.trim() };
                   }
-             } catch (e) {
-                  if (textResponse.trim().length > 0) {
-                      errorData = { message: textResponse.trim() };
+             } catch (e) { // JSON parsing failed, use raw text if not empty
+                  if (errorText.trim().length > 0) {
+                      errorData = { message: errorText.trim() };
                   }
              }
-        } catch (e) { console.error("Failed to read error response body:", e); }
-        console.error("API Error:", response.status, errorData);
+        } catch (e) { console.error(`fetchApi: Failed to read error response body for ${url}:`, e); }
+        console.error(`fetchApi: API Error for ${url}:`, response.status, errorData); // Log structured error data
         const errorToThrow = new Error(errorData.message || `API Error ${response.status}`);
         if (errorData.errors) {
             (errorToThrow as any).errors = errorData.errors;
@@ -106,53 +110,74 @@ async function fetchApi<T>(
 
     // Handle Blob response specifically
     if (options.expectBlob) {
+         console.log(`fetchApi: Handling response as Blob for ${url}`);
         // Return the blob directly, assuming T is Blob
         return response.blob() as Promise<T>;
     }
 
+    // Handle No Content response
     if (response.status === 204 || response.headers.get('content-length') === '0') {
+        console.log(`fetchApi: Handling 204 No Content for ${url}`);
         return { success: true } as T;
     }
 
+    // --- Log Raw Text Response BEFORE parsing JSON ---
+    let responseText: string | null = null;
+    try {
+        responseText = await response.text();
+        console.log(`fetchApi: Raw Response Text for ${url}:`, responseText); // Log the raw text
+    } catch (textError) {
+        console.error(`fetchApi: Failed to read response text for ${url}:`, textError);
+        throw new Error("Failed to read API response text.");
+    }
+    // --- End Logging Raw Text ---
+
+    // Handle specific text/plain endpoint
     const contentType = response.headers.get('content-type');
     if (endpoint.endsWith('/api/ping') && contentType?.includes('text/plain')) {
-        return await response.text() as T;
+        console.log(`fetchApi: Handling response as text/plain for ${url}`);
+        return responseText as T; // Use the text already read
     }
 
+    // Default: Attempt to parse JSON from the logged text
     try {
-        return await response.json() as T;
+        const jsonData = JSON.parse(responseText); // Parse the text we already read
+        console.log(`fetchApi: Parsed JSON for ${url}:`, jsonData); // Log parsed JSON
+        return jsonData as T;
     } catch (jsonError: any) {
-        console.error("JSON Parsing Error:", jsonError, "URL:", url, "Status:", response.status);
-        let textForDebug = '(Could not read text response)';
-        try { textForDebug = await response.text(); console.error("Response Text:", textForDebug); } catch { /* ignore */ }
-        throw new Error(`Failed to parse API response: ${jsonError.message}. Response text: ${textForDebug}`);
+        console.error("fetchApi: JSON Parsing Error:", jsonError, "URL:", url, "Status:", response.status);
+        // Log the raw text again in case of parsing error
+        console.error("fetchApi: Raw text that failed to parse:", responseText);
+        throw new Error(`Failed to parse API response: ${jsonError.message}.`);
     }
 }
 
 
-// --- API Function Exports ---
+// --- Specific Type for getConfig Response ---
+type GetConfigResponse<K extends AppConfigKeys> = {
+    [key in K]: string | null;
+};
+
+
+// --- API Function Exports (Remaining unchanged from previous step) ---
 // API Status
 const getApiStatus = () => fetchApi<{ message: string }>("/api/status");
 const pingApi = () => fetchApi<string>("/api/ping");
 // Auth
-// Updated login return type to expect User object (including assignedTags if applicable)
 const login = (credentials: UserCredentials) => fetchApi<{ token: string } & Omit<User, 'password'>>("/user/login", "POST", credentials);
 const logout = (token: string) => fetchApi<{ success: boolean }>("/user/logout", "POST", null, token);
-const register = (userData: UserCredentials) => fetchApi<Omit<User, 'password'>>("/user/create", "POST", userData); // Expect User object back (without password)
+const register = (userData: UserCredentials) => fetchApi<Omit<User, 'password'>>("/user/create", "POST", userData);
 // User
-// Updated getAllUsers return type
 const getAllUsers = (token: string) => fetchApi<Omit<User, "password">[]>("/users/all", "GET", null, token);
-// Updated getUserByLogin return type
 const getUserByLogin = (login: string, token: string) => fetchApi<Omit<User, "password">>(`/user/by-login/${login}`, "GET", null, token);
 const updateUserRole = (login: string, role: UserRole | null, token: string) => fetchApi<{ message: string }>(`/user/by-login/${login}`, "PATCH", { role }, token);
 const changePassword = (passwords: { oldPassword: string; password: string; }, token: string) => fetchApi<{ success: boolean }>("/user/change-password", "POST", passwords, token);
 const adminSetUserPassword = (login: string, password: string, token: string) => fetchApi<{ success: boolean }>(`/user/by-login/${login}/set-password`, "PATCH", { password }, token);
-// --- User Tag Functions ---
 const getAssignedTagsForUser = (login: string, token: string) => fetchApi<Tag[]>(`/user/by-login/${login}/tags`, "GET", null, token);
 const assignTagsToUser = (login: string, tagIds: number[], token: string) => fetchApi<Tag[]>(`/user/by-login/${login}/tags`, "PUT", { tagIds }, token);
 // Config
-const getConfig = (key: AppConfigKeys, token: string) => fetchApi<{ [key: string]: string }>(`/configs/${key}`, "GET", null, token);
-const setConfig = (key: AppConfigKeys, value: string, token: string) => fetchApi<{ message: string }>(`/configs/${key}`, "PUT", { key, value }, token);
+const getConfig = <K extends AppConfigKeys>(key: K, token: string) => fetchApi<GetConfigResponse<K>>(`/configs/${key}`, "GET", null, token);
+const setConfig = (key: AppConfigKeys, value: string, token: string) => fetchApi<{ message: string }>(`/configs/${key}`, "PUT", { value }, token);
 const uploadSsl = (sslConfig: SslConfig, token: string) => fetchApi<{ message: string }>("/config/ssl/upload", "PUT", sslConfig, token);
 const generateSsl = (token: string) => fetchApi<{ message: string }>("/config/ssl/generate", "POST", null, token);
 // Log
@@ -190,17 +215,8 @@ const getArchiveDocumentById = (id: number, token: string) => fetchApi<ArchiveDo
 const updateArchiveDocument = (id: number, data: UpdateArchiveDocumentInput, token: string) => fetchApi<ArchiveDocument>(`/archive/document/id/${id}`, 'PATCH', data, token);
 const disableArchiveDocument = (id: number, token: string) => fetchApi<{ success: boolean }>(`/archive/document/id/${id}`, 'DELETE', null, token);
 const searchArchiveDocuments = (searchRequest: SearchRequest, token: string) => fetchApi<SearchResponse<ArchiveDocumentSearchResult>>("/archive/documents/search", "POST", searchRequest, token);
-
-// --- NEW: Admin DB Functions ---
-// Backup returns a Blob
+// Admin DB Functions
 const backupDatabase = (token: string) => fetchApi<Blob>("/admin/db/backup", "GET", null, token, { expectBlob: true });
-// Restore sends FormData and expects JSON response
-const restoreDatabase = (file: File, token: string) => {
-    const formData = new FormData();
-    formData.append('dbfile', file); // Ensure the key matches backend controller
-    return fetchApi<{ message: string; instructions: string; tempFilePath?: string }>("/admin/db/restore", "PUT", formData, token);
-};
-
 
 export default {
     getApiStatus, pingApi, login, logout, register, getAllUsers, getUserByLogin,
@@ -214,6 +230,5 @@ export default {
     getSignatureElementById, updateSignatureElement, deleteSignatureElement,
     getElementsByComponent, searchSignatureElements, createArchiveDocument,
     getArchiveDocumentById, updateArchiveDocument, disableArchiveDocument, searchArchiveDocuments,
-    // --- NEW: Add admin DB functions ---
-    backupDatabase, restoreDatabase,
+    backupDatabase,
 };

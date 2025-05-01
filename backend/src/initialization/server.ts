@@ -4,7 +4,6 @@ import { AppConfigKeys } from '../functionalities/config/models';
 import { getConfig } from '../functionalities/config/db';
 import { AppParams, AppParamsDefaults } from "./app_params";
 import { Log } from '../functionalities/log/db'; // Import Log
-
 import path from 'node:path';
 // Import necessary types
 import { ServeOptions, Server, TLSServeOptions, FileBlob } from 'bun'; // Include FileBlob

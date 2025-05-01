@@ -11,8 +11,9 @@ import { useAuth } from '@/hooks/useAuth';
 import api from '@/lib/api';
 import { sslSchema, SslFormData } from '@/lib/zodSchemas'; // Import schema and type
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"; // Import Alert for status messages
-import { CheckCircle, UploadCloud, RefreshCcw } from 'lucide-react'; // Import icons
+import { CheckCircle, UploadCloud, RefreshCcw, AlertTriangle } from 'lucide-react'; // Added AlertTriangle
 import { cn } from '@/lib/utils'; // Import cn for conditional classes
+import { toast } from "sonner"; // Import toast
 
 const SslConfig: React.FC = () => {
     const { token } = useAuth();
@@ -30,16 +31,22 @@ const SslConfig: React.FC = () => {
     // Handle uploading provided key/cert
     const handleUpload = async (data: SslFormData) => {
         if (!token) return;
+
+        // REMOVED server restart confirmation dialog
+
         setUploadStatus('saving');
         setUploadError(null);
         try {
-            // Ensure data structure matches SslConfig interface { key: string; cert: string }
-            await api.uploadSsl({ key: data.key, cert: data.cert }, token);
+            // API call returns message indicating restart is needed
+            const response = await api.uploadSsl({ key: data.key, cert: data.cert }, token);
             setUploadStatus('success');
+            toast.warning(response.message || "SSL config uploaded. Manual server restart required."); // Use warning toast
             reset({ key: '', cert: '' }); // Clear form on success
             setTimeout(() => setUploadStatus('idle'), 3000); // Reset status after delay
+
         } catch (err: any) {
-            setUploadError(err.message || "Failed to upload SSL configuration.");
+            const msg = err.message || "Failed to upload SSL configuration.";
+            setUploadError(msg); toast.error(msg);
             setUploadStatus('error');
         }
     };
@@ -47,19 +54,23 @@ const SslConfig: React.FC = () => {
     // Handle generating a self-signed certificate
     const handleGenerate = async () => {
         if (!token) return;
-        // Confirmation dialog
-        if (!window.confirm("This will generate a new self-signed certificate and overwrite any existing configuration. This is only recommended for testing/development. Continue?")) return;
+
+        // Confirmation dialog (still useful for self-signed overwrite warning)
+        if (!window.confirm("Generating a new self-signed certificate will overwrite any existing SSL configuration. This is only recommended for testing/development. Continue?")) {
+            return;
+        }
 
         setGenerateStatus('generating');
         setGenerateError(null);
         try {
-            await api.generateSsl(token);
+            const response = await api.generateSsl(token);
             setGenerateStatus('success');
+            toast.warning(response.message || "Self-signed certificate generated. Manual server restart required."); // Use warning toast
             setTimeout(() => setGenerateStatus('idle'), 3000); // Reset status after delay
-            // Optionally fetch and display the new cert/key? Or just show success.
-            // alert("Self-signed certificate generated successfully. Server might need a restart.");
+
         } catch (err: any) {
-             setGenerateError(err.message || "Failed to generate SSL certificate.");
+             const msg = err.message || "Failed to generate SSL certificate.";
+             setGenerateError(msg); toast.error(msg);
              setGenerateStatus('error');
         }
     };
@@ -71,17 +82,17 @@ const SslConfig: React.FC = () => {
              <Card className="bg-white dark:bg-white text-neutral-900 dark:text-neutral-900">
                  <CardHeader>
                      <CardTitle>Upload Existing SSL</CardTitle>
-                     <CardDescription>Paste your private key and certificate (PEM format). Requires server restart.</CardDescription>
+                     <CardDescription>Paste your private key and certificate (PEM format). Requires manual server restart.</CardDescription>
                  </CardHeader>
                 <CardContent>
                     <form onSubmit={handleSubmit(handleUpload)} className="space-y-4">
                          {/* Display upload status/error messages */}
                          {uploadStatus === 'error' && uploadError && <ErrorDisplay message={uploadError} />}
                          {uploadStatus === 'success' && (
-                            <Alert variant="default" className="border-green-600 bg-green-50 dark:bg-green-50 text-green-700 dark:text-green-700">
-                                <CheckCircle className="h-5 w-5 text-green-600" />
-                                <AlertTitle>Upload Successful</AlertTitle>
-                                <AlertDescription>SSL configuration uploaded. Server restart needed.</AlertDescription>
+                            <Alert variant="default" className="border-yellow-600 bg-yellow-50 dark:bg-yellow-50 text-yellow-800 dark:text-yellow-800"> {/* Use warning style */}
+                                <AlertTriangle className="h-5 w-5 text-yellow-600" />
+                                <AlertTitle>Upload Successful - Restart Required</AlertTitle>
+                                <AlertDescription>SSL configuration uploaded. Manual server restart required for changes to take effect.</AlertDescription>
                             </Alert>
                          )}
 
@@ -96,6 +107,7 @@ const SslConfig: React.FC = () => {
                                 // Use mono font for keys/certs, apply error style
                                 className={cn('font-mono text-xs', errors.key && "border-destructive")}
                                 aria-invalid={!!errors.key}
+                                disabled={uploadStatus === 'saving'} // Disable during save
                              />
                              {errors.key && <p className="text-xs text-destructive">{errors.key.message}</p>}
                          </div>
@@ -111,6 +123,7 @@ const SslConfig: React.FC = () => {
                                 // Use mono font, apply error style
                                 className={cn('font-mono text-xs', errors.cert && "border-destructive")}
                                 aria-invalid={!!errors.cert}
+                                disabled={uploadStatus === 'saving'} // Disable during save
                              />
                              {errors.cert && <p className="text-xs text-destructive">{errors.cert.message}</p>}
                          </div>
@@ -128,18 +141,24 @@ const SslConfig: React.FC = () => {
             <Card className="bg-white dark:bg-white text-neutral-900 dark:text-neutral-900">
                 <CardHeader>
                      <CardTitle>Generate Self-Signed SSL</CardTitle>
-                     <CardDescription>Generate a new certificate for testing/development (not for production). Requires server restart.</CardDescription>
+                     <CardDescription>Generate a new certificate for testing/development (not for production). Requires manual server restart.</CardDescription>
                 </CardHeader>
                 <CardContent className='space-y-4'>
                     {/* Display generate status/error messages */}
                     {generateStatus === 'error' && generateError && <ErrorDisplay message={generateError} />}
                     {generateStatus === 'success' && (
-                       <Alert variant="default" className="border-green-600 bg-green-50 dark:bg-green-50 text-green-700 dark:text-green-700">
-                           <CheckCircle className="h-5 w-5 text-green-600" />
-                           <AlertTitle>Generation Successful</AlertTitle>
-                           <AlertDescription>Self-signed certificate generated. Server restart may be required.</AlertDescription>
+                       <Alert variant="default" className="border-yellow-600 bg-yellow-50 dark:bg-yellow-50 text-yellow-800 dark:text-yellow-800"> {/* Use warning style */}
+                           <AlertTriangle className="h-5 w-5 text-yellow-600" />
+                           <AlertTitle>Generation Successful - Restart Required</AlertTitle>
+                           <AlertDescription>Self-signed certificate generated. Manual server restart required for changes to take effect.</AlertDescription>
                        </Alert>
                     )}
+                    {/* Add warning */}
+                     <Alert variant="destructive">
+                         <AlertTriangle className="h-4 w-4" />
+                         <AlertTitle>Warning</AlertTitle>
+                         <AlertDescription>Generating a new certificate will overwrite existing SSL settings. Manual server restart required afterwards.</AlertDescription>
+                     </Alert>
 
                     {/* Generate Button */}
                     <Button
