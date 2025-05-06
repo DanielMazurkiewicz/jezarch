@@ -32,6 +32,17 @@ export const registerSchema = z.object({
 export type RegisterFormData = z.infer<typeof registerSchema>;
 
 // --- User Management ---
+// Create User Schema (for Admin Panel) - Similar to register but without automatic login intent
+export const userCreateSchema = z.object({
+    login: z.string().min(3, "Login must be at least 3 characters").max(50),
+    password: passwordSchema,
+    confirmPassword: z.string(),
+}).refine(data => data.password === data.confirmPassword, {
+    message: "Passwords don't match",
+    path: ["confirmPassword"],
+});
+export type UserCreateFormData = z.infer<typeof userCreateSchema>;
+
 // Change Password by User (requires old password)
 export const changePasswordSchema = z.object({
     oldPassword: z.string().min(1, "Current password is required"),

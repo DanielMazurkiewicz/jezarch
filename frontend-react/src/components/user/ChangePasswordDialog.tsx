@@ -1,5 +1,5 @@
 // src/components/user/ChangePasswordDialog.tsx
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react'; // Added useEffect
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { changePasswordSchema, ChangePasswordFormData } from '@/lib/zodSchemas';
@@ -61,13 +61,31 @@ const ChangePasswordDialog: React.FC<ChangePasswordDialogProps> = ({ isOpen, onO
     };
 
     // Reset form and error state when dialog is closed/opened
-    React.useEffect(() => {
+    useEffect(() => {
         if (!isOpen) {
             reset();
             setError(null);
             setIsSuccess(false);
         }
     }, [isOpen, reset]);
+
+    // --- WORKAROUND: Explicitly remove pointer-events style on close ---
+    useEffect(() => {
+        // This effect runs when the `isOpen` prop changes.
+        if (!isOpen) {
+            // Use requestAnimationFrame to ensure the style change happens slightly after
+            // the state update, potentially giving Radix time to finish its own logic,
+            // but this will override it if necessary.
+            requestAnimationFrame(() => {
+                if (document.body.style.pointerEvents === 'none') {
+                    console.log("ChangePasswordDialog: Forcing removal of 'pointer-events: none' from body.");
+                    document.body.style.pointerEvents = 'auto';
+                }
+            });
+        }
+        // No specific cleanup needed here, as we're correcting a potentially stuck global style.
+    }, [isOpen]); // Re-run only when isOpen changes
+    // --- END WORKAROUND ---
 
     return (
         <Dialog open={isOpen} onOpenChange={onOpenChange}>
@@ -127,6 +145,7 @@ const ChangePasswordDialog: React.FC<ChangePasswordDialogProps> = ({ isOpen, onO
                         </div>
 
                          <DialogFooter className='mt-2'>
+                             {/* DialogClose triggers onOpenChange(false) */}
                              <DialogClose asChild>
                                  <Button type="button" variant="outline" disabled={isLoading}>Cancel</Button>
                              </DialogClose>

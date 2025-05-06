@@ -46,13 +46,10 @@ export interface UserAllowedTag {
 
 // --- Change Password Schemas ---
 // Schema for user changing their own password
+// --- UPDATED: Removed confirmPassword and refine ---
 export const changePasswordSchema = z.object({
     oldPassword: z.string().min(1, "Current password is required"),
     password: userSchema.shape.password, // Reuse password complexity rules
-    confirmPassword: z.string(),
-}).refine(data => data.password === data.confirmPassword, {
-    message: "New passwords don't match",
-    path: ["confirmPassword"],
 });
 
 // Schema for admin setting password (only requires new password)

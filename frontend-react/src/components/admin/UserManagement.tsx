@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { setPasswordSchema, SetPasswordFormData, updateUserRoleSchema } from '@/lib/zodSchemas';
+// Updated import: Added userCreateSchema and UserCreateFormData
+import { setPasswordSchema, SetPasswordFormData, updateUserRoleSchema, userCreateSchema, UserCreateFormData } from '@/lib/zodSchemas';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from '@/components/ui/button';
@@ -11,6 +12,7 @@ import { Label } from '@/components/ui/label';
 import LoadingSpinner from '@/components/shared/LoadingSpinner';
 import ErrorDisplay from '@/components/shared/ErrorDisplay';
 import TagSelector from '@/components/shared/TagSelector'; // Import TagSelector
+import UserCreateDialog from './UserCreateDialog'; // Import the new create user dialog
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useAuth } from '@/hooks/useAuth';
 import api from '@/lib/api';
@@ -19,7 +21,8 @@ import type { User, UserRole } from '../../../../backend/src/functionalities/use
 import type { Tag } from '../../../../backend/src/functionalities/tag/models';
 import { toast } from "sonner";
 import { cn } from '@/lib/utils';
-import { KeyRound, Ban, Tags } from 'lucide-react';
+// Updated imports: Added PlusCircle
+import { KeyRound, Ban, Tags, PlusCircle } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"; // Import Tooltip
 
@@ -40,6 +43,10 @@ const UserManagement: React.FC = () => {
     const [assignedTags, setAssignedTags] = useState<number[]>([]);
     const [availableTags, setAvailableTags] = useState<Tag[]>([]);
     const [isLoadingTags, setIsLoadingTags] = useState(false);
+
+    // --- State for Create User Dialog ---
+    const [isCreateUserDialogOpen, setIsCreateUserDialogOpen] = useState(false);
+    // ------------------------------------
 
     const { register: registerPassword, handleSubmit: handlePasswordSubmit, reset: resetPasswordForm, formState: { errors: passwordErrors } } = useForm<SetPasswordFormData>({
         resolver: zodResolver(setPasswordSchema), defaultValues: { password: '' },
@@ -146,15 +153,6 @@ const UserManagement: React.FC = () => {
         setIsAssignTagsDialogOpen(true);
         setIsLoadingTags(false); // Assume tags are loaded or use cached
 
-        // Optional: Refetch just in case state is stale (uncomment if needed)
-        // if (!token) return;
-        // try {
-        //     const currentTagsData = await api.getAssignedTagsForUser(userToAssign.login, token);
-        //     setAssignedTags(currentTagsData.map(t => t.tagId!));
-        //     setIsAssignTagsDialogOpen(true);
-        // } catch (err: any) { /* ... error handling ... */ }
-        // finally { setIsLoadingTags(false); }
-
     }, [token]);
 
     const handleAssignTagsSave = async () => {
@@ -176,6 +174,13 @@ const UserManagement: React.FC = () => {
         }
     };
 
+    // --- Handler for successful user creation ---
+    const handleUserCreated = () => {
+        setIsCreateUserDialogOpen(false);
+        fetchUsers(); // Refresh the user list
+    };
+    // -------------------------------------------
+
     const getRoleDisplay = (role: UserRole | null): React.ReactNode => {
         if (role === 'admin') return <Badge variant="default">Admin</Badge>;
         if (role === 'employee') return <Badge variant="secondary">Employee</Badge>;
@@ -187,8 +192,23 @@ const UserManagement: React.FC = () => {
         <TooltipProvider delayDuration={150}> {/* Wrap table for Tooltips */}
             <Card className="bg-white dark:bg-white text-neutral-900 dark:text-neutral-900">
                 <CardHeader>
-                    <CardTitle>User Management</CardTitle>
-                    <CardDescription>Manage user roles and access. 'Employee' has general access, 'User' has restricted access based on assigned tags.</CardDescription>
+                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                         <div>
+                             <CardTitle>User Management</CardTitle>
+                             <CardDescription>Manage user roles and access. 'Employee' has general access, 'User' has restricted access based on assigned tags.</CardDescription>
+                         </div>
+                         {/* --- Create User Button & Dialog Trigger --- */}
+                         <UserCreateDialog
+                            isOpen={isCreateUserDialogOpen}
+                            onOpenChange={setIsCreateUserDialogOpen}
+                            onUserCreated={handleUserCreated}
+                         >
+                             <Button size="sm" className='shrink-0'>
+                                 <PlusCircle className="mr-2 h-4 w-4" /> Create User
+                             </Button>
+                         </UserCreateDialog>
+                         {/* ---------------------------------------- */}
+                     </div>
                 </CardHeader>
                 <CardContent>
                     {fetchError && !isLoading && <ErrorDisplay message={fetchError} className='mb-4' />}
