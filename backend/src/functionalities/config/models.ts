@@ -4,9 +4,12 @@ export interface Config {
 }
 
 // Define specific configuration types for better type safety
+// Renamed PORT, added HTTPS related keys
 export enum AppConfigKeys {
   DEFAULT_LANGUAGE = 'default_language',
-  PORT = 'port',
-  SSL_KEY = 'ssl_key',
-  SSL_CERT = 'ssl_cert'
+  HTTP_PORT = 'http_port', // Renamed from PORT
+  HTTPS_PORT = 'https_port', // New
+  HTTPS_KEY_PATH = 'https_key_path', // Renamed from SSL_KEY, stores path now
+  HTTPS_CERT_PATH = 'https_cert_path', // Renamed from SSL_CERT, stores path now
+  HTTPS_CA_PATH = 'https_ca_path', // New for Certificate Authority path
 }

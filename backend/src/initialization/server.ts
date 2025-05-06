@@ -23,12 +23,8 @@ export let serverPort: number | undefined = undefined;
 
 export async function initializeServer() {
     console.log("* initializeServer");
-    const port = AppParams.port || parseInt(await getConfig(AppConfigKeys.PORT) || "0") || AppParamsDefaults.port;
-    const sslKeyPath = await getConfig(AppConfigKeys.SSL_KEY);
-    const sslCertPath = await getConfig(AppConfigKeys.SSL_CERT);
+    const port = AppParams.httpPort
 
-    // Determine if SSL is enabled
-    isSslEnabled = !!(sslKeyPath && sslCertPath);
 
     // Define MyServerOptions independently, ensuring compatibility with Bun.serve
     // This structure aims to match the overload where 'routes' is provided.
@@ -127,8 +123,8 @@ export async function initializeServer() {
         },
         // tls definition using Bun.file
         tls: isSslEnabled ? {
-            key: Bun.file(sslKeyPath!), // Assert non-null as isSslEnabled is true
-            cert: Bun.file(sslCertPath!), // Assert non-null as isSslEnabled is true
+            key: undefined, 
+            cert: undefined,
         } : undefined,
          development: process.env.NODE_ENV !== 'production',
          routes: routes, // Pass the imported routes object

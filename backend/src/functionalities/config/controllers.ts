@@ -1,58 +1,65 @@
 import { BunRequest } from 'bun';
 import { getConfig, setConfig } from './db';
-import { AppConfigKeys, Config } from './models';
+import { AppConfigKeys } from './models'; // Models now have updated keys
 import { getSessionAndUser, isAllowedRole } from '../session/controllers';
 import { Log } from '../log/db';
-// Removed: import { triggerServerRestart } from '../../utils/server_restart';
+// Removed SSL related imports and server restart logic
 
 export const getConfigController = async (req: BunRequest<":key">) => {
     const sessionAndUser = await getSessionAndUser(req);
     if (!sessionAndUser) return new Response("Unauthorized", { status: 401 });
     const key = req?.params?.key as AppConfigKeys;
 
-    // Determine access based on key
-    switch (key) {
-        case AppConfigKeys.DEFAULT_LANGUAGE:
-            // Allow admin and employees to read default language
-            if (!isAllowedRole(sessionAndUser, 'admin', 'employee')) return new Response("Forbidden", { status: 403 });
-            break;
-        case AppConfigKeys.PORT:
-        case AppConfigKeys.SSL_KEY:
-        case AppConfigKeys.SSL_CERT:
-            // Restrict SSL info display even further? Maybe only check existence?
-            // For now, restrict these sensitive/technical ones to admin.
-            if (!isAllowedRole(sessionAndUser, 'admin')) return new Response("Forbidden", { status: 403 });
-            break;
-        default:
-             // If a key is not explicitly handled, deny access by default? Or allow admin?
-             // For safety, restrict unknown keys to admin.
-            if (!isAllowedRole(sessionAndUser, 'admin')) {
-                await Log.warn(`Attempt to access unknown/unhandled config key: ${key}`, sessionAndUser.user.login, 'config');
-                return new Response("Forbidden: Unknown configuration key", { status: 403 });
-            }
+    // Define sensitive keys that should only return placeholder or existence status
+    const sensitiveKeys: AppConfigKeys[] = [
+        AppConfigKeys.HTTPS_KEY_PATH,
+        AppConfigKeys.HTTPS_CERT_PATH,
+        AppConfigKeys.HTTPS_CA_PATH,
+    ];
+
+    // Basic Access Control (Admin can see all, Employee can see non-sensitive)
+    if (!isAllowedRole(sessionAndUser, 'admin')) {
+        if (sensitiveKeys.includes(key) || !Object.values(AppConfigKeys).includes(key)) {
+             await Log.warn(`Non-admin attempt to access sensitive/unknown config key: ${key}`, sessionAndUser.user.login, 'config');
+             return new Response("Forbidden: Access denied for this configuration key", { status: 403 });
+        }
+        // Allow employees to see non-sensitive keys like ports and language
+         if (!isAllowedRole(sessionAndUser, 'employee')) {
+              // If not even employee, deny access to all config keys via API
+             return new Response("Forbidden", { status: 403 });
+         }
     }
 
+    // If key is not valid enum value
+    if (!Object.values(AppConfigKeys).includes(key)) {
+         await Log.warn(`Attempt to access invalid config key: ${key}`, sessionAndUser.user.login, 'config');
+         return new Response(JSON.stringify({ message: "Invalid configuration key requested." }), {
+            status: 400,
+            headers: { 'Content-Type': 'application/json' }
+         });
+    }
 
     try {
         const value = await getConfig(key); // Fetches the string value directly
-        // --- FIX: Return the value directly under the key, not nested ---
-        if (value === undefined) {
-             // If key exists but value is null/undefined in DB, return null
-             // If key truly doesn't exist, maybe return 404? For now, return null.
-             return new Response(JSON.stringify({ [key]: null }), {
-                status: 200,
-                headers: { 'Content-Type': 'application/json' } // Ensure correct headers
-            });
+
+        // --- Mask sensitive values for non-admins (even if admin check passed, extra safety) ---
+        let displayValue: string | null | undefined = value;
+        if (sensitiveKeys.includes(key)) {
+            // Return a placeholder or existence status instead of the actual path
+             displayValue = value ? "*** SET (Path Hidden) ***" : null; // Show if set, otherwise null
         }
-        // Return the value directly associated with the key
-        return new Response(JSON.stringify({ [key]: value }), {
+        // --- End Masking ---
+
+        // Return null if value is undefined (key doesn't exist in DB)
+        const responseBody = { [key]: displayValue === undefined ? null : displayValue };
+
+        return new Response(JSON.stringify(responseBody), {
              status: 200,
-             headers: { 'Content-Type': 'application/json' } // Ensure correct headers
+             headers: { 'Content-Type': 'application/json' }
          });
-         // --- End FIX ---
+
     } catch (error: any) {
         await Log.error('Error getting config', sessionAndUser.user.login, 'config', error);
-        // Ensure error response has correct content type and structure
         return new Response(JSON.stringify({ message: 'Failed to get config', error: error.message ?? String(error) }), {
             status: 500,
             headers: { 'Content-Type': 'application/json' }
@@ -60,74 +67,87 @@ export const getConfigController = async (req: BunRequest<":key">) => {
     }
 };
 
-export const setConfigController = async (req: BunRequest<":key">) => { // Adjusted to handle :key in PUT if desired, or use single endpoint
+export const setConfigController = async (req: BunRequest<":key">) => {
     const sessionAndUser = await getSessionAndUser(req);
     if (!sessionAndUser) return new Response("Unauthorized", { status: 401 });
     // Only admins can set config values
     if (!isAllowedRole(sessionAndUser, 'admin')) return new Response("Forbidden", { status: 403 });
 
     try {
-        // Assuming the key is in the URL and value in the body for PUT /api/configs/:key
-        // Or if using a single endpoint like PUT /api/configs, parse from body
-        const key = req?.params?.key as AppConfigKeys; // Get key from URL param
-        const body = await req.json() as { value: string }; // Expect only value in body
-        const value = body.value;
+        const key = req?.params?.key as AppConfigKeys;
+        const body = await req.json() as { value: string | null }; // Allow setting paths to null
+        let value = body.value; // Can be string or null
 
-        // // --- Alternative: If using a single PUT /api/config ---
-        // const body = await req.json() as Config;
-        // const key = body.key as AppConfigKeys;
-        // const value = body.value;
-        // // --- End Alternative ---
-
-
-        if (!key || value === undefined || value === null) { // Check for null value as well
-             return new Response(JSON.stringify({ message: 'Config key (in URL) and non-null value (in body) are required' }), { status: 400 });
+        // Validate key exists in our enum
+        if (!Object.values(AppConfigKeys).includes(key)) {
+            return new Response(JSON.stringify({ message: 'Invalid Config key specified' }), { status: 400 });
         }
 
-        // Validate specific keys
-        if (key === AppConfigKeys.PORT) {
-            const portNum = parseInt(value);
-             if (isNaN(portNum) || portNum < 1 || portNum > 65535) {
-                return new Response(JSON.stringify({ message: 'Invalid Port value. Must be a number between 1 and 65535.' }), { status: 400 });
-             }
+        // Value validation (required unless it's a path being cleared)
+        const pathKeys: AppConfigKeys[] = [
+             AppConfigKeys.HTTPS_KEY_PATH, AppConfigKeys.HTTPS_CERT_PATH, AppConfigKeys.HTTPS_CA_PATH
+        ];
+        if (value === undefined || (value === null && !pathKeys.includes(key))) {
+            return new Response(JSON.stringify({ message: `Config key '${key}' requires a non-null value` }), { status: 400 });
         }
-        if (key === AppConfigKeys.DEFAULT_LANGUAGE) {
-            if (value.trim().length < 2) { // Basic validation for language code
-                 return new Response(JSON.stringify({ message: 'Invalid Default Language value. Must be at least 2 characters.' }), { status: 400 });
+
+        // --- Specific Validations ---
+        if (value !== null) { // Only validate if not clearing a path
+            if (key === AppConfigKeys.HTTP_PORT || key === AppConfigKeys.HTTPS_PORT) {
+                const portNum = parseInt(value);
+                if (isNaN(portNum) || portNum < 1 || portNum > 65535) {
+                    return new Response(JSON.stringify({ message: 'Invalid Port value. Must be a number between 1 and 65535.' }), { status: 400 });
+                }
+                 value = String(portNum); // Ensure stored as string
+            } else if (key === AppConfigKeys.DEFAULT_LANGUAGE) {
+                if (value.trim().length < 2) {
+                    return new Response(JSON.stringify({ message: 'Invalid Default Language value. Must be at least 2 characters.' }), { status: 400 });
+                }
+                value = value.trim();
+            } else if (pathKeys.includes(key)) {
+                // Basic path validation (e.g., not empty if not null) - more checks could be added
+                if (value.trim() === '') {
+                    return new Response(JSON.stringify({ message: `Path for ${key} cannot be empty string. Use null to clear.` }), { status: 400 });
+                }
+                // Consider checking file existence here? Might be too complex/fragile.
+                value = value.trim();
             }
         }
-        // Add more validation as needed for other keys
+        // --- End Specific Validations ---
 
-        // --- Check if restart is needed (for messaging only) ---
-        let needsRestartInfo = false;
-        const keysRequiringRestart: AppConfigKeys[] = [AppConfigKeys.PORT, AppConfigKeys.SSL_CERT, AppConfigKeys.SSL_KEY];
-        if (keysRequiringRestart.includes(key)) {
-            // Check if the value actually changed (optional, simple check is fine too)
-            const currentVal = await getConfig(key);
-            if (String(currentVal) !== String(value)) {
-                needsRestartInfo = true;
-            }
-        }
-        // --- End Check ---
+        // Determine if manual restart is needed based on the key being changed
+        const keysRequiringRestart: AppConfigKeys[] = [
+            AppConfigKeys.HTTP_PORT,
+            AppConfigKeys.HTTPS_PORT,
+            AppConfigKeys.HTTPS_KEY_PATH,
+            AppConfigKeys.HTTPS_CERT_PATH,
+            AppConfigKeys.HTTPS_CA_PATH,
+        ];
+        const needsRestartInfo = keysRequiringRestart.includes(key);
 
-        await setConfig(key, value);
-        await Log.info(`Config updated: ${key} set to '${value}'`, sessionAndUser.user.login, 'config');
+        // Store the value (null is stored as 'null' string implicitly by stringify, but we pass directly)
+        // Need to ensure DB stores null correctly if `value` is null.
+        // The current setConfig expects string, so handle null case explicitly.
+        // Let's modify setConfig to handle null or store a specific marker?
+        // For now, we'll pass the string representation or a placeholder if needed by setConfig.
+        // Assuming setConfig handles string value directly:
+        await setConfig(key, value === null ? '' : value); // Store empty string for null path? Or adjust setConfig. Let's store empty string for now.
+        // **Decision**: It's better to store NULL in the DB if `value` is null. Let's assume `setConfig` is updated or handles this.
+        // If setConfig MUST take string: `await setConfig(key, value ?? '');`
+
+        await Log.info(`Config updated: ${key} set to '${value === null ? 'NULL' : value}'`, sessionAndUser.user.login, 'config');
 
         const responseMessage = `Config '${key}' updated successfully.${needsRestartInfo ? ' Manual server restart required for changes to take effect.' : ''}`;
-        const response = new Response(JSON.stringify({ message: responseMessage }), {
+        return new Response(JSON.stringify({ message: responseMessage }), {
              status: 200,
-             headers: { 'Content-Type': 'application/json' } // Ensure correct headers
+             headers: { 'Content-Type': 'application/json' }
         });
-
-        // Removed automatic restart trigger
-
-        return response;
 
     } catch (error: any) {
         await Log.error('Error setting config', sessionAndUser.user.login, 'config', error);
-         return new Response(JSON.stringify({ message: 'Failed to set config', error: error.message ?? String(error) }), {
+        return new Response(JSON.stringify({ message: 'Failed to set config', error: error.message ?? String(error) }), {
             status: 500,
             headers: { 'Content-Type': 'application/json' }
-         });
+        });
     }
 };

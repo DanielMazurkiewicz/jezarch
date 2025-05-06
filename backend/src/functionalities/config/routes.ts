@@ -1,17 +1,13 @@
 import { getConfigController, setConfigController } from './controllers';
-import { sslControllers } from './ssl/controllers';
+// Removed sslControllers import as those routes are gone
 
 export const configRoutes = {
-    // Changed PUT route to accept key in URL
+    // Route remains the same, uses :key parameter
     '/api/configs/:key': {
         GET: getConfigController,
         PUT: setConfigController, // Handles key from URL, value from body
     },
-    // SSL routes remain the same
-    '/api/config/ssl/upload': {
-        PUT: sslControllers.uploadSslController,
-    },
-    '/api/config/ssl/generate': {
-        POST: sslControllers.generateSslController,
-    },
+    // Removed specific SSL upload/generate routes
+    // '/api/config/ssl/upload': { ... },
+    // '/api/config/ssl/generate': { ... },
 };

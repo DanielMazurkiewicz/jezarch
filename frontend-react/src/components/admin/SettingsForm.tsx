@@ -5,15 +5,15 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"; // Import Card components
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import LoadingSpinner from '@/components/shared/LoadingSpinner';
 import ErrorDisplay from '@/components/shared/ErrorDisplay';
 import { useAuth } from '@/hooks/useAuth';
 import api from '@/lib/api';
-import { AppConfigKeys } from '../../../../backend/src/functionalities/config/models'; // Import enum for keys
-import { cn } from '@/lib/utils'; // Import cn for conditional classes
-import { settingsSchema, SettingsFormData } from '@/lib/zodSchemas'; // Import schema and type
-import { toast } from "sonner"; // Import toast
+import { AppConfigKeys } from '../../../../backend/src/functionalities/config/models';
+import { cn } from '@/lib/utils';
+import { settingsSchema, SettingsFormData } from '@/lib/zodSchemas'; // Updated schema import
+import { toast } from "sonner";
 
 const SettingsForm: React.FC = () => {
     const { token } = useAuth();
@@ -21,86 +21,132 @@ const SettingsForm: React.FC = () => {
     const [loadError, setLoadError] = useState<string | null>(null);
     const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'success' | 'error'>('idle');
     const [saveError, setSaveError] = useState<string | null>(null);
-    const [originalPort, setOriginalPort] = useState<number | null>(null);
+    // Store original ports separately for restart warning
+    const [originalHttpPort, setOriginalHttpPort] = useState<number | null>(null);
+    const [originalHttpsPort, setOriginalHttpsPort] = useState<number | null>(null);
+    // Store original paths for restart warning
+    const [originalKeyPath, setOriginalKeyPath] = useState<string | null>(null);
+    const [originalCertPath, setOriginalCertPath] = useState<string | null>(null);
+    const [originalCaPath, setOriginalCaPath] = useState<string | null>(null);
 
     const { register, handleSubmit, reset, setValue, formState: { errors, isDirty }, watch } = useForm<SettingsFormData>({
         resolver: zodResolver(settingsSchema),
+        // Provide defaults for all fields in the schema
         defaultValues: {
-            [AppConfigKeys.PORT]: 8080,
             [AppConfigKeys.DEFAULT_LANGUAGE]: 'en',
+            [AppConfigKeys.HTTP_PORT]: 8080,
+            [AppConfigKeys.HTTPS_PORT]: 8443,
+            [AppConfigKeys.HTTPS_KEY_PATH]: '', // Use empty string for controlled input
+            [AppConfigKeys.HTTPS_CERT_PATH]: '',
+            [AppConfigKeys.HTTPS_CA_PATH]: '',
         }
     });
 
-    const watchedPort = watch(AppConfigKeys.PORT);
+    // Watch relevant fields for restart warning
+    const watchedHttpPort = watch(AppConfigKeys.HTTP_PORT);
+    const watchedHttpsPort = watch(AppConfigKeys.HTTPS_PORT);
+    const watchedKeyPath = watch(AppConfigKeys.HTTPS_KEY_PATH);
+    const watchedCertPath = watch(AppConfigKeys.HTTPS_CERT_PATH);
+    const watchedCaPath = watch(AppConfigKeys.HTTPS_CA_PATH);
+
+    const needsRestart = (
+        watchedHttpPort !== originalHttpPort && originalHttpPort !== null ||
+        watchedHttpsPort !== originalHttpsPort && originalHttpsPort !== null ||
+        watchedKeyPath !== originalKeyPath && originalKeyPath !== null || // Check original was not null
+        watchedCertPath !== originalCertPath && originalCertPath !== null ||
+        watchedCaPath !== originalCaPath && originalCaPath !== null ||
+        // Also trigger if enabling SSL (paths changing from null/empty to set)
+        (!originalKeyPath && !!watchedKeyPath) ||
+        (!originalCertPath && !!watchedCertPath)
+    );
+
 
     // Fetch current settings on mount
     const fetchSettings = useCallback(async () => {
         console.log("SettingsForm: fetchSettings triggered.");
-        if (!token) { /* ... */ return; }
+        if (!token) return;
         setIsLoading(true); setLoadError(null);
-        let portToSet = 8080; let langToSet = 'en';
+
+        // Define keys to fetch
+        const keysToFetch: AppConfigKeys[] = [
+            AppConfigKeys.DEFAULT_LANGUAGE,
+            AppConfigKeys.HTTP_PORT,
+            AppConfigKeys.HTTPS_PORT,
+            AppConfigKeys.HTTPS_KEY_PATH,
+            AppConfigKeys.HTTPS_CERT_PATH,
+            AppConfigKeys.HTTPS_CA_PATH,
+        ];
 
         try {
-            const [portResult, langResult] = await Promise.all([
-                 api.getConfig(AppConfigKeys.PORT, token).catch(err => { console.error("Error fetching port:", err); return null; }),
-                 api.getConfig(AppConfigKeys.DEFAULT_LANGUAGE, token).catch(err => { console.error("Error fetching language:", err); return null; })
-            ]);
+            // Fetch all settings concurrently
+            const results = await Promise.all(
+                keysToFetch.map(key => api.getConfig(key, token).catch(err => {
+                     console.error(`Error fetching config key "${key}":`, err);
+                     // Return null or a specific error structure for failed keys
+                     return { [key]: null, error: true };
+                 }))
+            );
 
-            // --- WORKAROUND for incorrect backend response ---
-            // Attempt to extract value from the unexpected nested structure {"key": {"value": "..."}}
-            // If the backend is fixed later, this code should still work for the correct structure {"key": "..."}
-            const getNestedValue = (response: any, key: AppConfigKeys): string | null | undefined => {
-                if (response && typeof response === 'object' && key in response) {
-                    const primaryValue = response[key];
-                    // Check if primaryValue is the nested object {value: ...}
-                    if (primaryValue && typeof primaryValue === 'object' && 'value' in primaryValue) {
-                         console.log(`SettingsForm: Detected nested structure for key "${key}", extracting inner 'value'.`);
-                         return primaryValue.value; // Extract from nested structure
-                    }
-                    // Otherwise, assume it's the direct value (the correct structure)
-                    return primaryValue;
+            // Process results and update form state
+            const newFormValues: Partial<SettingsFormData> = {};
+            results.forEach(result => {
+                const key = Object.keys(result)[0] as AppConfigKeys;
+                // Check if there was an error fetching this specific key
+                 if (result.error) {
+                     setLoadError(prev => prev ? `${prev}, ${key}` : `Failed to load ${key}`);
+                     // Use default for failed keys
+                     switch(key) {
+                         case AppConfigKeys.HTTP_PORT: newFormValues[key] = 8080; break;
+                         case AppConfigKeys.HTTPS_PORT: newFormValues[key] = 8443; break;
+                         case AppConfigKeys.DEFAULT_LANGUAGE: newFormValues[key] = 'en'; break;
+                         default: newFormValues[key] = ''; // Default for paths
+                     }
+                     return; // Skip to next result
+                 }
+
+                const value = result[key]; // Value can be string or null
+                console.log(`SettingsForm: Fetched ${key}:`, value, `(Type: ${typeof value})`);
+
+                switch (key) {
+                    case AppConfigKeys.HTTP_PORT:
+                        const httpPort = parseInt(String(value), 10);
+                        newFormValues[key] = !isNaN(httpPort) ? httpPort : 8080;
+                        setOriginalHttpPort(newFormValues[key] ?? null);
+                        break;
+                    case AppConfigKeys.HTTPS_PORT:
+                        const httpsPort = parseInt(String(value), 10);
+                        newFormValues[key] = !isNaN(httpsPort) ? httpsPort : 8443;
+                        setOriginalHttpsPort(newFormValues[key] ?? null);
+                        break;
+                    case AppConfigKeys.DEFAULT_LANGUAGE:
+                         newFormValues[key] = typeof value === 'string' && value.trim().length > 0 ? value : 'en';
+                         break;
+                    case AppConfigKeys.HTTPS_KEY_PATH:
+                        newFormValues[key] = value ?? ''; // Use empty string for null/undefined
+                        setOriginalKeyPath(value); // Store original null/string
+                        break;
+                    case AppConfigKeys.HTTPS_CERT_PATH:
+                        newFormValues[key] = value ?? '';
+                        setOriginalCertPath(value);
+                        break;
+                    case AppConfigKeys.HTTPS_CA_PATH:
+                        newFormValues[key] = value ?? '';
+                        setOriginalCaPath(value);
+                        break;
                 }
-                return undefined; // Key not found
-            };
+            });
 
-            const portStr = getNestedValue(portResult, AppConfigKeys.PORT);
-            const langStr = getNestedValue(langResult, AppConfigKeys.DEFAULT_LANGUAGE);
-            // --- End WORKAROUND ---
-
-            console.log(`SettingsForm: Value extracted for Port:`, portStr, `(Type: ${typeof portStr})`);
-            console.log(`SettingsForm: Value extracted for Lang:`, langStr, `(Type: ${typeof langStr})`);
-
-
-            // Validate and parse Port (using portStr)
-            if (portStr !== undefined && portStr !== null && typeof portStr === 'string') {
-                const parsedPort = parseInt(portStr, 10);
-                if (!isNaN(parsedPort) && parsedPort > 0 && parsedPort <= 65535) {
-                    portToSet = parsedPort;
-                    console.log(`SettingsForm: Parsed Port: ${portToSet}`);
-                } else { console.warn(`SettingsForm: Received invalid port value from API: "${portStr}". Using default 8080.`); }
-            } else { console.warn(`SettingsForm: Port config value not found, null, or invalid type. Using default 8080. Received:`, portStr); }
-
-             // Validate and use Language (using langStr)
-            if (langStr !== undefined && langStr !== null && typeof langStr === 'string' && langStr.trim().length > 0) {
-                langToSet = langStr;
-                 console.log(`SettingsForm: Validated Lang: "${langToSet}"`);
-            } else {
-                 console.warn(`SettingsForm: Received invalid, null, or missing language value. Using default 'en'. Received:`, langStr);
-            }
+            console.log("SettingsForm: Resetting form with values:", newFormValues);
+            reset(newFormValues as SettingsFormData, { keepDirty: false, keepErrors: false });
 
         } catch (err: any) {
              console.error("SettingsForm: Unexpected error during Promise.all:", err);
-             setLoadError(err.message || 'Failed to load settings');
-             portToSet = 8080;
-             langToSet = 'en';
+             const msg = err.message || 'Failed to load one or more settings';
+             setLoadError(msg); toast.error(msg);
+             // Reset to defaults on major error
+             reset(); setOriginalHttpPort(8080); setOriginalHttpsPort(8443);
+             setOriginalKeyPath(null); setOriginalCertPath(null); setOriginalCaPath(null);
         } finally {
-            console.log(`SettingsForm: Setting form values - Port: ${portToSet}, Lang: "${langToSet}"`);
-            reset({
-                [AppConfigKeys.PORT]: portToSet,
-                [AppConfigKeys.DEFAULT_LANGUAGE]: langToSet
-            }, { keepDirty: false, keepErrors: false });
-            console.log("SettingsForm: Finished setting values and reset form state.");
-            setOriginalPort(portToSet);
             setIsLoading(false);
         }
     }, [token, reset]);
@@ -109,65 +155,70 @@ const SettingsForm: React.FC = () => {
         fetchSettings();
     }, [fetchSettings]);
 
-    // onSubmit remains the same as it sends the correct format {value: ...}
+    // onSubmit handles saving all fields
     const onSubmit = async (data: SettingsFormData) => {
         console.log("SettingsForm: onSubmit called with data:", data);
         if (!token) return;
 
-        const portValue = data[AppConfigKeys.PORT];
-        const langValue = data[AppConfigKeys.DEFAULT_LANGUAGE];
-
         setSaveStatus('saving');
         setSaveError(null);
+        let anyError = false;
+        let restartRequiredBySave = false;
+
+        // Prepare API calls for each setting
+        const savePromises = (Object.keys(data) as Array<keyof SettingsFormData>).map(key => {
+            let valueToSave: string | null = data[key];
+             // Convert empty strings for path keys back to null for the API
+            if ([AppConfigKeys.HTTPS_KEY_PATH, AppConfigKeys.HTTPS_CERT_PATH, AppConfigKeys.HTTPS_CA_PATH].includes(key as AppConfigKeys) && valueToSave === '') {
+                valueToSave = null;
+            }
+             // Convert numbers to string for API
+             if (typeof valueToSave === 'number') {
+                 valueToSave = String(valueToSave);
+             }
+             // Skip API call if value is undefined (shouldn't happen with zod)
+             if (valueToSave === undefined) return Promise.resolve({ key, skipped: true });
+
+             return api.setConfig(key as AppConfigKeys, valueToSave, token)
+                 .then(response => ({ key, success: true, message: response.message }))
+                 .catch(err => ({ key, success: false, error: err }));
+        });
+
         try {
-            const results = await Promise.all([
-                 api.setConfig(AppConfigKeys.PORT, String(portValue), token).catch(err => ({ key: 'port', error: err })),
-                 api.setConfig(AppConfigKeys.DEFAULT_LANGUAGE, langValue, token).catch(err => ({ key: 'language', error: err }))
-            ]);
+            const results = await Promise.all(savePromises);
 
-            const portResult = results[0];
-            const langResult = results[1];
+            results.forEach(result => {
+                 if (result.skipped) return; // Skip if call was skipped
+                if (!result.success) {
+                    anyError = true;
+                    const msg = result.error?.message || `Failed to save ${result.key}.`;
+                    setSaveError(prev => (prev ? `${prev}\n${msg}` : msg));
+                    toast.error(`${result.key} Save Error: ${msg}`);
+                    console.error(`${result.key} Save Error:`, result.error);
+                } else {
+                    // Check if this specific setting required a restart
+                     if (result.message?.includes("Manual server restart required")) {
+                         restartRequiredBySave = true;
+                     }
+                }
+            });
 
-            let errorsEncountered = false;
-            let successMessages: string[] = [];
-            let restartNeeded = false;
-
-            if ('error' in portResult) {
-                errorsEncountered = true;
-                const msg = portResult.error.message || `Failed to save port setting.`;
-                setSaveError(prev => (prev ? `${prev}\n${msg}` : msg));
-                toast.error(`Port Save Error: ${msg}`);
-                console.error("Port Save Error:", portResult.error);
-            } else {
-                successMessages.push(portResult.message || `Port updated to ${portValue}.`);
-                if (portResult.message?.includes("Manual server restart required")) restartNeeded = true;
-            }
-
-            if ('error' in langResult) {
-                errorsEncountered = true;
-                const msg = langResult.error.message || `Failed to save language setting.`;
-                setSaveError(prev => (prev ? `${prev}\n${msg}` : msg));
-                toast.error(`Language Save Error: ${msg}`);
-                console.error("Language Save Error:", langResult.error);
-            } else {
-                 successMessages.push(langResult.message || `Default language updated to "${langValue}".`);
-                 if (langResult.message?.includes("Manual server restart required")) restartNeeded = true;
-            }
-
-            if (!errorsEncountered) {
+            if (!anyError) {
                 setSaveStatus('success');
-                const finalMessage = successMessages.join(' ').replace(/Settings updated successfully\./g, '').trim() || "Settings saved successfully.";
-                if (restartNeeded) {
-                    toast.warning(finalMessage.includes("Manual server restart required") ? finalMessage : `${finalMessage} Manual server restart required for port change.`);
+                // Fetch again to get potentially masked values and update originals
+                await fetchSettings();
+                const finalMessage = `Settings saved successfully.`;
+                if (restartRequiredBySave) {
+                    toast.warning(`${finalMessage} Manual server restart required.`);
                 } else {
                     toast.success(finalMessage);
                 }
-                setOriginalPort(portValue);
-                 reset(data, { keepValues: true, keepDirty: false });
-                console.log("SettingsForm: Form reset after successful save.");
+                // Form is reset by fetchSettings, keep success status briefly
                 setTimeout(() => setSaveStatus('idle'), 2500);
             } else {
                 setSaveStatus('error');
+                // Attempt to refetch settings even on partial failure to show current state
+                 await fetchSettings();
             }
 
         } catch (err: any) {
@@ -175,52 +226,96 @@ const SettingsForm: React.FC = () => {
             setSaveError(msg); toast.error(msg);
             setSaveStatus('error');
             console.error("SettingsForm: Unexpected Save error:", err);
+            // Attempt to refetch settings on major failure
+            await fetchSettings();
         }
     };
 
-    // Render part remains unchanged
-    if (isLoading) { /* ... */ }
-    if (loadError && !isLoading) { /* ... */ }
+    if (isLoading) { return <div className='flex justify-center p-10'><LoadingSpinner /></div>; }
+    if (loadError && !isLoading) { return <ErrorDisplay message={`Error loading settings: ${loadError}`} />; }
 
     return (
         <Card className="bg-white dark:bg-white text-neutral-900 dark:text-neutral-900">
             <CardHeader>
                 <CardTitle>Application Settings</CardTitle>
-                <CardDescription>Configure server port and default language. Changes to Port or SSL require a manual server restart to take effect.</CardDescription>
+                <CardDescription>Configure server ports, language, and HTTPS settings. Changes related to ports or HTTPS require a manual server restart.</CardDescription>
             </CardHeader>
             <CardContent>
-                <form onSubmit={handleSubmit(onSubmit)} className="space-y-4 max-w-md">
+                <form onSubmit={handleSubmit(onSubmit)} className="space-y-6 max-w-2xl"> {/* Increased max-width */}
                     {saveError && <ErrorDisplay message={saveError} />}
-                    <div className="grid gap-1.5">
-                        <Label htmlFor="port">Server Port</Label>
-                        <Input
-                            id="port"
-                            type="number"
-                            {...register(AppConfigKeys.PORT)}
-                            aria-invalid={!!errors[AppConfigKeys.PORT]}
-                            className={cn(errors[AppConfigKeys.PORT] && "border-destructive")}
-                         />
-                        {errors[AppConfigKeys.PORT] && <p className="text-xs text-destructive">{errors[AppConfigKeys.PORT]?.message}</p>}
-                         {watchedPort !== originalPort && originalPort !== null && (
-                            <p className="text-xs text-orange-600 font-medium">Info: Changes require a manual server restart.</p>
+
+                    {/* General Settings Section */}
+                    <div className="space-y-4 border-b pb-4">
+                         <h3 className="text-lg font-medium">General</h3>
+                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                             {/* Default Language */}
+                             <div className="grid gap-1.5">
+                                <Label htmlFor="language">Default Language</Label>
+                                <Input id="language" {...register(AppConfigKeys.DEFAULT_LANGUAGE)} placeholder="e.g., en, de" aria-invalid={!!errors[AppConfigKeys.DEFAULT_LANGUAGE]} className={cn(errors[AppConfigKeys.DEFAULT_LANGUAGE] && "border-destructive")} />
+                                {errors[AppConfigKeys.DEFAULT_LANGUAGE] && <p className="text-xs text-destructive">{errors[AppConfigKeys.DEFAULT_LANGUAGE]?.message}</p>}
+                             </div>
+                         </div>
+                    </div>
+
+                    {/* Network Settings Section */}
+                    <div className="space-y-4 border-b pb-4">
+                        <h3 className="text-lg font-medium">Network Ports</h3>
+                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                             {/* HTTP Port */}
+                             <div className="grid gap-1.5">
+                                <Label htmlFor="http-port">HTTP Port</Label>
+                                <Input id="http-port" type="number" {...register(AppConfigKeys.HTTP_PORT)} aria-invalid={!!errors[AppConfigKeys.HTTP_PORT]} className={cn(errors[AppConfigKeys.HTTP_PORT] && "border-destructive")} />
+                                {errors[AppConfigKeys.HTTP_PORT] && <p className="text-xs text-destructive">{errors[AppConfigKeys.HTTP_PORT]?.message}</p>}
+                             </div>
+                             {/* HTTPS Port */}
+                             <div className="grid gap-1.5">
+                                <Label htmlFor="https-port">HTTPS Port</Label>
+                                <Input id="https-port" type="number" {...register(AppConfigKeys.HTTPS_PORT)} aria-invalid={!!errors[AppConfigKeys.HTTPS_PORT]} className={cn(errors[AppConfigKeys.HTTPS_PORT] && "border-destructive")} />
+                                {errors[AppConfigKeys.HTTPS_PORT] && <p className="text-xs text-destructive">{errors[AppConfigKeys.HTTPS_PORT]?.message}</p>}
+                             </div>
+                         </div>
+                    </div>
+
+                    {/* HTTPS/SSL Settings Section */}
+                    <div className="space-y-4">
+                         <h3 className="text-lg font-medium">HTTPS/SSL Configuration</h3>
+                         <p className="text-sm text-muted-foreground">
+                            Provide paths to your PEM-encoded key, certificate, and optional CA chain files. Enable HTTPS by providing valid key and certificate paths. Leave fields blank to disable HTTPS.
+                         </p>
+                         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            {/* Key Path */}
+                            <div className="grid gap-1.5">
+                                <Label htmlFor="https-key-path">Private Key Path (.key)</Label>
+                                <Input id="https-key-path" {...register(AppConfigKeys.HTTPS_KEY_PATH)} placeholder="/path/to/your/private.key" aria-invalid={!!errors[AppConfigKeys.HTTPS_KEY_PATH]} className={cn(errors[AppConfigKeys.HTTPS_KEY_PATH] && "border-destructive")} />
+                                {errors[AppConfigKeys.HTTPS_KEY_PATH] && <p className="text-xs text-destructive">{errors[AppConfigKeys.HTTPS_KEY_PATH]?.message}</p>}
+                            </div>
+                             {/* Cert Path */}
+                            <div className="grid gap-1.5">
+                                <Label htmlFor="https-cert-path">Certificate Path (.crt/.pem)</Label>
+                                <Input id="https-cert-path" {...register(AppConfigKeys.HTTPS_CERT_PATH)} placeholder="/path/to/your/certificate.crt" aria-invalid={!!errors[AppConfigKeys.HTTPS_CERT_PATH]} className={cn(errors[AppConfigKeys.HTTPS_CERT_PATH] && "border-destructive")} />
+                                {errors[AppConfigKeys.HTTPS_CERT_PATH] && <p className="text-xs text-destructive">{errors[AppConfigKeys.HTTPS_CERT_PATH]?.message}</p>}
+                            </div>
+                             {/* CA Path */}
+                            <div className="grid gap-1.5">
+                                <Label htmlFor="https-ca-path">CA Chain Path (Optional)</Label>
+                                <Input id="https-ca-path" {...register(AppConfigKeys.HTTPS_CA_PATH)} placeholder="/path/to/your/ca_bundle.crt" aria-invalid={!!errors[AppConfigKeys.HTTPS_CA_PATH]} className={cn(errors[AppConfigKeys.HTTPS_CA_PATH] && "border-destructive")} />
+                                {errors[AppConfigKeys.HTTPS_CA_PATH] && <p className="text-xs text-destructive">{errors[AppConfigKeys.HTTPS_CA_PATH]?.message}</p>}
+                            </div>
+                         </div>
+                    </div>
+
+                     {/* Save Button and Restart Warning */}
+                    <div className='flex flex-col sm:flex-row items-center gap-4 pt-4'>
+                         <Button type="submit" disabled={saveStatus === 'saving' || !isDirty}>
+                            {saveStatus === 'saving' && <LoadingSpinner size="sm" className="mr-2" />}
+                            {saveStatus === 'success' && 'Saved!'}
+                            {(saveStatus === 'idle' || saveStatus === 'error') && 'Save Settings'}
+                         </Button>
+                         {/* Show restart warning if relevant fields changed */}
+                         {needsRestart && (
+                            <p className="text-sm text-orange-600 font-medium">Info: Changes require a manual server restart to take effect.</p>
                          )}
                     </div>
-                    <div className="grid gap-1.5">
-                        <Label htmlFor="language">Default Language</Label>
-                        <Input
-                            id="language"
-                            {...register(AppConfigKeys.DEFAULT_LANGUAGE)}
-                            placeholder="e.g., en, de"
-                            aria-invalid={!!errors[AppConfigKeys.DEFAULT_LANGUAGE]}
-                            className={cn(errors[AppConfigKeys.DEFAULT_LANGUAGE] && "border-destructive")}
-                         />
-                        {errors[AppConfigKeys.DEFAULT_LANGUAGE] && <p className="text-xs text-destructive">{errors[AppConfigKeys.DEFAULT_LANGUAGE]?.message}</p>}
-                    </div>
-                     <Button type="submit" disabled={saveStatus === 'saving' || !isDirty}>
-                        {saveStatus === 'saving' && <LoadingSpinner size="sm" className="mr-2" />}
-                        {saveStatus === 'success' && 'Saved!'}
-                        {(saveStatus === 'idle' || saveStatus === 'error') && 'Save Settings'}
-                     </Button>
                 </form>
              </CardContent>
         </Card>

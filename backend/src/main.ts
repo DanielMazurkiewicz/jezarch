@@ -1,6 +1,8 @@
 
-import { initializeCmdParams, CmdParams } from './initialization/cmd'; // Import CmdParams
-import { initializeAppParams, AppParams } from './initialization/app_params'; // Import AppParams
+// Removed initializeCmdParams import as parsing happens on module load
+import { CmdParams } from './initialization/cmd';
+// Renamed initializeAppParams to finalizeAppParams
+import { AppParams, finalizeAppParams } from './initialization/app_params';
 import { initializeDatabase, dbForeignKeysEnabled, dbJournalMode } from './initialization/db'; // Import DB status vars
 import { initializeConfigs } from './initialization/config';
 import { dumpLogs } from './utils/dumpLogs';
@@ -10,32 +12,42 @@ import { Log } from './functionalities/log/db';
 async function main() {
     try {
         // Initialization sequence
-        // initializeCmdParams is called automatically on import
-        await initializeAppParams();
-        await initializeDatabase();
-        await initializeConfigs();
+        // CmdParams are parsed when ./initialization/cmd is imported
+        await initializeDatabase(); // DB needs to be up before reading/writing config
+        await initializeConfigs(); // Reads DB config, applies overrides (Cmd, Env)
         await dumpLogs(); // Exits if --log is used
-        await initializeServer();
+        await initializeServer(); // Reads final AppParams to configure server
 
-        // Gather data for the final log message
+        // Finalize and log parameters AFTER server initialization
+        finalizeAppParams();
+
+        // Gather data for the final log message using the *final* AppParams
         const serverLogData = {
             message: `Server initialized and running.`,
             config: {
-                port: AppParams.port, // Final port used
+                httpPort: AppParams.httpPort, // Use final HTTP port
+                httpsPort: AppParams.httpsPort, // Use final HTTPS port
                 hostname: serverHostname, // Actual hostname server is listening on
                 dbPath: AppParams.dbPath,
                 defaultLanguage: AppParams.defaultLanguage,
                 sslEnabled: isSslEnabled,
+                httpsKeyPath: AppParams.httpsKeyPath, // Log final paths
+                httpsCertPath: AppParams.httpsCertPath,
+                httpsCaPath: AppParams.httpsCaPath,
                 staticFilesDir: publicDir,
             },
             db: {
                 foreignKeys: dbForeignKeysEnabled ? 'ON' : 'OFF',
-                journalMode: dbJournalMode,
+                journalMode: dbJournalMode ?? 'Default', // Handle null case
             },
             cmdParams: CmdParams, // Log command line parameters provided
-            envVars: { // Optionally log relevant env vars (be careful with secrets)
+            envVars: { // Log relevant env vars (be careful with secrets)
                 JEZARCH_DB_PATH: process.env.JEZARCH_DB_PATH,
-                JEZARCH_PORT: process.env.JEZARCH_PORT,
+                JEZARCH_HTTP_PORT: process.env.JEZARCH_HTTP_PORT,
+                JEZARCH_HTTPS_PORT: process.env.JEZARCH_HTTPS_PORT,
+                JEZARCH_HTTPS_KEY_PATH: process.env.JEZARCH_HTTPS_KEY_PATH,
+                JEZARCH_HTTPS_CERT_PATH: process.env.JEZARCH_HTTPS_CERT_PATH,
+                JEZARCH_HTTPS_CA_PATH: process.env.JEZARCH_HTTPS_CA_PATH,
                 JEZARCH_DEFAULT_LANGUAGE: process.env.JEZARCH_DEFAULT_LANGUAGE,
             }
         };
@@ -44,7 +56,6 @@ async function main() {
         Log.info(serverLogData.message, 'system', 'startup', serverLogData);
 
     } catch (error) {
-        // Use console.error as a fallback if logging system fails during startup
         console.error('!!! CRITICAL SERVER INITIALIZATION FAILED !!!', error);
         // Attempt to log the error using the Log service, but it might fail
         await Log.error('Server initialization failed critically', 'system', 'startup', error)
