@@ -109,6 +109,7 @@ const DocumentForm: React.FC<DocumentFormProps> = ({
 
                 reset({
                     parentUnitArchiveDocumentId: forcedParentId ?? parentId,
+                    // Ensure type is set from fetched doc, respecting forceType if present
                     type: forceType ?? fullDoc.type ?? 'document',
                     title: fullDoc.title ?? '', creator: fullDoc.creator ?? '',
                     creationDate: fullDoc.creationDate ?? '',
@@ -187,11 +188,13 @@ const DocumentForm: React.FC<DocumentFormProps> = ({
 
     const finalParentId = forcedParentId !== undefined ? forcedParentId : selectedParentUnitId;
     // --- UPDATED: Destructure includes topographicSignature, excludes element IDs ---
-    const { tagIds: _, parentUnitArchiveDocumentId: __, topographicSignatureElementIds: ____, descriptiveSignatureElementIds: _____, ...coreData } = data;
+    // Also exclude 'type' when updating, as it shouldn't change
+    const { tagIds: _, parentUnitArchiveDocumentId: __, type: _____, topographicSignatureElementIds: ______, descriptiveSignatureElementIds: _______, ...coreData } = data;
 
     try {
         if (docToEdit?.archiveDocumentId) {
             // --- UPDATED: Include topographicSignature in update payload ---
+            // Removed 'type' from the payload calculation
             const updatePayload: UpdateArchiveDocumentInput = {
                  ...(finalParentId !== (docToEdit.parentUnitArchiveDocumentId ?? null) && { parentUnitArchiveDocumentId: finalParentId ?? undefined }),
                  ...(coreData.title !== docToEdit.title && { title: coreData.title }),
@@ -234,7 +237,7 @@ const DocumentForm: React.FC<DocumentFormProps> = ({
         } else {
              // --- UPDATED: Create payload includes topographicSignature ---
              const createPayload: CreateArchiveDocumentInput = {
-                type: coreData.type,
+                type: data.type, // Use 'type' from original data for create
                 title: coreData.title,
                 creator: coreData.creator,
                 creationDate: coreData.creationDate,
@@ -294,8 +297,17 @@ const DocumentForm: React.FC<DocumentFormProps> = ({
                 <GridItem>
                     <Label htmlFor="doc-type">Type *</Label>
                     <Controller control={control} name="type" render={({ field }) => (
-                        <Select onValueChange={field.onChange} value={field.value} disabled={!!forceType} >
-                            <SelectTrigger id='doc-type' aria-invalid={!!errors.type} className={cn(errors.type && "border-destructive")}>
+                        <Select
+                            onValueChange={field.onChange}
+                            value={field.value}
+                            // Disable if editing or if type is forced
+                            disabled={!!docToEdit || !!forceType}
+                            >
+                            <SelectTrigger
+                                id='doc-type'
+                                aria-invalid={!!errors.type}
+                                className={cn(errors.type && "border-destructive", (!!docToEdit || !!forceType) && "text-muted-foreground")}
+                            >
                                 <SelectValue placeholder="Select type..." />
                             </SelectTrigger>
                             <SelectContent>
@@ -305,6 +317,8 @@ const DocumentForm: React.FC<DocumentFormProps> = ({
                         </Select>
                     )} />
                     {errors.type && <p className="text-xs text-destructive">{errors.type.message}</p>}
+                     {/* Add tooltip or text indicating why it's disabled */}
+                     {(!!docToEdit || !!forceType) && <p className="text-xs text-muted-foreground italic">Type cannot be changed after creation.</p>}
                 </GridItem>
                 {watchedType === 'document' && forcedParentId === undefined && (
                     <GridItem>
