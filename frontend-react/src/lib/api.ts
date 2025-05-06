@@ -161,8 +161,13 @@ type GetConfigResponse<K extends AppConfigKeys> = {
     [key in K]: string | null;
 };
 
+// --- Specific Type for purgeLogs Response ---
+interface PurgeLogsResponse {
+    message: string;
+    deletedCount: number;
+}
 
-// --- API Function Exports (Remaining unchanged from previous step) ---
+// --- API Function Exports ---
 // API Status
 const getApiStatus = () => fetchApi<{ message: string }>("/api/status");
 const pingApi = () => fetchApi<string>("/api/ping");
@@ -185,6 +190,7 @@ const uploadSsl = (sslConfig: SslConfig, token: string) => fetchApi<{ message: s
 const generateSsl = (token: string) => fetchApi<{ message: string }>("/config/ssl/generate", "POST", null, token);
 // Log
 const searchLogs = (searchRequest: SearchRequest, token: string) => fetchApi<SearchResponse<LogEntry>>("/logs/search", "POST", searchRequest, token);
+const purgeLogs = (days: number, token: string) => fetchApi<PurgeLogsResponse>(`/logs/purge?days=${days}`, "DELETE", null, token); // Added purgeLogs
 // Tag
 const createTag = (tagData: Pick<Tag, 'name' | 'description'>, token: string) => fetchApi<Tag>('/tag', 'PUT', tagData, token);
 const getAllTags = (token: string) => fetchApi<Tag[]>('/tags', 'GET', null, token);
@@ -226,16 +232,15 @@ export default {
     getApiStatus, pingApi, login, logout, register, getAllUsers, getUserByLogin,
     updateUserRole, changePassword, adminSetUserPassword,
     getAssignedTagsForUser, assignTagsToUser,
-    getConfig, setConfig, uploadSsl, generateSsl, searchLogs, createTag, getAllTags,
-    getTagById, updateTag, deleteTag, createNote, getNoteById, updateNote,
-    deleteNote, getNotesByLogin, searchNotes, createSignatureComponent,
-    getAllSignatureComponents, getSignatureComponentById, updateSignatureComponent,
-    deleteSignatureComponent, reindexComponentElements, createSignatureElement,
-    getSignatureElementById, updateSignatureElement, deleteSignatureElement,
-    getElementsByComponent, searchSignatureElements, createArchiveDocument,
-    getArchiveDocumentById, updateArchiveDocument, disableArchiveDocument, searchArchiveDocuments,
-    backupDatabase,
-    // --- NEW ---
-    batchTagArchiveDocuments,
-    // --- END NEW ---
+    getConfig, setConfig, uploadSsl, generateSsl,
+    searchLogs, purgeLogs, // Added purgeLogs
+    createTag, getAllTags, getTagById, updateTag, deleteTag,
+    createNote, getNoteById, updateNote, deleteNote, getNotesByLogin, searchNotes,
+    createSignatureComponent, getAllSignatureComponents, getSignatureComponentById,
+    updateSignatureComponent, deleteSignatureComponent, reindexComponentElements,
+    createSignatureElement, getSignatureElementById, updateSignatureElement,
+    deleteSignatureElement, getElementsByComponent, searchSignatureElements,
+    createArchiveDocument, getArchiveDocumentById, updateArchiveDocument,
+    disableArchiveDocument, searchArchiveDocuments,
+    batchTagArchiveDocuments, backupDatabase,
 };

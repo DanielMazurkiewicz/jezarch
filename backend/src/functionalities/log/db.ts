@@ -16,6 +16,8 @@ export async function initializeLogTable() {
             data TEXT
         )
     `);
+    // Add index on createdOn for faster purging
+    await db.exec(`CREATE INDEX IF NOT EXISTS idx_log_created_on ON logs (createdOn);`);
 }
 
 const dbToSession = (data: any) => {
@@ -34,6 +36,7 @@ const dbToSession = (data: any) => {
 }
 
 
+// Deprecated - Use search query instead
 export async function getAllLogs(): Promise<LogEntry[]> {
     const statement = db.prepare(`SELECT * FROM logs ORDER BY createdOn DESC`);
     const results = statement.all();
@@ -172,3 +175,34 @@ export const Log = {
         await logEntry(message, 'error', user ?? 'system', category ?? 'general', data);
     }
 };
+
+// --- NEW: Function to purge old logs ---
+/**
+ * Deletes log entries older than the specified number of days.
+ * @param days The minimum age in days for logs to be deleted. Must be a positive integer.
+ * @returns The number of log entries deleted.
+ */
+export async function purgeLogsOlderThan(days: number): Promise<number> {
+    if (!Number.isInteger(days) || days <= 0) {
+        throw new Error("Invalid number of days provided for purging logs. Must be a positive integer.");
+    }
+
+    try {
+        // Use SQLite's datetime function for reliable date comparison
+        // datetime('now', '-X days') calculates the timestamp X days ago
+        const statement = db.prepare(`
+            DELETE FROM logs
+            WHERE createdOn < datetime('now', '-' || ? || ' days')
+        `);
+
+        const result = statement.run(String(days)); // Pass days as string for the modifier
+
+        console.log(`Purged ${result.changes} logs older than ${days} days.`);
+        return result.changes; // Return the number of affected rows
+
+    } catch (error) {
+        await Log.error('Failed to purge old logs', 'system', 'database', { days, error });
+        throw error; // Re-throw for the controller to handle
+    }
+}
+// --- END NEW FUNCTION ---

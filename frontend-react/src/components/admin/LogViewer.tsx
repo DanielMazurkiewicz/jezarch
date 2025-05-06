@@ -11,7 +11,12 @@ import { useAuth } from '@/hooks/useAuth';
 import api from '@/lib/api';
 import type { LogEntry } from '../../../../backend/src/functionalities/log/models';
 import type { SearchRequest, SearchResponse } from '../../../../backend/src/utils/search';
-import { cn } from '@/lib/utils'; // Import cn for conditional classes
+import { cn } from '@/lib/utils'; // Import cn
+import { Button } from '@/components/ui/button'; // Added Button
+import { Input } from '@/components/ui/input'; // Added Input
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog"; // Added AlertDialog
+import { toast } from "sonner"; // Added toast
+import { Trash2, ChevronsDownUp } from 'lucide-react'; // Added Trash2, ChevronsDownUp
 
 // Define the type alias for badge variants
 type BadgeVariant = VariantProps<typeof Badge>['variant'];
@@ -29,6 +34,16 @@ const LogViewer: React.FC = () => {
     const [totalLogs, setTotalLogs] = useState(0);
     const [totalPages, setTotalPages] = useState(1);
 
+    // --- NEW: State for Purge ---
+    const [purgeDays, setPurgeDays] = useState<number>(7);
+    const [isPurging, setIsPurging] = useState(false);
+    const [purgeError, setPurgeError] = useState<string | null>(null);
+    const [isPurgeConfirmOpen, setIsPurgeConfirmOpen] = useState(false);
+    // ----------------------------
+
+    // --- NEW: State for Expanded Row ---
+    const [expandedRowId, setExpandedRowId] = useState<number | null>(null);
+    // ----------------------------------
 
     // Fetch/Search Logs function
     const fetchLogs = useCallback(async (page = currentPage, query = searchQuery) => {
@@ -40,14 +55,13 @@ const LogViewer: React.FC = () => {
                 query: query,
                 page: page,
                 pageSize: pageSize,
-                // Optional: Add default sorting
-                // sort: [{ field: 'createdOn', direction: 'DESC' }]
             };
             const response = await api.searchLogs(searchRequest, token);
             setLogs(response.data);
             setTotalLogs(response.totalSize);
             setTotalPages(response.totalPages);
             setCurrentPage(response.page); // Update current page from response
+            setExpandedRowId(null); // Collapse rows on new search/page
         } catch (err: any) {
             setError(err.message || 'Failed to fetch logs');
             setLogs([]); // Clear logs on error
@@ -67,17 +81,45 @@ const LogViewer: React.FC = () => {
    const handleSearch = (newQuery: SearchRequest['query']) => {
        setSearchQuery(newQuery);
        setCurrentPage(1); // Reset page on new search
-       // fetchLogs is triggered by useEffect dependency change
    };
 
    const handlePageChange = (newPage: number) => {
        setCurrentPage(newPage);
-       // fetchLogs is triggered by useEffect dependency change
    };
+
+   // --- NEW: Purge Handler ---
+   const handlePurge = async () => {
+       if (!token || !purgeDays || purgeDays <= 0) {
+           toast.error("Please enter a valid number of days (greater than 0).");
+           return;
+       }
+       setIsPurging(true);
+       setPurgeError(null);
+       try {
+           const result = await api.purgeLogs(purgeDays, token);
+           toast.success(result.message || `Successfully purged ${result.deletedCount} logs.`);
+           await fetchLogs(1, searchQuery); // Refresh logs on page 1 after purge
+           if (currentPage !== 1) setCurrentPage(1); // Go to page 1
+       } catch (err: any) {
+           const msg = err.message || "Failed to purge logs.";
+           setPurgeError(msg);
+           toast.error(msg);
+       } finally {
+           setIsPurging(false);
+           setIsPurgeConfirmOpen(false); // Close confirmation dialog
+       }
+   };
+   // -------------------------
+
+   // --- NEW: Expand Row Handler ---
+   const toggleExpandRow = (logId: number) => {
+       setExpandedRowId(currentId => (currentId === logId ? null : logId));
+   };
+   // ----------------------------
 
    // Function to safely parse and format log data (JSON or string)
    const formatLogData = (dataString: string | null | undefined): string => {
-       if (!dataString) return 'N/A';
+       if (!dataString) return 'No additional data.';
        try {
            const parsed = JSON.parse(dataString);
            // Pretty-print JSON
@@ -103,7 +145,7 @@ const LogViewer: React.FC = () => {
         <Card className="bg-white dark:bg-white text-neutral-900 dark:text-neutral-900">
             <CardHeader>
                  <CardTitle>System Logs</CardTitle>
-                 <CardDescription>View system events, errors, and warnings.</CardDescription>
+                 <CardDescription>View system events, errors, and warnings. Click a row to view details.</CardDescription>
             </CardHeader>
             <CardContent className='space-y-4'> {/* Add spacing inside content */}
                  {/* Log Search Bar */}
@@ -113,14 +155,54 @@ const LogViewer: React.FC = () => {
                          { value: 'userId', label: 'User ID', type: 'text'},
                          { value: 'category', label: 'Category', type: 'text'},
                          { value: 'message', label: 'Message', type: 'text'},
-                         // Date range requires a more complex component or backend logic adjustment
                          { value: 'createdOn', label: 'Date', type: 'date'},
                      ]}
                      onSearch={handleSearch}
-                     isLoading={isLoading}
+                     isLoading={isLoading || isPurging}
                  />
 
-                 {/* Display Error */}
+                 {/* --- NEW: Purge Controls --- */}
+                  <div className="flex flex-wrap items-center justify-end gap-2 p-2 border rounded-lg bg-muted">
+                     {purgeError && <ErrorDisplay message={purgeError} className="mr-auto"/>}
+                     <div className="flex items-center gap-2 ml-auto">
+                         <span className="text-sm text-muted-foreground">Purge logs older than:</span>
+                         <Input
+                             type="number"
+                             value={purgeDays}
+                             onChange={(e) => setPurgeDays(Math.max(1, parseInt(e.target.value, 10) || 1))}
+                             min="1"
+                             className="w-20 h-8"
+                             disabled={isPurging}
+                         />
+                         <span className="text-sm text-muted-foreground">days</span>
+                          <AlertDialog open={isPurgeConfirmOpen} onOpenChange={setIsPurgeConfirmOpen}>
+                             <AlertDialogTrigger asChild>
+                                 <Button variant="destructive" size="sm" disabled={isPurging || purgeDays <= 0}>
+                                     {isPurging ? <LoadingSpinner size='sm' className='mr-2'/> : <Trash2 className='mr-2 h-4 w-4'/>}
+                                     Purge Logs
+                                 </Button>
+                             </AlertDialogTrigger>
+                             <AlertDialogContent>
+                                 <AlertDialogHeader>
+                                     <AlertDialogTitle>Confirm Log Purge</AlertDialogTitle>
+                                     <AlertDialogDescription>
+                                         Are you sure you want to permanently delete all log entries older than {purgeDays} days? This action cannot be undone.
+                                     </AlertDialogDescription>
+                                 </AlertDialogHeader>
+                                 <AlertDialogFooter>
+                                     <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                     <AlertDialogAction onClick={handlePurge} disabled={isPurging}>
+                                         {isPurging ? <LoadingSpinner size='sm' className='mr-2'/> : null}
+                                         Yes, Purge Logs
+                                     </AlertDialogAction>
+                                 </AlertDialogFooter>
+                             </AlertDialogContent>
+                          </AlertDialog>
+                     </div>
+                  </div>
+                 {/* --- END Purge Controls --- */}
+
+                 {/* Display Fetch Error */}
                  {error && <ErrorDisplay message={error} />}
 
                  {/* Loading State */}
@@ -130,50 +212,52 @@ const LogViewer: React.FC = () => {
                  {!isLoading && !error && logs.length > 0 && (
                     // Wrap table in div for border and overflow handling
                     <div className="border rounded-lg overflow-hidden">
-                        {/* Make table body scrollable */}
                         <div className='max-h-[60vh] overflow-y-auto relative'> {/* Add relative positioning */}
                              <Table>
-                                 {/* Sticky header for scrolling */}
-                                 <TableHeader className='sticky top-0 bg-white z-10'> {/* Use white sticky header */}
+                                 <TableHeader className='sticky top-0 bg-white z-10'>
                                     <TableRow>
                                         <TableHead className='w-[180px]'>Timestamp</TableHead>
                                         <TableHead className='w-[100px]'>Level</TableHead>
                                         <TableHead className='w-[120px]'>User</TableHead>
                                         <TableHead className='w-[120px]'>Category</TableHead>
                                         <TableHead>Message</TableHead>
-                                        <TableHead className='w-[150px]'>Data</TableHead>
+                                        <TableHead className='w-[50px] text-center'>Data</TableHead> {/* Col for expand icon */}
                                     </TableRow>
                                  </TableHeader>
                                  <TableBody>
                                     {logs.map((log) => (
-                                        <TableRow key={log.id}>
-                                            {/* Format date/time */}
-                                            <TableCell className='text-xs'>{new Date(log.createdOn).toLocaleString()}</TableCell>
-                                            <TableCell>
-                                                {/* Log Level Badge */}
-                                                <Badge variant={getBadgeVariant(log.level)} className='capitalize'>
-                                                     {log.level}
-                                                </Badge>
-                                             </TableCell>
-                                            {/* User ID or System */}
-                                            <TableCell className='text-xs'>{log.userId || <i className='text-muted-foreground'>System</i>}</TableCell>
-                                            {/* Category or General */}
-                                            <TableCell className='text-xs'>{log.category || <i className='text-muted-foreground'>General</i>}</TableCell>
-                                            {/* Log Message */}
-                                            <TableCell className='text-sm'>{log.message}</TableCell>
-                                            <TableCell>
-                                                {/* Expandable Log Data */}
-                                                {log.data && (
-                                                    <details>
-                                                        <summary className='cursor-pointer text-xs text-primary hover:underline'>View Data</summary>
-                                                        {/* Preformatted, scrollable data block */}
-                                                        <pre className='mt-1 p-2 text-xs bg-muted rounded overflow-auto max-w-xs max-h-40'>
-                                                            {formatLogData(log.data)}
-                                                        </pre>
-                                                    </details>
-                                                )}
-                                            </TableCell>
-                                        </TableRow>
+                                        <React.Fragment key={log.id}>
+                                            <TableRow
+                                                onClick={() => toggleExpandRow(log.id!)}
+                                                className={cn('cursor-pointer hover:bg-muted/50', expandedRowId === log.id && 'bg-muted/50')}
+                                            >
+                                                <TableCell className='text-xs'>{new Date(log.createdOn).toLocaleString()}</TableCell>
+                                                <TableCell>
+                                                    <Badge variant={getBadgeVariant(log.level)} className='capitalize'>{log.level}</Badge>
+                                                </TableCell>
+                                                <TableCell className='text-xs'>{log.userId || <i className='text-muted-foreground'>System</i>}</TableCell>
+                                                <TableCell className='text-xs'>{log.category || <i className='text-muted-foreground'>General</i>}</TableCell>
+                                                <TableCell className='text-sm'>{log.message}</TableCell>
+                                                {/* Expand/Collapse Icon Cell */}
+                                                <TableCell className='text-center'>
+                                                    {log.data && (
+                                                         <ChevronsDownUp className={cn('h-4 w-4 text-muted-foreground transition-transform', expandedRowId === log.id && 'rotate-180')}/>
+                                                    )}
+                                                </TableCell>
+                                            </TableRow>
+                                            {/* --- NEW: Expanded Row for Data --- */}
+                                            {expandedRowId === log.id && log.data && (
+                                                <TableRow className="bg-muted/20 hover:bg-muted/30">
+                                                     {/* Cell spans all columns */}
+                                                     <TableCell colSpan={6} className="p-0">
+                                                         <pre className='p-3 text-xs bg-transparent rounded overflow-auto'>
+                                                             {formatLogData(log.data)}
+                                                         </pre>
+                                                     </TableCell>
+                                                </TableRow>
+                                            )}
+                                            {/* --------------------------------- */}
+                                        </React.Fragment>
                                     ))}
                                  </TableBody>
                              </Table>
