@@ -85,8 +85,9 @@ const SignatureSelector: React.FC<SignatureSelectorProps> = ({
                 </Button>
              </PopoverTrigger>
              <PopoverContent className="w-[500px] max-w-[calc(100vw-2rem)] p-0" align="start">
+                 {/* Pass the correct onSelect callback */}
                  <ElementBrowserPopoverContent
-                     onSelectSignature={addSignature}
+                     onSelectSignature={addSignature} // Changed prop name
                      onClose={() => setIsBrowserOpen(false)}
                  />
              </PopoverContent>

@@ -13,7 +13,7 @@ import type { SignatureElement, CreateSignatureElementInput } from '../../../../
 import { cn } from '@/lib/utils';
 import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"
-import type { SearchRequest } from '../../../../backend/src/utils/search';
+import type { SearchRequest, SearchQueryElement } from '../../../../backend/src/utils/search'; // Added SearchQueryElement
 import { toast } from "sonner";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import ElementForm from '@/components/signatures/ElementForm';
@@ -28,7 +28,7 @@ interface ElementBrowserPopoverContentProps {
 }
 
 const MAX_SEARCH_RESULTS = 200;
-const DEBOUNCE_DELAY = 300; // Adjusted debounce delay
+const DEBOUNCE_DELAY = 300;
 
 // Helper function for sorting elements by index or name
 const compareElements = (a: SignatureElement, b: SignatureElement): number => {
@@ -90,67 +90,68 @@ const ElementBrowserPopoverContent: React.FC<ElementBrowserPopoverContentProps> 
     useEffect(() => {
         const fetchElems = async () => {
             setError(null);
-            const lastElementId = mode === 'hierarchical' && currentSignatureElements.length > 0
-                ? currentSignatureElements[currentSignatureElements.length - 1].signatureElementId
-                : undefined;
+            if (!token) { setElements([]); setIsLoadingElements(false); return; }
 
-            // Determine if a fetch is necessary based on mode and state
-            let shouldFetch = false;
-            let componentIdToFetch: number | undefined = undefined;
+            const lastElementId = mode === 'hierarchical' && currentSignatureElements.length > 0 ? currentSignatureElements[currentSignatureElements.length - 1].signatureElementId : undefined;
+            const componentIdToFetch = selectedComponentId ? parseInt(selectedComponentId, 10) : undefined;
+            const hasSearchTerm = debouncedSearchTerm.trim().length > 0;
+            const isComponentSelected = componentIdToFetch !== undefined && !isNaN(componentIdToFetch);
+
             const searchRequest: SearchRequest = { query: [], page: 1, pageSize: MAX_SEARCH_RESULTS };
+            let shouldFetch = false;
+            const queryFilters: SearchQueryElement[] = [];
 
-            if (debouncedSearchTerm.trim()) {
-                 searchRequest.query.push({ field: 'name', condition: 'FRAGMENT', value: debouncedSearchTerm.trim(), not: false });
-                 shouldFetch = true; // Always fetch if searching by term
-            }
+            // --- Determine Filters Based on Mode and State ---
 
-            if (mode === 'hierarchical') {
-                 if (lastElementId) { // Fetch children of the last element
-                     searchRequest.query.push({ field: 'parentIds', condition: 'ANY_OF', value: [lastElementId], not: false });
-                     shouldFetch = true;
-                 } else if (selectedComponentId) { // Fetch root elements of the selected component
-                     componentIdToFetch = parseInt(selectedComponentId, 10);
-                     if (isNaN(componentIdToFetch)) { shouldFetch = false; } // Avoid fetch if ID is invalid
-                     else {
-                        searchRequest.query.push({ field: 'signatureComponentId', condition: 'EQ', value: componentIdToFetch, not: false });
-                        searchRequest.query.push({ field: 'hasParents', condition: 'EQ', value: false, not: false }); // Root elements
+            if (hasSearchTerm) {
+                // Search Term Active: Filter primarily by search term, optionally by component
+                queryFilters.push({ field: 'name', condition: 'FRAGMENT', value: debouncedSearchTerm.trim(), not: false });
+                if (isComponentSelected) {
+                    queryFilters.push({ field: 'signatureComponentId', condition: 'EQ', value: componentIdToFetch, not: false });
+                }
+                shouldFetch = true;
+            } else {
+                // No Search Term
+                if (mode === 'hierarchical') {
+                    if (lastElementId) {
+                        // Subsequent Hierarchical Step: Filter by parent
+                        queryFilters.push({ field: 'parentIds', condition: 'ANY_OF', value: [lastElementId], not: false });
                         shouldFetch = true;
-                     }
-                 }
-             } else { // Free mode
-                 if (selectedComponentId) { // Fetch all elements of the selected component
-                     componentIdToFetch = parseInt(selectedComponentId, 10);
-                     if (isNaN(componentIdToFetch)) { shouldFetch = false; } // Avoid fetch if ID is invalid
-                     else {
-                        searchRequest.query.push({ field: 'signatureComponentId', condition: 'EQ', value: componentIdToFetch, not: false });
+                        // DO NOT filter by componentId here - parent link is the key
+                    } else if (isComponentSelected) {
+                        // Initial Hierarchical Step: Filter by component, show all elements
+                        queryFilters.push({ field: 'signatureComponentId', condition: 'EQ', value: componentIdToFetch, not: false });
+                        // NO parent filter here - show roots and non-roots
                         shouldFetch = true;
-                     }
-                 } else if (debouncedSearchTerm.trim()) {
-                     // Search across all components is already covered by the term check above
-                 } else {
-                     // Don't fetch if free mode has no component and no search term
-                     shouldFetch = false;
-                 }
+                    }
+                } else { // Free Mode (and no search term)
+                    if (isComponentSelected) {
+                        // Filter by component only
+                        queryFilters.push({ field: 'signatureComponentId', condition: 'EQ', value: componentIdToFetch, not: false });
+                        shouldFetch = true;
+                    }
+                    // Else (Free mode, no component, no search): Don't fetch anything
+                }
             }
 
-
-            if (!shouldFetch || !token) {
-                 setElements([]);
-                 setIsLoadingElements(false); // Ensure loading is false if not fetching
-                 return;
+            // --- Execute Fetch if Necessary ---
+            if (!shouldFetch) {
+                setElements([]); setIsLoadingElements(false); return;
             }
 
+            searchRequest.query = queryFilters;
             setIsLoadingElements(true);
             try {
-                 const response = await api.searchSignatureElements(searchRequest, token);
-                 setElements(response.data.sort(compareElements)); // Use helper for sorting
+                console.log("Fetching elements with query:", JSON.stringify(searchRequest.query)); // Debug log
+                const response = await api.searchSignatureElements(searchRequest, token);
+                setElements(response.data.sort(compareElements));
             } catch (err: any) {
                 setError(err.message || "Failed to load elements");
                 console.error("Failed to load elements", err); setElements([]);
             } finally { setIsLoadingElements(false); }
         };
         fetchElems();
-    }, [token, selectedComponentId, mode, currentSignatureElements, debouncedSearchTerm, refetchElementsTrigger]); // Include trigger
+    }, [token, selectedComponentId, mode, currentSignatureElements, debouncedSearchTerm, refetchElementsTrigger]); // Dependencies
 
 
     const handleSelectElement = (element: SignatureElement) => {
@@ -211,6 +212,7 @@ const ElementBrowserPopoverContent: React.FC<ElementBrowserPopoverContentProps> 
 
 
     // Filter elements based on the *immediate* searchTerm for responsive UI filtering
+    // This is now less critical as the fetch logic uses debounced term, but good for instant feedback
     const filteredElements = useMemo(() => {
         return elements.filter(el =>
            !currentSignatureElements.some(p => p.signatureElementId === el.signatureElementId) &&
@@ -274,7 +276,7 @@ const ElementBrowserPopoverContent: React.FC<ElementBrowserPopoverContentProps> 
             )}
 
             {/* Element Selector/Search */}
-            {/* Condition to show: Hierarchical needs last element OR component; Free needs component OR search term */}
+            {/* Condition to show: Determined by `shouldFetch` logic within useEffect essentially */}
              {(
                 (mode === 'hierarchical' && (currentSignatureElements.length > 0 || selectedComponentId)) ||
                 (mode === 'free' && (selectedComponentId || debouncedSearchTerm.trim()))
@@ -282,19 +284,21 @@ const ElementBrowserPopoverContent: React.FC<ElementBrowserPopoverContentProps> 
                 <div className="flex-1 overflow-hidden flex flex-col gap-2">
                      <Label className='text-xs mb-1 block'>
                          {mode === 'hierarchical'
-                            ? currentSignatureElements.length > 0 ? `Select Child of "${currentSignatureElements[currentSignatureElements.length - 1].name}"` : `Select Root Element in "${selectedComponentName || '...'}"`
+                            ? currentSignatureElements.length > 0 ? `Select Child of "${currentSignatureElements[currentSignatureElements.length - 1].name}"` : `Select Element in "${selectedComponentName || '...'}"`
                             : selectedComponentName ? `Select Element from "${selectedComponentName}"` : 'Search Elements by Name'
                          }
                      </Label>
-                    <Command className='rounded-lg border shadow-sm' filter={() => 1}>
+                    <Command className='rounded-lg border shadow-sm' filter={() => 1}> {/* Disable default filtering */}
                         <CommandInput placeholder="Search available elements..." value={searchTerm} onValueChange={setSearchTerm} disabled={isLoadingElements}/>
                          <CommandList className="max-h-[200px]">
                              {isLoadingElements && <div className='p-4 text-center'><LoadingSpinner size='sm' /></div>}
                              {error && !isLoadingElements && <CommandEmpty className='text-destructive px-2 py-4 text-center'>{error}</CommandEmpty>}
-                             {!error && !isLoadingElements && filteredElements.length === 0 && <CommandEmpty>No matching elements found.</CommandEmpty>}
-                             {!error && !isLoadingElements && filteredElements.length > 0 && (
-                                 <CommandGroup heading={`Available Elements (${filteredElements.length}${elements.length >= MAX_SEARCH_RESULTS ? '+' : ''})`}>
-                                     {filteredElements.map((el) => (
+                             {/* Use 'elements' directly from fetched state */}
+                             {!error && !isLoadingElements && elements.length === 0 && <CommandEmpty>No matching elements found.</CommandEmpty>}
+                             {!error && !isLoadingElements && elements.length > 0 && (
+                                 <CommandGroup heading={`Available Elements (${elements.length}${elements.length >= MAX_SEARCH_RESULTS ? '+' : ''})`}>
+                                     {/* Map over fetched 'elements' */}
+                                     {elements.map((el) => (
                                         <CommandItem key={el.signatureElementId} value={`${el.index || ''} ${el.name}`} onSelect={() => handleSelectElement(el)} className="cursor-pointer flex justify-between items-center text-sm">
                                             <div className='flex items-center'><span className='font-mono text-xs w-10 mr-2 text-right inline-block text-muted-foreground'>{el.index || '-'}</span><span>{el.name}</span></div>
                                             <Plus className='h-4 w-4 text-muted-foreground'/>
