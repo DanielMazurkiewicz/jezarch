@@ -11,17 +11,24 @@ import { ServeOptions, Server, TLSServeOptions, FileBlob } from 'bun'; // Includ
 let server: Server;
 
 const currentDir = import.meta.dir;
-const publicDir = path.resolve(currentDir, '../../../frontend-react/dist');
+export const publicDir = path.resolve(currentDir, '../../../frontend-react/dist'); // Export publicDir
 // const publicDir = path.resolve(currentDir, '../../../frontend-solid/dist');
 // const publicDir = path.resolve(currentDir, '../../../frontend-vanilla/dist');
 console.log(`* Serving static files from: ${publicDir}`);
 
+// Export variables to hold server status for logging
+export let isSslEnabled: boolean = false;
+export let serverHostname: string | undefined = undefined;
+export let serverPort: number | undefined = undefined;
 
 export async function initializeServer() {
     console.log("* initializeServer");
     const port = AppParams.port || parseInt(await getConfig(AppConfigKeys.PORT) || "0") || AppParamsDefaults.port;
     const sslKeyPath = await getConfig(AppConfigKeys.SSL_KEY);
     const sslCertPath = await getConfig(AppConfigKeys.SSL_CERT);
+
+    // Determine if SSL is enabled
+    isSslEnabled = !!(sslKeyPath && sslCertPath);
 
     // Define MyServerOptions independently, ensuring compatibility with Bun.serve
     // This structure aims to match the overload where 'routes' is provided.
@@ -119,18 +126,23 @@ export async function initializeServer() {
             return new Response(`Internal Server Error`, { status: 500 });
         },
         // tls definition using Bun.file
-        tls: sslKeyPath && sslCertPath ? {
-            key: Bun.file(sslKeyPath),
-            cert: Bun.file(sslCertPath),
+        tls: isSslEnabled ? {
+            key: Bun.file(sslKeyPath!), // Assert non-null as isSslEnabled is true
+            cert: Bun.file(sslCertPath!), // Assert non-null as isSslEnabled is true
         } : undefined,
          development: process.env.NODE_ENV !== 'production',
          routes: routes, // Pass the imported routes object
+         // Optionally set hostname if needed, default is localhost
+         // hostname: "0.0.0.0", // Example: listen on all interfaces
     };
     try {
         // Pass the options. The cast might still be needed if TS struggles with the overload resolution.
         server = Bun.serve(serverOptions as ServeOptions);
         if (server) {
-            console.log(`Server listening on ${server.url?.protocol}//${server.hostname}:${server.port}`);
+            // Store hostname and port after server starts
+            serverHostname = server.hostname;
+            serverPort = server.port;
+            console.log(`Server listening on ${server.url?.protocol}//${serverHostname}:${serverPort}`);
         } else {
             // This case should ideally use Log.error, but if Log itself failed, console.error is the fallback
             console.error("!!! Bun.serve() did not return a server instance.");

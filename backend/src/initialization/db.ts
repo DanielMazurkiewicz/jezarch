@@ -14,6 +14,10 @@ import { initializeArchiveDocumentTable, initializeArchiveDocumentTagTable } fro
 
 export const db = new Database(AppParams.dbPath);
 
+// Export variables to hold DB status for logging
+export let dbForeignKeysEnabled: boolean = false;
+export let dbJournalMode: string | null = null;
+
 async function tryInitialize(tableName: string, initFn: () => Promise<any>) {
     try {
         await initFn();
@@ -31,21 +35,34 @@ export async function initializeDatabase() {
     console.log("* initializeDatabase - Setting PRAGMAs and initializing tables...");
     try {
         db.exec('PRAGMA foreign_keys = ON;');
-        console.log("  - PRAGMA foreign_keys = ON; set successfully.");
+        // Verify and store status
+        const fkResult = db.query<{ 'foreign_keys': number }>('PRAGMA foreign_keys;').get();
+        dbForeignKeysEnabled = fkResult?.foreign_keys === 1;
+        console.log(`  - PRAGMA foreign_keys = ON; set status: ${dbForeignKeysEnabled}`);
     } catch (error) {
-         console.error("*** FAILED to set PRAGMA foreign_keys ***");
+         console.error("*** FAILED to set or verify PRAGMA foreign_keys ***");
          console.error(error);
-         // Probably exit if this fails
-         process.exit(1);
+         dbForeignKeysEnabled = false; // Assume false on error
+         process.exit(1); // Critical, probably exit
     }
 
     // IMPORTANT: Enable write-ahead logging for better concurrency
     try {
         db.exec('PRAGMA journal_mode = WAL;');
-        console.log("  - PRAGMA journal_mode = WAL; set successfully.");
+        // Verify and store status
+        const jmResult = db.query<{ 'journal_mode': string }>('PRAGMA journal_mode;').get();
+        dbJournalMode = jmResult?.journal_mode ?? null;
+        console.log(`  - PRAGMA journal_mode = WAL; set status: ${dbJournalMode}`);
     } catch (error) {
          console.warn("*** Could not set PRAGMA journal_mode = WAL; continuing with default ***");
          console.warn(error);
+         // Attempt to read the current mode anyway
+          try {
+              const jmResult = db.query<{ 'journal_mode': string }>('PRAGMA journal_mode;').get();
+              dbJournalMode = jmResult?.journal_mode ?? null;
+          } catch {
+              dbJournalMode = null; // Failed to read mode
+          }
     }
 
 
@@ -68,5 +85,6 @@ export async function initializeDatabase() {
     await tryInitialize('signature_elements', initializeSignatureElementTable); // Depends on signature_components
     await tryInitialize('signature_element_parents', initializeSignatureElementParentTable); // Depends on signature_elements
 
-    return db;
+    // Return db instance and status info if needed elsewhere directly
+    return { db, dbForeignKeysEnabled, dbJournalMode };
 }
