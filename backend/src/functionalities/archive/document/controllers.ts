@@ -35,6 +35,9 @@ import { Tag } from '../../tag/models';
 import { getAssignedTagIdsForUser } from '../../user/db';
 import { archiveDocumentTagSearchHandler } from './db'; // Re-import the handler directly
 import { db } from '../../../initialization/db'; // Import db for transaction count
+// --- NEW: Import signature path resolver ---
+import { populateResolvedDescriptiveSignatures } from '../../signature/element/db'; // Adjust path if necessary
+// --- END NEW ---
 
 const AREA = 'archive_document';
 
@@ -77,7 +80,15 @@ export const createArchiveDocumentController = async (req: BunRequest) => {
         const newDocument = await getArchiveDocumentByIdInternal(newDocumentId);
         if (newDocument) {
             newDocument.tags = await getTagsForArchiveDocument(newDocumentId);
+            // Resolve signatures for the newly created document before sending
+            if (newDocument.descriptiveSignatureElementIds && newDocument.descriptiveSignatureElementIds.length > 0) {
+                 // Temporarily cast to ArchiveDocumentSearchResult to use populateResolvedDescriptiveSignatures
+                await populateResolvedDescriptiveSignatures([newDocument as ArchiveDocumentSearchResult]);
+            } else {
+                (newDocument as ArchiveDocumentSearchResult).resolvedDescriptiveSignatures = [];
+            }
         }
+
 
         return new Response(JSON.stringify(newDocument), { status: 201 });
 
@@ -122,23 +133,30 @@ export const getArchiveDocumentByIdController = async (req: BunRequest<":id">) =
             return new Response(JSON.stringify({ message: 'Document not found or inactive' }), { status: 404 });
         }
 
+        // Populate tags for all roles before the 'user' role check
+        document.tags = await getTagsForArchiveDocument(id);
+
         // --- 'user' Role Tag Check ---
         if (sessionAndUser.user.role === 'user') {
             const userAllowedTagIds = await getAssignedTagIdsForUser(sessionAndUser.user.userId);
-            const documentTags = await getTagsForArchiveDocument(id);
-            document.tags = documentTags; // Assign fetched tags
-
-            const hasAllowedTag = documentTags.some(tag => userAllowedTagIds.includes(tag.tagId!));
+            // document.tags already populated
+            const hasAllowedTag = document.tags.some(tag => userAllowedTagIds.includes(tag.tagId!));
             if (!hasAllowedTag) {
                  await Log.warn(`Forbidden access attempt by 'user' on document ${id} due to tag permissions`, sessionAndUser.user.login, AREA);
                  return new Response("Forbidden: You do not have permission to view this document based on assigned tags.", { status: 403 });
             }
              await Log.info(`'user' ${sessionAndUser.user.login} accessed document ${id} with allowed tag`, sessionAndUser.user.login, AREA);
-        } else {
-            // Populate tags for admin/employee
-            document.tags = await getTagsForArchiveDocument(id);
         }
         // --- End Tag Check ---
+
+        // Resolve descriptive signatures for the single document
+        if (document.descriptiveSignatureElementIds && document.descriptiveSignatureElementIds.length > 0) {
+             // Temporarily cast to ArchiveDocumentSearchResult to use populateResolvedDescriptiveSignatures
+            await populateResolvedDescriptiveSignatures([document as ArchiveDocumentSearchResult]);
+        } else {
+            (document as ArchiveDocumentSearchResult).resolvedDescriptiveSignatures = [];
+        }
+
 
         return new Response(JSON.stringify(document), { status: 200 });
 
@@ -215,7 +233,15 @@ export const updateArchiveDocumentController = async (req: BunRequest<":id">) =>
         const finalDocument = await getArchiveDocumentByIdInternal(id);
         if (finalDocument) {
             finalDocument.tags = await getTagsForArchiveDocument(id);
+            // Resolve signatures for the updated document before sending
+            if (finalDocument.descriptiveSignatureElementIds && finalDocument.descriptiveSignatureElementIds.length > 0) {
+                 // Temporarily cast to ArchiveDocumentSearchResult to use populateResolvedDescriptiveSignatures
+                await populateResolvedDescriptiveSignatures([finalDocument as ArchiveDocumentSearchResult]);
+            } else {
+                (finalDocument as ArchiveDocumentSearchResult).resolvedDescriptiveSignatures = [];
+            }
         }
+
 
         return new Response(JSON.stringify(finalDocument), { status: 200 });
 
@@ -366,6 +392,9 @@ export const searchArchiveDocumentsController = async (req: BunRequest) => {
             searchResponse.data.forEach(doc => {
                 doc.tags = tagsMap.get(doc.archiveDocumentId!) || [];
             });
+            // --- NEW: Populate resolved descriptive signatures ---
+            await populateResolvedDescriptiveSignatures(searchResponse.data);
+            // --- END NEW ---
         }
 
         return new Response(JSON.stringify(searchResponse), { status: 200 });

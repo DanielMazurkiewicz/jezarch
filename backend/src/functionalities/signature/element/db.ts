@@ -5,6 +5,7 @@ import { Log } from '../../log/db';
 import { sqliteNow } from '../../../utils/sqlite';
 import { SearchOnCustomFieldHandlerResult, SearchQueryElement } from '../../../utils/search';
 import { dbToComponent } from '../component/db';
+import type { ArchiveDocumentSearchResult } from '../../archive/document/models'; // IMPORT CORRECT TYPE
 
 // Initialization function (called in initializeDatabase)
 export async function initializeSignatureElementTable() {
@@ -336,3 +337,72 @@ export type ElementSearchResult = SignatureElement & { parentIds?: number[] };
 // or reuse the generic executeSearch if results are simple enough.
 // For now, let's assume the generic search utility is sufficient and
 // parent IDs can be fetched separately if needed after the search.
+
+
+// --- NEW: Helper for resolving signature paths ---
+/**
+ * Resolves a single path of element IDs to a display string.
+ * Example: [1, 5] -> "[CompA-Idx1] ElementName1 / [CompB-Idx2] ElementName2"
+ */
+export async function resolveSignaturePathToString(idPath: number[]): Promise<string | null> {
+    if (!idPath || idPath.length === 0) return null;
+    try {
+        const elementsInPath: (SignatureElement | undefined)[] = await Promise.all(
+            idPath.map(id => getElementById(id, [])) // No need to populate further here
+        );
+
+        const displayParts = elementsInPath.map((el, index) => {
+            if (el) {
+                // Format: [Index] Name or just Name if no index
+                return `${el.index ? `[${el.index}] ` : ''}${el.name}`;
+            }
+            // Fallback if an element ID in the path is not found
+            return `[ID:${idPath[index]} not found]`;
+        });
+        return displayParts.join(' / ');
+    } catch (error) {
+        await Log.error('Failed to resolve signature path to string', 'system', 'database_signature_helper', { idPath, error });
+        // Return a fallback string indicating error for this path
+        return `[Error resolving path: ${idPath.join(',')}]`;
+    }
+}
+
+/**
+ * Populates the 'resolvedDescriptiveSignatures' field for an array of ArchiveDocumentSearchResult.
+ * Modifies the documents in place.
+ */
+export async function populateResolvedDescriptiveSignatures(documents: ArchiveDocumentSearchResult[]): Promise<void> {
+    for (const doc of documents) {
+        let descriptiveIds: number[][] = [];
+        // Check if descriptiveSignatureElementIds is a string (from direct search result)
+        // or already an array (from dbToArchiveDocument or similar transformation)
+        if (typeof (doc as any).descriptiveSignatureElementIds === 'string') {
+            try {
+                descriptiveIds = JSON.parse((doc as any).descriptiveSignatureElementIds || '[]');
+            } catch (e) {
+                await Log.warn('Failed to parse descriptiveSignatureElementIds string in populateResolvedDescriptiveSignatures', 'system', 'signature_resolver', { docId: doc.archiveDocumentId, value: (doc as any).descriptiveSignatureElementIds, error: e });
+                descriptiveIds = []; // Default to empty array on parse error
+            }
+        } else if (Array.isArray((doc as any).descriptiveSignatureElementIds)) {
+            descriptiveIds = (doc as any).descriptiveSignatureElementIds;
+        }
+
+
+        if (descriptiveIds && Array.isArray(descriptiveIds) && descriptiveIds.length > 0) {
+            const resolvedSignatures: (string | null)[] = await Promise.all(
+                descriptiveIds.map(idPath => {
+                    // Ensure idPath itself is an array before passing to resolveSignaturePathToString
+                    if (Array.isArray(idPath)) {
+                        return resolveSignaturePathToString(idPath);
+                    }
+                    Log.warn(`Invalid idPath found in descriptiveSignatureElementIds for doc ${doc.archiveDocumentId}`, 'system', 'signature_resolver', { idPath });
+                    return Promise.resolve(null); // Return null for invalid paths
+                })
+            );
+            // Filter out nulls and assign
+            doc.resolvedDescriptiveSignatures = resolvedSignatures.filter((s): s is string => s !== null);
+        } else {
+            doc.resolvedDescriptiveSignatures = [];
+        }
+    }
+}

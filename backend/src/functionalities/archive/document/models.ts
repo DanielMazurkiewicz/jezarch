@@ -57,7 +57,9 @@ export interface ArchiveDocument {
     tags?: Tag[];
     ownerLogin?: string; // Added owner login for display
     // resolvedTopographicSignatures?: string[]; // Removed, now a single string
-    // resolvedDescriptiveSignatures?: string[]; // Could be added if needed
+    // resolvedDescriptiveSignatures could be part of ArchiveDocument if always needed,
+    // or part of ArchiveDocumentSearchResult if only for search display.
+    // Let's add it to ArchiveDocumentSearchResult for now.
 }
 
 // --- Input Schemas ---
@@ -109,10 +111,10 @@ export type CreateArchiveDocumentInput = z.infer<typeof createArchiveDocumentSch
 export type UpdateArchiveDocumentInput = z.infer<typeof updateArchiveDocumentSchema>;
 
 
-// Interface for search results potentially including resolved data if needed later
+// Interface for search results potentially including resolved data
 export interface ArchiveDocumentSearchResult extends ArchiveDocument {
    // Add any specific search result fields here if needed
-   // resolvedDescriptiveSignatures?: string[];
+   resolvedDescriptiveSignatures?: string[]; // <<< THIS LINE IS UNCOMMENTED/ADDED
 }
 
 

@@ -89,9 +89,16 @@ const DocumentList: React.FC<DocumentListProps> = ({ documents, onEdit, onDisabl
                              <TableCell className='font-mono text-xs truncate' title={doc.topographicSignature || ''}>
                                  {doc.topographicSignature || <i className='text-muted-foreground not-italic'>None</i>}
                              </TableCell>
-                            <TableCell className='font-mono text-xs truncate' title={docWithResolved.resolvedDescriptiveSignatures?.[0] || ''}>
-                                {(docWithResolved.resolvedDescriptiveSignatures?.[0])
-                                    ? docWithResolved.resolvedDescriptiveSignatures[0]
+                            {/* --- UPDATED: Display multiple descriptive signatures --- */}
+                            <TableCell className='font-mono text-xs' title={docWithResolved.resolvedDescriptiveSignatures?.join('\n') || ''}>
+                                {(docWithResolved.resolvedDescriptiveSignatures && docWithResolved.resolvedDescriptiveSignatures.length > 0)
+                                    ? (
+                                        <div className="flex flex-col">
+                                            {docWithResolved.resolvedDescriptiveSignatures.map((sig, index) => (
+                                                <span key={index} className="truncate block">{sig}</span>
+                                            ))}
+                                        </div>
+                                      )
                                     : <i className='text-muted-foreground not-italic'>None</i>
                                 }
                             </TableCell>
