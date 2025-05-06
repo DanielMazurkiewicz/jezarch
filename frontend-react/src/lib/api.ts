@@ -25,6 +25,9 @@ import type {
     CreateArchiveDocumentInput,
     UpdateArchiveDocumentInput,
     ArchiveDocumentSearchResult,
+    // --- NEW: Import batch tagging type ---
+    BatchTagDocumentsInput,
+    // --- END NEW ---
 } from "../../../backend/src/functionalities/archive/document/models";
 
 import type { SearchRequest, SearchResponse } from "../../../backend/src/utils/search";
@@ -215,6 +218,7 @@ const getArchiveDocumentById = (id: number, token: string) => fetchApi<ArchiveDo
 const updateArchiveDocument = (id: number, data: UpdateArchiveDocumentInput, token: string) => fetchApi<ArchiveDocument>(`/archive/document/id/${id}`, 'PATCH', data, token);
 const disableArchiveDocument = (id: number, token: string) => fetchApi<{ success: boolean }>(`/archive/document/id/${id}`, 'DELETE', null, token);
 const searchArchiveDocuments = (searchRequest: SearchRequest, token: string) => fetchApi<SearchResponse<ArchiveDocumentSearchResult>>("/archive/documents/search", "POST", searchRequest, token);
+const batchTagArchiveDocuments = (data: BatchTagDocumentsInput, token: string) => fetchApi<{ message: string; count: number }>("/archive/documents/batch-tag", "POST", data, token); // --- NEW ---
 // Admin DB Functions
 const backupDatabase = (token: string) => fetchApi<Blob>("/admin/db/backup", "GET", null, token, { expectBlob: true });
 
@@ -231,4 +235,7 @@ export default {
     getElementsByComponent, searchSignatureElements, createArchiveDocument,
     getArchiveDocumentById, updateArchiveDocument, disableArchiveDocument, searchArchiveDocuments,
     backupDatabase,
+    // --- NEW ---
+    batchTagArchiveDocuments,
+    // --- END NEW ---
 };

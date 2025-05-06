@@ -3,7 +3,10 @@ import {
     getArchiveDocumentByIdController,
     updateArchiveDocumentController,
     disableArchiveDocumentController,
-    searchArchiveDocumentsController
+    searchArchiveDocumentsController,
+    // --- NEW: Import batch tagging controller ---
+    batchTagArchiveDocumentsController,
+    // --- END NEW ---
 } from './controllers';
 
 export const archiveDocumentRoutes = {
@@ -26,11 +29,17 @@ export const archiveDocumentRoutes = {
 
 
     // '/api/archive/documents/all': {
-    //     // GET: getAllDocsController? // Maybe admin only? Add later if needed.    
+    //     // GET: getAllDocsController? // Maybe admin only? Add later if needed.
     // },
-    
+
      // Search documents/units
     '/api/archive/documents/search': {
         POST: searchArchiveDocumentsController,
     },
+
+    // --- NEW: Batch Tagging Route ---
+    '/api/archive/documents/batch-tag': {
+        POST: batchTagArchiveDocumentsController, // For adding/removing tags based on search criteria
+    },
+    // --- END NEW ---
 };

@@ -3,9 +3,11 @@ import { db } from '../../../initialization/db';
 import type { ArchiveDocument, ArchiveDocumentType, UpdateArchiveDocumentInput } from './models';
 import { Log } from '../../log/db';
 import { sqliteNow } from '../../../utils/sqlite';
-import { SearchQueryElement, SearchOnCustomFieldHandlerResult } from '../../../utils/search';
+// --- UPDATED: Import SearchRequest type ---
+import { SearchQueryElement, SearchOnCustomFieldHandlerResult, SearchQuery, SearchRequest } from '../../../utils/search';
 import { Tag } from '../../tag/models';
-import {  getUserByUserId } from '../../user/db'; // Added user imports for ownerLogin
+import { getUserByUserId } from '../../user/db'; // Added user imports for ownerLogin
+import { buildSearchQueries } from '../../../utils/search'; // Import buildSearchQueries
 
 // Initialization function for the main archive documents table
 export async function initializeArchiveDocumentTable() {
@@ -423,8 +425,6 @@ export const archiveDocumentSignatureSearchHandler: (element: SearchQueryElement
     element, tableAlias
 ): SearchOnCustomFieldHandlerResult => {
     const signatureFieldMap: Record<string, string> = {
-        // --- REMOVED: Topographic prefix searching ---
-        // 'topographicSignaturePrefix': 'topographicSignatureElementIds',
         'descriptiveSignaturePrefix': 'descriptiveSignatureElementIds',
     };
 
@@ -473,3 +473,116 @@ export const archiveDocumentSignatureSearchHandler: (element: SearchQueryElement
 
     return null; // Handler doesn't apply to other conditions for these fields
 };
+
+
+// --- NEW: Batch Tagging DB Functions ---
+
+/**
+ * Retrieves the IDs of all archive documents matching the provided search criteria.
+ * Note: This function bypasses pagination (pageSize=-1).
+ */
+export async function getMatchingDocumentIds(searchRequest: SearchRequest): Promise<number[]> {
+    try {
+        // Fields needed for filtering (align with controller search)
+        const allowedDirectFields: (keyof ArchiveDocument)[] = [
+            'archiveDocumentId', 'parentUnitArchiveDocumentId', 'ownerUserId', 'type', 'title',
+            'creator', 'creationDate', 'numberOfPages', 'documentType', 'dimensions', 'binding',
+            'condition', 'documentLanguage', 'contentDescription', 'remarks', 'accessLevel',
+            'accessConditions', 'additionalInformation', 'relatedDocumentsReferences',
+            'isDigitized', 'digitizedVersionLink', 'createdOn', 'modifiedOn', 'active',
+            'topographicSignature'
+        ];
+        const primaryKey = 'archiveDocumentId';
+
+        // Use buildSearchQueries to generate the WHERE clause and JOINs
+        // We only need the countQuery's structure, but adapt it to select IDs
+        const { countQuery, alias } = await buildSearchQueries<ArchiveDocumentSearchResult>(
+            'archive_documents',
+            { ...searchRequest, page: 1, pageSize: -1 }, // Ensure no limit/offset
+            allowedDirectFields,
+            {
+                'tags': archiveDocumentTagSearchHandler,
+                'descriptiveSignaturePrefix': archiveDocumentSignatureSearchHandler,
+            },
+            primaryKey
+        );
+
+        // Modify the count query to select distinct IDs
+        const idSelectQuery = countQuery.sql.replace(
+            `SELECT COUNT(DISTINCT ${alias}.${primaryKey}) as total`,
+            `SELECT DISTINCT ${alias}.${primaryKey} as id`
+        );
+
+        const statement = db.prepare(idSelectQuery);
+        const rows = statement.all(...countQuery.params) as { id: number }[];
+        return rows.map(row => row.id);
+
+    } catch (error: any) {
+        await Log.error('Failed to get matching document IDs for batch tagging', 'system', 'database', { searchRequest, error });
+        throw error; // Re-throw for controller
+    }
+}
+
+/**
+ * Adds specified tags to a list of documents.
+ * @returns The number of tag associations actually inserted.
+ */
+export async function addTagsToDocuments(documentIds: number[], tagIds: number[]): Promise<number> {
+    if (documentIds.length === 0 || tagIds.length === 0) return 0;
+
+    let changes = 0;
+    const transaction = db.transaction(() => {
+        const insertStmt = db.prepare(`
+            INSERT OR IGNORE INTO archive_document_tags (archiveDocumentId, tagId)
+            SELECT ?, ?
+            WHERE EXISTS (SELECT 1 FROM archive_documents WHERE archiveDocumentId = ?) -- Ensure doc exists
+              AND EXISTS (SELECT 1 FROM tags WHERE tagId = ?) -- Ensure tag exists
+        `);
+
+        for (const docId of documentIds) {
+            for (const tagId of tagIds) {
+                const result = insertStmt.run(docId, tagId, docId, tagId);
+                changes += result.changes;
+            }
+        }
+    });
+
+    try {
+        transaction();
+        return changes;
+    } catch (error) {
+        await Log.error('Failed to batch add tags to documents', 'system', 'database', { documentIds, tagIds, error });
+        throw error;
+    }
+}
+
+/**
+ * Removes specified tags from a list of documents.
+ * @returns The number of tag associations actually deleted.
+ */
+export async function removeTagsFromDocuments(documentIds: number[], tagIds: number[]): Promise<number> {
+     if (documentIds.length === 0 || tagIds.length === 0) return 0;
+
+    let changes = 0;
+    const transaction = db.transaction(() => {
+        const docPlaceholders = documentIds.map(() => '?').join(',');
+        const tagPlaceholders = tagIds.map(() => '?').join(',');
+
+        const deleteStmt = db.prepare(`
+            DELETE FROM archive_document_tags
+            WHERE archiveDocumentId IN (${docPlaceholders})
+              AND tagId IN (${tagPlaceholders})
+        `);
+
+        const result = deleteStmt.run(...documentIds, ...tagIds);
+        changes = result.changes;
+    });
+
+    try {
+         transaction();
+         return changes;
+    } catch (error) {
+         await Log.error('Failed to batch remove tags from documents', 'system', 'database', { documentIds, tagIds, error });
+         throw error;
+    }
+}

@@ -7,12 +7,15 @@ import DocumentForm from './DocumentForm';
 import LoadingSpinner from '@/components/shared/LoadingSpinner';
 import ErrorDisplay from '@/components/shared/ErrorDisplay';
 import SearchBar, { type SearchFieldOption } from '@/components/shared/SearchBar';
+import BatchTagDialog from './BatchTagDialog'; // --- NEW: Import BatchTagDialog ---
 import { useAuth } from '@/hooks/useAuth';
 import api from '@/lib/api';
 import type { Tag } from '../../../../backend/src/functionalities/tag/models';
 import type { ArchiveDocument, ArchiveDocumentSearchResult, ArchiveDocumentType } from '../../../../backend/src/functionalities/archive/document/models';
 import type { SearchRequest, SearchResponse, SearchQueryElement } from '../../../../backend/src/utils/search';
-import { PlusCircle, ArrowLeft, Folder, FileText } from 'lucide-react';
+// --- NEW: Import icons for batch actions ---
+import { PlusCircle, ArrowLeft, Folder, FileText, Tags, MinusCircle } from 'lucide-react';
+// --- END NEW ---
 import { Pagination } from '@/components/shared/Pagination';
 import { toast } from "sonner";
 import { Card, CardContent, CardHeader, CardDescription } from '@/components/ui/card';
@@ -48,9 +51,19 @@ const ArchivePage: React.FC = () => {
   const [totalDocs, setTotalDocs] = useState(0);
   const [totalPages, setTotalPages] = useState(1);
 
+  // --- State for Batch Tagging ---
+  const [isBatchTagDialogOpen, setIsBatchTagDialogOpen] = useState(false);
+  const [batchTagAction, setBatchTagAction] = useState<'add' | 'remove'>('add');
+  const [isBatchTagLoading, setIsBatchTagLoading] = useState(false);
+  // --- END ---
+
   const isAdmin = user?.role === 'admin';
   const isEmployee = user?.role === 'employee';
   const isUserRole = user?.role === 'user';
+
+  // --- Determine if a search is active (at least one filter applied) ---
+  const isSearchActive = useMemo(() => searchQuery.length > 0, [searchQuery]);
+  // --- END ---
 
   useEffect(() => {
     const fetchParentUnit = async () => {
@@ -71,13 +84,14 @@ const ArchivePage: React.FC = () => {
     const fetchTags = async () => {
         if (!token) return;
         try {
+            // All roles that can batch tag need the tag list
             if (isAdmin || isEmployee) {
                  const tags = await api.getAllTags(token);
                  setAvailableTags(tags.sort((a, b) => a.name.localeCompare(b.name)));
             } else {
                  setAvailableTags([]);
             }
-        } catch (err) { console.error("Failed to fetch tags for search options:", err); }
+        } catch (err) { console.error("Failed to fetch tags:", err); }
     };
     fetchTags();
   }, [token, isAdmin, isEmployee]);
@@ -104,9 +118,12 @@ const ArchivePage: React.FC = () => {
    }, [token, pageSize, currentPage, searchQuery, parentUnitId]);
 
    useEffect(() => {
-       if (!parentUnitId || parentUnit) {
-           fetchDocuments(currentPage, searchQuery);
+       // Don't fetch initially if parent unit is needed but not loaded yet
+       if (parentUnitId && !parentUnit) {
+           setIsLoading(false); // Ensure loading stops if waiting for parent
+           return;
        }
+       fetchDocuments(currentPage, searchQuery);
    }, [fetchDocuments, currentPage, searchQuery, parentUnitId, parentUnit]);
 
 
@@ -149,8 +166,9 @@ const ArchivePage: React.FC = () => {
             toast.success("Item disabled successfully.");
             const newTotalPages = Math.ceil((totalDocs - 1) / pageSize);
             const newCurrentPage = (currentPage > newTotalPages) ? Math.max(1, newTotalPages) : currentPage;
+            // Important: Refetch using the *current* searchQuery but potentially *new* page
             await fetchDocuments(newCurrentPage, searchQuery);
-            if (currentPage !== newCurrentPage) setCurrentPage(newCurrentPage);
+            if (currentPage !== newCurrentPage) setCurrentPage(newCurrentPage); // Update page state if changed
             if (previewingDoc?.archiveDocumentId === docId) setIsPreviewOpen(false);
         } catch (err: any) {
              const msg = err.message || 'Failed to disable item'; setError(msg); toast.error(`Disable failed: ${msg}`); console.error("Disable Error:", err);
@@ -184,37 +202,77 @@ const ArchivePage: React.FC = () => {
         navigate(`/archive?unitId=${unit.archiveDocumentId}`);
     }, [navigate]);
 
-   // --- UPDATED: Search fields for topographic signature ---
+   // --- Batch Tagging Handlers ---
+   const openBatchTagDialog = (action: 'add' | 'remove') => {
+       if (!isAdmin && !isEmployee) {
+           toast.error("You do not have permission to perform batch actions.");
+           return;
+       }
+       setBatchTagAction(action);
+       setIsBatchTagDialogOpen(true);
+   };
+
+   const handleBatchTagConfirm = async (tagIds: number[]) => {
+       // Keep validation for tags and token
+       if (!token || tagIds.length === 0) {
+           toast.warning("No tags selected.");
+           setIsBatchTagDialogOpen(false);
+           return;
+       }
+       setIsBatchTagLoading(true);
+       try {
+           // Pass the current searchQuery, even if empty (backend handles this as "all")
+           const response = await api.batchTagArchiveDocuments({
+               searchQuery: searchQuery,
+               tagIds: tagIds,
+               action: batchTagAction,
+           }, token);
+           toast.success(response.message || `${batchTagAction === 'add' ? 'Added' : 'Removed'} tags for ${response.count} items.`);
+           setIsBatchTagDialogOpen(false);
+           // Refetch data after batch operation
+           await fetchDocuments(currentPage, searchQuery);
+       } catch (err: any) {
+           toast.error(`Batch tagging failed: ${err.message}`);
+           console.error("Batch Tag Error:", err);
+       } finally {
+           setIsBatchTagLoading(false);
+       }
+   };
+   // --- END ---
+
+
    const searchFields: SearchFieldOption[] = useMemo(() => {
        const baseFields: SearchFieldOption[] = [
            { value: 'title', label: 'Title', type: 'text' },
            { value: 'creator', label: 'Creator', type: 'text' },
            { value: 'creationDate', label: 'Creation Date', type: 'text' },
            { value: 'contentDescription', label: 'Description', type: 'text'},
-           // --- UPDATED: Add topographicSignature search ---
            { value: 'topographicSignature', label: 'Topo Sig', type: 'text' },
-           { value: 'descriptiveSignaturePrefix', label: 'Desc Sig Prefix', type: 'text' }, // Keep descriptive prefix search
+           { value: 'descriptiveSignaturePrefix', label: 'Desc Sig Prefix', type: 'text' }, // Keep for descriptive
+           // Only show 'type' filter if NOT inside a unit
            ...(!parentUnitId ? [{ value: 'type', label: 'Type', type: 'select', options: [{value: 'unit', label: 'Unit'}, {value:'document', label: 'Document'}]}] as SearchFieldOption[] : []),
            { value: 'isDigitized', label: 'Is Digitized', type: 'boolean'},
-           // --- REMOVED: topographicSignaturePrefix ---
-           // { value: 'topographicSignaturePrefix', label: 'Topo Sig Prefix', type: 'text' },
        ];
+       // Add fields only visible/usable by admin/employee
        if (isAdmin || isEmployee) {
            baseFields.push(
                { value: 'tags', label: 'Tags (Any Of)', type: 'tags', options: availableTags.map(t => ({value: t.tagId!, label: t.name})) },
                { value: 'ownerUserId', label: 'Owner User ID', type: 'number' }
            );
        }
+       // Add fields only visible/usable by admin
        if (isAdmin) {
             baseFields.push({ value: 'active', label: 'Is Active', type: 'boolean' });
        }
        return baseFields;
    }, [isAdmin, isEmployee, availableTags, parentUnitId]);
 
+
   return (
     <div className="space-y-6">
        {/* Header Section */}
        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+           {/* Left side: Back button and Title */}
            <div className='flex items-center gap-4'>
                {parentUnitId && (
                   <Button variant="outline" size="icon" onClick={() => navigate('/archive')} title="Back to Main Archive">
@@ -233,46 +291,91 @@ const ArchivePage: React.FC = () => {
                     </p>
                 </div>
            </div>
-            {(isAdmin || isEmployee) && (
-                <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
-                    <DialogTrigger asChild>
-                    <Button onClick={handleCreateNew} className='shrink-0'>
-                        <PlusCircle className="mr-2 h-4 w-4" />
-                        {parentUnitId ? 'Create Document Here' : 'Create Item'}
-                    </Button>
-                    </DialogTrigger>
-                    <DialogContent className="max-w-3xl">
-                    <DialogHeader> <DialogTitle>{formDialogTitle}</DialogTitle> </DialogHeader>
-                    {isFormOpen && (
-                        <DocumentForm
-                            docToEdit={editingDoc}
-                            onSave={handleSaveSuccess}
-                            forceType={formInitialType}
-                            forcedParentId={formInitialParentId}
-                            forcedParentTitle={formInitialParentTitle}
-                            onTypeChange={updateDialogTitle}
-                            />
-                        )}
-                    </DialogContent>
-                </Dialog>
-            )}
+           {/* Right side: Action Buttons */}
+           <div className='flex items-center gap-2 flex-wrap justify-end'>
+                 {/* --- Batch Tag Buttons (Always Visible if permitted, styled as ghost) --- */}
+                 {(isAdmin || isEmployee) && (
+                      <>
+                          <Button
+                             variant="ghost"
+                             size="sm"
+                             onClick={() => openBatchTagDialog('add')}
+                             title={isSearchActive ? "Add tags to filtered items" : "Add tags to ALL items in the archive"}
+                             disabled={isBatchTagLoading} // Disable only if loading
+                          >
+                              <Tags className="mr-2 h-4 w-4 text-green-600" /> Add Tags
+                          </Button>
+                          <Button
+                             variant="ghost"
+                             size="sm"
+                             onClick={() => openBatchTagDialog('remove')}
+                             title={isSearchActive ? "Remove tags from filtered items" : "Remove tags from ALL items in the archive"}
+                             disabled={isBatchTagLoading} // Disable only if loading
+                           >
+                              <MinusCircle className="mr-2 h-4 w-4 text-red-600" /> Remove Tags
+                          </Button>
+                      </>
+                 )}
+                 {/* --- END Batch Tag Buttons --- */}
+                 {(isAdmin || isEmployee) && (
+                     <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
+                         <DialogTrigger asChild>
+                         <Button onClick={handleCreateNew} className='shrink-0'>
+                             <PlusCircle className="mr-2 h-4 w-4" />
+                             {parentUnitId ? 'Create Document Here' : 'Create Item'}
+                         </Button>
+                         </DialogTrigger>
+                         <DialogContent className="max-w-3xl">
+                         <DialogHeader> <DialogTitle>{formDialogTitle}</DialogTitle> </DialogHeader>
+                         {isFormOpen && (
+                             <DocumentForm
+                                 docToEdit={editingDoc}
+                                 onSave={handleSaveSuccess}
+                                 forceType={formInitialType}
+                                 forcedParentId={formInitialParentId}
+                                 forcedParentTitle={formInitialParentTitle}
+                                 onTypeChange={updateDialogTitle}
+                                 />
+                             )}
+                         </DialogContent>
+                     </Dialog>
+                 )}
+            </div>
        </div>
 
        {/* Search Bar Section */}
        <SearchBar
            fields={searchFields}
            onSearch={handleSearch}
-           isLoading={isLoading}
+           isLoading={isLoading || isBatchTagLoading} // Show loading on search bar if either is loading
        />
 
         {/* Document List Section */}
         <Card>
              <CardHeader>
+                  <CardDescription>
+                       {/* Show total results count */}
+                       {totalDocs > 0 && !isLoading && (
+                           <span>Found {totalDocs.toLocaleString()} item{totalDocs !== 1 ? 's' : ''}. </span>
+                       )}
+                       {/* Info about batch tagging */}
+                       {(isAdmin || isEmployee) && documents.length > 0 && (
+                            <span className="text-xs italic">
+                                {isSearchActive
+                                    ? `Batch actions will affect ${totalDocs.toLocaleString()} items matching current filters.`
+                                    : `Batch actions will affect all ${totalDocs.toLocaleString()} items in the archive (no filters applied).`
+                                }
+                            </span>
+                       )}
+                       {isBatchTagLoading && (
+                            <span className="text-xs italic text-primary inline-flex items-center gap-1"><LoadingSpinner size='sm'/> Performing batch tag operation...</span>
+                       )}
+                  </CardDescription>
                  {error && <ErrorDisplay message={error} />}
              </CardHeader>
              <CardContent>
-                 {isLoading && <div className='flex justify-center py-10'><LoadingSpinner /></div>}
-                 {!isLoading && !error && (
+                 {(isLoading || isBatchTagLoading) && <div className='flex justify-center py-10'><LoadingSpinner /></div>}
+                 {!isLoading && !isBatchTagLoading && !error && (
                    <>
                      <DocumentList
                         documents={documents}
@@ -308,6 +411,17 @@ const ArchivePage: React.FC = () => {
             onEdit={handleEdit}
             onDisable={handleDisable}
             parentUnitTitle={parentUnit?.archiveDocumentId === previewingDoc?.parentUnitArchiveDocumentId ? parentUnit?.title : undefined}
+         />
+
+         {/* Batch Tag Dialog */}
+         <BatchTagDialog
+             isOpen={isBatchTagDialogOpen}
+             onOpenChange={setIsBatchTagDialogOpen}
+             action={batchTagAction}
+             availableTags={availableTags}
+             onConfirm={handleBatchTagConfirm}
+             isLoading={isBatchTagLoading}
+             itemCount={totalDocs} // Pass the total count matching filters (or all if no filters)
          />
     </div>
   );

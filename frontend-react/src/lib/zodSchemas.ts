@@ -4,6 +4,9 @@ import { z } from 'zod';
 import type { SignatureComponentIndexType } from '../../../backend/src/functionalities/signature/component/models';
 import type { ArchiveDocumentType } from '../../../backend/src/functionalities/archive/document/models';
 import { AppConfigKeys } from '../../../backend/src/functionalities/config/models'; // Import keys enum
+// --- NEW: Import base search request schema ---
+import { searchRequestSchema as backendSearchRequestSchema } from '../../../backend/src/utils/search_validation';
+// --- END NEW ---
 
 // --- Auth ---
 export const loginSchema = z.object({
@@ -23,8 +26,6 @@ export const registerSchema = z.object({
     login: z.string().min(3, "Login must be at least 3 characters").max(50),
     password: passwordSchema,
     confirmPassword: z.string()
-    // Removed role from frontend registration schema, backend handles default assignment
-    // role: z.enum(['admin', 'employee', 'user']).optional(), // Updated roles
 }).refine(data => data.password === data.confirmPassword, {
     message: "Passwords don't match",
     path: ["confirmPassword"], // Correct path for the error message
@@ -62,7 +63,6 @@ export type SetPasswordFormData = z.infer<typeof setPasswordSchema>;
 
 // Role Update Schema (used in UserManagement)
 export const updateUserRoleSchema = z.object({
-     // Updated roles
     role: z.enum(['admin', 'employee', 'user']).nullable(),
 });
 export type UpdateUserRoleFormData = z.infer<typeof updateUserRoleSchema>;
@@ -109,9 +109,7 @@ export const createArchiveDocumentFormSchema = z.object({
         z.number().int().positive().nullable().optional()
     ),
     type: z.enum(["unit", "document"]),
-    // --- UPDATED: Replaced topographicSignatureElementIds with topographicSignature ---
     topographicSignature: z.string().max(500, "Topographic signature too long").optional().nullable(),
-    // --- Kept descriptive signature ---
     descriptiveSignatureElementIds: z.array(z.array(z.number().int().positive())).optional().default([]),
     title: z.string().min(1, "Title cannot be empty"),
     creator: z.string().min(1, "Creator cannot be empty"),
@@ -165,3 +163,13 @@ export const assignTagsSchema = z.object({
     tagIds: z.array(z.number().int().positive(), { invalid_type_error: "Tags must be an array of numbers" }).default([]),
 });
 export type AssignTagsFormData = z.infer<typeof assignTagsSchema>;
+
+// --- NEW: Batch Tagging Schema ---
+// Note: We only need the 'tagIds' part for the frontend dialog form.
+// The 'searchQuery' comes from the ArchivePage's state.
+export const batchTagDialogSchema = z.object({
+    tagIds: z.array(z.number().int().positive())
+             .min(1, "Please select at least one tag."),
+});
+export type BatchTagDialogFormData = z.infer<typeof batchTagDialogSchema>;
+// --- END NEW ---

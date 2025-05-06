@@ -1,5 +1,8 @@
 import { z } from 'zod';
 import { Tag } from '../../tag/models'; // Import Tag model
+// --- NEW: Import SearchQuery schema ---
+import type { SearchQuery } from '../../../utils/search';
+import { searchRequestSchema } from '../../../utils/search_validation'; // Import Zod schema for SearchRequest base
 
 // Represents a sequence of signature element IDs forming a single signature path
 // Example: [component1_element5, component3_element12] -> [5, 12] (assuming element IDs are 5 and 12)
@@ -111,3 +114,15 @@ export interface ArchiveDocumentSearchResult extends ArchiveDocument {
    // Add any specific search result fields here if needed
    // resolvedDescriptiveSignatures?: string[];
 }
+
+
+// --- NEW: Schema and Type for Batch Tagging ---
+export const batchTagDocumentsSchema = z.object({
+    // Reuse the search request schema for the query part
+    searchQuery: searchRequestSchema.shape.query, // Get the 'query' shape
+    tagIds: z.array(z.number().int().positive()).min(1, "At least one tag ID must be selected"),
+    action: z.enum(['add', 'remove']),
+});
+
+export type BatchTagDocumentsInput = z.infer<typeof batchTagDocumentsSchema>;
+// --- END NEW ---

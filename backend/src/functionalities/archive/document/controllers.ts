@@ -6,11 +6,14 @@ import {
     disableArchiveDocument,
     setTagsForArchiveDocument,
     getTagsForArchiveDocument,
-    // --- UPDATED: Removed topographic prefix handler ---
-    // archiveDocumentTagSearchHandler,
-    archiveDocumentSignatureSearchHandler, // Keep for descriptive
-    getArchiveDocumentByIdInternal, // For updates/disables
-    getTagsForArchiveDocumentByIds, // Optimize tag fetching
+    archiveDocumentSignatureSearchHandler,
+    getArchiveDocumentByIdInternal,
+    getTagsForArchiveDocumentByIds,
+    // --- NEW: Import batch tagging DB functions ---
+    getMatchingDocumentIds,
+    addTagsToDocuments,
+    removeTagsFromDocuments,
+    // --- END NEW ---
 } from './db';
 import {
     createArchiveDocumentSchema,
@@ -18,7 +21,11 @@ import {
     CreateArchiveDocumentInput,
     UpdateArchiveDocumentInput,
     ArchiveDocument,
-    ArchiveDocumentSearchResult
+    ArchiveDocumentSearchResult,
+    // --- NEW: Import batch tagging schema ---
+    batchTagDocumentsSchema,
+    BatchTagDocumentsInput,
+    // --- END NEW ---
 } from './models'; // Types updated here
 import { getSessionAndUser, isAllowedRole, isOwner } from '../../session/controllers';
 import { Log } from '../../log/db';
@@ -27,6 +34,7 @@ import { Tag } from '../../tag/models';
 // Added imports for user tag checks
 import { getAssignedTagIdsForUser } from '../../user/db';
 import { archiveDocumentTagSearchHandler } from './db'; // Re-import the handler directly
+import { db } from '../../../initialization/db'; // Import db for transaction count
 
 const AREA = 'archive_document';
 
@@ -285,7 +293,6 @@ export const searchArchiveDocumentsController = async (req: BunRequest) => {
             'relatedDocumentsReferences', 'isDigitized', 'digitizedVersionLink',
             'createdOn', 'modifiedOn', 'active',
             'topographicSignature' // Added string field
-            // 'descriptiveSignatureElementIds' // JSON field, handled by custom handler
         ];
         const primaryKey = 'archiveDocumentId';
 
@@ -296,28 +303,24 @@ export const searchArchiveDocumentsController = async (req: BunRequest) => {
         if (activeFilterIndex !== -1) {
             const activeFilter = queryClone[activeFilterIndex];
              // Non-admin/employee (i.e., 'user' role) tried to search by 'active'. Force it to 'active=true'.
-             if (!isAdmin && !isEmployee && activeFilter) { // Added check for activeFilter existence
+             if (!isAdmin && !isEmployee && activeFilter) {
                  if ((activeFilter.condition === 'EQ' && activeFilter.value === false) || (activeFilter.condition !== 'EQ' || activeFilter.value !== true)) {
                      queryClone[activeFilterIndex] = { field: 'active', condition: 'EQ', value: true, not: false };
                      await Log.warn(`'user' role search forced to 'active=true'.`, sessionAndUser.user.login, AREA);
                  }
              }
-             // Admins/Employees can filter by active as they provided.
         } else {
-            // No 'active' filter provided.
-            if (!isAdmin && !isEmployee) { // If 'user' role
+            if (!isAdmin && !isEmployee) {
                  queryClone.push({ field: 'active', condition: 'EQ', value: true, not: false });
                  await Log.info(`Defaulting 'active=true' for 'user' role search.`, sessionAndUser.user.login, AREA);
             }
-            // Admins/Employees see all (active/inactive) by default unless they specify 'active' filter.
         }
         // --- End Active Filter ---
 
         // --- Owner Filtering Logic (unchanged) ---
-        // Do NOT filter by ownerUserId by default.
 
         // --- 'user' Role Tag Filtering (unchanged) ---
-        let allowedTagIds: number[] | null = null; // Null means no tag restriction (admin/employee)
+        let allowedTagIds: number[] | null = null;
         if (isUserRole) {
             allowedTagIds = await getAssignedTagIdsForUser(sessionAndUser.user.userId);
             if (allowedTagIds.length === 0) {
@@ -325,29 +328,31 @@ export const searchArchiveDocumentsController = async (req: BunRequest) => {
                 const emptyResponse: SearchResponse<ArchiveDocumentSearchResult> = { data: [], page: 1, pageSize: searchRequest.pageSize, totalPages: 0, totalSize: 0 };
                 return new Response(JSON.stringify(emptyResponse), { status: 200 });
             }
-            queryClone = queryClone.filter(q => q.field !== 'tags');
-            queryClone.push({ field: 'tags', condition: 'ANY_OF', value: allowedTagIds, not: false });
-            await Log.info(`Adding mandatory allowed tag filter for 'user' role.`, sessionAndUser.user.login, AREA, { allowed: allowedTagIds });
+             // Ensure tags are always filtered for the 'user' role
+             const existingTagFilterIndex = queryClone.findIndex(q => q.field === 'tags');
+             if (existingTagFilterIndex !== -1) {
+                 queryClone.splice(existingTagFilterIndex, 1); // Remove existing tag filter if present
+             }
+             queryClone.push({ field: 'tags', condition: 'ANY_OF', value: allowedTagIds, not: false });
+             await Log.info(`Applying mandatory allowed tag filter for 'user' role.`, sessionAndUser.user.login, AREA, { allowed: allowedTagIds });
         }
         // --- End 'user' Role Tag Filtering ---
 
         const finalSearchRequest = { ...searchRequest, query: queryClone };
 
-        // --- UPDATED: Removed topographicSignaturePrefix from custom handlers ---
         const { dataQuery, countQuery } = await buildSearchQueries<ArchiveDocumentSearchResult>(
             'archive_documents',
             finalSearchRequest,
             allowedDirectFields,
             {
                 'tags': archiveDocumentTagSearchHandler,
-                // 'topographicSignaturePrefix': ..., // Removed
                 'descriptiveSignaturePrefix': archiveDocumentSignatureSearchHandler,
             },
             primaryKey
         );
 
         await Log.info("Prepared archive document search queries", sessionAndUser.user.login, AREA, {
-             countQuerySql: countQuery?.sql, // Example log
+             countQuerySql: countQuery?.sql,
              requestPage: searchRequest.page,
              requestPageSize: searchRequest.pageSize,
              finalQueryUsed: finalSearchRequest.query
@@ -369,6 +374,87 @@ export const searchArchiveDocumentsController = async (req: BunRequest) => {
         await Log.error('Archive document search failed', sessionAndUser.user.login, AREA, error);
         return new Response(JSON.stringify({
             message: 'Failed to search archive documents',
+            error: error instanceof Error ? error.message : 'Unknown error'
+        }), { status: 500 });
+    }
+};
+
+// --- NEW: Batch Tagging Controller ---
+export const batchTagArchiveDocumentsController = async (req: BunRequest) => {
+    const sessionAndUser = await getSessionAndUser(req);
+    if (!sessionAndUser) return new Response("Unauthorized", { status: 401 });
+    // Allow employees and admins to batch tag
+    if (!isAllowedRole(sessionAndUser, 'admin', 'employee')) return new Response("Forbidden", { status: 403 });
+
+    try {
+        const body = await req.json() as BatchTagDocumentsInput;
+        const validation = batchTagDocumentsSchema.safeParse(body);
+
+        if (!validation.success) {
+            await Log.warn('Invalid input for batch tagging', sessionAndUser.user.login, AREA, { errors: validation.error.format() });
+            return new Response(JSON.stringify({ message: "Invalid input", errors: validation.error.format() }), { status: 400 });
+        }
+
+        const { searchQuery, tagIds, action } = validation.data;
+
+        // Apply role-based filters to the provided searchQuery to ensure users don't tag documents they can't see
+        let finalQuery = [...searchQuery];
+        const isAdmin = isAllowedRole(sessionAndUser, 'admin');
+        const isEmployee = isAllowedRole(sessionAndUser, 'employee');
+        const isUserRole = sessionAndUser.user.role === 'user'; // Should not happen due to role check above, but for safety
+
+        // Force active=true if user is not admin/employee (this shouldn't be reachable due to the role check, but keeps logic consistent)
+        const activeFilterIndex = finalQuery.findIndex(el => el.field === 'active');
+        if (!isAdmin && !isEmployee) {
+             if (activeFilterIndex !== -1) {
+                 finalQuery[activeFilterIndex] = { field: 'active', condition: 'EQ', value: true, not: false };
+             } else {
+                 finalQuery.push({ field: 'active', condition: 'EQ', value: true, not: false });
+             }
+             await Log.info(`Batch tag forced to 'active=true' for non-admin/employee (should not happen).`, sessionAndUser.user.login, AREA);
+        }
+
+        // Force tag filtering if user is 'user' role (also shouldn't happen)
+        if (isUserRole) {
+             const allowedTagIds = await getAssignedTagIdsForUser(sessionAndUser.user.userId);
+             if (allowedTagIds.length === 0) {
+                 return new Response(JSON.stringify({ message: "No documents match criteria (user has no assigned tags)." }), { status: 200 });
+             }
+             const existingTagFilterIndex = finalQuery.findIndex(q => q.field === 'tags');
+             if (existingTagFilterIndex !== -1) {
+                 finalQuery.splice(existingTagFilterIndex, 1);
+             }
+             finalQuery.push({ field: 'tags', condition: 'ANY_OF', value: allowedTagIds, not: false });
+             await Log.info(`Batch tag applying mandatory tag filter for 'user' role (should not happen).`, sessionAndUser.user.login, AREA);
+        }
+
+
+        // Get the IDs of all documents matching the (potentially role-restricted) filters
+        const matchingIds = await getMatchingDocumentIds({ query: finalQuery, page: 1, pageSize: -1 }); // pageSize -1 indicates no limit
+
+        if (matchingIds.length === 0) {
+            await Log.info('No documents found matching batch tag criteria.', sessionAndUser.user.login, AREA, { finalQuery });
+            return new Response(JSON.stringify({ message: "No documents match the specified criteria.", count: 0 }), { status: 200 });
+        }
+
+        let changedCount = 0;
+        if (action === 'add') {
+            changedCount = await addTagsToDocuments(matchingIds, tagIds);
+            await Log.info(`Batch ADDED tags [${tagIds.join(',')}] to ${changedCount} documents matching query.`, sessionAndUser.user.login, AREA, { query: finalQuery });
+        } else if (action === 'remove') {
+            changedCount = await removeTagsFromDocuments(matchingIds, tagIds);
+            await Log.info(`Batch REMOVED tags [${tagIds.join(',')}] from ${changedCount} documents matching query.`, sessionAndUser.user.login, AREA, { query: finalQuery });
+        }
+
+        return new Response(JSON.stringify({
+            message: `Successfully ${action === 'add' ? 'added' : 'removed'} tags for ${changedCount} documents.`,
+            count: changedCount
+        }), { status: 200 });
+
+    } catch (error: any) {
+        await Log.error('Batch tagging operation failed', sessionAndUser.user.login, AREA, error);
+        return new Response(JSON.stringify({
+            message: 'Failed to perform batch tag operation',
             error: error instanceof Error ? error.message : 'Unknown error'
         }), { status: 500 });
     }
