@@ -1,7 +1,7 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react'; // Ensure useMemo and useCallback are imported
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
-import { X, Plus } from 'lucide-react'; // Reduced imports
+import { X, Plus } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import LoadingSpinner from './LoadingSpinner';
 import { useAuth } from '@/hooks/useAuth';
@@ -9,13 +9,13 @@ import api from '@/lib/api';
 import type { SignatureElement } from '../../../../backend/src/functionalities/signature/element/models';
 import { cn } from '@/lib/utils';
 import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
-import ElementBrowserPopoverContent from './ElementBrowserPopoverContent'; // Import the extracted component
+import ElementBrowserPopoverContent from './ElementBrowserPopoverContent';
 
 type ResolvedSignature = { idPath: number[]; display: string };
 
 interface SignatureSelectorProps {
   label: string;
-  signatures: number[][]; // Array of signatures, each an array of element IDs
+  signatures: number[][];
   onChange: (newSignatures: number[][]) => void;
   className?: string;
 }
@@ -31,51 +31,62 @@ const SignatureSelector: React.FC<SignatureSelectorProps> = ({
   const [isLoadingSignatures, setIsLoadingSignatures] = useState(false);
   const [isBrowserOpen, setIsBrowserOpen] = useState(false);
 
-  // Resolve signatures whenever the input `signatures` array changes
+  // Memoize the stringified version of signatures to stabilize useEffect dependency
+  const stringifiedSignatures = useMemo(() => JSON.stringify(signatures), [signatures]);
+
   useEffect(() => {
     const resolveAllSignatures = async () => {
-        if (!token || signatures.length === 0) {
+        const currentSignatures = JSON.parse(stringifiedSignatures); // Use the memoized string
+        if (!token || currentSignatures.length === 0) {
             setResolvedSignatures([]); return;
         }
         setIsLoadingSignatures(true);
         const resolved: ResolvedSignature[] = [];
         try {
-            for (const idPath of signatures) {
+            for (const idPath of currentSignatures) {
                 if (idPath.length === 0) continue;
                 const elementsInPath: (SignatureElement | null)[] = await Promise.all(
-                    idPath.map(id => api.getSignatureElementById(id, [], token).catch(() => null))
+                    idPath.map((id: number) => api.getSignatureElementById(id, [], token).catch(() => null))
                 );
                  const displayParts = elementsInPath.map((el: SignatureElement | null, index: number) => {
                      if (el) return `${el.index ? `[${el.index}]` : ''}${el.name}`;
-                     else return `[Error ID: ${idPath[index]}]`;
+                     // Ensure idPath[index] is valid before accessing
+                     else return `[Error ID: ${idPath[index] !== undefined ? idPath[index] : 'unknown'}]`;
                  });
                  resolved.push({ idPath, display: displayParts.join(' / ') });
             }
              setResolvedSignatures(resolved.sort((a, b) => a.display.localeCompare(b.display)));
         } catch (error) {
              console.error("Error resolving signatures:", error);
-             setResolvedSignatures(signatures.map(p => ({idPath: p, display: `[${p.join(' / ')}] (Resolve Error)`})));
+             setResolvedSignatures(currentSignatures.map((p: number[]) => ({idPath: p, display: `[${p.join(' / ')}] (Resolve Error)`})));
         } finally { setIsLoadingSignatures(false); }
     };
     resolveAllSignatures();
-  }, [signatures, token]);
+  }, [stringifiedSignatures, token]); // Depend on the memoized string
 
-  const addSignature = (newSignature: number[]) => {
+  const addSignatureCallback = useCallback((newSignature: number[]) => {
       const newSignatureStr = JSON.stringify(newSignature);
-      if (!signatures.some(p => JSON.stringify(p) === newSignatureStr)) {
-          onChange([...signatures, newSignature]);
+      const currentSignatures = JSON.parse(stringifiedSignatures);
+      if (!currentSignatures.some((p: number[]) => JSON.stringify(p) === newSignatureStr)) {
+          onChange([...currentSignatures, newSignature]);
       }
       setIsBrowserOpen(false);
-  };
+  }, [stringifiedSignatures, onChange]);
 
-  const removeSignature = (signatureToRemove: number[]) => {
+
+  const removeSignature = useCallback((signatureToRemove: number[]) => {
     const signatureToRemoveStr = JSON.stringify(signatureToRemove);
-    onChange(signatures.filter(p => JSON.stringify(p) !== signatureToRemoveStr));
-  };
+    const currentSignatures = JSON.parse(stringifiedSignatures);
+    onChange(currentSignatures.filter((p: number[]) => JSON.stringify(p) !== signatureToRemoveStr));
+  }, [stringifiedSignatures, onChange]);
+
+  const handleClosePopover = useCallback(() => {
+    setIsBrowserOpen(false);
+  }, []);
+
 
   return (
     <div className={cn("flex flex-col space-y-2 rounded border p-3 bg-muted", className)}>
-      {/* Header row */}
       <div className="flex justify-between items-center mb-1">
          <Label className='text-sm font-medium'>{label}</Label>
          <Popover open={isBrowserOpen} onOpenChange={setIsBrowserOpen}>
@@ -85,15 +96,13 @@ const SignatureSelector: React.FC<SignatureSelectorProps> = ({
                 </Button>
              </PopoverTrigger>
              <PopoverContent className="w-[500px] max-w-[calc(100vw-2rem)] p-0" align="start">
-                 {/* Pass the correct onSelect callback */}
                  <ElementBrowserPopoverContent
-                     onSelectSignature={addSignature} // Changed prop name
-                     onClose={() => setIsBrowserOpen(false)}
+                     onSelectSignature={addSignatureCallback}
+                     onClosePopover={handleClosePopover}
                  />
              </PopoverContent>
          </Popover>
        </div>
-      {/* Display Area for Selected Signatures */}
       <div className="flex-grow space-y-1 min-h-[40px] max-h-[150px] overflow-y-auto border rounded bg-background p-2">
          {isLoadingSignatures && <div className='flex justify-center p-2'><LoadingSpinner size='sm' /></div>}
          {!isLoadingSignatures && resolvedSignatures.map((resolved) => (

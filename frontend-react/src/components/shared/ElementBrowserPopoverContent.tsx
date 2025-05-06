@@ -13,42 +13,36 @@ import type { SignatureElement, CreateSignatureElementInput } from '../../../../
 import { cn } from '@/lib/utils';
 import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"
-import type { SearchRequest, SearchQueryElement } from '../../../../backend/src/utils/search'; // Added SearchQueryElement
+import type { SearchRequest, SearchQueryElement } from '../../../../backend/src/utils/search';
 import { toast } from "sonner";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import ElementForm from '@/components/signatures/ElementForm';
-import useDebounce from './useDebounce'; // Import the extracted hook
+import useDebounce from './useDebounce';
 
-type SelectionMode = "free" | "hierarchical"; // Define selection modes
+type SelectionMode = "free" | "hierarchical";
 
-// --- Element Browser Component (Internal - Popover Content) ---
 interface ElementBrowserPopoverContentProps {
     onSelectSignature: (signature: number[]) => void;
-    onClose: () => void; // Callback to close the parent Popover
+    onClosePopover: () => void;
+    initialPath?: number[];
 }
 
 const MAX_SEARCH_RESULTS = 200;
 const DEBOUNCE_DELAY = 300;
 
-// Helper function for sorting elements by index or name
 const compareElements = (a: SignatureElement, b: SignatureElement): number => {
-    const valA = a.index ?? a.name ?? ''; // Ensure string fallback
-    const valB = b.index ?? b.name ?? ''; // Ensure string fallback
-
-    // Attempt numeric sort if both look like numbers
+    const valA = a.index ?? a.name ?? '';
+    const valB = b.index ?? b.name ?? '';
     const numA = Number(valA);
     const numB = Number(valB);
-    if (!isNaN(numA) && !isNaN(numB)) {
-        return numA - numB;
-    }
-    // Fallback to locale string comparison
+    if (!isNaN(numA) && !isNaN(numB)) return numA - numB;
     return valA.localeCompare(valB);
 };
 
-
 const ElementBrowserPopoverContent: React.FC<ElementBrowserPopoverContentProps> = ({
     onSelectSignature,
-    onClose, // This closes the MAIN popover
+    onClosePopover,
+    initialPath = [],
 }) => {
     const { token } = useAuth();
     const [components, setComponents] = useState<SignatureComponent[]>([]);
@@ -60,17 +54,44 @@ const ElementBrowserPopoverContent: React.FC<ElementBrowserPopoverContentProps> 
     const [searchTerm, setSearchTerm] = useState('');
     const [mode, setMode] = useState<SelectionMode>("hierarchical");
     const [error, setError] = useState<string | null>(null);
-
-    // --- State for Create Element Dialog (Managed Internally) ---
     const [isCreateElementDialogOpen, setIsCreateElementDialogOpen] = useState(false);
     const [componentForCreate, setComponentForCreate] = useState<SignatureComponent | null>(null);
-    // Use state to trigger element refetch after creation
     const [refetchElementsTrigger, setRefetchElementsTrigger] = useState(0);
-    // --------------------------------------------
 
     const debouncedSearchTerm = useDebounce(searchTerm, DEBOUNCE_DELAY);
+    const stringifiedInitialPath = useMemo(() => JSON.stringify(initialPath), [initialPath]);
 
-    // Fetch Components
+    useEffect(() => {
+        const resolveInitialPath = async () => {
+            const currentInitialPath = JSON.parse(stringifiedInitialPath); // Use stable stringified version
+            if (currentInitialPath.length === 0 || !token) {
+                setCurrentSignatureElements([]);
+                return;
+            }
+            setIsLoadingElements(true);
+            try {
+                const resolvedElements: SignatureElement[] = [];
+                for (const elementId of currentInitialPath) {
+                    const element = await api.getSignatureElementById(elementId, [], token);
+                    if (element) resolvedElements.push(element);
+                    else {
+                        toast.warn(`Could not fully resolve initial signature path (element ID: ${elementId} not found).`);
+                        setCurrentSignatureElements([]);
+                        setIsLoadingElements(false);
+                        return;
+                    }
+                }
+                setCurrentSignatureElements(resolvedElements);
+            } catch (err) {
+                toast.error("Error resolving initial signature.");
+                setCurrentSignatureElements([]);
+            } finally {
+                setIsLoadingElements(false);
+            }
+        };
+        resolveInitialPath();
+    }, [stringifiedInitialPath, token]);
+
     useEffect(() => {
         const fetchComps = async () => {
             if (!token) return;
@@ -80,13 +101,11 @@ const ElementBrowserPopoverContent: React.FC<ElementBrowserPopoverContentProps> 
                 setComponents((await api.getAllSignatureComponents(token)).sort((a,b) => a.name.localeCompare(b.name)));
             } catch (err: any) {
                 setError(err.message || "Failed to load components");
-                console.error("Failed to load components", err);
             } finally { setIsLoadingComponents(false); }
         };
         fetchComps();
     }, [token]);
 
-    // Fetch Elements based on dependencies including the refetch trigger
     useEffect(() => {
         const fetchElems = async () => {
             setError(null);
@@ -101,40 +120,29 @@ const ElementBrowserPopoverContent: React.FC<ElementBrowserPopoverContentProps> 
             let shouldFetch = false;
             const queryFilters: SearchQueryElement[] = [];
 
-            // --- Determine Filters Based on Mode and State ---
-
             if (hasSearchTerm) {
-                // Search Term Active: Filter primarily by search term, optionally by component
                 queryFilters.push({ field: 'name', condition: 'FRAGMENT', value: debouncedSearchTerm.trim(), not: false });
                 if (isComponentSelected) {
                     queryFilters.push({ field: 'signatureComponentId', condition: 'EQ', value: componentIdToFetch, not: false });
                 }
                 shouldFetch = true;
             } else {
-                // No Search Term
                 if (mode === 'hierarchical') {
                     if (lastElementId) {
-                        // Subsequent Hierarchical Step: Filter by parent
                         queryFilters.push({ field: 'parentIds', condition: 'ANY_OF', value: [lastElementId], not: false });
                         shouldFetch = true;
-                        // DO NOT filter by componentId here - parent link is the key
                     } else if (isComponentSelected) {
-                        // Initial Hierarchical Step: Filter by component, show all elements
                         queryFilters.push({ field: 'signatureComponentId', condition: 'EQ', value: componentIdToFetch, not: false });
-                        // NO parent filter here - show roots and non-roots
                         shouldFetch = true;
                     }
-                } else { // Free Mode (and no search term)
+                } else {
                     if (isComponentSelected) {
-                        // Filter by component only
                         queryFilters.push({ field: 'signatureComponentId', condition: 'EQ', value: componentIdToFetch, not: false });
                         shouldFetch = true;
                     }
-                    // Else (Free mode, no component, no search): Don't fetch anything
                 }
             }
 
-            // --- Execute Fetch if Necessary ---
             if (!shouldFetch) {
                 setElements([]); setIsLoadingElements(false); return;
             }
@@ -142,77 +150,69 @@ const ElementBrowserPopoverContent: React.FC<ElementBrowserPopoverContentProps> 
             searchRequest.query = queryFilters;
             setIsLoadingElements(true);
             try {
-                console.log("Fetching elements with query:", JSON.stringify(searchRequest.query)); // Debug log
                 const response = await api.searchSignatureElements(searchRequest, token);
                 setElements(response.data.sort(compareElements));
             } catch (err: any) {
-                setError(err.message || "Failed to load elements");
-                console.error("Failed to load elements", err); setElements([]);
+                setError(err.message || "Failed to load elements"); setElements([]);
             } finally { setIsLoadingElements(false); }
         };
         fetchElems();
-    }, [token, selectedComponentId, mode, currentSignatureElements, debouncedSearchTerm, refetchElementsTrigger]); // Dependencies
+    }, [token, selectedComponentId, mode, currentSignatureElements, debouncedSearchTerm, refetchElementsTrigger]);
 
-
-    const handleSelectElement = (element: SignatureElement) => {
-        setCurrentSignatureElements([...currentSignatureElements, element]);
-        setSearchTerm(''); // Clear search after selecting
+    const handleSelectElement = useCallback((element: SignatureElement) => {
+        setCurrentSignatureElements(prev => [...prev, element]);
+        setSearchTerm('');
         if (mode === 'free') {
-            setSelectedComponentId(''); // Reset component selection in free mode
-        }
-    };
-
-    const handleRemoveLastElement = () => {
-        const newPath = currentSignatureElements.slice(0, -1);
-        setCurrentSignatureElements(newPath);
-        // If removing the first element in hierarchical mode, reset component ID
-        if (mode === 'hierarchical' && newPath.length === 0) {
             setSelectedComponentId('');
         }
-    };
+    }, [mode]);
 
-    const handleConfirmSignature = () => {
+    const handleRemoveLastElement = useCallback(() => {
+        setCurrentSignatureElements(prev => {
+            const newPath = prev.slice(0, -1);
+            if (mode === 'hierarchical' && newPath.length === 0) {
+                setSelectedComponentId('');
+            }
+            return newPath;
+        });
+    }, [mode]);
+
+    const handleConfirmSignature = useCallback(() => {
         if (currentSignatureElements.length > 0) {
             onSelectSignature(currentSignatureElements.map(el => el.signatureElementId!));
             setCurrentSignatureElements([]); setSelectedComponentId(''); setSearchTerm(''); setError(null);
-            onClose(); // Close the main popover after selection
+            onClosePopover();
         }
-    };
+    }, [currentSignatureElements, onSelectSignature, onClosePopover]);
 
-    // --- Handler for Opening Create Element Dialog ---
-    const handleOpenCreateElementDialog = () => {
+    const handleOpenCreateElementDialog = useCallback(() => {
         const component = components.find(c => String(c.signatureComponentId) === selectedComponentId);
         if (component) {
             setComponentForCreate(component);
             setIsCreateElementDialogOpen(true);
         } else { toast.error("Cannot create element: Select a valid component first."); }
-    };
+    }, [components, selectedComponentId]);
 
-    // --- Handler for After Element Creation ---
-    // This function is called when the ElementForm (in the inner dialog) saves.
     const handleElementCreated = useCallback((createdElement: SignatureElement | null) => {
-        console.log("ElementBrowserPopoverContent: handleElementCreated called with:", createdElement);
-        // 1. Close the INNER "Create Element" Dialog
         setIsCreateElementDialogOpen(false);
         setComponentForCreate(null);
-
         if (createdElement) {
             toast.success(`Element "${createdElement.name}" created.`);
-            // 2. Trigger a refetch of elements for the current view
-            console.log("ElementBrowserPopoverContent: Triggering element refetch.");
             setRefetchElementsTrigger(prev => prev + 1);
-        } else {
-            console.warn("ElementBrowserPopoverContent: Element creation/update reported failure or no change.");
-            // Toast for failure might already be handled in ElementForm
         }
-        // 3. IMPORTANT: Do NOT close the MAIN Popover here. The user should still be able to
-        //    select more elements or confirm the signature. The main Popover is closed by `onClose`
-        //    which is only called via `handleConfirmSignature` or clicking outside.
-    }, []); // Dependencies: none, relies on closure
+    }, []);
+
+    const handleModeChange = useCallback((value: SelectionMode | null) => {
+        if (value) {
+            setMode(value);
+            setCurrentSignatureElements([]);
+            setSelectedComponentId('');
+            setSearchTerm('');
+            setError(null);
+        }
+    }, []);
 
 
-    // Filter elements based on the *immediate* searchTerm for responsive UI filtering
-    // This is now less critical as the fetch logic uses debounced term, but good for instant feedback
     const filteredElements = useMemo(() => {
         return elements.filter(el =>
            !currentSignatureElements.some(p => p.signatureElementId === el.signatureElementId) &&
@@ -221,37 +221,32 @@ const ElementBrowserPopoverContent: React.FC<ElementBrowserPopoverContentProps> 
         );
     }, [elements, currentSignatureElements, searchTerm]);
 
-    const selectedComponentName = components.find(c => String(c.signatureComponentId) === selectedComponentId)?.name;
+    const selectedComponentName = useMemo(() => components.find(c => String(c.signatureComponentId) === selectedComponentId)?.name, [components, selectedComponentId]);
 
-    const getNextStepPrompt = (): string => {
+    const getNextStepPrompt = useCallback((): string => {
         if (mode === 'hierarchical') {
             if (currentSignatureElements.length === 0) return "1. Select Component to Start";
             return `2. Select Child of "${currentSignatureElements[currentSignatureElements.length - 1].name}"`;
-        } else { // Free mode
+        } else {
             if (currentSignatureElements.length === 0) return "1. Select Component (Optional)";
             return "2. Select Next Component or Element";
         }
-    };
+    }, [mode, currentSignatureElements]);
 
-
-    // Determine if the Create Element button should be enabled
-    const canTriggerCreateElement = !!selectedComponentId && !isLoadingComponents && !isNaN(parseInt(selectedComponentId, 10)) &&
-                                   (mode === 'free' || currentSignatureElements.length === 0); // Only allow root creation in hierarchical
-
+    const canTriggerCreateElement = useMemo(() => !!selectedComponentId && !isLoadingComponents && !isNaN(parseInt(selectedComponentId, 10)) &&
+                                   (mode === 'free' || currentSignatureElements.length === 0), [selectedComponentId, isLoadingComponents, mode, currentSignatureElements]);
 
     return (
         <div className="space-y-3 p-4 w-full">
-            {/* Mode Selector */}
             <div className='flex flex-col gap-1.5'>
                 <Label className='text-xs font-medium'>Selection Mode</Label>
-                <ToggleGroup type="single" value={mode} defaultValue="hierarchical" onValueChange={(value: SelectionMode) => { if (value) { setMode(value); setCurrentSignatureElements([]); setSelectedComponentId(''); setSearchTerm(''); setError(null); } }} aria-label="Signature Selection Mode" size="sm">
+                <ToggleGroup type="single" value={mode} defaultValue="hierarchical" onValueChange={handleModeChange} aria-label="Signature Selection Mode" size="sm">
                     <ToggleGroupItem value="hierarchical" aria-label="Hierarchical selection" className='flex-1 gap-1'><Network className='h-4 w-4'/><span className={cn(mode === 'hierarchical' && 'font-bold')}>Hierarchical</span></ToggleGroupItem>
                     <ToggleGroupItem value="free" aria-label="Free selection" className='flex-1 gap-1'><ArrowRight className='h-4 w-4'/><span className={cn(mode === 'free' && 'font-bold')}>Free</span></ToggleGroupItem>
                 </ToggleGroup>
                 <p className='text-xs text-muted-foreground px-1'>{mode === 'hierarchical' ? 'Select elements based on parent-child relationships.' : 'Select elements from any component.'}</p>
             </div>
 
-             {/* Current Signature Display */}
              <div className="flex flex-wrap items-center gap-1 border rounded p-2 bg-muted min-h-[40px]">
                  <Label className='mr-2 shrink-0 text-xs font-semibold'>Current Signature:</Label>
                 {currentSignatureElements.map((el, index) => (
@@ -263,7 +258,6 @@ const ElementBrowserPopoverContent: React.FC<ElementBrowserPopoverContentProps> 
                  {currentSignatureElements.length === 0 && <span className="text-xs text-muted-foreground italic">Build signature below...</span>}
             </div>
 
-            {/* Component Selector */}
             {(currentSignatureElements.length === 0 || mode === 'free') && (
                  <Select value={selectedComponentId} onValueChange={setSelectedComponentId} disabled={isLoadingComponents || (mode === 'hierarchical' && currentSignatureElements.length > 0)}>
                      <SelectTrigger className='w-full text-sm h-9'><SelectValue placeholder={getNextStepPrompt()} /></SelectTrigger>
@@ -275,8 +269,6 @@ const ElementBrowserPopoverContent: React.FC<ElementBrowserPopoverContentProps> 
                  </Select>
             )}
 
-            {/* Element Selector/Search */}
-            {/* Condition to show: Determined by `shouldFetch` logic within useEffect essentially */}
              {(
                 (mode === 'hierarchical' && (currentSignatureElements.length > 0 || selectedComponentId)) ||
                 (mode === 'free' && (selectedComponentId || debouncedSearchTerm.trim()))
@@ -288,16 +280,14 @@ const ElementBrowserPopoverContent: React.FC<ElementBrowserPopoverContentProps> 
                             : selectedComponentName ? `Select Element from "${selectedComponentName}"` : 'Search Elements by Name'
                          }
                      </Label>
-                    <Command className='rounded-lg border shadow-sm' filter={() => 1}> {/* Disable default filtering */}
+                    <Command className='rounded-lg border shadow-sm' filter={() => 1}>
                         <CommandInput placeholder="Search available elements..." value={searchTerm} onValueChange={setSearchTerm} disabled={isLoadingElements}/>
                          <CommandList className="max-h-[200px]">
                              {isLoadingElements && <div className='p-4 text-center'><LoadingSpinner size='sm' /></div>}
                              {error && !isLoadingElements && <CommandEmpty className='text-destructive px-2 py-4 text-center'>{error}</CommandEmpty>}
-                             {/* Use 'elements' directly from fetched state */}
                              {!error && !isLoadingElements && elements.length === 0 && <CommandEmpty>No matching elements found.</CommandEmpty>}
                              {!error && !isLoadingElements && elements.length > 0 && (
                                  <CommandGroup heading={`Available Elements (${elements.length}${elements.length >= MAX_SEARCH_RESULTS ? '+' : ''})`}>
-                                     {/* Map over fetched 'elements' */}
                                      {elements.map((el) => (
                                         <CommandItem key={el.signatureElementId} value={`${el.index || ''} ${el.name}`} onSelect={() => handleSelectElement(el)} className="cursor-pointer flex justify-between items-center text-sm">
                                             <div className='flex items-center'><span className='font-mono text-xs w-10 mr-2 text-right inline-block text-muted-foreground'>{el.index || '-'}</span><span>{el.name}</span></div>
@@ -319,25 +309,22 @@ const ElementBrowserPopoverContent: React.FC<ElementBrowserPopoverContentProps> 
                  </div>
             )}
 
-            {/* Action Buttons */}
             <div className="flex justify-between items-center mt-auto pt-3 border-t">
                 <div className='flex gap-2'>
                      <Button type="button" variant="outline" size="sm" onClick={handleRemoveLastElement} disabled={currentSignatureElements.length === 0}><X className="mr-1 h-3 w-3" /> Remove Last</Button>
-                     <Button type="button" variant="ghost" size="sm" onClick={onClose}><Ban className='mr-1 h-3 w-3'/> Cancel</Button> {/* This button closes the main popover */}
+                     <Button type="button" variant="ghost" size="sm" onClick={onClosePopover}><Ban className='mr-1 h-3 w-3'/> Cancel</Button>
                 </div>
-                 <Button type="button" size="sm" onClick={handleConfirmSignature} disabled={currentSignatureElements.length === 0}>Add This Signature</Button>
+                 <Button type="button" size="sm" onClick={handleConfirmSignature} disabled={currentSignatureElements.length === 0}>Select This Signature</Button>
              </div>
 
-            {/* Create Element Dialog (Rendered Internally) */}
             <Dialog open={isCreateElementDialogOpen} onOpenChange={setIsCreateElementDialogOpen}>
                <DialogContent className="sm:max-w-[600px]">
                    <DialogHeader><DialogTitle>Create New Element</DialogTitle></DialogHeader>
-                   {/* Pass the callback function to ElementForm */}
                    {componentForCreate && (
                        <ElementForm
                             elementToEdit={null}
                             currentComponent={componentForCreate}
-                            onSave={handleElementCreated} // Pass the special handler
+                            onSave={handleElementCreated}
                         />
                    )}
                </DialogContent>

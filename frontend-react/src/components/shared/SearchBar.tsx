@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useMemo, useEffect } from 'react'; // Added useEffect import
+import React, { useState, useCallback, useMemo, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -9,9 +9,10 @@ import { cn } from '@/lib/utils';
 import type { SearchRequest, SearchQuery, SearchQueryElement } from '../../../../backend/src/utils/search';
 import LoadingSpinner from './LoadingSpinner';
 import TagSelector from './TagSelector';
+import SingleSignaturePathPicker from './SingleSignaturePathPicker'; // New import
 import type { Tag } from '../../../../backend/src/functionalities/tag/models';
 
-export type FieldType = 'text' | 'number' | 'boolean' | 'select' | 'date' | 'tags';
+export type FieldType = 'text' | 'number' | 'boolean' | 'select' | 'date' | 'tags' | 'signaturePath'; // Added 'signaturePath'
 
 export interface SearchFieldOption {
   value: string;
@@ -34,6 +35,7 @@ const conditionsByType: Record<FieldType, { value: SearchQueryElement['condition
   select: [ { value: 'EQ', label: 'Is' }, { value: 'ANY_OF', label: 'Is Any Of' }, ],
   tags: [ { value: 'ANY_OF', label: 'Has Any Of' } ],
   date: [ { value: 'EQ', label: 'Is' }, { value: 'GT', label: 'After' }, { value: 'GTE', label: 'On or After' }, { value: 'LT', label: 'Before' }, { value: 'LTE', label: 'On or Before' }, ],
+  signaturePath: [ { value: 'EQ', label: 'Equals Path' }, { value: 'STARTS_WITH', label: 'Starts With Path' }, { value: 'CONTAINS_SEQUENCE', label: 'Contains Sequence' } ], // New conditions
 };
 
 type SearchCriterionState = Partial<Omit<SearchQueryElement, 'value' | 'condition'>> & {
@@ -49,7 +51,7 @@ const useInitialCriterion = (fields: SearchFieldOption[]) => {
         const initialCondition = conditionsByType[type]?.[0]?.value ?? 'EQ';
         let initialValue: SearchCriterionState['value'] = '';
         if (type === 'boolean') initialValue = true;
-        else if (type === 'tags' || (type === 'select' && initialCondition === 'ANY_OF')) initialValue = [];
+        else if (type === 'tags' || type === 'signaturePath' || (type === 'select' && initialCondition === 'ANY_OF')) initialValue = [];
 
         return {
             field: initialField?.value,
@@ -68,24 +70,22 @@ const SearchBar: React.FC<SearchBarProps> = ({
     showResetButton = true
 }) => {
     const getInitialCriterion = useInitialCriterion(fields);
-    const [criteria, setCriteria] = useState<SearchCriterionState[]>(() => fields.length > 0 ? [getInitialCriterion()] : []); // Initialize empty if no fields
+    const [criteria, setCriteria] = useState<SearchCriterionState[]>(() => fields.length > 0 ? [getInitialCriterion()] : []);
 
-    // Handle cases where available fields might become empty or populated later
     useEffect(() => {
         if (fields.length === 0 && criteria.length > 0) {
-            setCriteria([]); // Reset if fields disappear
+            setCriteria([]);
         } else if (fields.length > 0 && criteria.length === 0) {
-            setCriteria([getInitialCriterion()]); // Add initial if fields appear and criteria is empty
+            setCriteria([getInitialCriterion()]);
         } else {
-            // Ensure existing criteria fields are still valid
              setCriteria(prev => prev.map(crit => {
                  if (crit.field && !fields.some(f => f.value === crit.field)) {
-                     return getInitialCriterion(); // Reset criterion if its field is no longer valid
+                     return getInitialCriterion();
                  }
                  return crit;
-             }).filter(Boolean)); // Filter out any potential nulls if getInitialCriterion somehow fails (unlikely)
+             }).filter(Boolean));
         }
-    }, [fields, getInitialCriterion]); // Rerun when fields or the initial criterion getter changes
+    }, [fields, getInitialCriterion]);
 
     const handleAddCriterion = () => {
          if (fields.length === 0) return;
@@ -98,37 +98,50 @@ const SearchBar: React.FC<SearchBarProps> = ({
         else setCriteria([getInitialCriterion()]);
     };
 
-    const handleCriterionChange = useCallback((key: string, field: keyof SearchCriterionState, value: any) => {
+    const handleCriterionChange = useCallback((key: string, changedProperty: keyof SearchCriterionState, newValue: any) => {
         setCriteria(currentCriteria => {
             const index = currentCriteria.findIndex(c => c._key === key);
             if (index === -1) return currentCriteria;
+
             const newCriteria = [...currentCriteria];
             let criterion = { ...newCriteria[index] };
 
-            if (field === 'not') {
-                 criterion.not = !!value; // Ensure boolean
+            if (changedProperty === 'not') {
+                 criterion.not = !!newValue;
              } else {
                  // @ts-ignore
-                 criterion[field] = value;
+                 criterion[changedProperty] = newValue;
             }
 
-            if (field === 'field') {
-                const selectedField = fields.find(f => f.value === value);
-                const newType = selectedField?.type || 'text';
-                const currentConditionIsValid = conditionsByType[newType]?.some(c => c.value === criterion.condition);
-                criterion.condition = currentConditionIsValid ? criterion.condition : (conditionsByType[newType]?.[0]?.value ?? 'EQ');
+            if (changedProperty === 'field') {
+                const selectedFieldDef = fields.find(f => f.value === newValue);
+                const newType = selectedFieldDef?.type || 'text';
+                const currentConditionIsValidForNewType = conditionsByType[newType]?.some(c => c.value === criterion.condition);
+                criterion.condition = currentConditionIsValidForNewType ? criterion.condition : (conditionsByType[newType]?.[0]?.value ?? 'EQ');
+
                 if (newType === 'boolean') criterion.value = true;
-                else if (newType === 'tags' || (newType === 'select' && criterion.condition === 'ANY_OF')) criterion.value = [];
+                else if (newType === 'tags' || newType === 'signaturePath' || (newType === 'select' && criterion.condition === 'ANY_OF')) criterion.value = [];
                 else criterion.value = '';
-            } else if (field === 'condition') {
-                 const currentFieldDef = fields.find(f => f.value === criterion.field);
-                 if (currentFieldDef?.type === 'boolean') criterion.value = true;
-                 else if (currentFieldDef?.type === 'tags' || currentFieldDef?.type === 'select') {
-                     criterion.value = value === 'ANY_OF' ? [] : '';
-                 } else {
-                     criterion.value = '';
-                 }
-             }
+            } else if (changedProperty === 'condition') {
+                const currentFieldDef = fields.find(f => f.value === criterion.field);
+                const newCondition = newValue as SearchQueryElement['condition'];
+
+                if (currentFieldDef?.type === 'signaturePath') {
+                    const validSignatureConditions: SearchQueryElement['condition'][] = ['EQ', 'STARTS_WITH', 'CONTAINS_SEQUENCE'];
+                    if (!validSignatureConditions.includes(newCondition)) {
+                        // This case implies the UI allowed an invalid condition for signaturePath,
+                        // which shouldn't happen. Resetting is a safeguard.
+                        criterion.value = [];
+                    }
+                    // If newCondition IS a valid signature condition, DO NOTHING to criterion.value, preserving it.
+                } else if (currentFieldDef?.type === 'boolean') {
+                    criterion.value = true; // Booleans usually default to true on condition change
+                } else if (currentFieldDef?.type === 'tags' || (currentFieldDef?.type === 'select' && newCondition === 'ANY_OF')) {
+                    criterion.value = []; // Reset to empty array for multi-select types
+                } else {
+                    criterion.value = ''; // Reset for other types
+                }
+            }
             newCriteria[index] = criterion;
             return newCriteria;
         });
@@ -137,27 +150,40 @@ const SearchBar: React.FC<SearchBarProps> = ({
     const buildQuery = useCallback((): SearchQuery => {
          return criteria.map(crit => {
             const fieldDef = fields.find(f => f.value === crit.field);
-            if (!fieldDef || !crit.field || crit.condition === undefined || crit.value === undefined || crit.value === null) {
-                 if (!(fieldDef?.type === 'boolean' && crit.value === false)) {
-                     console.warn("Skipping incomplete criterion:", crit);
-                     return null;
-                 }
+            if (!fieldDef || !crit.field || crit.condition === undefined) { // Allow value to be null/empty array initially
+                 console.warn("Skipping incomplete criterion (field/condition missing):", crit);
+                 return null;
             }
 
             let parsedValue: any = crit.value;
             let isValid = true;
 
             switch (fieldDef.type) {
-                case 'number': const num = Number(parsedValue); if (isNaN(num) || String(parsedValue).trim() === '') isValid = false; else parsedValue = num; break;
+                case 'number':
+                    if (parsedValue === null || String(parsedValue).trim() === '') isValid = false;
+                    else { const num = Number(parsedValue); if (isNaN(num)) isValid = false; else parsedValue = num; }
+                    break;
                 case 'boolean': parsedValue = Boolean(parsedValue); break;
-                case 'tags': if (!Array.isArray(parsedValue) || !parsedValue.every(id => typeof id === 'number')) isValid = false; else if (parsedValue.length === 0 && crit.condition === 'ANY_OF') isValid = false; break;
+                case 'tags':
+                case 'signaturePath': // Signature path value is number[]
+                    if (!Array.isArray(parsedValue) || !parsedValue.every(id => typeof id === 'number')) isValid = false;
+                    else if (parsedValue.length === 0 && crit.condition !== 'EQ') isValid = false; // Allow empty array for EQ (e.g. "no tags") if backend handles it
+                    break;
                 case 'select':
-                    if (crit.condition === 'ANY_OF') { if (!Array.isArray(parsedValue)) parsedValue = [parsedValue].filter(v => v !== null && v !== undefined && String(v).trim() !== ''); parsedValue = parsedValue.map((v: string | number | boolean | null) => /^\d+$/.test(String(v)) ? Number(v) : v); if (parsedValue.length === 0) isValid = false; }
-                    else if (String(parsedValue).trim() === '' || parsedValue === null) isValid = false;
+                    if (crit.condition === 'ANY_OF') {
+                        if (!Array.isArray(parsedValue)) parsedValue = [parsedValue].filter(v => v !== null && v !== undefined && String(v).trim() !== '');
+                        parsedValue = parsedValue.map((v: string | number | boolean | null) => /^\d+$/.test(String(v)) ? Number(v) : v);
+                        if (parsedValue.length === 0) isValid = false;
+                    } else if (String(parsedValue).trim() === '' || parsedValue === null) isValid = false;
                     else if (/^\d+$/.test(String(parsedValue))) parsedValue = Number(parsedValue);
                     break;
-                case 'text': if (parsedValue === null) isValid = false; else parsedValue = String(parsedValue); break;
-                case 'date': if (String(parsedValue).trim() === '' || parsedValue === null || !/^\d{4}-\d{2}-\d{2}$/.test(String(parsedValue))) isValid = false; break;
+                case 'text':
+                    if (parsedValue === null || String(parsedValue).trim() === '') isValid = false;
+                    else parsedValue = String(parsedValue);
+                    break;
+                case 'date':
+                    if (parsedValue === null || String(parsedValue).trim() === '' || !/^\d{4}-\d{2}-\d{2}$/.test(String(parsedValue))) isValid = false;
+                    break;
             }
 
             if (!isValid) { console.warn(`Skipping criterion due to invalid/empty value:`, crit); return null; }
@@ -173,13 +199,10 @@ const SearchBar: React.FC<SearchBarProps> = ({
 
     const isCriteriaDirty = useMemo(() => {
         if (criteria.length > 1) return true;
-        if (criteria.length === 0) return false; // Not dirty if no criteria (valid state if no fields)
-        if (fields.length === 0) return false; // Not dirty if no fields
-
+        if (criteria.length === 0 || fields.length === 0) return false;
         const defaultCrit = getInitialCriterion();
         const currentCrit = criteria[0];
         if (!currentCrit) return false;
-
         return ( currentCrit.field !== defaultCrit.field || currentCrit.condition !== defaultCrit.condition || JSON.stringify(currentCrit.value) !== JSON.stringify(defaultCrit.value) || currentCrit.not !== defaultCrit.not );
     }, [criteria, fields, getInitialCriterion]);
 
@@ -213,7 +236,7 @@ const SearchBar: React.FC<SearchBarProps> = ({
                         </div>
                     )}
                     {criterion.field && (
-                        <div className='flex-grow min-w-[180px]'>
+                        <div className={cn('flex-grow', fieldType === 'signaturePath' ? 'min-w-[250px]' : 'min-w-[180px]')}>
                             <Label htmlFor={`value-${criterion._key}`} className='text-xs mb-1 block'>Value</Label>
                             { fieldType === 'boolean' ? (
                                 <Select value={String(criterion.value ?? true)} onValueChange={(value) => handleCriterionChange(criterion._key!, 'value', value === 'true')} disabled={!criterion.field} > <SelectTrigger id={`value-${criterion._key}`} className='h-9 text-sm'><SelectValue /></SelectTrigger> <SelectContent> <SelectItem value="true">True</SelectItem> <SelectItem value="false">False</SelectItem> </SelectContent> </Select>
@@ -221,6 +244,13 @@ const SearchBar: React.FC<SearchBarProps> = ({
                                 <Select value={String(criterion.value ?? '')} onValueChange={(value) => handleCriterionChange(criterion._key!, 'value', value)} disabled={!criterion.field} > <SelectTrigger id={`value-${criterion._key}`} className='h-9 text-sm'><SelectValue placeholder="Select value..."/></SelectTrigger> <SelectContent> {(fieldOptions || []).map(opt => ( <SelectItem key={String(opt.value)} value={String(opt.value)}>{opt.label}</SelectItem> ))} </SelectContent> </Select>
                             ) : fieldType === 'tags' ? (
                                 <TagSelector selectedTagIds={Array.isArray(criterion.value) ? criterion.value as number[] : []} onChange={(selectedIds) => handleCriterionChange(criterion._key!, 'value', selectedIds)} availableTags={getTagsFromOptions(fieldOptions)} className='bg-card border-none p-0' />
+                            ) : fieldType === 'signaturePath' ? ( // New case for signaturePath
+                                <SingleSignaturePathPicker
+                                    selectedPath={Array.isArray(criterion.value) ? criterion.value as number[] : null}
+                                    onChange={(path) => handleCriterionChange(criterion._key!, 'value', path)}
+                                    className="w-full"
+                                    label="" // No extra label needed as it's clear from context
+                                />
                             ) : (
                                 <Input id={`value-${criterion._key}`} type={fieldType === 'number' ? 'number' : fieldType === 'date' ? 'date' : 'text'} value={Array.isArray(criterion.value) ? criterion.value.join(',') : criterion.value as string | number ?? ''} onChange={(e) => { const val = e.target.value; const isAnyOfSelect = fieldType === 'select' && criterion.condition === 'ANY_OF'; handleCriterionChange(criterion._key!, 'value', isAnyOfSelect ? val.split(',').map(s=>s.trim()).filter(Boolean) : val); }} placeholder={ fieldType === 'date' ? 'YYYY-MM-DD' : (fieldType === 'select' && criterion.condition === 'ANY_OF') ? 'value1, value2...' : 'Enter value...' } disabled={!criterion.field} className='h-9 text-sm' />
                             )}
