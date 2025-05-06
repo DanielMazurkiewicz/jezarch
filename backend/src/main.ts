@@ -6,7 +6,8 @@ import { AppParams, finalizeAppParams } from './initialization/app_params';
 import { initializeDatabase, dbForeignKeysEnabled, dbJournalMode } from './initialization/db'; // Import DB status vars
 import { initializeConfigs } from './initialization/config';
 import { dumpLogs } from './utils/dumpLogs';
-import { initializeServer, publicDir, isSslEnabled, serverHostname, serverPort } from './initialization/server'; // Import server status vars
+// Import server status vars, including HTTPS details
+import { initializeServer, publicDir, isSslEnabled, httpHostname, httpPort, httpsHostname, httpsPort } from './initialization/server';
 import { Log } from './functionalities/log/db';
 
 async function main() {
@@ -16,18 +17,31 @@ async function main() {
         await initializeDatabase(); // DB needs to be up before reading/writing config
         await initializeConfigs(); // Reads DB config, applies overrides (Cmd, Env)
         await dumpLogs(); // Exits if --log is used
-        await initializeServer(); // Reads final AppParams to configure server
+        await initializeServer(); // Reads final AppParams to configure and start server(s)
 
         // Finalize and log parameters AFTER server initialization
         finalizeAppParams();
 
+        // --- Adjusted Logging ---
+        const logMessages = [`HTTP Server initialized on http://${httpHostname}:${httpPort}.`];
+        if (isSslEnabled && httpsHostname && httpsPort) {
+            logMessages.push(`HTTPS Server initialized on https://${httpsHostname}:${httpsPort}.`);
+        } else if (AppParams.httpsKeyPath && AppParams.httpsCertPath) {
+             logMessages.push(`HTTPS configured but failed to start (check paths/permissions).`);
+        } else {
+             logMessages.push(`HTTPS not configured.`);
+        }
+        const startupMessage = logMessages.join(' ');
+        // -----------------------
+
         // Gather data for the final log message using the *final* AppParams
         const serverLogData = {
-            message: `Server initialized and running.`,
+            message: startupMessage,
             config: {
-                httpPort: AppParams.httpPort, // Use final HTTP port
-                httpsPort: AppParams.httpsPort, // Use final HTTPS port
-                hostname: serverHostname, // Actual hostname server is listening on
+                httpPort: httpPort, // Use actual HTTP port
+                httpsPort: httpsPort, // Use actual HTTPS port (or undefined)
+                httpHostname: httpHostname, // Actual hostname
+                httpsHostname: httpsHostname, // Actual hostname (or undefined)
                 dbPath: AppParams.dbPath,
                 defaultLanguage: AppParams.defaultLanguage,
                 sslEnabled: isSslEnabled,

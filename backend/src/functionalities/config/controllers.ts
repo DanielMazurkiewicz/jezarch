@@ -3,7 +3,12 @@ import { getConfig, setConfig } from './db';
 import { AppConfigKeys } from './models'; // Models now have updated keys
 import { getSessionAndUser, isAllowedRole } from '../session/controllers';
 import { Log } from '../log/db';
-// Removed SSL related imports and server restart logic
+// --- Import server control functions ---
+import { reloadTlsConfiguration, stopHttpsServer } from '../../initialization/server';
+// ------------------------------------
+import { AppParams } from '../../initialization/app_params'; // Import AppParams to update runtime values
+import { existsSync } from 'node:fs'; // To check file existence before setting
+
 
 export const getConfigController = async (req: BunRequest<":key">) => {
     const sessionAndUser = await getSessionAndUser(req);
@@ -40,17 +45,32 @@ export const getConfigController = async (req: BunRequest<":key">) => {
     }
 
     try {
-        const value = await getConfig(key); // Fetches the string value directly
+        // Fetch directly from AppParams to reflect the *currently active* value
+        // including overrides from env/cmd, not just the DB value.
+        let value: string | number | null | undefined;
+        let displayValue: string | number | null | undefined;
+
+         switch (key) {
+             case AppConfigKeys.DEFAULT_LANGUAGE: value = AppParams.defaultLanguage; break;
+             case AppConfigKeys.HTTP_PORT: value = AppParams.httpPort; break;
+             case AppConfigKeys.HTTPS_PORT: value = AppParams.httpsPort; break;
+             case AppConfigKeys.HTTPS_KEY_PATH: value = AppParams.httpsKeyPath; break;
+             case AppConfigKeys.HTTPS_CERT_PATH: value = AppParams.httpsCertPath; break;
+             case AppConfigKeys.HTTPS_CA_PATH: value = AppParams.httpsCaPath; break;
+             default:
+                // Fallback to DB for potentially unknown keys (shouldn't happen with enum check)
+                value = await getConfig(key);
+         }
+         displayValue = value; // Start with the actual value
 
         // --- Mask sensitive values for non-admins (even if admin check passed, extra safety) ---
-        let displayValue: string | null | undefined = value;
         if (sensitiveKeys.includes(key)) {
             // Return a placeholder or existence status instead of the actual path
              displayValue = value ? "*** SET (Path Hidden) ***" : null; // Show if set, otherwise null
         }
         // --- End Masking ---
 
-        // Return null if value is undefined (key doesn't exist in DB)
+        // Return null if value is undefined or null
         const responseBody = { [key]: displayValue === undefined ? null : displayValue };
 
         return new Response(JSON.stringify(responseBody), {
@@ -88,56 +108,112 @@ export const setConfigController = async (req: BunRequest<":key">) => {
              AppConfigKeys.HTTPS_KEY_PATH, AppConfigKeys.HTTPS_CERT_PATH, AppConfigKeys.HTTPS_CA_PATH
         ];
         if (value === undefined || (value === null && !pathKeys.includes(key))) {
-            return new Response(JSON.stringify({ message: `Config key '${key}' requires a non-null value` }), { status: 400 });
+             // Ensure value is not undefined. Allow null *only* for path keys.
+             // Exception: Allow setting ports/language to null? No, validate below.
+            return new Response(JSON.stringify({ message: `Config key '${key}' requires a value (null only allowed for paths)` }), { status: 400 });
         }
 
-        // --- Specific Validations ---
-        if (value !== null) { // Only validate if not clearing a path
-            if (key === AppConfigKeys.HTTP_PORT || key === AppConfigKeys.HTTPS_PORT) {
-                const portNum = parseInt(value);
-                if (isNaN(portNum) || portNum < 1 || portNum > 65535) {
-                    return new Response(JSON.stringify({ message: 'Invalid Port value. Must be a number between 1 and 65535.' }), { status: 400 });
-                }
-                 value = String(portNum); // Ensure stored as string
-            } else if (key === AppConfigKeys.DEFAULT_LANGUAGE) {
-                if (value.trim().length < 2) {
-                    return new Response(JSON.stringify({ message: 'Invalid Default Language value. Must be at least 2 characters.' }), { status: 400 });
-                }
-                value = value.trim();
-            } else if (pathKeys.includes(key)) {
-                // Basic path validation (e.g., not empty if not null) - more checks could be added
-                if (value.trim() === '') {
-                    return new Response(JSON.stringify({ message: `Path for ${key} cannot be empty string. Use null to clear.` }), { status: 400 });
-                }
-                // Consider checking file existence here? Might be too complex/fragile.
-                value = value.trim();
-            }
+        // --- Specific Validations and Processing ---
+        let originalValue: string | number | null | undefined;
+        let processedValue: string | number | null = value; // Start with input, process below
+
+        switch (key) {
+             case AppConfigKeys.HTTP_PORT:
+             case AppConfigKeys.HTTPS_PORT:
+                 originalValue = key === AppConfigKeys.HTTP_PORT ? AppParams.httpPort : AppParams.httpsPort;
+                 if (value === null) return new Response(JSON.stringify({ message: 'Port value cannot be null.' }), { status: 400 });
+                 const portNum = parseInt(value);
+                 if (isNaN(portNum) || portNum < 1 || portNum > 65535) {
+                     return new Response(JSON.stringify({ message: 'Invalid Port value. Must be a number between 1 and 65535.' }), { status: 400 });
+                 }
+                 processedValue = portNum; // Store as number internally
+                 break;
+             case AppConfigKeys.DEFAULT_LANGUAGE:
+                 originalValue = AppParams.defaultLanguage;
+                 if (value === null || value.trim().length < 2) {
+                     return new Response(JSON.stringify({ message: 'Invalid Default Language value. Must be at least 2 characters.' }), { status: 400 });
+                 }
+                 processedValue = value.trim();
+                 break;
+             case AppConfigKeys.HTTPS_KEY_PATH:
+             case AppConfigKeys.HTTPS_CERT_PATH:
+             case AppConfigKeys.HTTPS_CA_PATH:
+                 // Store original value for comparison
+                 if (key === AppConfigKeys.HTTPS_KEY_PATH) originalValue = AppParams.httpsKeyPath;
+                 else if (key === AppConfigKeys.HTTPS_CERT_PATH) originalValue = AppParams.httpsCertPath;
+                 else originalValue = AppParams.httpsCaPath;
+
+                 if (value === null) {
+                     processedValue = null; // Allow clearing
+                 } else {
+                     value = value.trim();
+                     if (value === '') {
+                         return new Response(JSON.stringify({ message: `Path for ${key} cannot be empty string. Use null to clear.` }), { status: 400 });
+                     }
+                      // Check file existence *before* saving
+                     if (!existsSync(value)) {
+                         await Log.warn(`Admin tried to set non-existent path for ${key}: ${value}`, sessionAndUser.user.login, 'config');
+                         return new Response(JSON.stringify({ message: `Path does not exist on server: ${value}` }), { status: 400 });
+                     }
+                     processedValue = value;
+                 }
+                 break;
         }
         // --- End Specific Validations ---
 
+        // Check if the effective value changed
+        const valueChanged = String(originalValue ?? '') !== String(processedValue ?? ''); // Compare string representations
+
         // Determine if manual restart is needed based on the key being changed
         const keysRequiringRestart: AppConfigKeys[] = [
-            AppConfigKeys.HTTP_PORT,
+            AppConfigKeys.HTTP_PORT, // Port changes always need full restart
             AppConfigKeys.HTTPS_PORT,
+        ];
+         const keysTriggeringTlsReload: AppConfigKeys[] = [
             AppConfigKeys.HTTPS_KEY_PATH,
             AppConfigKeys.HTTPS_CERT_PATH,
             AppConfigKeys.HTTPS_CA_PATH,
         ];
-        const needsRestartInfo = keysRequiringRestart.includes(key);
+        const needsManualRestart = keysRequiringRestart.includes(key) && valueChanged;
+        const triggersTlsReload = keysTriggeringTlsReload.includes(key) && valueChanged;
 
-        // Store the value (null is stored as 'null' string implicitly by stringify, but we pass directly)
-        // Need to ensure DB stores null correctly if `value` is null.
-        // The current setConfig expects string, so handle null case explicitly.
-        // Let's modify setConfig to handle null or store a specific marker?
-        // For now, we'll pass the string representation or a placeholder if needed by setConfig.
-        // Assuming setConfig handles string value directly:
-        await setConfig(key, value === null ? '' : value); // Store empty string for null path? Or adjust setConfig. Let's store empty string for now.
-        // **Decision**: It's better to store NULL in the DB if `value` is null. Let's assume `setConfig` is updated or handles this.
-        // If setConfig MUST take string: `await setConfig(key, value ?? '');`
+        // Store the processed value in DB (convert numbers/nulls to string for DB)
+        const valueForDb = processedValue === null ? '' : String(processedValue);
+        await setConfig(key, valueForDb);
 
-        await Log.info(`Config updated: ${key} set to '${value === null ? 'NULL' : value}'`, sessionAndUser.user.login, 'config');
+        // --- Update runtime AppParams ---
+        // This makes the change immediately effective for subsequent requests *within this process*
+        // that read AppParams directly, BEFORE a restart/reload might happen.
+        switch (key) {
+             case AppConfigKeys.DEFAULT_LANGUAGE: AppParams.defaultLanguage = processedValue as string; break;
+             case AppConfigKeys.HTTP_PORT: AppParams.httpPort = processedValue as number; break;
+             case AppConfigKeys.HTTPS_PORT: AppParams.httpsPort = processedValue as number; break;
+             case AppConfigKeys.HTTPS_KEY_PATH: AppParams.httpsKeyPath = processedValue as string | null; break;
+             case AppConfigKeys.HTTPS_CERT_PATH: AppParams.httpsCertPath = processedValue as string | null; break;
+             case AppConfigKeys.HTTPS_CA_PATH: AppParams.httpsCaPath = processedValue as string | null; break;
+        }
+        await Log.info(`Config updated: ${key} set to '${valueForDb}' (Runtime updated). Value changed: ${valueChanged}`, sessionAndUser.user.login, 'config');
 
-        const responseMessage = `Config '${key}' updated successfully.${needsRestartInfo ? ' Manual server restart required for changes to take effect.' : ''}`;
+
+        // --- Trigger Server Actions ---
+        let actionMessage = '';
+        if (needsManualRestart) {
+             actionMessage = ' Manual server restart required for changes to take effect.';
+             // We don't attempt automatic restart for port changes.
+        } else if (triggersTlsReload) {
+             // Check if both key and cert are now set, otherwise stop HTTPS
+             if (AppParams.httpsKeyPath && AppParams.httpsCertPath) {
+                 await Log.info(`Triggering TLS reload due to config change for ${key}`, sessionAndUser.user.login, 'config');
+                 reloadTlsConfiguration(); // Attempt to reload TLS config in the running server
+                 actionMessage = ' HTTPS configuration reloaded.';
+             } else {
+                 await Log.info(`Stopping HTTPS server because key/cert paths are no longer fully set after change to ${key}`, sessionAndUser.user.login, 'config');
+                 stopHttpsServer();
+                 actionMessage = ' HTTPS server stopped.';
+             }
+        }
+
+        const responseMessage = `Config '${key}' updated successfully.${actionMessage}`;
         return new Response(JSON.stringify({ message: responseMessage }), {
              status: 200,
              headers: { 'Content-Type': 'application/json' }
@@ -151,3 +227,49 @@ export const setConfigController = async (req: BunRequest<":key">) => {
         });
     }
 };
+
+// --- NEW: Controller to clear HTTPS settings ---
+export const clearHttpsConfigController = async (req: BunRequest) => {
+    const sessionAndUser = await getSessionAndUser(req);
+    if (!sessionAndUser) return new Response("Unauthorized", { status: 401 });
+    if (!isAllowedRole(sessionAndUser, 'admin')) return new Response("Forbidden", { status: 403 });
+
+    try {
+        let changesMade = false;
+        const httpsKeys: AppConfigKeys[] = [
+            AppConfigKeys.HTTPS_KEY_PATH,
+            AppConfigKeys.HTTPS_CERT_PATH,
+            AppConfigKeys.HTTPS_CA_PATH,
+            // Also clear port? Maybe not, user might want to re-enable later. Let's keep port.
+            // AppConfigKeys.HTTPS_PORT,
+        ];
+
+        for (const key of httpsKeys) {
+            const currentValue = await getConfig(key); // Check DB value
+            if (currentValue && currentValue !== '') {
+                 await setConfig(key, ''); // Set to empty string in DB (representing null)
+                 changesMade = true;
+                 // Update runtime AppParams
+                 if (key === AppConfigKeys.HTTPS_KEY_PATH) AppParams.httpsKeyPath = null;
+                 else if (key === AppConfigKeys.HTTPS_CERT_PATH) AppParams.httpsCertPath = null;
+                 else if (key === AppConfigKeys.HTTPS_CA_PATH) AppParams.httpsCaPath = null;
+                 await Log.info(`Cleared HTTPS config key: ${key}`, sessionAndUser.user.login, 'config');
+            }
+        }
+
+        if (changesMade) {
+            stopHttpsServer(); // Stop the HTTPS server if settings were cleared
+            return new Response(JSON.stringify({ message: "HTTPS configuration cleared successfully. HTTPS server stopped." }), { status: 200 });
+        } else {
+             return new Response(JSON.stringify({ message: "HTTPS configuration was already clear. No changes made." }), { status: 200 });
+        }
+
+    } catch (error: any) {
+        await Log.error('Error clearing HTTPS config', sessionAndUser.user.login, 'config', error);
+        return new Response(JSON.stringify({ message: 'Failed to clear HTTPS configuration', error: error.message ?? String(error) }), {
+            status: 500,
+            headers: { 'Content-Type': 'application/json' }
+        });
+    }
+};
+// --- END NEW CONTROLLER ---

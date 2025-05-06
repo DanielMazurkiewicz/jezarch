@@ -22,7 +22,7 @@ export const routes: Routes = {
     // API routes should come first to ensure they are matched before the static fallback
     ...apiRoutes,
     ...userRoutes, // Includes the new /api/user/by-login/:login/tags routes
-    ...configRoutes,
+    ...configRoutes, // Includes the new /api/config/https route
     ...logRoutes,
     ...tagRoutes,
     ...signatureComponentRoutes,

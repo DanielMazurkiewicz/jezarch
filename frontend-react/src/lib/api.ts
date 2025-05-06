@@ -115,6 +115,9 @@ async function fetchApi<T>(
 
     if (response.status === 204 || response.headers.get('content-length') === '0') {
         console.log(`fetchApi: Handling 204 No Content for ${url}`);
+        // For No Content, return a standard success object or adjust based on endpoint needs
+        // Specific endpoints like password changes might expect this.
+        // For generic usage, returning { success: true } seems reasonable.
         return { success: true } as T;
     }
 
@@ -149,7 +152,7 @@ async function fetchApi<T>(
 type GetConfigResponse<K extends AppConfigKeys> = {
     // Return type is an object where the key is the AppConfigKey requested
     // and the value is string | null (paths can be null)
-    [key in K]: string | null;
+    [key in K]: string | number | null; // Allow number for ports
 };
 
 interface PurgeLogsResponse {
@@ -174,6 +177,8 @@ const assignTagsToUser = (login: string, tagIds: number[], token: string) => fet
 const getConfig = <K extends AppConfigKeys>(key: K, token: string) => fetchApi<GetConfigResponse<K>>(`/configs/${key}`, "GET", null, token);
 // setConfig now accepts string | null for value, primarily for clearing paths
 const setConfig = (key: AppConfigKeys, value: string | null, token: string) => fetchApi<{ message: string }>(`/configs/${key}`, "PUT", { value }, token);
+// NEW: Function to clear HTTPS settings
+const clearHttpsConfig = (token: string) => fetchApi<{ message: string }>("/config/https", "DELETE", null, token);
 // Removed uploadSsl and generateSsl
 const searchLogs = (searchRequest: SearchRequest, token: string) => fetchApi<SearchResponse<LogEntry>>("/logs/search", "POST", searchRequest, token);
 const purgeLogs = (days: number, token: string) => fetchApi<PurgeLogsResponse>(`/logs/purge?days=${days}`, "DELETE", null, token);
@@ -213,7 +218,7 @@ export default {
     getApiStatus, pingApi, login, logout, register, getAllUsers, getUserByLogin,
     updateUserRole, changePassword, adminSetUserPassword,
     getAssignedTagsForUser, assignTagsToUser,
-    getConfig, setConfig, // Removed SSL functions
+    getConfig, setConfig, clearHttpsConfig, // Added clearHttpsConfig
     searchLogs, purgeLogs,
     createTag, getAllTags, getTagById, updateTag, deleteTag,
     createNote, getNoteById, updateNote, deleteNote, getNotesByLogin, searchNotes,

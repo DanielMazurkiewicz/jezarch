@@ -14,6 +14,8 @@ import { AppConfigKeys } from '../../../../backend/src/functionalities/config/mo
 import { cn } from '@/lib/utils';
 import { settingsSchema, SettingsFormData } from '@/lib/zodSchemas'; // Updated schema import
 import { toast } from "sonner";
+import { Trash2 } from 'lucide-react'; // Import Trash2 icon
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 
 const SettingsForm: React.FC = () => {
     const { token } = useAuth();
@@ -28,6 +30,9 @@ const SettingsForm: React.FC = () => {
     const [originalKeyPath, setOriginalKeyPath] = useState<string | null>(null);
     const [originalCertPath, setOriginalCertPath] = useState<string | null>(null);
     const [originalCaPath, setOriginalCaPath] = useState<string | null>(null);
+    // State for clear https confirmation
+    const [isClearConfirmOpen, setIsClearConfirmOpen] = useState(false);
+    const [isClearingHttps, setIsClearingHttps] = useState(false);
 
     const { register, handleSubmit, reset, setValue, formState: { errors, isDirty }, watch } = useForm<SettingsFormData>({
         resolver: zodResolver(settingsSchema),
@@ -49,15 +54,15 @@ const SettingsForm: React.FC = () => {
     const watchedCertPath = watch(AppConfigKeys.HTTPS_CERT_PATH);
     const watchedCaPath = watch(AppConfigKeys.HTTPS_CA_PATH);
 
+    // Determine if HTTPS is currently effectively enabled (key and cert paths are set)
+    const isHttpsCurrentlyEnabled = !!watchedKeyPath && !!watchedCertPath;
+
     const needsRestart = (
         watchedHttpPort !== originalHttpPort && originalHttpPort !== null ||
         watchedHttpsPort !== originalHttpsPort && originalHttpsPort !== null ||
-        watchedKeyPath !== originalKeyPath && originalKeyPath !== null || // Check original was not null
-        watchedCertPath !== originalCertPath && originalCertPath !== null ||
-        watchedCaPath !== originalCaPath && originalCaPath !== null ||
-        // Also trigger if enabling SSL (paths changing from null/empty to set)
-        (!originalKeyPath && !!watchedKeyPath) ||
-        (!originalCertPath && !!watchedCertPath)
+        watchedKeyPath !== originalKeyPath || // Also trigger if paths change (null -> value, value -> null, value -> value)
+        watchedCertPath !== originalCertPath ||
+        watchedCaPath !== originalCaPath
     );
 
 
@@ -199,6 +204,10 @@ const SettingsForm: React.FC = () => {
                     // Check if this specific setting required a restart
                      if (result.message?.includes("Manual server restart required")) {
                          restartRequiredBySave = true;
+                     } else if (result.message?.includes("HTTPS configuration reloaded") || result.message?.includes("HTTPS server stopped")) {
+                        // Consider TLS reload/stop as needing notice, though not manual restart like ports
+                        // Maybe add a different type of indicator? For now, treat as restart warning.
+                        restartRequiredBySave = true; // Re-use flag for simplicity
                      }
                 }
             });
@@ -206,10 +215,10 @@ const SettingsForm: React.FC = () => {
             if (!anyError) {
                 setSaveStatus('success');
                 // Fetch again to get potentially masked values and update originals
-                await fetchSettings();
+                await fetchSettings(); // fetchSettings now updates originals
                 const finalMessage = `Settings saved successfully.`;
                 if (restartRequiredBySave) {
-                    toast.warning(`${finalMessage} Manual server restart required.`);
+                    toast.warning(`${finalMessage} Server action triggered (check logs).`);
                 } else {
                     toast.success(finalMessage);
                 }
@@ -231,6 +240,27 @@ const SettingsForm: React.FC = () => {
         }
     };
 
+     // --- Clear HTTPS Handler ---
+     const handleClearHttps = async () => {
+         if (!token) return;
+         setIsClearingHttps(true);
+         setSaveError(null); // Clear previous save errors
+         try {
+             const response = await api.clearHttpsConfig(token);
+             toast.success(response.message || "HTTPS settings cleared.");
+             // Refresh the form state to reflect cleared values
+             await fetchSettings();
+             setIsClearConfirmOpen(false); // Close confirmation dialog
+         } catch (err: any) {
+             const msg = err.message || "Failed to clear HTTPS settings.";
+             setSaveError(msg); // Show error in the main error display
+             toast.error(msg);
+         } finally {
+             setIsClearingHttps(false);
+         }
+     };
+     // --- End Clear HTTPS Handler ---
+
     if (isLoading) { return <div className='flex justify-center p-10'><LoadingSpinner /></div>; }
     if (loadError && !isLoading) { return <ErrorDisplay message={`Error loading settings: ${loadError}`} />; }
 
@@ -238,7 +268,7 @@ const SettingsForm: React.FC = () => {
         <Card className="bg-white dark:bg-white text-neutral-900 dark:text-neutral-900">
             <CardHeader>
                 <CardTitle>Application Settings</CardTitle>
-                <CardDescription>Configure server ports, language, and HTTPS settings. Changes related to ports or HTTPS require a manual server restart.</CardDescription>
+                <CardDescription>Configure server ports, language, and HTTPS settings. Changes related to ports or HTTPS require a manual server restart or trigger automatic actions.</CardDescription>
             </CardHeader>
             <CardContent>
                 <form onSubmit={handleSubmit(onSubmit)} className="space-y-6 max-w-2xl"> {/* Increased max-width */}
@@ -264,13 +294,13 @@ const SettingsForm: React.FC = () => {
                              {/* HTTP Port */}
                              <div className="grid gap-1.5">
                                 <Label htmlFor="http-port">HTTP Port</Label>
-                                <Input id="http-port" type="number" {...register(AppConfigKeys.HTTP_PORT)} aria-invalid={!!errors[AppConfigKeys.HTTP_PORT]} className={cn(errors[AppConfigKeys.HTTP_PORT] && "border-destructive")} />
+                                <Input id="http-port" type="number" {...register(AppConfigKeys.HTTP_PORT, { valueAsNumber: true })} aria-invalid={!!errors[AppConfigKeys.HTTP_PORT]} className={cn(errors[AppConfigKeys.HTTP_PORT] && "border-destructive")} />
                                 {errors[AppConfigKeys.HTTP_PORT] && <p className="text-xs text-destructive">{errors[AppConfigKeys.HTTP_PORT]?.message}</p>}
                              </div>
                              {/* HTTPS Port */}
                              <div className="grid gap-1.5">
                                 <Label htmlFor="https-port">HTTPS Port</Label>
-                                <Input id="https-port" type="number" {...register(AppConfigKeys.HTTPS_PORT)} aria-invalid={!!errors[AppConfigKeys.HTTPS_PORT]} className={cn(errors[AppConfigKeys.HTTPS_PORT] && "border-destructive")} />
+                                <Input id="https-port" type="number" {...register(AppConfigKeys.HTTPS_PORT, { valueAsNumber: true })} aria-invalid={!!errors[AppConfigKeys.HTTPS_PORT]} className={cn(errors[AppConfigKeys.HTTPS_PORT] && "border-destructive")} />
                                 {errors[AppConfigKeys.HTTPS_PORT] && <p className="text-xs text-destructive">{errors[AppConfigKeys.HTTPS_PORT]?.message}</p>}
                              </div>
                          </div>
@@ -278,10 +308,38 @@ const SettingsForm: React.FC = () => {
 
                     {/* HTTPS/SSL Settings Section */}
                     <div className="space-y-4">
-                         <h3 className="text-lg font-medium">HTTPS/SSL Configuration</h3>
-                         <p className="text-sm text-muted-foreground">
-                            Provide paths to your PEM-encoded key, certificate, and optional CA chain files. Enable HTTPS by providing valid key and certificate paths. Leave fields blank to disable HTTPS.
-                         </p>
+                          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
+                             <div>
+                                 <h3 className="text-lg font-medium">HTTPS/SSL Configuration</h3>
+                                 <p className="text-sm text-muted-foreground">
+                                     Provide paths to your PEM-encoded key, certificate, and optional CA chain files. Enable HTTPS by providing valid key and certificate paths. Paths must exist on the server.
+                                 </p>
+                             </div>
+                             {/* Clear HTTPS Button */}
+                             <AlertDialog open={isClearConfirmOpen} onOpenChange={setIsClearConfirmOpen}>
+                                 <AlertDialogTrigger asChild>
+                                     <Button type="button" variant="destructive" size="sm" className='shrink-0' disabled={!isHttpsCurrentlyEnabled || isClearingHttps}>
+                                        {isClearingHttps ? <LoadingSpinner size='sm' className='mr-2' /> : <Trash2 className="mr-2 h-4 w-4" />}
+                                        Clear HTTPS Settings
+                                     </Button>
+                                 </AlertDialogTrigger>
+                                 <AlertDialogContent>
+                                     <AlertDialogHeader>
+                                         <AlertDialogTitle>Confirm Clear HTTPS Settings</AlertDialogTitle>
+                                         <AlertDialogDescription>
+                                            This will remove the key, certificate, and CA paths, disabling HTTPS. The server will stop the HTTPS service. Are you sure?
+                                         </AlertDialogDescription>
+                                     </AlertDialogHeader>
+                                     <AlertDialogFooter>
+                                         <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                         <AlertDialogAction onClick={handleClearHttps} disabled={isClearingHttps}>
+                                             {isClearingHttps ? <LoadingSpinner size='sm' className='mr-2'/> : null}
+                                             Yes, Clear and Disable
+                                         </AlertDialogAction>
+                                     </AlertDialogFooter>
+                                 </AlertDialogContent>
+                             </AlertDialog>
+                          </div>
                          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                             {/* Key Path */}
                             <div className="grid gap-1.5">
@@ -312,8 +370,8 @@ const SettingsForm: React.FC = () => {
                             {(saveStatus === 'idle' || saveStatus === 'error') && 'Save Settings'}
                          </Button>
                          {/* Show restart warning if relevant fields changed */}
-                         {needsRestart && (
-                            <p className="text-sm text-orange-600 font-medium">Info: Changes require a manual server restart to take effect.</p>
+                         {needsRestart && isDirty && ( // Only show if dirty and needs restart
+                            <p className="text-sm text-orange-600 font-medium">Info: Changes may require a manual server restart or trigger server actions.</p>
                          )}
                     </div>
                 </form>

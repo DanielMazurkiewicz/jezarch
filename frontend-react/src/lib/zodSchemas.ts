@@ -132,20 +132,28 @@ export const settingsSchema = z.object({
     [AppConfigKeys.DEFAULT_LANGUAGE]: z.string()
         .min(2, "Language code required (e.g., en, de)")
         .max(10, "Language code too long"),
-    [AppConfigKeys.HTTP_PORT]: z.coerce
+    [AppConfigKeys.HTTP_PORT]: z.coerce // Use coerce for number inputs
         .number({ invalid_type_error: "HTTP Port must be a number" })
         .int("HTTP Port must be an integer")
         .min(1, "HTTP Port must be at least 1")
         .max(65535, "HTTP Port cannot exceed 65535"),
-    [AppConfigKeys.HTTPS_PORT]: z.coerce
+    [AppConfigKeys.HTTPS_PORT]: z.coerce // Use coerce for number inputs
         .number({ invalid_type_error: "HTTPS Port must be a number" })
         .int("HTTPS Port must be an integer")
         .min(1, "HTTPS Port must be at least 1")
         .max(65535, "HTTPS Port cannot exceed 65535"),
     // Paths are optional strings, allow empty string to clear (map to null on submit)
-    [AppConfigKeys.HTTPS_KEY_PATH]: z.string().optional().nullable(),
-    [AppConfigKeys.HTTPS_CERT_PATH]: z.string().optional().nullable(),
-    [AppConfigKeys.HTTPS_CA_PATH]: z.string().optional().nullable(),
+    [AppConfigKeys.HTTPS_KEY_PATH]: z.string().max(1024, "Path too long").optional().nullable(),
+    [AppConfigKeys.HTTPS_CERT_PATH]: z.string().max(1024, "Path too long").optional().nullable(),
+    [AppConfigKeys.HTTPS_CA_PATH]: z.string().max(1024, "Path too long").optional().nullable(),
+}).refine(data => !(data[AppConfigKeys.HTTPS_KEY_PATH] && !data[AppConfigKeys.HTTPS_CERT_PATH]), {
+    // Add cross-field validation: If key is set, cert must also be set
+    message: "Certificate path is required if key path is provided.",
+    path: [AppConfigKeys.HTTPS_CERT_PATH],
+}).refine(data => !(!data[AppConfigKeys.HTTPS_KEY_PATH] && data[AppConfigKeys.HTTPS_CERT_PATH]), {
+    // If cert is set, key must also be set
+    message: "Key path is required if certificate path is provided.",
+    path: [AppConfigKeys.HTTPS_KEY_PATH],
 });
 export type SettingsFormData = z.infer<typeof settingsSchema>;
 

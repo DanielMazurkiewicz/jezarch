@@ -3,6 +3,7 @@ import { getConfig, setConfig } from '../functionalities/config/db';
 import { AppParams, AppParamsDefaults } from './app_params';
 import { CmdParams } from './cmd'; // Import CmdParams
 import { Log } from '../functionalities/log/db'; // Import Log for warnings
+import { existsSync } from 'node:fs'; // Import existsSync to check file paths
 
 // Function to safely parse an integer from config/env/cmd
 const safelyParseInt = (value: string | number | undefined | null, defaultValue: number): number => {
@@ -12,11 +13,20 @@ const safelyParseInt = (value: string | number | undefined | null, defaultValue:
 };
 
 // Function to safely get a string path from config/env/cmd
-const safelyGetStringPath = (value: string | undefined | null, defaultValue: string | null): string | null => {
-    if (value === undefined || value === null || String(value).trim() === '') {
-        return defaultValue;
+// Also checks if the file exists if the path is not null/empty
+const safelyGetStringPath = (value: string | undefined | null, defaultValue: string | null, checkExists: boolean = true): string | null => {
+    let pathValue: string | null = null;
+    if (value !== undefined && value !== null && String(value).trim() !== '') {
+        pathValue = String(value).trim();
+    } else {
+        pathValue = defaultValue;
     }
-    return String(value).trim();
+
+    if (pathValue && checkExists && !existsSync(pathValue)) {
+        Log.warn(`Configuration path not found: "${pathValue}". Setting will be ignored.`, 'system', 'startup');
+        return null; // Treat non-existent file as null
+    }
+    return pathValue;
 };
 
 
@@ -77,9 +87,10 @@ export async function initializeConfigs() {
                                 CmdParams.httpsKeyPath
                                 || process.env.JEZARCH_HTTPS_KEY_PATH
                                 || httpsKeyPathFromDb,
-                                AppParamsDefaults.httpsKeyPath // Default is null
+                                AppParamsDefaults.httpsKeyPath, // Default is null
+                                true // Check if file exists
                            );
-    // Don't store null default in DB for paths, only store if explicitly set
+    // Don't store null default in DB for paths, only store if explicitly set and exists
 
     // --- HTTPS Cert Path ---
     const httpsCertPathFromDb = await getConfig(AppConfigKeys.HTTPS_CERT_PATH);
@@ -87,7 +98,8 @@ export async function initializeConfigs() {
                                 CmdParams.httpsCertPath
                                 || process.env.JEZARCH_HTTPS_CERT_PATH
                                 || httpsCertPathFromDb,
-                                AppParamsDefaults.httpsCertPath // Default is null
+                                AppParamsDefaults.httpsCertPath, // Default is null
+                                true // Check if file exists
                            );
 
     // --- HTTPS CA Path ---
@@ -96,7 +108,8 @@ export async function initializeConfigs() {
                                 CmdParams.httpsCaPath
                                 || process.env.JEZARCH_HTTPS_CA_PATH
                                 || httpsCaPathFromDb,
-                                AppParamsDefaults.httpsCaPath // Default is null
+                                AppParamsDefaults.httpsCaPath, // Default is null
+                                true // Check if file exists
                            );
 
 
@@ -106,8 +119,8 @@ export async function initializeConfigs() {
     console.log(`  - Default Language: ${AppParams.defaultLanguage}`);
     console.log(`  - HTTP Port: ${AppParams.httpPort}`);
     console.log(`  - HTTPS Port: ${AppParams.httpsPort}`);
-    console.log(`  - HTTPS Key Path: ${AppParams.httpsKeyPath ?? 'Not Set'}`);
-    console.log(`  - HTTPS Cert Path: ${AppParams.httpsCertPath ?? 'Not Set'}`);
-    console.log(`  - HTTPS CA Path: ${AppParams.httpsCaPath ?? 'Not Set'}`);
+    console.log(`  - HTTPS Key Path: ${AppParams.httpsKeyPath ?? 'Not Set / Not Found'}`);
+    console.log(`  - HTTPS Cert Path: ${AppParams.httpsCertPath ?? 'Not Set / Not Found'}`);
+    console.log(`  - HTTPS CA Path: ${AppParams.httpsCaPath ?? 'Not Set / Not Found'}`);
 
 }
