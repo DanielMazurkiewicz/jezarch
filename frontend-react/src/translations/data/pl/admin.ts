@@ -101,8 +101,7 @@ export const adminTranslationsPL: AdminTranslationSet = {
   noAdditionalData: 'Brak dodatkowych danych.',
   unitLoadFailedError: 'Nie udało się załadować jednostek',
   selectedElementLoadFailedError: 'Nie udało się załadować szczegółów wybranych elementów',
-  errorMessageTemplate: 'Błąd: {message}', // Added missing key
-  // New Admin PL Keys
+  errorMessageTemplate: 'Błąd: {message}',
   userFetchFailedError: 'Nie udało się pobrać użytkowników',
   tagLoadFailedError: 'Nie udało się załadować tagów',
   userFetchDetailsFailedError: 'Nie udało się pobrać zaktualizowanych szczegółów użytkownika',

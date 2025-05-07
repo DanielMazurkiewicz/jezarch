@@ -21,7 +21,7 @@ export type AdminTranslationKey =
   | 'daysLabel'
   | 'purgeButton'
   | 'confirmLogPurgeTitle'
-  | 'confirmLogPurgeMessage'
+  | 'confirmLogPurgeMessage' // Includes {days}
   | 'appSettingsTitleAdmin'
   | 'appSettingsDescriptionAdmin'
   | 'defaultLanguageLabel'
@@ -43,25 +43,25 @@ export type AdminTranslationKey =
   | 'userLanguageColumn'
   | 'userAssignedTagsColumn'
   | 'userActionsColumn'
-  | 'setLanguageButtonTooltip'
-  | 'assignTagsButtonTooltip'
-  | 'setPasswordButtonTooltip'
+  | 'setLanguageButtonTooltip' // Includes {login}
+  | 'assignTagsButtonTooltip' // Includes {login}
+  | 'setPasswordButtonTooltip' // Includes {login}
   | 'createNewUserDialogTitle'
   | 'createNewUserDialogDescription'
-  | 'setPasswordDialogTitle'
+  | 'setPasswordDialogTitle' // Includes {login}
   | 'setPasswordDialogDescription'
   | 'newPasswordLabel'
-  | 'assignTagsDialogTitle'
+  | 'assignTagsDialogTitle' // Includes {login}
   | 'assignTagsDialogDescription'
-  | 'setLanguageDialogTitle'
+  | 'setLanguageDialogTitle' // Includes {login}
   | 'setLanguageDialogDescription'
   | 'noUsersFound'
   | 'cannotChangeOwnRoleWarning'
-  | 'roleUpdatedSuccess'
-  | 'passwordSetSuccess'
-  | 'languageUpdatedSuccess'
-  | 'tagsAssignedSuccess'
-  | 'userCreatedSuccessAdmin'
+  | 'roleUpdatedSuccess' // Includes {login}, {roleText}
+  | 'passwordSetSuccess' // Includes {login}
+  | 'languageUpdatedSuccess' // Includes {login}, {language}
+  | 'tagsAssignedSuccess' // Includes {login}
+  | 'userCreatedSuccessAdmin' // Includes {login}
   | 'selectRolePlaceholder'
   | 'noRoleOption'
   | 'adminRoleOption'
@@ -71,10 +71,10 @@ export type AdminTranslationKey =
   | 'tagsCannotBeAssignedWarning'
   | 'saveSettingsSuccessMessage'
   | 'saveSettingsRestartWarning'
-  | 'settingsPathNotFoundWarning'
+  | 'settingsPathNotFoundWarning' // Includes {path}
   | 'clearHttpsSuccessMessage'
   | 'clearHttpsAlreadyClearMessage'
-  | 'logPurgeSuccessMessage'
+  | 'logPurgeSuccessMessage' // Includes {count}, {days}
   | 'logPurgeInvalidDaysError'
   | 'invalidConfigKeyError'
   | 'invalidPortError'
@@ -101,8 +101,16 @@ export type AdminTranslationKey =
   | 'noAdditionalData'
   | 'unitLoadFailedError'
   | 'selectedElementLoadFailedError'
-  // Added missing keys
-  | 'errorMessageTemplate' // Already in common, potentially remove duplicate here if consistent
+  | 'errorMessageTemplate' // Includes {message} - Moved to common
+  // Added missing keys from previous batch
+  | 'userFetchFailedError'
+  | 'tagLoadFailedError'
+  | 'userFetchDetailsFailedError'
+  | 'userRoleUpdateFailedError' // Includes {login}, {message}
+  | 'userPasswordSetFailedError' // Includes {login}, {message}
+  | 'userLanguageUpdateFailedError' // Includes {login}, {message}
+  | 'userTagAssignFailedError' // Includes {message}
+  | 'setPasswordButton'
   ;
 
 export type AdminTranslationSet = TranslationSet<AdminTranslationKey>;

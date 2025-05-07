@@ -101,8 +101,7 @@ export const adminTranslationsEN: AdminTranslationSet = {
   noAdditionalData: 'No additional data.',
   unitLoadFailedError: 'Failed to load units',
   selectedElementLoadFailedError: 'Failed to load details for selected elements',
-  errorMessageTemplate: 'Error: {message}', // Added missing key
-  // New Admin Keys
+  errorMessageTemplate: 'Error: {message}',
   userFetchFailedError: 'Failed to fetch users',
   tagLoadFailedError: 'Failed to load tags',
   userFetchDetailsFailedError: 'Failed to fetch updated user details',

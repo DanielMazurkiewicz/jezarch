@@ -3,13 +3,16 @@ import type { SignatureComponentIndexType } from '../../../backend/src/functiona
 import type { ArchiveDocumentType } from '../../../backend/src/functionalities/archive/document/models';
 import { AppConfigKeys } from '../../../backend/src/functionalities/config/models';
 import { searchRequestSchema as backendSearchRequestSchema } from '../../../backend/src/utils/search_validation';
-import { supportedLanguages } from '../../../backend/src/functionalities/user/models'; // Import supportedLanguages
+// --- UPDATED: Import supportedLanguages and correct type ---
+import { supportedLanguages, type SupportedLanguage as BackendSupportedLanguage } from '../../../backend/src/functionalities/user/models'; // Import supportedLanguages
+// --- Use the imported type ---
+type SupportedLanguage = BackendSupportedLanguage;
+// -----------------------------
 
 // --- Auth ---
 export const loginSchema = z.object({
     login: z.string().min(1, "Login is required"),
     password: z.string().min(1, "Password is required"),
-    // preferredLanguage is not part of login form data, but handled by AuthLayout/AuthContext
 });
 export type LoginFormData = z.infer<typeof loginSchema>;
 
@@ -22,8 +25,6 @@ export const registerSchema = z.object({
     login: z.string().min(3, "Login must be at least 3 characters").max(50),
     password: passwordSchema,
     confirmPassword: z.string(),
-    // preferredLanguage will be handled by AuthLayout and passed to API separately or by context
-    // preferredLanguage: z.enum(supportedLanguages).optional().default('en'),
 }).refine(data => data.password === data.confirmPassword, {
     message: "Passwords don't match",
     path: ["confirmPassword"],
@@ -35,7 +36,6 @@ export const userCreateSchema = z.object({
     login: z.string().min(3, "Login must be at least 3 characters").max(50),
     password: passwordSchema,
     confirmPassword: z.string(),
-    // preferredLanguage is not part of this admin create form (defaults on backend, admin can change later)
 }).refine(data => data.password === data.confirmPassword, {
     message: "Passwords don't match",
     path: ["confirmPassword"],
@@ -64,7 +64,9 @@ export type UpdateUserRoleFormData = z.infer<typeof updateUserRoleSchema>;
 
 // --- NEW: User Preferred Language Schema ---
 export const updatePreferredLanguageFormSchema = z.object({
+    // --- Ensure this uses the imported `supportedLanguages` ---
     preferredLanguage: z.enum(supportedLanguages, {
+    // --------------------------------------------------------
         errorMap: (issue, ctx) => {
              if (issue.code === z.ZodIssueCode.invalid_enum_value) {
                  return { message: `Please select a valid language. Supported: ${supportedLanguages.map(s => s.toUpperCase()).join(', ')}.` };
@@ -147,39 +149,38 @@ export const createArchiveDocumentFormSchema = z.object({
 export type CreateArchiveDocumentFormData = z.infer<typeof createArchiveDocumentFormSchema>;
 
 // --- Settings ---
-// Updated settings schema to include new fields
 export const settingsSchema = z.object({
-    [AppConfigKeys.DEFAULT_LANGUAGE]: z.string()
-        .min(2, "Language code required (e.g., en, de)")
-        .max(10, "Language code too long"),
-    [AppConfigKeys.HTTP_PORT]: z.coerce // Use coerce for number inputs
+    // --- UPDATED: Validate against imported supportedLanguages ---
+    [AppConfigKeys.DEFAULT_LANGUAGE]: z.enum(supportedLanguages, {
+    // ----------------------------------------------------------
+        errorMap: (issue, ctx) => {
+             if (issue.code === z.ZodIssueCode.invalid_enum_value) {
+                 return { message: `Please select a valid language. Supported: ${supportedLanguages.map(s => s.toUpperCase()).join(', ')}.` };
+             }
+             return { message: ctx.defaultError };
+        }
+    }),
+    [AppConfigKeys.HTTP_PORT]: z.coerce
         .number({ invalid_type_error: "HTTP Port must be a number" })
         .int("HTTP Port must be an integer")
         .min(1, "HTTP Port must be at least 1")
         .max(65535, "HTTP Port cannot exceed 65535"),
-    [AppConfigKeys.HTTPS_PORT]: z.coerce // Use coerce for number inputs
+    [AppConfigKeys.HTTPS_PORT]: z.coerce
         .number({ invalid_type_error: "HTTPS Port must be a number" })
         .int("HTTPS Port must be an integer")
         .min(1, "HTTPS Port must be at least 1")
         .max(65535, "HTTPS Port cannot exceed 65535"),
-    // Paths are optional strings, allow empty string to clear (map to null on submit)
     [AppConfigKeys.HTTPS_KEY_PATH]: z.string().max(1024, "Path too long").optional().nullable(),
     [AppConfigKeys.HTTPS_CERT_PATH]: z.string().max(1024, "Path too long").optional().nullable(),
     [AppConfigKeys.HTTPS_CA_PATH]: z.string().max(1024, "Path too long").optional().nullable(),
 }).refine(data => !(data[AppConfigKeys.HTTPS_KEY_PATH] && !data[AppConfigKeys.HTTPS_CERT_PATH]), {
-    // Add cross-field validation: If key is set, cert must also be set
     message: "Certificate path is required if key path is provided.",
     path: [AppConfigKeys.HTTPS_CERT_PATH],
 }).refine(data => !(!data[AppConfigKeys.HTTPS_KEY_PATH] && data[AppConfigKeys.HTTPS_CERT_PATH]), {
-    // If cert is set, key must also be set
     message: "Key path is required if certificate path is provided.",
     path: [AppConfigKeys.HTTPS_KEY_PATH],
 });
 export type SettingsFormData = z.infer<typeof settingsSchema>;
-
-// Removed SSL schema
-// export const sslSchema = z.object({ ... });
-// export type SslFormData = z.infer<typeof sslSchema>;
 
 // --- User Tag Assignment ---
 export const assignTagsSchema = z.object({

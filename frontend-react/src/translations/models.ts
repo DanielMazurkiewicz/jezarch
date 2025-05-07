@@ -11,7 +11,6 @@ import type { SignatureTranslationKey } from './models/signatures';
 import type { NotesTranslationKey } from './models/notes';
 import type { ArchiveTranslationKey } from './models/archive';
 import type { TagsTranslationKey } from './models/tags';
-// Add other module key types here as they are created
 
 // All possible translation keys will be a union type
 export type AppTranslationKey =
@@ -21,7 +20,7 @@ export type AppTranslationKey =
   | SignatureTranslationKey
   | NotesTranslationKey
   | ArchiveTranslationKey
-  | TagsTranslationKey // Add tags keys to the union
+  | TagsTranslationKey
   ;
 
 // Defines the structure for a single translation dictionary for a language.
@@ -33,5 +32,5 @@ export type TranslationSet<Key extends string = AppTranslationKey> = Record<Key,
 // to their respective TranslationSet.
 // Make Keys generic and default to AppTranslationKey
 export type AllTranslations<Keys extends string = AppTranslationKey> = {
-  [lang in SupportedLanguage]?: TranslationSet<Keys>;
+  [lang in SupportedLanguage]: TranslationSet<Keys>; // Ensure all languages have a defined set
 };
