@@ -7,11 +7,14 @@ import api from '@/lib/api';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogTrigger, DialogClose } from "@/components/ui/dialog";
+// --- FIX: Added DialogTrigger import ---
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose, DialogTrigger } from "@/components/ui/dialog";
+// --------------------------------------
 import ErrorDisplay from '@/components/shared/ErrorDisplay';
 import LoadingSpinner from '@/components/shared/LoadingSpinner';
 import { toast } from "sonner";
 import { cn } from '@/lib/utils';
+import { t } from '@/translations/utils'; // Import translation utility
 
 interface UserCreateDialogProps {
     children: React.ReactNode; // To wrap the trigger button
@@ -26,7 +29,7 @@ const UserCreateDialog: React.FC<UserCreateDialogProps> = ({
     onOpenChange,
     onUserCreated
 }) => {
-    const { token } = useAuth();
+    const { token, preferredLanguage } = useAuth(); // Get preferredLanguage
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
@@ -42,13 +45,15 @@ const UserCreateDialog: React.FC<UserCreateDialogProps> = ({
 
         try {
             const newUser = await api.register(apiData); // Use existing register endpoint
-            toast.success(`User "${newUser.login}" created successfully. You can now assign a role.`);
+            // Use translated success message
+            toast.success(t('userCreatedSuccessAdmin', preferredLanguage, { login: newUser.login }));
             onUserCreated(); // Notify parent to refresh list
             onOpenChange(false); // Close dialog
         } catch (err: any) {
             const errorMsg = err.message || 'Failed to create user.';
             setError(errorMsg);
-            toast.error(`Error: ${errorMsg}`);
+            // Use translated error message
+            toast.error(t('errorMessageTemplate', preferredLanguage, { message: errorMsg }));
         } finally {
             setIsLoading(false);
         }
@@ -69,18 +74,20 @@ const UserCreateDialog: React.FC<UserCreateDialogProps> = ({
             </DialogTrigger>
             <DialogContent className="sm:max-w-[425px]">
                 <DialogHeader>
-                    <DialogTitle>Create New User</DialogTitle>
-                    <DialogDescription>Enter login details for the new user. Role can be assigned later.</DialogDescription>
+                    {/* Use translated title and description */}
+                    <DialogTitle>{t('createNewUserDialogTitle', preferredLanguage)}</DialogTitle>
+                    <DialogDescription>{t('createNewUserDialogDescription', preferredLanguage)}</DialogDescription>
                 </DialogHeader>
 
                 <form onSubmit={handleSubmit(onSubmit)} className="grid gap-4 py-4">
                     {error && <ErrorDisplay message={error} />}
 
                     <div className="grid gap-1.5">
-                        <Label htmlFor="create-login">Login</Label>
+                        {/* Use translated label and placeholder */}
+                        <Label htmlFor="create-login">{t('loginLabel', preferredLanguage)}</Label>
                         <Input
                             id="create-login"
-                            placeholder="Username"
+                            placeholder={t('loginPlaceholder', preferredLanguage)}
                             {...register("login")}
                             aria-invalid={errors.login ? "true" : "false"}
                             className={cn(errors.login && "border-destructive")}
@@ -89,25 +96,28 @@ const UserCreateDialog: React.FC<UserCreateDialogProps> = ({
                     </div>
 
                     <div className="grid gap-1.5">
-                        <Label htmlFor="create-password">Password</Label>
+                        {/* Use translated label and placeholder */}
+                        <Label htmlFor="create-password">{t('passwordLabel', preferredLanguage)}</Label>
                         <Input
                             id="create-password"
                             type="password"
-                            placeholder="Initial password"
+                            placeholder={t('passwordPlaceholder', preferredLanguage)}
                             {...register("password")}
                             aria-invalid={errors.password ? "true" : "false"}
                             className={cn(errors.password && "border-destructive")}
                         />
                         {errors.password && <p className="text-xs text-destructive">{errors.password.message}</p>}
+                        {/* TODO: Translate password requirements hint */}
                         <p className='text-xs text-muted-foreground'>Min 8 chars, 1 uppercase, 1 lowercase, 1 number.</p>
                     </div>
 
                     <div className="grid gap-1.5">
-                        <Label htmlFor="create-confirmPassword">Confirm Password</Label>
+                         {/* Use translated label and placeholder */}
+                        <Label htmlFor="create-confirmPassword">{t('confirmPasswordLabel', preferredLanguage)}</Label>
                         <Input
                             id="create-confirmPassword"
                             type="password"
-                            placeholder="Re-enter password"
+                            placeholder={t('confirmPasswordPlaceholder', preferredLanguage)}
                             {...register("confirmPassword")}
                             aria-invalid={errors.confirmPassword ? "true" : "false"}
                             className={cn(errors.confirmPassword && "border-destructive")}
@@ -117,10 +127,12 @@ const UserCreateDialog: React.FC<UserCreateDialogProps> = ({
 
                     <DialogFooter className='mt-2'>
                         <DialogClose asChild>
-                            <Button type="button" variant="outline" disabled={isLoading}>Cancel</Button>
+                            {/* Use translated button text */}
+                            <Button type="button" variant="outline" disabled={isLoading}>{t('cancelButton', preferredLanguage)}</Button>
                         </DialogClose>
                         <Button type="submit" disabled={isLoading}>
-                            {isLoading ? <LoadingSpinner size="sm" className="mr-2" /> : 'Create User'}
+                            {/* Use translated button text */}
+                            {isLoading ? <LoadingSpinner size="sm" className="mr-2" /> : t('createUserButtonAdmin', preferredLanguage)}
                         </Button>
                     </DialogFooter>
                 </form>

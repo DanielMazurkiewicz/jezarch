@@ -16,17 +16,20 @@ import ProtectedRoute from '@/components/auth/ProtectedRoute';
 import LoadingSpinner from '@/components/shared/LoadingSpinner';
 // UserRole includes 'employee', 'user'
 import type { UserRole } from '../../backend/src/functionalities/user/models';
+import { t } from '@/translations/utils'; // Import translation utility
 
 // Simple Dashboard component
 const DashboardPage = () => {
-    const { user } = useAuth();
+    const { user, preferredLanguage } = useAuth(); // Get preferredLanguage
     return (
         <div className="p-4 md:p-6 space-y-4">
-            <h1 className="text-2xl font-semibold">Welcome, {user?.login}!</h1>
+            {/* Use translated welcome message */}
+            <h1 className="text-2xl font-semibold">{t('welcomeMessage', preferredLanguage, { userLogin: user?.login || 'User' })}</h1>
             <p className="text-muted-foreground">
+                 {/* Use translated prompts */}
                  {user?.role === 'user'
-                    ? "Use the sidebar to search the archive."
-                    : "Select a section from the sidebar to get started."}
+                    ? t('userRestrictedSearchPrompt', preferredLanguage)
+                    : t('selectSectionPrompt', preferredLanguage)}
             </p>
              {/* Optionally add role-specific dashboard info here */}
         </div>
@@ -36,7 +39,7 @@ const DashboardPage = () => {
 
 // Main App Content manages routing logic
 function AppContent() {
-    const { isAuthenticated, isLoading } = useAuth();
+    const { isAuthenticated, isLoading, preferredLanguage } = useAuth(); // Get preferredLanguage
     const location = useLocation();
     const navigate = useNavigate();
 

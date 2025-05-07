@@ -17,6 +17,7 @@ import type { SearchRequest, SearchResponse, SearchQueryElement } from '../../..
 import { toast } from "sonner";
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge'; // Import Badge
+import { t } from '@/translations/utils'; // Import translation utility
 
 const ELEMENTS_PAGE_SIZE = 15;
 
@@ -25,8 +26,9 @@ const ElementsPage: React.FC = () => {
     const { componentId: componentIdStr } = useParams<{ componentId: string }>();
     const componentId = parseInt(componentIdStr || '', 10);
     const navigate = useNavigate();
-    const { token, user } = useAuth();
+    const { token, user, preferredLanguage } = useAuth(); // Get preferredLanguage
     const isAdmin = user?.role === 'admin';
+    const canModify = isAdmin || user?.role === 'employee'; // Define modification permission
 
     // --- Component State (for the parent component) ---
     const [parentComponent, setParentComponent] = useState<SignatureComponent | null>(null);
@@ -49,7 +51,7 @@ const ElementsPage: React.FC = () => {
         const fetchParent = async () => {
             if (!token || isNaN(componentId)) { // Added NaN check
                 setIsParentLoading(false);
-                setParentError("Invalid component ID.");
+                setParentError("Invalid component ID."); // TODO: Translate
                 return;
             }
             setIsParentLoading(true);
@@ -60,7 +62,7 @@ const ElementsPage: React.FC = () => {
             } catch (err: any) {
                 const msg = err.message || `Failed to fetch component (ID: ${componentId})`;
                 setParentError(msg);
-                toast.error(msg);
+                toast.error(t('errorMessageTemplate', preferredLanguage, { message: msg })); // Use translated error
                 console.error("Fetch Parent Component Error:", err);
                 setParentComponent(null);
             } finally {
@@ -68,13 +70,13 @@ const ElementsPage: React.FC = () => {
             }
         };
         fetchParent();
-    }, [token, componentId]);
+    }, [token, componentId, preferredLanguage]); // Add preferredLanguage
 
     // Fetch Elements Callback
     const fetchElements = useCallback(async (page = 1, query: SearchRequest['query'] = []) => {
         if (!token || isNaN(componentId)) { // Added NaN check
             setIsElementsLoading(false);
-            setElementsError("Component ID or authentication token missing or invalid.");
+            setElementsError("Component ID or authentication token missing or invalid."); // TODO: Translate
             return;
         }
         setIsElementsLoading(true);
@@ -90,10 +92,13 @@ const ElementsPage: React.FC = () => {
             setCurrentElementPage(response.page);
         } catch (err: any) {
              const msg = err.message || 'Failed to fetch elements';
-             setElementsError(msg); toast.error(msg); console.error("Fetch Elements Error:", err);
+             setElementsError(msg);
+             // Use translated error template
+             toast.error(t('errorMessageTemplate', preferredLanguage, { message: msg }));
+             console.error("Fetch Elements Error:", err);
              setElements([]); setTotalElements(0); setTotalElementPages(1);
         } finally { setIsElementsLoading(false); }
-    }, [token, componentId]); // Depends on token and componentId
+    }, [token, componentId, preferredLanguage]); // Add preferredLanguage dependency
 
     // Fetch Elements Effect
     useEffect(() => {
@@ -108,26 +113,31 @@ const ElementsPage: React.FC = () => {
 
     // --- Element CRUD & Other Callbacks ---
     const handleEditElement = useCallback((element: SignatureElement) => {
+        if (!canModify) { toast.error("Insufficient permissions."); return; } // TODO: Translate
         setEditingElement(element);
         setIsElementFormOpen(true);
-    }, []);
+    }, [canModify]);
 
     const handleCreateElement = useCallback(() => {
-        if (!parentComponent) { toast.warning("Parent component not loaded."); return; }
+        if (!canModify) { toast.error("Insufficient permissions."); return; } // TODO: Translate
+        if (!parentComponent) { toast.warning("Parent component not loaded."); return; } // TODO: Translate
         setEditingElement(null);
         setIsElementFormOpen(true);
-    }, [parentComponent]);
+    }, [canModify, parentComponent]);
 
     const handleDeleteElement = useCallback(async (elementId: number) => {
+        if (!canModify) { toast.error("Insufficient permissions."); return; } // TODO: Translate
         if (!parentComponent || !token) {
-            toast.error("Parent component or authentication token missing."); return;
+            toast.error("Parent component or authentication token missing."); return; // TODO: Translate
         }
-        if (!window.confirm("Are you sure you want to delete this element? This may break references.")) return;
+        // Use translated confirmation
+        if (!window.confirm(t('confirmDeleteElementMessage', preferredLanguage))) return;
 
         setIsElementsLoading(true); setElementsError(null);
         try {
             await api.deleteSignatureElement(elementId, token);
-            toast.success("Element deleted successfully.");
+            // Use translated success message
+            toast.success(t('elementDeletedSuccess', preferredLanguage));
             const newTotalElements = totalElements - 1;
             const newTotalPages = Math.max(1, Math.ceil(newTotalElements / ELEMENTS_PAGE_SIZE));
             const newPage = (currentElementPage > newTotalPages) ? newTotalPages : currentElementPage;
@@ -144,18 +154,21 @@ const ElementsPage: React.FC = () => {
             }
         } catch(e: any){
             const msg = e.message || "Failed to delete element";
-            setElementsError(msg); toast.error(msg);
+            setElementsError(msg);
+            // Use translated error template
+            toast.error(t('errorMessageTemplate', preferredLanguage, { message: t('elementDeleteFailedError', preferredLanguage) + `: ${msg}` }));
         } finally {
             setIsElementsLoading(false);
         }
-    }, [token, parentComponent, totalElements, currentElementPage, elementSearchQuery, fetchElements]);
+    }, [token, parentComponent, totalElements, currentElementPage, elementSearchQuery, fetchElements, canModify, preferredLanguage]); // Add canModify, preferredLanguage
 
     const handleElementSaveSuccess = useCallback(async (savedElement: SignatureElement | null) => { // Added parameter
         setIsElementFormOpen(false);
         setEditingElement(null);
         // Show success only if an element was actually created/updated
         if (savedElement) {
-             toast.success("Element saved successfully.");
+             // Use translated success message
+             toast.success(editingElement ? t('elementUpdatedSuccess', preferredLanguage) : t('elementCreatedSuccess', preferredLanguage, { name: savedElement.name }));
         }
         const currentParentId = parentComponent?.signatureComponentId; // Store ID before potential async operations
 
@@ -179,7 +192,7 @@ const ElementsPage: React.FC = () => {
         } else {
             console.warn("Cannot refresh elements or parent: Parent component ID is missing or invalid.");
         }
-    }, [parentComponent?.signatureComponentId, currentElementPage, elementSearchQuery, fetchElements, token]); // Add token dependency
+    }, [parentComponent?.signatureComponentId, currentElementPage, elementSearchQuery, fetchElements, token, editingElement, preferredLanguage]); // Add editingElement, preferredLanguage
 
 
     // Element Search & Pagination Handlers
@@ -207,16 +220,19 @@ const ElementsPage: React.FC = () => {
         <div className="space-y-6">
             {/* Page Header */}
             <div className="flex items-center gap-4">
-                <Button variant="outline" size="icon" onClick={() => navigate('/signatures')} title="Back to Components">
+                 {/* Use translated title */}
+                <Button variant="outline" size="icon" onClick={() => navigate('/signatures')} title={t('backToComponentsButton', preferredLanguage)}>
                     <ArrowLeft className="h-4 w-4" />
                 </Button>
                 <div>
+                     {/* Use translated title */}
                     <h1 className="text-2xl font-bold">
-                         Elements for: <span className='text-primary'>{parentComponent.name}</span>
+                         {t('elementsForComponentTitle', preferredLanguage, { componentName: parentComponent.name })}
                     </h1>
-                    <p className='text-muted-foreground'>Manage elements within the selected component.</p>
-                    <Badge variant="secondary" className='mt-1'>Index Type: {parentComponent.index_type}</Badge>
-                    <Badge variant="outline" className='mt-1 ml-2'>Elements: {parentComponent.index_count ?? 'N/A'}</Badge>
+                    <p className='text-muted-foreground'>{t('elementsDescription', preferredLanguage)}</p>
+                    {/* Use translated badges */}
+                    <Badge variant="secondary" className='mt-1'>{t('componentBadgeIndexType', preferredLanguage, { type: parentComponent.index_type })}</Badge>
+                    <Badge variant="outline" className='mt-1 ml-2'>{t('componentBadgeElementsCount', preferredLanguage, { count: parentComponent.index_count ?? 'N/A' })}</Badge>
                  </div>
             </div>
 
@@ -225,17 +241,20 @@ const ElementsPage: React.FC = () => {
                  <CardHeader>
                       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                           <div>
-                              <CardTitle>Element List</CardTitle>
-                              <CardDescription>Elements defined within the "{parentComponent.name}" component.</CardDescription>
+                               {/* Use translated title and description */}
+                              <CardTitle>{t('elementListElementsHeader', preferredLanguage)}</CardTitle>
+                              <CardDescription>{t('elementsDescription', preferredLanguage)}</CardDescription>
                            </div>
                          <Dialog open={isElementFormOpen} onOpenChange={setIsElementFormOpen}>
                             <DialogTrigger asChild>
-                                <Button onClick={handleCreateElement} size="sm" className='shrink-0'>
-                                    <PlusCircle className="mr-2 h-4 w-4" /> New Element
+                                 {/* Use translated button text */}
+                                <Button onClick={handleCreateElement} size="sm" className='shrink-0' disabled={!canModify}>
+                                    <PlusCircle className="mr-2 h-4 w-4" /> {t('newElementButton', preferredLanguage)}
                                 </Button>
                             </DialogTrigger>
                             <DialogContent className="sm:max-w-[600px]">
-                                <DialogHeader><DialogTitle>{editingElement ? 'Edit Element' : 'Create New Element'}</DialogTitle></DialogHeader>
+                                 {/* Use translated dialog title */}
+                                <DialogHeader><DialogTitle>{editingElement ? t('editElementDialogTitle', preferredLanguage) : t('createElementDialogTitle', preferredLanguage)}</DialogTitle></DialogHeader>
                                 {/* Ensure element form only renders when dialog is open and parent is loaded */}
                                 {isElementFormOpen && parentComponent && (
                                      <ElementForm
@@ -252,11 +271,11 @@ const ElementsPage: React.FC = () => {
                     {elementsError && <ErrorDisplay message={elementsError} />}
                     {/* Search Bar for Elements */}
                      <SearchBar
-                        fields={[
-                            { value: 'name', label: 'Name', type: 'text' as const },
-                            { value: 'description', label: 'Description', type: 'text' as const},
-                            { value: 'index', label: 'Index', type: 'text' as const},
-                            { value: 'hasParents', label: 'Has Parents', type: 'boolean' as const },
+                        fields={[ // Use translated labels
+                            { value: 'name', label: t('elementNameLabel', preferredLanguage), type: 'text' as const },
+                            { value: 'description', label: t('elementDescriptionLabel', preferredLanguage), type: 'text' as const},
+                            { value: 'index', label: t('elementIndexLabel', preferredLanguage).split(' (')[0], type: 'text' as const}, // Only "Index" part
+                            { value: 'hasParents', label: t('elementHasParentsLabel', preferredLanguage), type: 'boolean' as const }, // TODO: Add elementHasParentsLabel
                          ]}
                         onSearch={handleElementSearch}
                         isLoading={isElementsLoading}
@@ -279,8 +298,9 @@ const ElementsPage: React.FC = () => {
                                      />
                                 </div>
                              )}
-                            {elements.length === 0 && elementSearchQuery.length === 0 && ( <p className="text-center text-muted-foreground py-6">No elements found for this component. Click "New Element".</p> )}
-                            {elements.length === 0 && elementSearchQuery.length > 0 && ( <p className="text-center text-muted-foreground py-6">No elements found matching search criteria.</p> )}
+                              {/* Use translated empty states */}
+                            {elements.length === 0 && elementSearchQuery.length === 0 && ( <p className="text-center text-muted-foreground py-6">{t('noElementsFoundInComponent', preferredLanguage)} {canModify ? t('clickCreateElementHint', preferredLanguage) : ''}</p> )}
+                            {elements.length === 0 && elementSearchQuery.length > 0 && ( <p className="text-center text-muted-foreground py-6">{t('noResultsFound', preferredLanguage)}</p> )}
                         </>
                     )}
                  </CardContent>

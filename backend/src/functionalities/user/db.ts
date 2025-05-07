@@ -1,6 +1,7 @@
 import { db } from '../../initialization/db';
 import { Log } from '../log/db';
-import { User, UserRole, SupportedLanguage, supportedLanguages } from './models'; // Import UserRole, SupportedLanguage
+// Correctly import the EXPORTED defaultLanguage along with other types
+import { User, UserRole, SupportedLanguage, supportedLanguages, defaultLanguage } from './models';
 import * as bcrypt from 'bcryptjs';
 import { Tag } from '../tag/models'; // Import Tag model for return type
 
@@ -8,19 +9,19 @@ import { Tag } from '../tag/models'; // Import Tag model for return type
 export async function initializeUserTable() {
     await db.exec(`
     CREATE TABLE IF NOT EXISTS users (
-      userId INTEGER PRIMARY KEY AUTOINCREMENT,
-      login TEXT UNIQUE NOT NULL,
-      password TEXT NOT NULL,
-      role TEXT DEFAULT NULL CHECK(role IS NULL OR role IN ('admin', 'employee', 'user')),
-      preferredLanguage TEXT DEFAULT 'en' NOT NULL CHECK(preferredLanguage IN ('${supportedLanguages.join("','")}')) -- Added column
+        userId INTEGER PRIMARY KEY AUTOINCREMENT,
+        login TEXT UNIQUE NOT NULL,
+        password TEXT NOT NULL,
+        role TEXT DEFAULT NULL CHECK(role IS NULL OR role IN ('admin', 'employee', 'user')),
+        preferredLanguage TEXT DEFAULT '${defaultLanguage}' NOT NULL CHECK(preferredLanguage IN ('${supportedLanguages.join("','")}')) -- Added column with default
     )
-  `);
+    `);
 
     const admin = await getUserByLogin('admin');
     if (!admin) {
-        // Create admin with default 'en' language
-        await createUser('admin', 'admin', 'admin', 'en');
-        await Log.info('Default admin user created', 'system', 'database', { action: 'initialization' });
+        // Create admin with default language from model
+        await createUser('admin', 'admin', 'admin', defaultLanguage);
+        await Log.info(`Default admin user created with lang ${defaultLanguage}`, 'system', 'database', { action: 'initialization' });
     }
 }
 
@@ -41,26 +42,26 @@ export async function createUser(
     login: string,
     password: string,
     role: UserRole | null = null,
-    preferredLanguage: SupportedLanguage = 'en' // Add preferredLanguage parameter
+    preferredLanguage: SupportedLanguage = defaultLanguage // Use imported default from model
 ) {
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(password, salt);
     const validRoles: (UserRole | null)[] = ['admin', 'employee', 'user', null];
     const finalRole = validRoles.includes(role) ? role : null;
-    const finalLanguage = supportedLanguages.includes(preferredLanguage) ? preferredLanguage : 'en';
+    const finalLanguage = supportedLanguages.includes(preferredLanguage) ? preferredLanguage : defaultLanguage; // Fallback to default
 
     const statement = db.prepare(`INSERT INTO users (login, password, role, preferredLanguage) VALUES (?, ?, ?, ?)`);
     try {
         statement.run(login, hashedPassword, finalRole, finalLanguage);
     } catch (error: any) {
         await Log.error('Failed to insert user', 'system', 'database', { login, role: finalRole, preferredLanguage: finalLanguage, error });
-         if (error.message?.includes('UNIQUE constraint failed')) throw new Error(`User with login '${login}' already exists.`);
-         else if (error.message?.includes('CHECK constraint failed')) {
-             if (!validRoles.includes(finalRole)) throw new Error(`Invalid role specified: ${finalRole}`);
-             if (!supportedLanguages.includes(finalLanguage)) throw new Error(`Invalid preferred language specified: ${finalLanguage}`);
-             throw error; // Other CHECK constraint
-         }
-         else throw error;
+            if (error.message?.includes('UNIQUE constraint failed')) throw new Error(`User with login '${login}' already exists.`);
+            else if (error.message?.includes('CHECK constraint failed')) {
+                if (!validRoles.includes(finalRole)) throw new Error(`Invalid role specified: ${finalRole}`);
+                if (!supportedLanguages.includes(finalLanguage)) throw new Error(`Invalid preferred language specified: ${finalLanguage}`);
+                throw error; // Other CHECK constraint
+            }
+            else throw error;
     }
 }
 
@@ -101,7 +102,7 @@ const mapDbRowToUserBase = (row: any): Omit<User, 'password' | 'assignedTags'> |
         userId: row.userId,
         login: row.login,
         role: row.role as UserRole | null,
-        preferredLanguage: row.preferredLanguage as SupportedLanguage, // Map preferredLanguage
+        preferredLanguage: row.preferredLanguage as SupportedLanguage || defaultLanguage, // Fallback to default if null/missing
     };
 }
 
@@ -113,12 +114,12 @@ const mapDbRowToUserWithPassword = (row: any): User | undefined => {
         login: row.login,
         password: row.password, // Include password
         role: row.role as UserRole | null,
-        preferredLanguage: row.preferredLanguage as SupportedLanguage, // Map preferredLanguage
+        preferredLanguage: row.preferredLanguage as SupportedLanguage || defaultLanguage, // Fallback to default
     };
 }
 
 export async function getUserByUserId(userId: number): Promise<User | undefined> {
-    const statement = db.prepare(`SELECT userId, login, role, preferredLanguage FROM users WHERE userId = ?`); // Added preferredLanguage
+    const statement = db.prepare(`SELECT userId, login, role, preferredLanguage FROM users WHERE userId = ?`);
     const row = statement.get(userId);
     const userBase = mapDbRowToUserBase(row);
     if (!userBase) return undefined;
@@ -133,7 +134,7 @@ export async function getUserByUserId(userId: number): Promise<User | undefined>
 
 export async function getUserByLogin(login: string): Promise<User | undefined> {
     // Fetches password hash, needed for verification
-    const statement = db.prepare(`SELECT * FROM users WHERE login = ?`); // Selects all columns including preferredLanguage
+    const statement = db.prepare(`SELECT * FROM users WHERE login = ?`);
     const row = statement.get(login);
     const userWithPassword = mapDbRowToUserWithPassword(row);
     if (!userWithPassword) return undefined;
@@ -148,7 +149,7 @@ export async function getUserByLogin(login: string): Promise<User | undefined> {
 
 // Fetches user details *without* the password hash, but *with* assigned tags if applicable
 export async function getUserByLoginSafe(login: string): Promise<Omit<User, 'password'> | undefined> {
-    const statement = db.prepare(`SELECT userId, login, role, preferredLanguage FROM users WHERE login = ?`); // Added preferredLanguage
+    const statement = db.prepare(`SELECT userId, login, role, preferredLanguage FROM users WHERE login = ?`);
     const row = statement.get(login);
     const userBase = mapDbRowToUserBase(row);
     if (!userBase) return undefined;
@@ -182,10 +183,22 @@ export async function updateUserPreferredLanguage(login: string, language: Suppo
     if (!supportedLanguages.includes(language)) {
         throw new Error(`Invalid preferred language specified: ${language}. Supported: ${supportedLanguages.join(', ')}`);
     }
+    // Ensure language update actually modifies the record
     const statement = db.prepare(`UPDATE users SET preferredLanguage = ? WHERE login = ?`);
     try {
+        console.log(`DB: Updating language for ${login} to ${language}`);
         const result = statement.run(language, login);
-        if (result.changes === 0) throw new Error(`User '${login}' not found for preferred language update.`);
+        console.log(`DB: Update result for ${login}: changes=${result.changes}`);
+        if (result.changes === 0) {
+                // Check if user exists but language was already set
+                const userExists = db.query<{ count: number }>(`SELECT COUNT(*) as count FROM users WHERE login = ?`).get(login);
+                if (userExists && userExists.count > 0) {
+                    console.log(`DB: Language for ${login} was already ${language}. No changes made.`);
+                    // Don't throw error if user exists but language is the same
+                } else {
+                    throw new Error(`User '${login}' not found for preferred language update.`);
+                }
+        }
     } catch (error: any) {
         await Log.error('Failed to update user preferred language', 'system', 'database', { login, language, error });
         if (error.message?.includes('CHECK constraint failed')) throw new Error(`Invalid preferred language specified: ${language}`);
@@ -223,7 +236,7 @@ export async function adminSetUserPassword(login: string, newPassword: string) {
 
 // Updated getAllUsers to fetch and include assigned tags for 'user' roles
 export async function getAllUsers(): Promise<Omit<User, 'password'>[]> {
-    const statement = db.prepare(`SELECT userId, login, role, preferredLanguage FROM users`); // Added preferredLanguage
+    const statement = db.prepare(`SELECT userId, login, role, preferredLanguage FROM users`);
     const rows = statement.all();
 
     const userBases = rows.map(mapDbRowToUserBase).filter((u): u is Omit<User, 'password' | 'assignedTags'> => u !== undefined);
@@ -247,8 +260,8 @@ export async function verifyPassword(login: string, password: string): Promise<b
     try {
         return await bcrypt.compare(password, row.password);
     } catch (compareError) {
-         await Log.error('Password comparison failed', login, 'auth', compareError);
-         return false;
+            await Log.error('Password comparison failed', login, 'auth', compareError);
+            return false;
     }
 }
 
@@ -258,6 +271,10 @@ export async function assignTagsToUser(userId: number, tagIds: number[]): Promis
     const transaction = db.transaction(() => {
         const userCheckStmt = db.prepare(`SELECT role FROM users WHERE userId = ?`);
         const user = userCheckStmt.get(userId) as { role: UserRole | null } | undefined;
+        if (!user) {
+                Log.warn(`Attempted to assign tags to non-existent user ${userId}`, 'system', 'database');
+                throw new Error(`User with ID ${userId} not found.`);
+        }
         if (user?.role !== 'user') {
             Log.warn(`Attempted to assign tags to non-'user' role`, 'system', 'database', { userId, role: user?.role });
             throw new Error(`Cannot assign tags to user ${userId} with role ${user?.role}.`); // Throw error now

@@ -7,19 +7,22 @@ import LogViewer from './LogViewer';
 import DatabaseManagement from './DatabaseManagement';
 import { useAuth } from '@/hooks/useAuth';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { t } from '@/translations/utils'; // Import translation utility
 
 const AdminPage: React.FC = () => {
-  const { user } = useAuth();
+  const { user, preferredLanguage } = useAuth(); // Get preferredLanguage from context
 
   if (user?.role !== 'admin') {
       return (
           <div className='p-4 md:p-6'>
               <Card className='border-destructive'>
                   <CardHeader>
-                      <CardTitle className='text-destructive'>Access Denied</CardTitle>
+                      {/* Use translated title */}
+                      <CardTitle className='text-destructive'>{t('accessDeniedTitle', preferredLanguage)}</CardTitle>
                   </CardHeader>
                   <CardContent>
-                      <p>You do not have the necessary permissions to view this page. Administrator privileges are required.</p>
+                      {/* Use translated message */}
+                      <p>{t('accessDeniedMessage', preferredLanguage)}</p>
                   </CardContent>
               </Card>
           </div>
@@ -30,20 +33,21 @@ const AdminPage: React.FC = () => {
     <div className="space-y-6">
       <div className='flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4'>
         <div>
-           <h1 className="text-2xl font-bold">Admin Panel</h1>
-           {/* Updated description */}
-           <p className='text-muted-foreground'>Manage application users, settings, database, and logs.</p>
+           {/* Use translated title and description */}
+           <h1 className="text-2xl font-bold">{t('adminPanelTitle', preferredLanguage)}</h1>
+           <p className='text-muted-foreground'>{t('adminPanelDescription', preferredLanguage)}</p>
         </div>
       </div>
 
       <Tabs defaultValue="users" className="w-full">
         <div className="overflow-x-auto pb-1 border-b">
             {/* Removed SSL Tab */}
+            {/* Use translated tab labels */}
             <TabsList className='inline-flex w-auto min-w-full'>
-                <TabsTrigger value="users">User Management</TabsTrigger>
-                <TabsTrigger value="settings">App Settings</TabsTrigger>
-                <TabsTrigger value="database">Database</TabsTrigger>
-                <TabsTrigger value="logs">System Logs</TabsTrigger>
+                <TabsTrigger value="users">{t('userManagementTab', preferredLanguage)}</TabsTrigger>
+                <TabsTrigger value="settings">{t('appSettingsTab', preferredLanguage)}</TabsTrigger>
+                <TabsTrigger value="database">{t('databaseTab', preferredLanguage)}</TabsTrigger>
+                <TabsTrigger value="logs">{t('logsTab', preferredLanguage)}</TabsTrigger>
             </TabsList>
         </div>
         <TabsContent value="users" className='mt-6'>

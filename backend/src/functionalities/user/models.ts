@@ -2,8 +2,8 @@ import { ZodSchema, z } from 'zod';
 import { Tag } from '../tag/models'; // Import Tag for assignedTags
 
 export interface UserCredentials {
-  login: string;
-  password: string;
+    login: string;
+    password: string;
 }
 
 // Base User Roles - Updated: 'regular_user' -> 'employee', added 'user'
@@ -12,6 +12,8 @@ export type UserRole = "admin" | "employee" | "user";
 // Supported languages - added Polish
 export const supportedLanguages = ['en', 'pl'] as const;
 export type SupportedLanguage = typeof supportedLanguages[number];
+// Define and EXPORT the default language here
+export const defaultLanguage: SupportedLanguage = 'en';
 
 // User interface allows role to be null
 // Added optional assignedTags field
@@ -27,16 +29,17 @@ export interface User {
 
 // Schema for registration allows optional role
 export const userSchema = z.object({
-  login: z.string().min(3, "Login must be at least 3 characters").max(50),
-  password: z.string().min(8, "Password must be at least 8 characters")
-      .regex(/[A-Z]/, "Must contain at least one uppercase letter")
-      .regex(/[a-z]/, "Must contain at least one lowercase letter")
-      .regex(/[0-9]/, "Must contain at least one number"),
-  // Role is optional on creation, backend handles default assignment
-  // Role field removed from frontend schema, assigned by backend/admin
-  // role: z.enum(['admin', 'employee', 'user']).optional(),
-  // --- NEW: Allow preferredLanguage on creation, defaults to 'en' if not provided ---
-  preferredLanguage: z.enum(supportedLanguages).optional().default('en'),
+    login: z.string().min(3, "Login must be at least 3 characters").max(50),
+    password: z.string().min(8, "Password must be at least 8 characters")
+        .regex(/[A-Z]/, "Must contain at least one uppercase letter")
+        .regex(/[a-z]/, "Must contain at least one lowercase letter")
+        .regex(/[0-9]/, "Must contain at least one number"),
+    // Role is optional on creation, backend handles default assignment
+    // Role field removed from frontend schema, assigned by backend/admin
+    // role: z.enum(['admin', 'employee', 'user']).optional(),
+    // --- NEW: Allow preferredLanguage on creation, defaults to 'en' if not provided ---
+    // Ensure the default in the schema matches the exported constant
+    preferredLanguage: z.enum(supportedLanguages).optional().default(defaultLanguage),
 });
 
 // Schema for role update allows specific roles or null

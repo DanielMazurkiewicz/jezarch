@@ -14,6 +14,7 @@ import api from '@/lib/api';
 // Correctly import both Create and Update input types
 import type { SignatureComponent, SignatureComponentIndexType, CreateSignatureComponentInput, UpdateSignatureComponentInput } from '../../../../backend/src/functionalities/signature/component/models';
 import { cn } from '@/lib/utils'; // Import cn
+import { t } from '@/translations/utils'; // Import translation utility
 
 interface ComponentFormProps {
   componentToEdit: SignatureComponent | null;
@@ -21,7 +22,7 @@ interface ComponentFormProps {
 }
 
 const ComponentForm: React.FC<ComponentFormProps> = ({ componentToEdit, onSave }) => {
-  const { token } = useAuth();
+  const { token, preferredLanguage } = useAuth(); // Get preferredLanguage
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -74,7 +75,10 @@ const ComponentForm: React.FC<ComponentFormProps> = ({ componentToEdit, onSave }
       }
       onSave();
     } catch (err: any) {
-      setError(err.message || 'Failed to save component');
+       // Use translated error message
+       const msg = err.message || t('componentSaveFailedError', preferredLanguage);
+       setError(msg);
+       toast.error(t('errorMessageTemplate', preferredLanguage, { message: msg })); // Also show in toast
       console.error("Save Component Error:", err);
     } finally {
       setIsLoading(false);
@@ -87,38 +91,43 @@ const ComponentForm: React.FC<ComponentFormProps> = ({ componentToEdit, onSave }
        {isLoading && <div className='absolute inset-0 bg-background/50 flex items-center justify-center z-10 rounded-md'><LoadingSpinner/></div>}
       {/* Form fields with smaller gaps */}
        <div className="grid gap-1.5">
-          <Label htmlFor="comp-name">Component Name *</Label>
+           {/* Use translated label */}
+          <Label htmlFor="comp-name">{t('componentNameLabel', preferredLanguage)} {t('requiredFieldIndicator', preferredLanguage)}</Label>
           <Input id="comp-name" {...register('name')} aria-invalid={!!errors.name} className={cn(errors.name && "border-destructive")} />
           {errors.name && <p className="text-xs text-destructive">{errors.name.message}</p>}
        </div>
        <div className="grid gap-1.5">
-          <Label htmlFor="comp-description">Description (Optional)</Label>
+           {/* Use translated label */}
+          <Label htmlFor="comp-description">{t('componentDescriptionLabel', preferredLanguage)} {t('optionalLabel', preferredLanguage)}</Label>
           <Textarea id="comp-description" {...register('description')} rows={3} aria-invalid={!!errors.description} className={cn(errors.description && "border-destructive")}/>
           {errors.description && <p className="text-xs text-destructive">{errors.description.message}</p>}
        </div>
        <div className="grid gap-1.5">
-          <Label htmlFor="comp-index-type">Index Formatting *</Label>
+           {/* Use translated label */}
+          <Label htmlFor="comp-index-type">{t('componentIndexTypeLabel', preferredLanguage)} {t('requiredFieldIndicator', preferredLanguage)}</Label>
           <Controller
              control={control}
              name="index_type"
              render={({ field }) => (
                 <Select onValueChange={field.onChange} value={field.value}>
                    <SelectTrigger id='comp-index-type' aria-invalid={!!errors.index_type} className={cn(errors.index_type && "border-destructive")}>
-                     <SelectValue placeholder="Select index type" />
+                     <SelectValue placeholder={t('selectPlaceholder', preferredLanguage)} />
                    </SelectTrigger>
                    <SelectContent>
-                     <SelectItem value="dec">Decimal (1, 2, 3...)</SelectItem>
-                     <SelectItem value="roman">Roman (I, II, III...)</SelectItem>
-                     <SelectItem value="small_char">Lowercase Letters (a, b, c...)</SelectItem>
-                     <SelectItem value="capital_char">Uppercase Letters (A, B, C...)</SelectItem>
+                      {/* Use translated options */}
+                     <SelectItem value="dec">{t('indexTypeDecimal', preferredLanguage)}</SelectItem>
+                     <SelectItem value="roman">{t('indexTypeRoman', preferredLanguage)}</SelectItem>
+                     <SelectItem value="small_char">{t('indexTypeLowerLetter', preferredLanguage)}</SelectItem>
+                     <SelectItem value="capital_char">{t('indexTypeUpperLetter', preferredLanguage)}</SelectItem>
                    </SelectContent>
                 </Select>
              )}
           />
           {errors.index_type && <p className="text-xs text-destructive">{errors.index_type.message}</p>}
        </div>
+        {/* Use translated button text */}
        <Button type="submit" disabled={isLoading} className="mt-2 justify-self-start"> {/* Align left */}
-         {isLoading ? <LoadingSpinner size="sm" className='mr-2' /> : (componentToEdit ? 'Update Component' : 'Create Component')}
+         {isLoading ? <LoadingSpinner size="sm" className='mr-2' /> : (componentToEdit ? t('editButton', preferredLanguage) : t('createButton', preferredLanguage))} {t('componentsTitle', preferredLanguage).replace('s', '')} {/* Example of adapting plural */}
        </Button>
     </form>
   );

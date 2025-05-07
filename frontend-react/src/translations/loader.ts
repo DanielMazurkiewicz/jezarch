@@ -1,21 +1,44 @@
 // Responsible for loading and providing access to translation sets.
-import type { AllTranslations, SupportedLanguage, TranslationSet } from './models';
+import type { AllTranslations, SupportedLanguage, TranslationSet, AppTranslationKey } from './models';
 import { authTranslationsEN } from './data/en/auth';
 import { authTranslationsPL } from './data/pl/auth';
-import { AuthTranslationKey } from './models/auth';
+import { commonTranslationsEN } from './data/en/common';
+import { commonTranslationsPL } from './data/pl/common';
+import { adminTranslationsEN } from './data/en/admin';
+import { adminTranslationsPL } from './data/pl/admin';
+import { signatureTranslationsEN } from './data/en/signatures';
+import { signatureTranslationsPL } from './data/pl/signatures';
+import { notesTranslationsEN } from './data/en/notes';
+import { notesTranslationsPL } from './data/pl/notes';
+import { archiveTranslationsEN } from './data/en/archive';
+import { archiveTranslationsPL } from './data/pl/archive';
+// --- NEW: Import tags translations ---
+import { tagsTranslationsEN } from './data/en/tags';
+import { tagsTranslationsPL } from './data/pl/tags';
+// ------------------------------------
+// Import module-specific key types if needed for type safety (though AppTranslationKey covers all)
 
 // Combine all translations into a single structure
-// For now, we only have 'auth' translations. If you add more modules (e.g., 'common', 'notes'),
-// you would import and combine them here, perhaps namespacing them like:
-// en: { ...commonTranslationsEN, ...authTranslationsEN, ...notesTranslationsEN },
-const loadedTranslations: AllTranslations<
-  | AuthTranslationKey
-> = {
+const loadedTranslations: AllTranslations = {
   en: {
-    ...authTranslationsEN
+    ...commonTranslationsEN,
+    ...authTranslationsEN,
+    ...adminTranslationsEN,
+    ...signatureTranslationsEN,
+    ...notesTranslationsEN,
+    ...archiveTranslationsEN,
+    ...tagsTranslationsEN, // Add tags translations
+    // ... other EN modules
   },
   pl: {
-    ...authTranslationsPL
+    ...commonTranslationsPL,
+    ...authTranslationsPL,
+    ...adminTranslationsPL,
+    ...signatureTranslationsPL,
+    ...notesTranslationsPL,
+    ...archiveTranslationsPL,
+    ...tagsTranslationsPL, // Add tags translations
+    // ... other PL modules
   },
 };
 
@@ -25,7 +48,7 @@ const loadedTranslations: AllTranslations<
  * @param lang The desired language code.
  * @returns The TranslationSet for the language, or undefined if not found.
  */
-export const getTranslationsForLanguage = (lang: SupportedLanguage): TranslationSet | undefined => {
+export const getTranslationsForLanguage = (lang: SupportedLanguage): TranslationSet<AppTranslationKey> | undefined => {
   return loadedTranslations[lang];
 };
 
@@ -33,6 +56,6 @@ export const getTranslationsForLanguage = (lang: SupportedLanguage): Translation
  * Provides access to all loaded translations.
  * Primarily for use by the translation utility function.
  */
-export const getAllLoadedTranslations = (): AllTranslations => {
+export const getAllLoadedTranslations = (): AllTranslations<AppTranslationKey> => {
   return loadedTranslations;
 };

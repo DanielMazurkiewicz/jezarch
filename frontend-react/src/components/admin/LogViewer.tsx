@@ -16,13 +16,18 @@ import { Button } from '@/components/ui/button'; // Added Button
 import { Input } from '@/components/ui/input'; // Added Input
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog"; // Added AlertDialog
 import { toast } from "sonner"; // Added toast
-import { Trash2, ChevronsDownUp } from 'lucide-react'; // Added Trash2, ChevronsDownUp
+import { Trash2, Info } from 'lucide-react'; // Removed ChevronsDownUp, kept others
+// --- Import ScrollArea ---
+import { ScrollArea } from "@/components/ui/scroll-area";
+// -------------------------
+import { Dialog, DialogTrigger, DialogContent, DialogHeader, DialogTitle as DataDialogTitle, DialogFooter } from '@/components/ui/dialog'; // Added DialogFooter
+import { t } from '@/translations/utils'; // Import translation utility
 
 // Define the type alias for badge variants
 type BadgeVariant = VariantProps<typeof Badge>['variant'];
 
 const LogViewer: React.FC = () => {
-    const { token } = useAuth();
+    const { token, preferredLanguage } = useAuth(); // Get preferredLanguage
     const [logs, setLogs] = useState<LogEntry[]>([]);
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -41,9 +46,10 @@ const LogViewer: React.FC = () => {
     const [isPurgeConfirmOpen, setIsPurgeConfirmOpen] = useState(false);
     // ----------------------------
 
-    // --- NEW: State for Expanded Row ---
-    const [expandedRowId, setExpandedRowId] = useState<number | null>(null);
-    // ----------------------------------
+    // --- NEW: State for Data Dialog ---
+    const [viewingData, setViewingData] = useState<string | null>(null);
+    const [isDataDialogOpen, setIsDataDialogOpen] = useState(false);
+    // -------------------------------
 
     // Fetch/Search Logs function
     const fetchLogs = useCallback(async (page = currentPage, query = searchQuery) => {
@@ -61,7 +67,6 @@ const LogViewer: React.FC = () => {
             setTotalLogs(response.totalSize);
             setTotalPages(response.totalPages);
             setCurrentPage(response.page); // Update current page from response
-            setExpandedRowId(null); // Collapse rows on new search/page
         } catch (err: any) {
             setError(err.message || 'Failed to fetch logs');
             setLogs([]); // Clear logs on error
@@ -90,20 +95,20 @@ const LogViewer: React.FC = () => {
    // --- NEW: Purge Handler ---
    const handlePurge = async () => {
        if (!token || !purgeDays || purgeDays <= 0) {
-           toast.error("Please enter a valid number of days (greater than 0).");
+           toast.error(t('logPurgeInvalidDaysError', preferredLanguage));
            return;
        }
        setIsPurging(true);
        setPurgeError(null);
        try {
            const result = await api.purgeLogs(purgeDays, token);
-           toast.success(result.message || `Successfully purged ${result.deletedCount} logs.`);
+           toast.success(t('logPurgeSuccessMessage', preferredLanguage, { count: result.deletedCount, days: purgeDays }));
            await fetchLogs(1, searchQuery); // Refresh logs on page 1 after purge
            if (currentPage !== 1) setCurrentPage(1); // Go to page 1
        } catch (err: any) {
            const msg = err.message || "Failed to purge logs.";
            setPurgeError(msg);
-           toast.error(msg);
+           toast.error(t('errorMessageTemplate', preferredLanguage, { message: msg }));
        } finally {
            setIsPurging(false);
            setIsPurgeConfirmOpen(false); // Close confirmation dialog
@@ -111,15 +116,18 @@ const LogViewer: React.FC = () => {
    };
    // -------------------------
 
-   // --- NEW: Expand Row Handler ---
-   const toggleExpandRow = (logId: number) => {
-       setExpandedRowId(currentId => (currentId === logId ? null : logId));
+   // --- NEW: Show Data Handler ---
+   const handleShowData = (dataString: string | null | undefined) => {
+       if (dataString) {
+            setViewingData(formatLogData(dataString)); // Format for display
+            setIsDataDialogOpen(true);
+       }
    };
-   // ----------------------------
+   // ---------------------------
 
    // Function to safely parse and format log data (JSON or string)
    const formatLogData = (dataString: string | null | undefined): string => {
-       if (!dataString) return 'No additional data.';
+       if (!dataString) return t('noAdditionalData', preferredLanguage); // Use translation
        try {
            const parsed = JSON.parse(dataString);
            // Pretty-print JSON
@@ -140,22 +148,32 @@ const LogViewer: React.FC = () => {
         }
    };
 
+   // Get translated log level text
+   const getLogLevelText = (level: string): string => {
+        switch (level.toLowerCase()) {
+            case 'error': return t('logLevelError', preferredLanguage);
+            case 'warn': return t('logLevelWarn', preferredLanguage);
+            case 'info': return t('logLevelInfo', preferredLanguage);
+            default: return level;
+        }
+    }
+
     // Render the component within a Card - forced white background
     return (
         <Card className="bg-white dark:bg-white text-neutral-900 dark:text-neutral-900">
             <CardHeader>
-                 <CardTitle>System Logs</CardTitle>
-                 <CardDescription>View system events, errors, and warnings. Click a row to view details.</CardDescription>
+                 <CardTitle>{t('logViewerTitle', preferredLanguage)}</CardTitle>
+                 <CardDescription>{t('logViewerDescription', preferredLanguage)}</CardDescription>
             </CardHeader>
             <CardContent className='space-y-4'> {/* Add spacing inside content */}
                  {/* Log Search Bar */}
                  <SearchBar
-                     fields={[ // Define searchable fields
-                         { value: 'level', label: 'Level', type: 'select', options: [{value: 'info', label: 'Info'}, {value: 'warn', label: 'Warning'}, {value: 'error', label: 'Error'}]},
-                         { value: 'userId', label: 'User ID', type: 'text'},
-                         { value: 'category', label: 'Category', type: 'text'},
-                         { value: 'message', label: 'Message', type: 'text'},
-                         { value: 'createdOn', label: 'Date', type: 'date'},
+                     fields={[ // Define searchable fields with translated labels
+                         { value: 'level', label: t('logsLevelColumn', preferredLanguage), type: 'select', options: [{value: 'info', label: t('logLevelInfo', preferredLanguage)}, {value: 'warn', label: t('logLevelWarn', preferredLanguage)}, {value: 'error', label: t('logLevelError', preferredLanguage)}]},
+                         { value: 'userId', label: t('logsUserColumn', preferredLanguage), type: 'text'},
+                         { value: 'category', label: t('logsCategoryColumn', preferredLanguage), type: 'text'},
+                         { value: 'message', label: t('logsMessageColumn', preferredLanguage), type: 'text'},
+                         { value: 'createdOn', label: t('logsTimestampColumn', preferredLanguage), type: 'date'},
                      ]}
                      onSearch={handleSearch}
                      isLoading={isLoading || isPurging}
@@ -165,7 +183,7 @@ const LogViewer: React.FC = () => {
                   <div className="flex flex-wrap items-center justify-end gap-2 p-2 border rounded-lg bg-muted">
                      {purgeError && <ErrorDisplay message={purgeError} className="mr-auto"/>}
                      <div className="flex items-center gap-2 ml-auto">
-                         <span className="text-sm text-muted-foreground">Purge logs older than:</span>
+                         <span className="text-sm text-muted-foreground">{t('purgeLogsOlderThanLabel', preferredLanguage)}</span>
                          <Input
                              type="number"
                              value={purgeDays}
@@ -173,27 +191,28 @@ const LogViewer: React.FC = () => {
                              min="1"
                              className="w-20 h-8"
                              disabled={isPurging}
+                             aria-label={t('daysLabel', preferredLanguage)} // Add aria-label
                          />
-                         <span className="text-sm text-muted-foreground">days</span>
+                         <span className="text-sm text-muted-foreground">{t('daysLabel', preferredLanguage)}</span>
                           <AlertDialog open={isPurgeConfirmOpen} onOpenChange={setIsPurgeConfirmOpen}>
                              <AlertDialogTrigger asChild>
                                  <Button variant="destructive" size="sm" disabled={isPurging || purgeDays <= 0}>
                                      {isPurging ? <LoadingSpinner size='sm' className='mr-2'/> : <Trash2 className='mr-2 h-4 w-4'/>}
-                                     Purge Logs
+                                     {t('purgeButton', preferredLanguage)}
                                  </Button>
                              </AlertDialogTrigger>
                              <AlertDialogContent>
                                  <AlertDialogHeader>
-                                     <AlertDialogTitle>Confirm Log Purge</AlertDialogTitle>
+                                     <AlertDialogTitle>{t('confirmLogPurgeTitle', preferredLanguage)}</AlertDialogTitle>
                                      <AlertDialogDescription>
-                                         Are you sure you want to permanently delete all log entries older than {purgeDays} days? This action cannot be undone.
+                                        {t('confirmLogPurgeMessage', preferredLanguage, { days: purgeDays })}
                                      </AlertDialogDescription>
                                  </AlertDialogHeader>
                                  <AlertDialogFooter>
-                                     <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                      <AlertDialogCancel>{t('cancelButton', preferredLanguage)}</AlertDialogCancel>
                                      <AlertDialogAction onClick={handlePurge} disabled={isPurging}>
                                          {isPurging ? <LoadingSpinner size='sm' className='mr-2'/> : null}
-                                         Yes, Purge Logs
+                                         {t('yesButton', preferredLanguage)}, {t('purgeButton', preferredLanguage)}
                                      </AlertDialogAction>
                                  </AlertDialogFooter>
                              </AlertDialogContent>
@@ -214,49 +233,36 @@ const LogViewer: React.FC = () => {
                     <div className="border rounded-lg overflow-hidden">
                         <div className='max-h-[60vh] overflow-y-auto relative'> {/* Add relative positioning */}
                              <Table>
-                                 <TableHeader className='sticky top-0 bg-white z-10'>
+                                 <TableHeader className='sticky top-0 bg-white dark:bg-white z-10'> {/* Ensure header is white */}
                                     <TableRow>
-                                        <TableHead className='w-[180px]'>Timestamp</TableHead>
-                                        <TableHead className='w-[100px]'>Level</TableHead>
-                                        <TableHead className='w-[120px]'>User</TableHead>
-                                        <TableHead className='w-[120px]'>Category</TableHead>
-                                        <TableHead>Message</TableHead>
-                                        <TableHead className='w-[50px] text-center'>Data</TableHead> {/* Col for expand icon */}
+                                        <TableHead className='w-[180px]'>{t('logsTimestampColumn', preferredLanguage)}</TableHead>
+                                        <TableHead className='w-[100px]'>{t('logsLevelColumn', preferredLanguage)}</TableHead>
+                                        <TableHead className='w-[120px]'>{t('logsUserColumn', preferredLanguage)}</TableHead>
+                                        <TableHead className='w-[120px]'>{t('logsCategoryColumn', preferredLanguage)}</TableHead>
+                                        <TableHead>{t('logsMessageColumn', preferredLanguage)}</TableHead>
+                                        <TableHead className='w-[50px] text-center'>{t('logsDataColumn', preferredLanguage)}</TableHead> {/* Col for data icon */}
                                     </TableRow>
                                  </TableHeader>
                                  <TableBody>
                                     {logs.map((log) => (
                                         <React.Fragment key={log.id}>
-                                            <TableRow
-                                                onClick={() => toggleExpandRow(log.id!)}
-                                                className={cn('cursor-pointer hover:bg-muted/50', expandedRowId === log.id && 'bg-muted/50')}
-                                            >
+                                            <TableRow>
                                                 <TableCell className='text-xs'>{new Date(log.createdOn).toLocaleString()}</TableCell>
                                                 <TableCell>
-                                                    <Badge variant={getBadgeVariant(log.level)} className='capitalize'>{log.level}</Badge>
+                                                    <Badge variant={getBadgeVariant(log.level)} className='capitalize'>{getLogLevelText(log.level)}</Badge>
                                                 </TableCell>
-                                                <TableCell className='text-xs'>{log.userId || <i className='text-muted-foreground'>System</i>}</TableCell>
-                                                <TableCell className='text-xs'>{log.category || <i className='text-muted-foreground'>General</i>}</TableCell>
+                                                 <TableCell className='text-xs'>{log.userId || <i className='text-muted-foreground not-italic'>{t('logUserSystem', preferredLanguage)}</i>}</TableCell>
+                                                 <TableCell className='text-xs'>{log.category || <i className='text-muted-foreground not-italic'>{t('logCategoryGeneral', preferredLanguage)}</i>}</TableCell>
                                                 <TableCell className='text-sm'>{log.message}</TableCell>
-                                                {/* Expand/Collapse Icon Cell */}
+                                                {/* Data Icon Cell */}
                                                 <TableCell className='text-center'>
                                                     {log.data && (
-                                                         <ChevronsDownUp className={cn('h-4 w-4 text-muted-foreground transition-transform', expandedRowId === log.id && 'rotate-180')}/>
+                                                        <Button variant="ghost" size="icon" onClick={() => handleShowData(log.data)} className="h-6 w-6" title={t('viewButton', preferredLanguage) + ' ' + t('detailsLabel', preferredLanguage).toLowerCase()}>
+                                                            <Info className="h-4 w-4 text-muted-foreground" />
+                                                        </Button>
                                                     )}
                                                 </TableCell>
                                             </TableRow>
-                                            {/* --- NEW: Expanded Row for Data --- */}
-                                            {expandedRowId === log.id && log.data && (
-                                                <TableRow className="bg-muted/20 hover:bg-muted/30">
-                                                     {/* Cell spans all columns */}
-                                                     <TableCell colSpan={6} className="p-0">
-                                                         <pre className='p-3 text-xs bg-transparent rounded overflow-auto'>
-                                                             {formatLogData(log.data)}
-                                                         </pre>
-                                                     </TableCell>
-                                                </TableRow>
-                                            )}
-                                            {/* --------------------------------- */}
                                         </React.Fragment>
                                     ))}
                                  </TableBody>
@@ -267,7 +273,7 @@ const LogViewer: React.FC = () => {
 
                  {/* Empty State */}
                  {!isLoading && !error && logs.length === 0 && (
-                    <p className='text-muted-foreground text-center py-6'>No logs found matching criteria.</p>
+                    <p className='text-muted-foreground text-center py-6'>{t('noLogsFound', preferredLanguage)}</p>
                  )}
 
                  {/* Pagination */}
@@ -281,6 +287,24 @@ const LogViewer: React.FC = () => {
                      </div>
                  )}
             </CardContent>
+
+            {/* Data Dialog */}
+            <Dialog open={isDataDialogOpen} onOpenChange={setIsDataDialogOpen}>
+                <DialogContent className="sm:max-w-2xl">
+                    <DialogHeader>
+                        <DataDialogTitle>{t('logDataDialogTitle', preferredLanguage)}</DataDialogTitle>
+                    </DialogHeader>
+                    {/* Use ScrollArea here */}
+                    <ScrollArea className="max-h-[60vh] my-4 border rounded p-3 bg-muted">
+                        <pre className='text-xs overflow-auto'>
+                           {viewingData || t('noAdditionalData', preferredLanguage)}
+                        </pre>
+                    </ScrollArea>
+                    <DialogFooter>
+                         <Button variant="outline" onClick={() => setIsDataDialogOpen(false)}>{t('closeButton', preferredLanguage)}</Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
         </Card>
     );
 };

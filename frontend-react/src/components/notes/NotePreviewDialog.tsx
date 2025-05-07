@@ -4,6 +4,8 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import type { NoteWithDetails } from '../../../../backend/src/functionalities/note/models';
+import { t } from '@/translations/utils'; // Import translation utility
+import { useAuth } from '@/hooks/useAuth'; // Import useAuth to get language
 
 interface NotePreviewDialogProps {
     isOpen: boolean;
@@ -35,6 +37,7 @@ const NotePreviewDialog: React.FC<NotePreviewDialogProps> = ({
     onOpenChange,
     note: previewingNote, // Renamed for clarity
 }) => {
+    const { preferredLanguage } = useAuth(); // Get preferredLanguage
 
     if (!previewingNote) {
         return null;
@@ -45,8 +48,10 @@ const NotePreviewDialog: React.FC<NotePreviewDialogProps> = ({
             <DialogContent className="sm:max-w-2xl">
                 <DialogHeader>
                     <DialogTitle>{previewingNote.title}</DialogTitle>
+                     {/* TODO: Translate "By", "on" */}
                     <DialogDescription>
                         By {previewingNote.ownerLogin ?? 'Unknown'} on {formatDate(previewingNote.createdOn)}
+                         {/* TODO: Translate badge text */}
                         {previewingNote.shared ? <Badge variant="outline" className='ml-2'>Shared</Badge> : null}
                     </DialogDescription>
                     {/* Display Tags */}
@@ -62,11 +67,13 @@ const NotePreviewDialog: React.FC<NotePreviewDialogProps> = ({
                 <ScrollArea className="max-h-[60vh] my-4">
                     {/* Use pre-wrap to preserve whitespace and line breaks */}
                     <pre className="text-sm whitespace-pre-wrap font-sans p-1">
+                         {/* TODO: Translate placeholder */}
                        {previewingNote.content || <i className="text-muted-foreground">No content.</i>}
                     </pre>
                 </ScrollArea>
                 <DialogFooter>
-                    <Button variant="outline" onClick={() => onOpenChange(false)}>Close</Button>
+                     {/* Use translated button text */}
+                    <Button variant="outline" onClick={() => onOpenChange(false)}>{t('closeButton', preferredLanguage)}</Button>
                     {/* Optional: Add Edit button here if needed */}
                     {/* <Button onClick={() => { onOpenChange(false); onEdit(previewingNote); }}>Edit</Button> */}
                 </DialogFooter>

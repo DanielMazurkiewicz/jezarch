@@ -1,10 +1,13 @@
 import React, { createContext, useState, useEffect, ReactNode, useCallback } from 'react';
 import api from '@/lib/api';
 // Correct the import path assuming backend/src is sibling to frontend/src
-// UserRole now includes 'employee' and 'user', User now includes preferredLanguage
 import type { UserCredentials, UserRole, SupportedLanguage } from '../../../backend/src/functionalities/user/models';
-import { supportedLanguages as backendSupportedLanguages } from '../../../backend/src/functionalities/user/models'; // For validation
+import { supportedLanguages as backendSupportedLanguages } from '../../../backend/src/functionalities/user/models'; // Keep for validation
+// --- UPDATED IMPORT: Import defaultLanguage from frontend translations ---
+import { defaultLanguage as frontendDefaultLanguage } from '@/translations/models';
+// ----------------------------------------------------------------------
 import { toast } from "sonner"; // Import toast
+import { t } from '@/translations/utils'; // Import translation util
 
 interface UserState {
     userId: number;
@@ -19,19 +22,31 @@ interface AuthState {
   isAuthenticated: boolean;
   isLoading: boolean;
   error: string | null;
+  preferredLanguage: SupportedLanguage; // Add preferredLanguage to the main state
 }
 
-interface AuthContextProps extends AuthState {
-  login: (credentials: UserCredentials, preferredLanguage?: SupportedLanguage) => Promise<boolean>; // Added preferredLanguage to login
+interface AuthContextProps extends Omit<AuthState, 'preferredLanguage'> { // Exclude preferredLanguage here as it's within user or top-level
+  preferredLanguage: SupportedLanguage; // Explicitly define preferredLanguage here for easy access
+  login: (credentials: UserCredentials) => Promise<boolean>; // Removed preferredLanguage param from login call
   logout: () => Promise<void>;
-  register: (credentials: UserCredentials, preferredLanguage?: SupportedLanguage) => Promise<boolean>; // Added preferredLanguage to register
+  register: (credentials: UserCredentials, preferredLanguage?: SupportedLanguage) => Promise<boolean>; // Keep lang here
   clearError: () => void;
   updateContextUser: (updatedUser: Partial<UserState>) => void;
-  // --- NEW: Function to update only preferred language in context and localStorage ---
   setContextPreferredLanguage: (language: SupportedLanguage) => void;
 }
 
 const AuthContext = createContext<AuthContextProps | undefined>(undefined);
+
+// Function to get initial language preference
+const getInitialLanguagePreference = (): SupportedLanguage => {
+    const storedLang = localStorage.getItem('authPreferredLanguage') as SupportedLanguage | null;
+    if (storedLang && backendSupportedLanguages.includes(storedLang)) {
+        return storedLang;
+    }
+    // --- UPDATED: Use frontend's default language ---
+    return frontendDefaultLanguage;
+    // --------------------------------------------
+};
 
 const initialState: AuthState = {
   token: null,
@@ -39,6 +54,7 @@ const initialState: AuthState = {
   isAuthenticated: false,
   isLoading: true, // Start loading to check localStorage
   error: null,
+  preferredLanguage: getInitialLanguagePreference(), // Initialize with preference
 };
 
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
@@ -50,16 +66,15 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     const storedUserLogin = localStorage.getItem('authUserLogin');
     const storedUserRole = localStorage.getItem('authUserRole') as UserRole | null;
     const storedUserIdStr = localStorage.getItem('authUserId');
-    const storedPreferredLanguage = localStorage.getItem('authPreferredLanguage') as SupportedLanguage | null;
+    // Load initial language preference separately
+    const initialLang = getInitialLanguagePreference();
 
-    console.log("AuthContext: Initial load check. Token:", !!storedToken, "Login:", storedUserLogin, "Role:", storedUserRole, "UserID Str:", storedUserIdStr, "Lang:", storedPreferredLanguage);
+    console.log("AuthContext: Initial load check. Token:", !!storedToken, "Login:", storedUserLogin, "Role:", storedUserRole, "UserID Str:", storedUserIdStr, "Initial Lang:", initialLang);
 
     if (storedToken && storedUserLogin && storedUserIdStr) {
         const parsedUserId = parseInt(storedUserIdStr, 10);
-        // Ensure language defaults to 'en' if not found or invalid in storage
-        const language: SupportedLanguage = storedPreferredLanguage && backendSupportedLanguages.includes(storedPreferredLanguage) ? storedPreferredLanguage : 'en';
-
         const validRoles: (UserRole | null)[] = ['admin', 'employee', 'user', null];
+
         if (validRoles.includes(storedUserRole) && !isNaN(parsedUserId)) {
             console.log("AuthContext: Initial load - Setting state from storage.");
             setState({
@@ -68,99 +83,107 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
                     login: storedUserLogin,
                     role: storedUserRole,
                     userId: parsedUserId,
-                    preferredLanguage: language, // Use determined language
+                    // Initially, set user's preferredLanguage from the determined initialLang
+                    // This might be updated later if the user object fetched from DB has a different preference
+                    preferredLanguage: initialLang,
                 },
                 isAuthenticated: true,
                 isLoading: false,
                 error: null,
+                preferredLanguage: initialLang, // Set top-level language
              });
         } else {
             console.error("AuthContext: Initial load - Invalid UserID or Role found in storage. Role:", storedUserRole, "UserID:", parsedUserId);
+             // Clear only auth-related items, keep language preference
             localStorage.removeItem('authToken');
             localStorage.removeItem('authUserLogin');
             localStorage.removeItem('authUserRole');
             localStorage.removeItem('authUserId');
-            localStorage.removeItem('authPreferredLanguage');
-            setState(prevState => ({ ...prevState, isLoading: false }));
+            setState(prevState => ({ ...initialState, isLoading: false, preferredLanguage: initialLang })); // Reset but keep lang
         }
     } else {
         console.log("AuthContext: Initial load - Missing token, login, or userId.");
-        localStorage.removeItem('authPreferredLanguage'); // Clean up language if other parts missing
-        setState(prevState => ({ ...prevState, isLoading: false }));
+         // Keep language preference even if not logged in
+        setState(prevState => ({ ...initialState, isLoading: false, preferredLanguage: initialLang }));
     }
   }, []);
 
 
-  const login = useCallback(async (credentials: UserCredentials, preferredLanguage?: SupportedLanguage): Promise<boolean> => {
-    setState(prevState => ({ ...prevState, isLoading: true, error: null }));
-    try {
-      // Login API now returns preferredLanguage from the DB
-      const response = await api.login(credentials);
-      const { token, role, login, userId, preferredLanguage: dbPreferredLanguage } = response;
-      console.log("AuthContext: Login API response - Token:", !!token, "Role:", role, "Login:", login, "UserID:", userId, "DB Lang:", dbPreferredLanguage);
+   // Login function no longer needs preferredLanguage param, gets it from API response
+   const login = useCallback(async (credentials: UserCredentials): Promise<boolean> => {
+       setState(prevState => ({ ...prevState, isLoading: true, error: null }));
+       try {
+           const response = await api.login(credentials);
+           const { token, role, login, userId, preferredLanguage: dbPreferredLanguage } = response;
+           console.log("AuthContext: Login API response - Token:", !!token, "Role:", role, "Login:", login, "UserID:", userId, "DB Lang:", dbPreferredLanguage);
 
-      if (!token || !login || userId === undefined || typeof userId !== 'number' || isNaN(userId)) {
-         throw new Error("Login response missing token, login name, or valid User ID.");
-      }
-      const validRoles: (UserRole | null)[] = ['admin', 'employee', 'user', null];
-      if (!validRoles.includes(role)) {
-          console.warn("AuthContext: Login received invalid role:", role);
-           throw new Error("Received invalid user role during login.");
-      }
-      // Use language from DB, default to 'en' if invalid or missing
-      const langToStore: SupportedLanguage = dbPreferredLanguage && backendSupportedLanguages.includes(dbPreferredLanguage) ? dbPreferredLanguage : 'en';
+           if (!token || !login || userId === undefined || typeof userId !== 'number' || isNaN(userId)) {
+                throw new Error("Login response missing token, login name, or valid User ID.");
+           }
+           const validRoles: (UserRole | null)[] = ['admin', 'employee', 'user', null];
+           if (!validRoles.includes(role)) {
+               console.warn("AuthContext: Login received invalid role:", role);
+               throw new Error("Received invalid user role during login.");
+           }
+            // --- UPDATED: Use frontend's default language as fallback ---
+           const langToStore: SupportedLanguage = dbPreferredLanguage && backendSupportedLanguages.includes(dbPreferredLanguage) ? dbPreferredLanguage : frontendDefaultLanguage;
+            // ----------------------------------------------------------
 
-      localStorage.setItem('authToken', token);
-      localStorage.setItem('authUserLogin', login);
-      localStorage.setItem('authUserRole', role);
-      localStorage.setItem('authUserId', String(userId));
-      localStorage.setItem('authPreferredLanguage', langToStore);
+           localStorage.setItem('authToken', token);
+           localStorage.setItem('authUserLogin', login);
+           localStorage.setItem('authUserRole', role || ''); // Store empty string for null role
+           localStorage.setItem('authUserId', String(userId));
+           localStorage.setItem('authPreferredLanguage', langToStore); // Store the authoritative language
 
-      console.log("AuthContext: Setting state after successful login with UserID:", userId, "Lang:", langToStore);
-      setState({
-        token,
-        user: { login, role, userId, preferredLanguage: langToStore },
-        isAuthenticated: true,
-        isLoading: false,
-        error: null,
-      });
-      toast.success(`Welcome back, ${login}!`);
-      return true;
-    } catch (err: any) {
-      const errorMessage = err.message || 'Login failed';
-      console.error("AuthContext: Login failed -", errorMessage);
-       localStorage.removeItem('authToken');
-       localStorage.removeItem('authUserLogin');
-       localStorage.removeItem('authUserRole');
-       localStorage.removeItem('authUserId');
-       localStorage.removeItem('authPreferredLanguage');
-      setState(prevState => ({
-        ...prevState,
-        token: null,
-        user: null,
-        isAuthenticated: false,
-        isLoading: false,
-        error: errorMessage,
-      }));
-      toast.error(errorMessage);
-      return false;
-    }
-  }, []);
+           console.log("AuthContext: Setting state after successful login with UserID:", userId, "Lang:", langToStore);
+           setState({
+               token,
+               user: { login, role, userId, preferredLanguage: langToStore }, // Set user object with DB language
+               isAuthenticated: true,
+               isLoading: false,
+               error: null,
+               preferredLanguage: langToStore, // Update top-level language state
+           });
+           // Use the *newly set* language for the toast
+           toast.success(t('welcomeMessage', langToStore, { userLogin: login }));
+           return true;
+       } catch (err: any) {
+           const errorMessage = err.message || 'Login failed';
+           console.error("AuthContext: Login failed -", errorMessage);
+           // Clear everything on login failure
+           localStorage.removeItem('authToken');
+           localStorage.removeItem('authUserLogin');
+           localStorage.removeItem('authUserRole');
+           localStorage.removeItem('authUserId');
+           localStorage.removeItem('authPreferredLanguage');
+           setState(prevState => ({
+               ...initialState, // Reset to initial state, which includes default language
+               isLoading: false,
+               error: errorMessage,
+               preferredLanguage: getInitialLanguagePreference(), // Re-evaluate initial preference on failure
+           }));
+           toast.error(errorMessage);
+           return false;
+       }
+   }, []);
 
   const logout = useCallback(async () => {
     const currentToken = state.token;
     const currentLogin = state.user?.login;
     console.log("AuthContext: logout called.");
 
+     // Clear auth-related items, but *keep* language preference
      localStorage.removeItem('authToken');
      localStorage.removeItem('authUserLogin');
      localStorage.removeItem('authUserRole');
      localStorage.removeItem('authUserId');
-     localStorage.removeItem('authPreferredLanguage');
-     setState({ ...initialState, isLoading: false });
+     // localStorage.removeItem('authPreferredLanguage'); // <-- KEEP THIS
 
-     if (currentLogin) toast.info(`User ${currentLogin} logged out.`);
-     else toast.info("Logged out.");
+     const languageToKeep = state.preferredLanguage; // Get current language before resetting
+     setState({ ...initialState, isLoading: false, preferredLanguage: languageToKeep }); // Reset but keep language
+
+     if (currentLogin) toast.info(`User ${currentLogin} logged out.`); // Translate if needed
+     else toast.info("Logged out."); // Translate if needed
 
     try {
         if (currentToken) {
@@ -169,17 +192,18 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         }
     } catch (err: any) {
       console.error('AuthContext: Logout API call failed:', err);
-       toast.warning("Logged out locally, but failed to notify the server.");
+       toast.warning("Logged out locally, but failed to notify the server."); // Translate if needed
     }
-  }, [state.token, state.user?.login]);
+  }, [state.token, state.user?.login, state.preferredLanguage]); // Include preferredLanguage dependency
 
-  const register = useCallback(async (credentials: UserCredentials, preferredLanguage: SupportedLanguage = 'en'): Promise<boolean> => {
+  // --- UPDATED: Use frontend's default language ---
+  const register = useCallback(async (credentials: UserCredentials, preferredLanguage: SupportedLanguage = frontendDefaultLanguage): Promise<boolean> => {
+  // --------------------------------------------
     setState(prevState => ({ ...prevState, isLoading: true, error: null }));
     try {
-      // Pass preferredLanguage to the register API call
       const newUser = await api.register({ ...credentials, preferredLanguage });
       setState(prevState => ({ ...prevState, isLoading: false, error: null }));
-      toast.success(`Registration successful for ${newUser.login}! Please log in.`);
+      toast.success(`Registration successful for ${newUser.login}! Please log in.`); // Translate if needed
       return true;
     } catch (err: any) {
       const errorMessage = err.message || 'Registration failed';
@@ -202,41 +226,44 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     setState(prevState => {
         if (prevState.user) {
             const newUserState = { ...prevState.user, ...updatedUserPartial };
+            let langChanged = false;
+            // Check if language actually changed and is valid
             if (updatedUserPartial.preferredLanguage && backendSupportedLanguages.includes(updatedUserPartial.preferredLanguage) && updatedUserPartial.preferredLanguage !== prevState.user.preferredLanguage) {
                 localStorage.setItem('authPreferredLanguage', updatedUserPartial.preferredLanguage);
+                langChanged = true; // Flag that language was updated
             }
             if (updatedUserPartial.role !== undefined && updatedUserPartial.role !== prevState.user.role) {
                 localStorage.setItem('authUserRole', updatedUserPartial.role || '');
             }
-            return { ...prevState, user: newUserState };
+            // Update top-level language only if it changed via this update
+            const topLevelLang = langChanged ? newUserState.preferredLanguage : prevState.preferredLanguage;
+            return { ...prevState, user: newUserState, preferredLanguage: topLevelLang };
         }
         return prevState;
     });
   }, []);
 
-  // --- NEW: Function to specifically set preferred language in context and localStorage ---
+  // Function to update the preferred language globally (context + localStorage)
   const setContextPreferredLanguage = useCallback((language: SupportedLanguage) => {
       if (backendSupportedLanguages.includes(language)) {
           setState(prevState => {
-              if (prevState.user && prevState.user.preferredLanguage !== language) {
+              // Only update if the language is actually different
+              if (prevState.preferredLanguage !== language) {
                   localStorage.setItem('authPreferredLanguage', language);
-                  return { ...prevState, user: { ...prevState.user, preferredLanguage: language } };
+                  // Update user object if it exists
+                  const updatedUser = prevState.user ? { ...prevState.user, preferredLanguage: language } : null;
+                  return { ...prevState, user: updatedUser, preferredLanguage: language };
               }
-              // If user is not logged in, this primarily updates localStorage for next login/initial load
-              // However, for immediate UI change on AuthLayout, it will manage its own local state.
-              // This context update is more for logged-in user state syncing.
-              else if (!prevState.user) {
-                  localStorage.setItem('authPreferredLanguage', language); // Store for anonymous users too
-              }
-              return prevState;
+              return prevState; // No change needed
           });
+      } else {
+           console.warn(`AuthContext: Attempted to set invalid preferred language: ${language}`);
       }
   }, []);
-  // --- END NEW ---
 
 
   return (
-    <AuthContext.Provider value={{ ...state, login, logout, register, clearError, updateContextUser, setContextPreferredLanguage }}>
+    <AuthContext.Provider value={{ ...state, preferredLanguage: state.preferredLanguage, login, logout, register, clearError, updateContextUser, setContextPreferredLanguage }}>
       {children}
     </AuthContext.Provider>
   );

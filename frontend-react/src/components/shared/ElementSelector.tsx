@@ -12,6 +12,7 @@ import { cn } from '@/lib/utils';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"; // For Component selection
 import { Label } from '@/components/ui/label'; // Import Label
 import LoadingSpinner from '@/components/shared/LoadingSpinner'; // Import Spinner
+import { t } from '@/translations/utils'; // Import translation utility
 
 interface ElementSelectorProps {
     selectedElementIds: number[]; // IDs of the selected parent elements
@@ -27,10 +28,10 @@ const ElementSelector: React.FC<ElementSelectorProps> = ({
     onChange,
     currentComponentId,
     currentElementId,
-    label = "Select Parent Elements",
+    label, // Use the passed label prop
     className
 }) => {
-    const { token } = useAuth();
+    const { token, preferredLanguage } = useAuth(); // Get preferredLanguage
     const [availableComponents, setAvailableComponents] = useState<SignatureComponent[]>([]);
     const [searchComponentId, setSearchComponentId] = useState<string>(""); // Component ID to search within
     const [availableElements, setAvailableElements] = useState<SignatureElement[]>([]); // Elements in the selected component
@@ -50,41 +51,46 @@ const ElementSelector: React.FC<ElementSelectorProps> = ({
             setError(null);
             try {
                 const comps = await api.getAllSignatureComponents(token);
-                setAvailableComponents(comps.sort((a,b) => a.name.localeCompare(b.name)));
+                setAvailableComponents(comps.sort((a,b) => a.name.localeCompare(b.name))); // Sort components
             } catch (err: any) {
-                setError(err.message || "Failed to load components");
+                // Use translated error
+                const msg = err.message || t('componentLoadFailedError', preferredLanguage); // TODO: Add componentLoadFailedError
+                setError(msg);
             } finally {
                 setIsLoadingComponents(false);
             }
         };
         fetchComps();
-    }, [token]);
+    }, [token, preferredLanguage]); // Add preferredLanguage
 
     // Fetch Elements when searchComponentId changes
     useEffect(() => {
         const fetchElems = async () => {
             if (!token || !searchComponentId) {
-                 setAvailableElements([]);
+                 setAvailableElements([]); // Clear if no component selected
                  return;
             };
             setIsLoadingElements(true);
             setError(null);
             try {
                 const elems = await api.getElementsByComponent(parseInt(searchComponentId), token);
+                 // Filter out the current element being edited
                  setAvailableElements(
                     elems
                         .filter(el => el.signatureElementId !== currentElementId)
-                        .sort((a,b) => (a.index ?? a.name).localeCompare(b.index ?? b.name))
+                        .sort((a,b) => (a.index ?? a.name).localeCompare(b.index ?? b.name)) // Sort elements
                  );
             } catch (err: any) {
-                setError(err.message || "Failed to load elements");
+                 // Use translated error
+                const msg = err.message || t('elementLoadFailedError', preferredLanguage); // TODO: Add elementLoadFailedError
+                setError(msg);
                 setAvailableElements([]);
             } finally {
                 setIsLoadingElements(false);
             }
         };
         fetchElems();
-    }, [token, searchComponentId, currentElementId]);
+    }, [token, searchComponentId, currentElementId, preferredLanguage]); // Add preferredLanguage
 
 
     // Fetch details for selected elements (for badges) when selected IDs change
@@ -96,21 +102,24 @@ const ElementSelector: React.FC<ElementSelectorProps> = ({
             }
             setIsLoadingSelectedDetails(true);
             try {
+                 // Fetch details for each selected ID
                  const detailsPromises = selectedElementIds.map(id =>
-                     api.getSignatureElementById(id, [], token).catch(() => null)
+                     api.getSignatureElementById(id, [], token).catch(() => null) // Return null on error for one ID
                  );
                  const results = await Promise.all(detailsPromises);
                  setSelectedElementObjects(results.filter((el): el is SignatureElement => el !== null)
-                                            .sort((a,b) => a.name.localeCompare(b.name)));
+                                            .sort((a,b) => a.name.localeCompare(b.name))); // Filter out nulls and sort
             } catch (err) {
+                 // Use translated error
                  console.error("Failed to fetch selected element details:", err);
-                 setSelectedElementObjects([]);
+                 setError(t('selectedElementLoadFailedError', preferredLanguage)); // TODO: Add selectedElementLoadFailedError
+                 setSelectedElementObjects([]); // Clear on error
             } finally {
                  setIsLoadingSelectedDetails(false);
             }
         };
         fetchSelectedDetails();
-    }, [token, selectedElementIds]);
+    }, [token, selectedElementIds, preferredLanguage]); // Add preferredLanguage
 
 
     const handleSelectElement = (elementId: number) => {
@@ -118,9 +127,11 @@ const ElementSelector: React.FC<ElementSelectorProps> = ({
             ? selectedElementIds.filter(id => id !== elementId)
             : [...selectedElementIds, elementId];
         onChange(newSelectedIds);
-        setSearchTerm("");
+        setSearchTerm(""); // Clear search within popover
+        // Keep popover open
     };
 
+    // Filter elements for the dropdown based on search term
     const filteredDropdownElements = useMemo(() => {
          return availableElements.filter(el =>
              (el.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -132,22 +143,25 @@ const ElementSelector: React.FC<ElementSelectorProps> = ({
     return (
         // Use solid muted background for the container
         <div className={cn('space-y-2 p-3 border rounded bg-muted', className)}> {/* Changed bg-muted/30 to bg-muted */}
-            <Label className='text-sm font-medium'>{label}</Label>
+            {/* Use the passed label prop, default if not provided */}
+            <Label className='text-sm font-medium'>{label || t('elementParentElementsLabel', preferredLanguage)}</Label>
             {/* Component Selector */}
             <Select value={searchComponentId} onValueChange={setSearchComponentId} disabled={isLoadingComponents}>
                 {/* SelectTrigger uses bg-background */}
                 <SelectTrigger className='h-9 text-sm'>
-                    <SelectValue placeholder="Select Component to find parents..." />
+                    {/* Use translated placeholder */}
+                    <SelectValue placeholder={t('elementBrowserSelectComponentPlaceholder', preferredLanguage)} />
                 </SelectTrigger>
                 {/* SelectContent uses bg-popover */}
                 <SelectContent>
-                    {isLoadingComponents && <SelectItem value="loading" disabled><div className='flex items-center'><LoadingSpinner size='sm' className='mr-2'/>Loading...</div></SelectItem>}
+                    {isLoadingComponents && <SelectItem value="loading" disabled><div className='flex items-center'><LoadingSpinner size='sm' className='mr-2'/>{t('loadingText', preferredLanguage)}...</div></SelectItem>}
                     {availableComponents.map(comp => (
                         <SelectItem key={comp.signatureComponentId} value={String(comp.signatureComponentId)}>
                             {comp.name}
                         </SelectItem>
                     ))}
-                     {!isLoadingComponents && availableComponents.length === 0 && <SelectItem value="no-comps" disabled>No components found</SelectItem>}
+                     {/* Use translated placeholder */}
+                     {!isLoadingComponents && availableComponents.length === 0 && <SelectItem value="no-comps" disabled>{t('componentNoComponentsFound', preferredLanguage)}</SelectItem>} {/* TODO: Add componentNoComponentsFound */}
                 </SelectContent>
             </Select>
 
@@ -162,10 +176,11 @@ const ElementSelector: React.FC<ElementSelectorProps> = ({
                         disabled={isLoadingElements || !searchComponentId || !!error}
                     >
                         <span className='truncate'>
-                            {isLoadingElements ? 'Loading elements...' :
-                             !searchComponentId ? 'Select component first' :
-                             error ? 'Error loading elements' :
-                             'Select elements...'}
+                            {/* Use translated placeholders/states */}
+                            {isLoadingElements ? t('elementBrowserLoadingElements', preferredLanguage) :
+                             !searchComponentId ? t('elementBrowserSelectComponentFirst', preferredLanguage) : // TODO: Add elementBrowserSelectComponentFirst
+                             error ? t('errorText', preferredLanguage) :
+                             t('elementBrowserSelectElements', preferredLanguage)} {/* TODO: Add elementBrowserSelectElements */}
                         </span>
                         {isLoadingElements ? <LoadingSpinner size='sm' className='ml-2'/> : <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />}
                     </Button>
@@ -173,16 +188,18 @@ const ElementSelector: React.FC<ElementSelectorProps> = ({
                 {/* PopoverContent uses bg-popover */}
                 <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
                     {/* Command uses bg-popover */}
-                    <Command shouldFilter={false}>
+                    <Command shouldFilter={false}> {/* Manual filtering */}
                         <CommandInput
-                            placeholder="Search elements..."
+                             // Use translated placeholder
+                            placeholder={t('elementBrowserSearchPlaceholder', preferredLanguage)} // TODO: Add elementBrowserSearchPlaceholder
                             value={searchTerm}
                             onValueChange={setSearchTerm}
                         />
                          {/* CommandList uses bg-popover */}
                         <CommandList>
+                             {/* Use translated states */}
                              {isLoadingElements && <div className='text-center p-2 text-sm text-muted-foreground'><LoadingSpinner size='sm'/></div>}
-                             <CommandEmpty>{!isLoadingElements && 'No elements found.'}</CommandEmpty>
+                             <CommandEmpty>{!isLoadingElements && t('elementBrowserNoElementsFound', preferredLanguage)}</CommandEmpty>
                              {!isLoadingElements && filteredDropdownElements.length > 0 && (
                                  <CommandGroup>
                                     {filteredDropdownElements.map((el) => (
@@ -222,15 +239,17 @@ const ElementSelector: React.FC<ElementSelectorProps> = ({
                                  type="button"
                                  className="ml-1 p-0.5 rounded-full text-muted-foreground hover:text-foreground hover:bg-background/50 focus:outline-none focus:ring-1 focus:ring-ring focus:ring-offset-1"
                                  onClick={() => handleSelectElement(el.signatureElementId!)}
-                                 aria-label={`Remove ${el.name}`}
+                                 // Use translated aria-label
+                                 aria-label={t('removeButton', preferredLanguage) + ` ${el.name}`}
                              >
                                 <X className="h-3 w-3"/>
                              </button>
                         </Badge>
                     ))
                  )}
+                 {/* Use translated placeholder */}
                  {!isLoadingSelectedDetails && selectedElementIds.length === 0 && (
-                     <span className='text-xs text-muted-foreground italic'>No parents selected</span>
+                     <span className='text-xs text-muted-foreground italic'>{t('elementSelectorNoParentsSelected', preferredLanguage)}</span> // TODO: Add elementSelectorNoParentsSelected
                  )}
             </div>
 

@@ -17,6 +17,7 @@ import type { Note, NoteInput, NoteWithDetails } from '../../../../backend/src/f
 import { toast } from "sonner";
 import { cn } from '@/lib/utils'; // Import cn
 import { z } from 'zod'; // Import z for inferring type in onSubmit
+import { t } from '@/translations/utils'; // Import translation utility
 
 // Infer the form data type directly from the schema
 type NoteFormData = z.infer<typeof noteFormSchema>;
@@ -27,7 +28,7 @@ interface NoteEditorProps {
 }
 
 const NoteEditor: React.FC<NoteEditorProps> = ({ noteToEdit, onSave }) => {
-  const { token, user } = useAuth(); // Get current user
+  const { token, user, preferredLanguage } = useAuth(); // Get preferredLanguage
   const [isLoading, setIsLoading] = useState(false);
   const [isFetchingDetails, setIsFetchingDetails] = useState(false); // Separate loading state
   const [error, setError] = useState<string | null>(null);
@@ -73,6 +74,7 @@ const NoteEditor: React.FC<NoteEditorProps> = ({ noteToEdit, onSave }) => {
            } catch (err: any) {
                 const msg = err.message || "Failed to load note details";
                 setError(msg);
+                // TODO: Translate error
                 toast.error(msg);
                 console.error("Fetch Note Details Error:", err);
                 // Reset to potentially stale data from list or defaults
@@ -133,6 +135,7 @@ const NoteEditor: React.FC<NoteEditorProps> = ({ noteToEdit, onSave }) => {
     } catch (err: any) {
       const msg = err.message || 'Failed to save note';
       setError(msg);
+      // TODO: Translate error
       toast.error(`Error saving note: ${msg}`);
       console.error("Save Note Error:", err);
     } finally {
@@ -153,18 +156,21 @@ const NoteEditor: React.FC<NoteEditorProps> = ({ noteToEdit, onSave }) => {
         {isLoading && <div className='absolute inset-0 bg-background/50 flex items-center justify-center z-10 rounded-md'><LoadingSpinner/></div>}
 
       <div className="grid gap-1.5"> {/* Adjusted gap */}
-        <Label htmlFor="title">Title</Label>
+         {/* Use translated label */}
+        <Label htmlFor="title">{t('titleLabel', preferredLanguage)}</Label>
         <Input id="title" {...register('title')} aria-invalid={errors.title ? "true" : "false"} className={cn(errors.title && "border-destructive")}/>
         {errors.title && <p className="text-xs text-destructive">{errors.title.message}</p>}
       </div>
 
       <div className="grid gap-1.5"> {/* Adjusted gap */}
+         {/* TODO: Translate label */}
         <Label htmlFor="content">Content</Label>
         <Textarea id="content" {...register('content')} rows={6} aria-invalid={errors.content ? "true" : "false"} className={cn(errors.content && "border-destructive")}/>
         {errors.content && <p className="text-xs text-destructive">{errors.content?.message}</p>}
       </div>
 
        <div className="grid gap-1.5"> {/* Adjusted gap */}
+         {/* TODO: Translate label */}
          <Label htmlFor="tags">Tags</Label>
          <TagSelector selectedTagIds={selectedTagIds} onChange={setSelectedTagIds} />
          {/* Hidden input registered with RHF for validation */}
@@ -191,6 +197,7 @@ const NoteEditor: React.FC<NoteEditorProps> = ({ noteToEdit, onSave }) => {
                          className={cn(errors.shared && "border-destructive")}
                          // Disable checkbox if user is not the owner AND not an admin
                          disabled={!isOwner && !isAdmin}
+                         // TODO: Translate title
                          title={(!isOwner && !isAdmin) ? "Only the owner or an admin can change the shared status" : undefined}
                      />
                  )}
@@ -202,14 +209,15 @@ const NoteEditor: React.FC<NoteEditorProps> = ({ noteToEdit, onSave }) => {
                  (!isOwner && !isAdmin) && 'cursor-not-allowed opacity-70' // Style label when disabled
              )}
            >
+             {/* TODO: Translate label */}
              Share this note publicly
           </Label>
         </div>
          {errors.shared && <p className="text-xs text-destructive">{errors.shared.message}</p>}
 
-
+      {/* Use translated button text */}
       <Button type="submit" disabled={isLoading || isFetchingDetails} className="mt-4 justify-self-start"> {/* Align button left */}
-        {isLoading ? <LoadingSpinner size="sm" className='mr-2' /> : (noteToEdit ? 'Update Note' : 'Create Note')}
+        {isLoading ? <LoadingSpinner size="sm" className='mr-2' /> : (noteToEdit ? t('editButton', preferredLanguage) : t('createButton', preferredLanguage))} {t('notesTitle', preferredLanguage, { count: 1 }).replace('Notes', 'Note')} {/* Example */}
       </Button>
     </form>
   );

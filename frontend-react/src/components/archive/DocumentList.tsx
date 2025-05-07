@@ -7,6 +7,7 @@ import { Edit, Trash2, FileText, Folder, Eye } from 'lucide-react'; // Icons
 import type { ArchiveDocument, ArchiveDocumentSearchResult } from '../../../../backend/src/functionalities/archive/document/models'; // Type now includes topographicSignature: string
 import { useAuth } from '@/hooks/useAuth';
 import { cn } from '@/lib/utils';
+import { t } from '@/translations/utils'; // Import translation utility
 
 interface DocumentListProps {
   documents: ArchiveDocumentSearchResult[]; // Use search result which includes resolved signatures
@@ -25,7 +26,7 @@ type ArchiveDocumentSearchResultWithResolved = ArchiveDocumentSearchResult & {
 
 
 const DocumentList: React.FC<DocumentListProps> = ({ documents, onEdit, onDisable, onPreview, onOpenUnit }) => {
-  const { user } = useAuth();
+  const { user, preferredLanguage } = useAuth(); // Get preferredLanguage
 
   const canModify = (docOwnerId: number) => {
       // --- UPDATED: Allow employees to edit/disable ---
@@ -52,14 +53,14 @@ const DocumentList: React.FC<DocumentListProps> = ({ documents, onEdit, onDisabl
         <Table>
             <TableHeader>
                 <TableRow>
-                    <TableHead className='w-[50px]'>Type</TableHead>
-                    <TableHead>Title</TableHead>
-                    <TableHead>Creator</TableHead>
-                    <TableHead>Date</TableHead>
-                    {/* --- UPDATED: Header for topographic signature --- */}
-                    <TableHead className='max-w-[200px]'>Topographic Sig</TableHead>
-                    <TableHead className='max-w-[200px]'>Descriptive Sig</TableHead>
-                    <TableHead className="text-right w-[130px]">Actions</TableHead> {/* Increased width */}
+                     {/* Use translated headers */}
+                    <TableHead className='w-[50px]'>{t('typeLabel', preferredLanguage)}</TableHead>
+                    <TableHead>{t('titleLabel', preferredLanguage)}</TableHead>
+                    <TableHead>{t('archiveCreatorLabel', preferredLanguage)}</TableHead> {/* TODO: Add archiveCreatorLabel */}
+                    <TableHead>{t('archiveCreationDateLabel', preferredLanguage)}</TableHead> {/* TODO: Add archiveCreationDateLabel */}
+                    <TableHead className='max-w-[200px]'>{t('archiveTopoSigLabel', preferredLanguage)}</TableHead> {/* TODO: Add archiveTopoSigLabel */}
+                    <TableHead className='max-w-[200px]'>{t('archiveDescSigLabel', preferredLanguage)}</TableHead> {/* TODO: Add archiveDescSigLabel */}
+                    <TableHead className="text-right w-[130px]">{t('actionsLabel', preferredLanguage)}</TableHead> {/* Increased width */}
                 </TableRow>
             </TableHeader>
             <TableBody>
@@ -75,6 +76,7 @@ const DocumentList: React.FC<DocumentListProps> = ({ documents, onEdit, onDisabl
                            key={doc.archiveDocumentId}
                            onClick={() => handleClick(doc)}
                            className='cursor-pointer hover:bg-muted/50 transition-colors'
+                            // TODO: Translate titles
                            title={isUnit ? `Open Unit "${doc.title}"` : `Preview Document "${doc.title}"`}
                         >
                             <TableCell className='text-center'>
@@ -86,10 +88,12 @@ const DocumentList: React.FC<DocumentListProps> = ({ documents, onEdit, onDisabl
                             <TableCell className="text-sm">{doc.creator}</TableCell>
                             <TableCell className="text-sm">{doc.creationDate}</TableCell>
                              {/* --- UPDATED: Display topographic signature string --- */}
+                              {/* Use translated placeholder */}
                              <TableCell className='font-mono text-xs truncate' title={doc.topographicSignature || ''}>
-                                 {doc.topographicSignature || <i className='text-muted-foreground not-italic'>None</i>}
+                                 {doc.topographicSignature || <i className='text-muted-foreground not-italic'>{t('noneLabel', preferredLanguage)}</i>}
                              </TableCell>
                             {/* --- UPDATED: Display multiple descriptive signatures --- */}
+                              {/* Use translated placeholder */}
                             <TableCell className='font-mono text-xs' title={docWithResolved.resolvedDescriptiveSignatures?.join('\n') || ''}>
                                 {(docWithResolved.resolvedDescriptiveSignatures && docWithResolved.resolvedDescriptiveSignatures.length > 0)
                                     ? (
@@ -99,29 +103,31 @@ const DocumentList: React.FC<DocumentListProps> = ({ documents, onEdit, onDisabl
                                             ))}
                                         </div>
                                       )
-                                    : <i className='text-muted-foreground not-italic'>None</i>
+                                     : <i className='text-muted-foreground not-italic'>{t('noneLabel', preferredLanguage)}</i>
                                 }
                             </TableCell>
                             <TableCell className="text-right space-x-1">
+                                {/* Use translated titles */}
                                 {/* Preview Button (only for documents) */}
                                 {!isUnit && (
-                                    <Button variant="ghost" size="icon" onClick={(e) => { e.stopPropagation(); onPreview(doc); }} title="Preview Document">
+                                    <Button variant="ghost" size="icon" onClick={(e) => { e.stopPropagation(); onPreview(doc); }} title={t('previewButton', preferredLanguage)}>
                                         <Eye className="h-4 w-4" />
                                     </Button>
                                 )}
                                 {/* Edit Button (always available if permissions allow) */}
                                 {canUserModify && (
-                                    <Button variant="ghost" size="icon" onClick={(e) => { e.stopPropagation(); onEdit(doc); }} title="Edit Item">
+                                    <Button variant="ghost" size="icon" onClick={(e) => { e.stopPropagation(); onEdit(doc); }} title={t('editButton', preferredLanguage)}>
                                         <Edit className="h-4 w-4" />
                                     </Button>
                                 )}
                                 {/* Disable Button (always available if permissions allow) */}
                                 {canUserModify && (
-                                    <Button variant="ghost" size="icon" onClick={(e) => { e.stopPropagation(); onDisable(doc.archiveDocumentId!); }} title="Disable Item">
+                                    <Button variant="ghost" size="icon" onClick={(e) => { e.stopPropagation(); onDisable(doc.archiveDocumentId!); }} title={t('disableButton', preferredLanguage)}>
                                         <Trash2 className="h-4 w-4 text-destructive" />
                                     </Button>
                                 )}
                                 {/* Read-only indicator */}
+                                {/* TODO: Translate "Read-only" */}
                                 {!canUserModify && (
                                     <span className="text-xs text-muted-foreground italic pr-2">Read-only</span>
                                 )}

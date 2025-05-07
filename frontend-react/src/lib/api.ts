@@ -102,10 +102,12 @@ async function fetchApi<T>(
              }
         } catch (e) { console.error(`fetchApi: Failed to read error response body for ${url}:`, e); }
         console.error(`fetchApi: API Error for ${url}:`, response.status, errorData);
+        // Add status code to the error object for specific checks
         const errorToThrow = new Error(errorData.message || `API Error ${response.status}`);
         if (errorData.errors) {
             (errorToThrow as any).errors = errorData.errors;
         }
+        (errorToThrow as any).status = response.status; // Attach status code
         throw errorToThrow;
     }
 
@@ -116,16 +118,13 @@ async function fetchApi<T>(
 
     if (response.status === 204 || response.headers.get('content-length') === '0') {
         console.log(`fetchApi: Handling 204 No Content for ${url}`);
-        // For No Content, return a standard success object or adjust based on endpoint needs
-        // Specific endpoints like password changes might expect this.
-        // For generic usage, returning { success: true } seems reasonable.
         return { success: true } as T;
     }
 
     let responseText: string | null = null;
     try {
         responseText = await response.text();
-        console.log(`fetchApi: Raw Response Text for ${url}:`, responseText);
+        // console.log(`fetchApi: Raw Response Text for ${url}:`, responseText); // Reduce noise
     } catch (textError) {
         console.error(`fetchApi: Failed to read response text for ${url}:`, textError);
         throw new Error("Failed to read API response text.");
@@ -139,7 +138,7 @@ async function fetchApi<T>(
 
     try {
         const jsonData = JSON.parse(responseText);
-        console.log(`fetchApi: Parsed JSON for ${url}:`, jsonData);
+        // console.log(`fetchApi: Parsed JSON for ${url}:`, jsonData); // Reduce noise
         return jsonData as T;
     } catch (jsonError: any) {
         console.error("fetchApi: JSON Parsing Error:", jsonError, "URL:", url, "Status:", response.status);
@@ -151,9 +150,7 @@ async function fetchApi<T>(
 
 // --- Type Adjustments ---
 type GetConfigResponse<K extends AppConfigKeys> = {
-    // Return type is an object where the key is the AppConfigKey requested
-    // and the value is string | null (paths can be null)
-    [key in K]: string | number | null; // Allow number for ports
+    [key in K]: string | number | null;
 };
 
 interface PurgeLogsResponse {
@@ -161,7 +158,6 @@ interface PurgeLogsResponse {
     deletedCount: number;
 }
 
-// Define payload for user registration including optional language
 interface RegisterPayload extends UserCredentials {
     preferredLanguage?: SupportedLanguage;
 }
@@ -170,25 +166,22 @@ interface RegisterPayload extends UserCredentials {
 // --- API Function Exports (Updated Config section) ---
 const getApiStatus = () => fetchApi<{ message: string }>("/api/status");
 const pingApi = () => fetchApi<string>("/api/ping");
+// Login now returns the user object including preferredLanguage
 const login = (credentials: UserCredentials) => fetchApi<{ token: string } & Omit<User, 'password'>>("/user/login", "POST", credentials);
 const logout = (token: string) => fetchApi<{ success: boolean }>("/user/logout", "POST", null, token);
-// Register now accepts preferredLanguage
 const register = (userData: RegisterPayload) => fetchApi<Omit<User, 'password'>>("/user/create", "POST", userData);
 const getAllUsers = (token: string) => fetchApi<Omit<User, "password">[]>("/users/all", "GET", null, token);
 const getUserByLogin = (login: string, token: string) => fetchApi<Omit<User, "password">>(`/user/by-login/${login}`, "GET", null, token);
 const updateUserRole = (login: string, role: UserRole | null, token: string) => fetchApi<{ message: string }>(`/user/by-login/${login}`, "PATCH", { role }, token);
+// updateUserPreferredLanguage now returns the updated user object
 const updateUserPreferredLanguage = (login: string, language: SupportedLanguage, token: string) => fetchApi<Omit<User, "password">>(`/user/by-login/${login}/language`, "PATCH", { preferredLanguage: language }, token);
 const changePassword = (passwords: { oldPassword: string; password: string; }, token: string) => fetchApi<{ success: boolean }>("/user/change-password", "POST", passwords, token);
 const adminSetUserPassword = (login: string, password: string, token: string) => fetchApi<{ success: boolean }>(`/user/by-login/${login}/set-password`, "PATCH", { password }, token);
 const getAssignedTagsForUser = (login: string, token: string) => fetchApi<Tag[]>(`/user/by-login/${login}/tags`, "GET", null, token);
 const assignTagsToUser = (login: string, tagIds: number[], token: string) => fetchApi<Tag[]>(`/user/by-login/${login}/tags`, "PUT", { tagIds }, token);
-// Config: Updated functions
 const getConfig = <K extends AppConfigKeys>(key: K, token: string) => fetchApi<GetConfigResponse<K>>(`/configs/${key}`, "GET", null, token);
-// setConfig now accepts string | null for value, primarily for clearing paths
 const setConfig = (key: AppConfigKeys, value: string | null, token: string) => fetchApi<{ message: string }>(`/configs/${key}`, "PUT", { value }, token);
-// NEW: Function to clear HTTPS settings
 const clearHttpsConfig = (token: string) => fetchApi<{ message: string }>("/config/https", "DELETE", null, token);
-// Removed uploadSsl and generateSsl
 const searchLogs = (searchRequest: SearchRequest, token: string) => fetchApi<SearchResponse<LogEntry>>("/logs/search", "POST", searchRequest, token);
 const purgeLogs = (days: number, token: string) => fetchApi<PurgeLogsResponse>(`/logs/purge?days=${days}`, "DELETE", null, token);
 const createTag = (tagData: Pick<Tag, 'name' | 'description'>, token: string) => fetchApi<Tag>('/tag', 'PUT', tagData, token);
@@ -222,12 +215,11 @@ const searchArchiveDocuments = (searchRequest: SearchRequest, token: string) => 
 const batchTagArchiveDocuments = (data: BatchTagDocumentsInput, token: string) => fetchApi<{ message: string; count: number }>("/archive/documents/batch-tag", "POST", data, token);
 const backupDatabase = (token: string) => fetchApi<Blob>("/admin/db/backup", "GET", null, token, { expectBlob: true });
 
-// Updated export list
 export default {
     getApiStatus, pingApi, login, logout, register, getAllUsers, getUserByLogin,
     updateUserRole, changePassword, adminSetUserPassword,
-    getAssignedTagsForUser, assignTagsToUser, updateUserPreferredLanguage, // Added updateUserPreferredLanguage
-    getConfig, setConfig, clearHttpsConfig, // Added clearHttpsConfig
+    getAssignedTagsForUser, assignTagsToUser, updateUserPreferredLanguage,
+    getConfig, setConfig, clearHttpsConfig,
     searchLogs, purgeLogs,
     createTag, getAllTags, getTagById, updateTag, deleteTag,
     createNote, getNoteById, updateNote, deleteNote, getNotesByLogin, searchNotes,

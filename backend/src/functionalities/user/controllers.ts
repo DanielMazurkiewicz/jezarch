@@ -178,13 +178,20 @@ export const updateUserRoleController = async (req: BunRequest<":login">) => {
 };
 
 // --- NEW: Controller for Admin updating user's preferred language ---
+// This also applies for a user updating their own language via the Header dropdown
 export const updateUserPreferredLanguageController = async (req: BunRequest<":login">) => {
     const sessionAndUser = await getSessionAndUser(req);
     if (!sessionAndUser) return new Response(JSON.stringify({ message: "Unauthorized" }), { status: 401, headers: { 'Content-Type': 'application/json' } });
-    if (!isAllowedRole(sessionAndUser, 'admin')) return new Response(JSON.stringify({ message: "Forbidden" }), { status: 403, headers: { 'Content-Type': 'application/json' } });
+
+    const targetLogin = req.params.login;
+
+    // Check if user is admin OR if the user is updating their own language
+    if (!isAllowedRole(sessionAndUser, 'admin') && sessionAndUser.user.login !== targetLogin) {
+        await Log.warn(`Forbidden attempt to change language for ${targetLogin} by ${sessionAndUser.user.login}`, sessionAndUser.user.login, 'user');
+        return new Response(JSON.stringify({ message: "Forbidden: You can only change your own language preference." }), { status: 403, headers: { 'Content-Type': 'application/json' } });
+    }
 
     try {
-        const targetLogin = req.params.login;
         const body = await req.json() as { preferredLanguage: SupportedLanguage };
         const validation = updatePreferredLanguageSchema.safeParse(body);
 
@@ -199,8 +206,16 @@ export const updateUserPreferredLanguageController = async (req: BunRequest<":lo
         }
 
         await updateUserPreferredLanguage(targetLogin, preferredLanguage);
-        await Log.info(`User preferred language updated for ${targetLogin} to ${preferredLanguage}`, sessionAndUser.user.login, 'user');
-        const updatedUser = await getUserByLoginSafe(targetLogin); // Fetch updated user
+        await Log.info(`User preferred language updated for ${targetLogin} to ${preferredLanguage} by ${sessionAndUser.user.login}`, sessionAndUser.user.login, 'user');
+
+        // Fetch the updated user object (without password) to return
+        const updatedUser = await getUserByLoginSafe(targetLogin);
+        if (!updatedUser) {
+             // This should ideally not happen if the update succeeded
+             await Log.error(`Failed to fetch user ${targetLogin} after language update`, sessionAndUser.user.login, 'user');
+             return new Response(JSON.stringify({ message: 'Language updated, but failed to fetch updated user details.' }), { status: 207, headers: { 'Content-Type': 'application/json' } }); // Multi-Status or similar
+        }
+
         return new Response(JSON.stringify(updatedUser), { status: 200, headers: { 'Content-Type': 'application/json' } });
 
     } catch (error: any) {
@@ -379,9 +394,7 @@ export const assignTagsToUserController = async (req: BunRequest<":login">) => {
         const targetUser = await getUserByLoginSafe(targetLogin);
         if (!targetUser) return new Response(JSON.stringify({ message: "User not found" }), { status: 404 });
 
-        if (targetUser.role !== 'user') {
-            return new Response(JSON.stringify({ message: `Cannot assign tags to user with role '${targetUser.role}'. Role must be 'user'.` }), { status: 400 });
-        }
+        // assignTagsToUser DB function already checks role, no need to check here again
 
         const body = await req.json() as { tagIds: number[] };
         // Basic validation on tagIds array
@@ -398,6 +411,10 @@ export const assignTagsToUserController = async (req: BunRequest<":login">) => {
 
     } catch (error: any) {
          await Log.error(`Failed to assign tags to user ${req.params.login}`, sessionAndUser.user.login, 'user', error);
+         // Check for specific error message from DB function
+         if (error.message?.includes('Cannot assign tags to user')) {
+            return new Response(JSON.stringify({ message: error.message }), { status: 400 });
+         }
          return new Response(JSON.stringify({ message: 'Failed to assign tags', error: error.message }), { status: 500 });
     }
 };

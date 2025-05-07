@@ -10,9 +10,10 @@ import { toast } from "sonner";
 // Removed Upload and AlertTriangle icons, kept Download
 import { Download } from 'lucide-react';
 // Removed Alert related imports
+import { t } from '@/translations/utils'; // Import translation utility
 
 const DatabaseManagement: React.FC = () => {
-    const { token } = useAuth();
+    const { token, preferredLanguage } = useAuth(); // Get preferredLanguage
     const [backupLoading, setBackupLoading] = useState(false);
     const [backupError, setBackupError] = useState<string | null>(null);
     // Removed all restore-related state and refs
@@ -40,12 +41,14 @@ const DatabaseManagement: React.FC = () => {
             a.click();
             a.remove();
             window.URL.revokeObjectURL(url);
-            toast.success("Database backup download started.");
+            // Use translated success message
+            toast.success(t('dbBackupDownloadStartedMessage', preferredLanguage));
 
         } catch (err: any) {
+            // Use translated error message template
             const msg = err.message || "Failed to download database backup.";
             setBackupError(msg);
-            toast.error(msg);
+            toast.error(t('errorMessageTemplate', preferredLanguage, { message: t('dbBackupFailedError', preferredLanguage) + ` (${msg})` }));
         } finally {
             setBackupLoading(false);
         }
@@ -59,18 +62,19 @@ const DatabaseManagement: React.FC = () => {
              {/* Backup Card */}
              <Card className="bg-white dark:bg-white text-neutral-900 dark:text-neutral-900">
                  <CardHeader>
-                     <CardTitle>Database Backup</CardTitle>
-                     {/* Clarified restore instructions */}
-                     <CardDescription>Download a complete backup of the current application database. Restore must be done manually on the server.</CardDescription>
+                     {/* Use translated title and description */}
+                     <CardTitle>{t('databaseBackupTitle', preferredLanguage)}</CardTitle>
+                     <CardDescription>{t('databaseBackupDescription', preferredLanguage)}</CardDescription>
                  </CardHeader>
                  <CardContent className='space-y-4'>
                       {backupError && <ErrorDisplay message={backupError} />}
                      <Button onClick={handleDownloadBackup} disabled={backupLoading}>
                          {backupLoading ? <LoadingSpinner size="sm" className="mr-2" /> : <Download className="mr-2 h-4 w-4" />}
-                         Download Backup File
+                         {/* Use translated button text */}
+                         {t('downloadBackupButton', preferredLanguage)}
                      </Button>
-                     {/* Updated restore instructions */}
-                     <p className='text-xs text-muted-foreground'>Store backups securely. To restore: 1) Stop the server. 2) Replace the active database file (path in logs/config) with your backup file (ensure correct filename). 3) Restart the server.</p>
+                     {/* Use translated restore instructions */}
+                     <p className='text-xs text-muted-foreground'>{t('dbRestoreManualInfo', preferredLanguage)}</p>
                  </CardContent>
              </Card>
 

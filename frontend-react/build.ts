@@ -164,6 +164,27 @@ const formatFileSize = (bytes: number): string => {
   return `${size.toLocaleString(undefined, { maximumFractionDigits: 2 })} ${units[unitIndex]}`;
 };
 
+// --- ADDED: Helper function to copy a single file ---
+async function copyFile(src: string, destDir: string, destFileName?: string): Promise<boolean> {
+    const sourcePath = path.join(process.cwd(), src);
+    if (!existsSync(sourcePath)) {
+        console.warn(`   - Source file not found, skipping copy: ${src}`);
+        return false;
+    }
+    const fileName = destFileName || path.basename(src);
+    const destPath = path.join(destDir, fileName);
+    try {
+        await mkdir(destDir, { recursive: true });
+        await cp(sourcePath, destPath, { force: true });
+        console.log(`   - Copied: ${src} -> ${path.relative(process.cwd(), destPath)}`);
+        return true;
+    } catch (copyError: any) {
+        console.error(`   - Error copying ${src}: ${copyError.message}`);
+        return false;
+    }
+}
+// --- END ADDED HELPER ---
+
 // Main build function wrapped in async IIFE
 (async () => {
     const helpRequested = process.argv.includes("--help") || process.argv.includes("-h");
@@ -310,7 +331,7 @@ const formatFileSize = (bytes: number): string => {
         console.log(`     - ${ext}: ${loader}`);
     });
     if (copyPatterns.length > 0) {
-        console.log("   - Files/Dirs to Copy:");
+        console.log("   - Files/Dirs to Copy (via --copy):");
         copyPatterns.forEach(p => console.log(`     - ${p}`));
     }
     console.log("");
@@ -361,9 +382,18 @@ const formatFileSize = (bytes: number): string => {
         console.log("   No build output files generated (check entrypoints and configuration).");
     }
 
-    // --- File Copying Logic ---
+     // --- Always copy logo.svg ---
+     console.log("\n📂 Copying essential files...");
+     let essentialCopiedCount = 0;
+     let essentialCopyErrors = 0;
+     if (await copyFile('src/logo.svg', outdir)) { essentialCopiedCount++; } else { essentialCopyErrors++; }
+     console.log(`   Copied ${essentialCopiedCount} essential file(s) with ${essentialCopyErrors} errors.`);
+     if (essentialCopyErrors > 0) console.warn("   Essential file copy failed. Check logs above.");
+     // --- End Logo Copy ---
+
+    // --- File Copying Logic (for --copy patterns) ---
     if (copyPatterns.length > 0) {
-        console.log("\n📂 Copying additional files...");
+        console.log("\n📂 Copying additional files (from --copy)...");
         let copiedCount = 0;
         let copyErrors = 0;
 
@@ -395,7 +425,7 @@ const formatFileSize = (bytes: number): string => {
                 copyErrors++;
             }
         }
-        console.log(`   Copied ${copiedCount} items with ${copyErrors} errors.`);
+        console.log(`   Copied ${copiedCount} items from --copy patterns with ${copyErrors} errors.`);
         if (copyErrors > 0) {
             console.warn("   Some files failed to copy. Check logs above.");
         }

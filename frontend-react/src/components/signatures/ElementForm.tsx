@@ -17,6 +17,7 @@ import { toast } from "sonner";
 import { cn } from '@/lib/utils'; // Import cn
 import { Badge } from '@/components/ui/badge'; // Import Badge
 import { z } from 'zod'; // Import z for inferring type in onSubmit
+import { t } from '@/translations/utils'; // Import translation utility
 
 // Infer the form data type directly from the schema
 type ElementFormData = z.infer<typeof elementFormSchema>;
@@ -29,7 +30,7 @@ interface ElementFormProps {
 }
 
 const ElementForm: React.FC<ElementFormProps> = ({ elementToEdit, currentComponent, onSave }) => {
-    const { token } = useAuth();
+    const { token, preferredLanguage } = useAuth(); // Get preferredLanguage
     const [isLoading, setIsLoading] = useState(false); // For save operation
     const [isFetchingDetails, setIsFetchingDetails] = useState(false); // For loading parents
     const [error, setError] = useState<string | null>(null);
@@ -66,7 +67,10 @@ const ElementForm: React.FC<ElementFormProps> = ({ elementToEdit, currentCompone
                     setSelectedParentIds(parentIds); // Sync local state for selector
                 } catch (err: any) {
                     const msg = err.message || "Failed to load element details";
-                    setError(msg); toast.error(msg); console.error("Fetch Element Parents Error:", err);
+                    setError(msg);
+                    // Use translated error template
+                    toast.error(t('errorMessageTemplate', preferredLanguage, { message: msg }));
+                    console.error("Fetch Element Parents Error:", err);
                      reset({
                          name: elementToEdit?.name || '',
                          description: elementToEdit?.description || '',
@@ -84,7 +88,7 @@ const ElementForm: React.FC<ElementFormProps> = ({ elementToEdit, currentCompone
             }
         };
         fetchParentsAndPopulate();
-     }, [elementToEdit, reset, token]);
+     }, [elementToEdit, reset, token, preferredLanguage]); // Add preferredLanguage
 
 
      // Update RHF's parentIds when the selector state changes (for validation)
@@ -96,7 +100,7 @@ const ElementForm: React.FC<ElementFormProps> = ({ elementToEdit, currentCompone
     // Renamed from onSubmit to avoid conflict with form prop, though not strictly necessary here
     const handleFormSubmit: SubmitHandler<ElementFormData> = async (data) => {
         if (!token || !currentComponent.signatureComponentId) {
-            setError("Component context is missing.");
+            setError("Component context is missing."); // TODO: Translate
             return;
         }
         setIsLoading(true);
@@ -144,6 +148,7 @@ const ElementForm: React.FC<ElementFormProps> = ({ elementToEdit, currentCompone
                      savedElementResult = await api.updateSignatureElement(elementToEdit.signatureElementId, updatePayload, token);
                  } else {
                      console.log("No changes detected for element update.");
+                     // TODO: Translate info message
                      toast.info("No changes detected."); // Inform user
                      // Pass back the original element if no changes were made but save was clicked
                      savedElementResult = elementToEdit;
@@ -153,8 +158,12 @@ const ElementForm: React.FC<ElementFormProps> = ({ elementToEdit, currentCompone
             }
             onSave(savedElementResult); // Trigger success callback with the result
         } catch (err: any) {
-            const msg = err.message || 'Failed to save element';
-            setError(msg); toast.error(`Error: ${msg}`); console.error("Save Element Error:", err);
+             // Use translated error message
+            const msg = err.message || t('elementSaveFailedError', preferredLanguage);
+            setError(msg);
+             // Use translated error template
+            toast.error(t('errorMessageTemplate', preferredLanguage, { message: msg }));
+            console.error("Save Element Error:", err);
             onSave(null); // Indicate save failed / pass null
         } finally {
             setIsLoading(false);
@@ -172,50 +181,48 @@ const ElementForm: React.FC<ElementFormProps> = ({ elementToEdit, currentCompone
             {isLoading && <div className='absolute inset-0 bg-background/50 flex items-center justify-center z-10 rounded-md'><LoadingSpinner/></div>}
 
             {/* Display Current Component Info */}
-            <div className='text-sm p-2 bg-muted rounded border'> Component: <Badge variant="secondary">{currentComponent.name}</Badge> ({currentComponent.index_type}) </div>
+            <div className='text-sm p-2 bg-muted rounded border'> {t('elementListComponentHeader', preferredLanguage)}: <Badge variant="secondary">{currentComponent.name}</Badge> ({currentComponent.index_type}) </div>
 
             {/* Form Fields */}
             <div className="grid gap-1.5">
-                <Label htmlFor="elem-name">Element Name *</Label>
+                 {/* Use translated label */}
+                <Label htmlFor="elem-name">{t('elementNameLabel', preferredLanguage)} {t('requiredFieldIndicator', preferredLanguage)}</Label>
                 <Input id="elem-name" {...register('name')} aria-invalid={!!errors.name} className={cn(errors.name && "border-destructive")} />
                 {errors.name && <p className="text-xs text-destructive">{errors.name.message}</p>}
             </div>
             <div className="grid gap-1.5">
-                <Label htmlFor="elem-description">Description (Optional)</Label>
+                 {/* Use translated label */}
+                <Label htmlFor="elem-description">{t('elementDescriptionLabel', preferredLanguage)} {t('optionalLabel', preferredLanguage)}</Label>
                 <Textarea id="elem-description" {...register('description')} rows={3} aria-invalid={!!errors.description} className={cn(errors.description && "border-destructive")} />
                 {errors.description && <p className="text-xs text-destructive">{errors.description.message}</p>}
             </div>
             <div className="grid gap-1.5">
-                <Label htmlFor="elem-index">Index (Optional - Override Auto-Index)</Label>
-                <Input id="elem-index" {...register('index')} placeholder={`Auto (${currentComponent.index_type})`} aria-invalid={!!errors.index} className={cn(errors.index && "border-destructive")} />
-                <p className='text-xs text-muted-foreground'>Leave empty for automatic index based on component type.</p>
+                 {/* Use translated label and placeholder */}
+                <Label htmlFor="elem-index">{t('elementIndexLabel', preferredLanguage)}</Label>
+                <Input id="elem-index" {...register('index')} placeholder={t('elementIndexPlaceholder', preferredLanguage, { type: currentComponent.index_type })} aria-invalid={!!errors.index} className={cn(errors.index && "border-destructive")} />
+                <p className='text-xs text-muted-foreground'>{t('elementIndexHint', preferredLanguage)}</p>
                 {errors.index && <p className="text-xs text-destructive">{errors.index.message}</p>}
             </div>
             <div className="grid gap-1.5">
-                 {/* Pass currentElementId to prevent self-selection */}
+                 {/* Pass translated label */}
                 <ElementSelector
                     selectedElementIds={selectedParentIds}
                     onChange={setSelectedParentIds}
                     currentElementId={elementToEdit?.signatureElementId}
                     currentComponentId={currentComponent?.signatureComponentId}
-                    label="Parent Elements (Optional)"
+                    label={t('elementParentElementsLabel', preferredLanguage)}
                 />
                 <input type="hidden" {...register('parentIds')} />
                 {errors.parentIds && <p className="text-xs text-destructive">{typeof errors.parentIds.message === 'string' ? errors.parentIds.message : 'Invalid parent selection'}</p>}
             </div>
-            {/*
-              Changed Button type to "button" and added onClick handler.
-              We manually trigger react-hook-form's handleSubmit which runs validation
-              and then calls our handleFormSubmit function if valid.
-              This prevents the default form submission behavior.
-            */}
+            {/* Use translated button text */}
             <Button
                 type="button"
                 onClick={handleSubmit(handleFormSubmit)}
                 disabled={isLoading || isFetchingDetails}
                 className="mt-2 justify-self-start"
             >
-                {isLoading ? <LoadingSpinner size="sm" className='mr-2' /> : (elementToEdit ? 'Update Element' : 'Create Element')}
+                {isLoading ? <LoadingSpinner size="sm" className='mr-2' /> : (elementToEdit ? t('editButton', preferredLanguage) : t('createButton', preferredLanguage))} {t('elementsTitle', preferredLanguage).replace('s', '')} {/* Example */}
             </Button>
         </div>
     );

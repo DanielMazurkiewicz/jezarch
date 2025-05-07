@@ -6,6 +6,7 @@ import { Edit, Trash2 } from 'lucide-react';
 import type { SignatureElement, SignatureElementSearchResult } from '../../../../backend/src/functionalities/signature/element/models';
 import { useAuth } from '@/hooks/useAuth'; // Needed if actions depend on role
 import { cn } from '@/lib/utils'; // Import cn
+import { t } from '@/translations/utils'; // Import translation utility
 
 interface ElementListProps {
   elements: SignatureElementSearchResult[]; // Use search result type which includes parents
@@ -15,9 +16,10 @@ interface ElementListProps {
 
 // Wrap the functional component definition with React.memo
 const ElementList: React.FC<ElementListProps> = React.memo(({ elements, onEdit, onDelete }) => {
-  const { user } = useAuth();
+  const { user, preferredLanguage } = useAuth(); // Get preferredLanguage
   // Determine if the current user can modify elements (e.g., admin or potentially regular user)
-  const canModify = user?.role === 'admin' || true; // Allow regular users for now
+  // TODO: Define actual permissions logic if needed
+  const canModify = user?.role === 'admin' || user?.role === 'employee'; // Allow admin and employees
 
   // Return null if list is empty (parent handles empty message)
   if (elements.length === 0) {
@@ -32,13 +34,13 @@ const ElementList: React.FC<ElementListProps> = React.memo(({ elements, onEdit, 
         <Table>
             <TableHeader>
                 <TableRow>
-                    {/* Align index center */}
-                    <TableHead className="w-[80px] text-center">Index</TableHead>
-                    <TableHead>Name</TableHead>
-                    <TableHead>Description</TableHead>
+                    {/* Use translated headers */}
+                    <TableHead className="w-[80px] text-center">{t('elementIndexLabel', preferredLanguage).split(' (')[0]}</TableHead> {/* Get only "Index" part */}
+                    <TableHead>{t('elementNameLabel', preferredLanguage)}</TableHead>
+                    <TableHead>{t('elementDescriptionLabel', preferredLanguage)}</TableHead>
                     {/* REMOVED Parents Header */}
                     {/* Actions column if user can modify */}
-                    {canModify && <TableHead className="text-right w-[100px]">Actions</TableHead>}
+                    {canModify && <TableHead className="text-right w-[100px]">{t('actionsLabel', preferredLanguage)}</TableHead>}
                 </TableRow>
             </TableHeader>
             <TableBody>
@@ -46,10 +48,12 @@ const ElementList: React.FC<ElementListProps> = React.memo(({ elements, onEdit, 
                     <TableRow key={element.signatureElementId}>
                         {/* Display index or placeholder */}
                         <TableCell className="font-mono text-center text-sm">
+                             {/* TODO: Translate "Auto" */}
                             {element.index || <i className='text-muted-foreground not-italic'>Auto</i>}
                         </TableCell>
                         <TableCell className="font-medium">{element.name}</TableCell>
                         {/* Truncate description, show placeholder */}
+                         {/* TODO: Translate "None" */}
                         <TableCell className='text-sm text-muted-foreground max-w-xs truncate' title={element.description || ''}>
                             {element.description || <i className='not-italic'>None</i>}
                         </TableCell>
@@ -57,10 +61,11 @@ const ElementList: React.FC<ElementListProps> = React.memo(({ elements, onEdit, 
                         {/* Action Buttons */}
                         {canModify && (
                             <TableCell className="text-right space-x-1">
-                                <Button variant="ghost" size="icon" onClick={() => onEdit(element)} title="Edit Element">
+                                 {/* Use translated titles */}
+                                <Button variant="ghost" size="icon" onClick={() => onEdit(element)} title={t('elementEditButtonTooltip', preferredLanguage)}>
                                     <Edit className="h-4 w-4" />
                                 </Button>
-                                <Button variant="ghost" size="icon" onClick={() => onDelete(element.signatureElementId!)} title="Delete Element">
+                                <Button variant="ghost" size="icon" onClick={() => onDelete(element.signatureElementId!)} title={t('elementDeleteButtonTooltip', preferredLanguage)}>
                                     <Trash2 className="h-4 w-4 text-destructive" />
                                 </Button>
                             </TableCell>

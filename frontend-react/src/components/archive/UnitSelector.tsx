@@ -9,6 +9,7 @@ import type { ArchiveDocument } from '../../../../backend/src/functionalities/ar
 import type { SearchRequest } from '../../../../backend/src/utils/search';
 import { cn } from '@/lib/utils';
 import LoadingSpinner from '@/components/shared/LoadingSpinner';
+import { t } from '@/translations/utils'; // Import translation utility
 
 interface UnitSelectorProps {
   selectedUnitId: number | null;
@@ -24,7 +25,7 @@ const UnitSelector: React.FC<UnitSelectorProps> = ({
   className,
   currentDocumentId
 }) => {
-  const { token } = useAuth();
+  const { token, preferredLanguage } = useAuth(); // Get preferredLanguage
   const [availableUnits, setAvailableUnits] = useState<ArchiveDocument[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -52,14 +53,16 @@ const UnitSelector: React.FC<UnitSelectorProps> = ({
                            .sort((a, b) => a.title.localeCompare(b.title)) // Sort locally
         );
       } catch (err: any) {
-        setError(err.message || "Failed to load units");
+         // Use translated error
+        const msg = err.message || t('unitLoadFailedError', preferredLanguage); // TODO: Add unitLoadFailedError
+        setError(msg);
         console.error("Failed to load units:", err);
       } finally {
         setIsLoading(false);
       }
     };
     fetchUnits();
-  }, [token, currentDocumentId]); // Depend on token and currentDocumentId
+  }, [token, currentDocumentId, preferredLanguage]); // Add preferredLanguage
 
   const handleSelect = (unitId: number | null) => {
     onChange(unitId);
@@ -91,10 +94,11 @@ const UnitSelector: React.FC<UnitSelectorProps> = ({
                     disabled={isLoading || !!error}
                 >
                   <span className="truncate">
-                    {isLoading ? 'Loading units...' :
-                     error ? 'Error loading units' :
+                     {/* Use translated placeholders/states */}
+                    {isLoading ? t('loadingText', preferredLanguage) :
+                     error ? t('errorText', preferredLanguage) :
                      selectedUnit ? selectedUnit.title :
-                     'Select parent unit...'}
+                     t('unitSelectorPlaceholder', preferredLanguage)} {/* TODO: Add unitSelectorPlaceholder */}
                   </span>
                    {isLoading ? <LoadingSpinner size="sm" className='ml-2'/> : <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />}
                 </Button>
@@ -102,15 +106,17 @@ const UnitSelector: React.FC<UnitSelectorProps> = ({
              <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
                  <Command shouldFilter={false}>
                     <CommandInput
-                        placeholder="Search units by title..."
+                         // Use translated placeholder
+                        placeholder={t('unitSelectorSearchPlaceholder', preferredLanguage)} // TODO: Add unitSelectorSearchPlaceholder
                         value={searchTerm}
                         onValueChange={setSearchTerm}
                     />
                     <CommandList>
-                        <CommandEmpty>{isLoading ? 'Loading...' : 'No units found.'}</CommandEmpty>
+                         {/* Use translated placeholders/states */}
+                        <CommandEmpty>{isLoading ? t('loadingText', preferredLanguage) : t('unitSelectorNoUnitsFound', preferredLanguage)}</CommandEmpty> {/* TODO: Add unitSelectorNoUnitsFound */}
                          {!isLoading && (
                             <CommandGroup>
-                                {/* Option to clear selection */}
+                                {/* Use translated clear option */}
                                 <CommandItem
                                     key="clear-unit"
                                     value="--clear--"
@@ -118,7 +124,7 @@ const UnitSelector: React.FC<UnitSelectorProps> = ({
                                     className='cursor-pointer text-muted-foreground italic'
                                 >
                                     <X className="mr-2 h-4 w-4 opacity-50" />
-                                    Clear Selection
+                                    {t('clearButton', preferredLanguage)} {t('selection', preferredLanguage)} {/* TODO: Add selection */}
                                 </CommandItem>
                                 {filteredDropdownUnits.map((unit) => (
                                 <CommandItem

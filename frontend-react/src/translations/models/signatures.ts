@@ -1,0 +1,105 @@
+// frontend-react/src/translations/models/signatures.ts
+import { TranslationSet } from "../models";
+
+export type SignatureTranslationKey =
+  | 'signaturesTitle'
+  | 'signaturesDescription'
+  | 'componentsTitle'
+  | 'componentsDescription'
+  | 'elementsTitle'
+  | 'elementsDescription'
+  | 'newComponentButton'
+  | 'newElementButton'
+  | 'componentNameLabel'
+  | 'componentDescriptionLabel'
+  | 'componentIndexTypeLabel'
+  | 'indexTypeDecimal'
+  | 'indexTypeRoman'
+  | 'indexTypeLowerLetter'
+  | 'indexTypeUpperLetter'
+  | 'componentElementsCountLabel'
+  | 'componentActionsColumn' // Already in common, remove if common is sufficient
+  | 'reindexElementsButtonTooltip'
+  | 'editComponentButtonTooltip'
+  | 'deleteComponentButtonTooltip'
+  | 'confirmDeleteComponentTitle'
+  | 'confirmDeleteComponentMessage'
+  | 'confirmReindexComponentTitle'
+  | 'confirmReindexComponentMessage'
+  | 'componentCreatedSuccess'
+  | 'componentUpdatedSuccess'
+  | 'componentDeletedSuccess'
+  | 'componentReindexedSuccess'
+  | 'componentSaveFailedError'
+  | 'componentDeleteFailedError'
+  | 'componentReindexFailedError'
+  | 'noComponentsFound'
+  | 'clickComponentToViewElements'
+  | 'createComponentDialogTitle'
+  | 'editComponentDialogTitle'
+  | 'elementNameLabel'
+  | 'elementDescriptionLabel'
+  | 'elementIndexLabel'
+  | 'elementIndexPlaceholder'
+  | 'elementIndexHint'
+  | 'elementParentElementsLabel'
+  | 'elementListComponentHeader'
+  | 'elementListElementsHeader'
+  | 'elementListActionsHeader' // Already in common, remove if common is sufficient
+  | 'elementEditButtonTooltip'
+  | 'elementDeleteButtonTooltip'
+  | 'confirmDeleteElementTitle'
+  | 'confirmDeleteElementMessage'
+  | 'elementCreatedSuccess'
+  | 'elementUpdatedSuccess'
+  | 'elementDeletedSuccess'
+  | 'elementSaveFailedError'
+  | 'elementDeleteFailedError'
+  | 'noElementsFound'
+  | 'noElementsFoundInComponent'
+  | 'clickCreateElementHint'
+  | 'createElementDialogTitle'
+  | 'editElementDialogTitle'
+  | 'backToComponentsButton'
+  | 'elementsForComponentTitle' // e.g., "Elements for: {componentName}"
+  | 'componentBadgeIndexType' // e.g., "Index Type: {type}"
+  | 'componentBadgeElementsCount' // e.g., "Elements: {count}"
+  | 'signaturePathSelectorLabel'
+  | 'addSignaturePathButton'
+  | 'elementBrowserPopoverCurrentPathLabel'
+  | 'elementBrowserPopoverSelectComponentPlaceholder'
+  | 'elementBrowserPopoverSelectElementPlaceholder'
+  | 'elementBrowserPopoverAvailableElementsHeading'
+  | 'elementBrowserPopoverRemoveLastButton'
+  | 'elementBrowserPopoverAddPathButton'
+  | 'elementBrowserPopoverNoElementsFound'
+  | 'elementBrowserPopoverLoadingElements'
+  | 'elementBrowserPopoverLoadingComponents'
+  | 'elementBrowserPopoverNoComponentsFound'
+  | 'elementBrowserSelectionModeLabel'
+  | 'elementBrowserModeHierarchical'
+  | 'elementBrowserModeFree'
+  | 'elementBrowserModeHierarchicalHint'
+  | 'elementBrowserModeFreeHint'
+  | 'elementBrowserCreateElementButtonHint' // e.g., Create New Element in "{componentName}"...
+  | 'cannotCreateElementError' // e.g., Cannot create element: Select a valid component first.
+  | 'singlePathPickerPlaceholder' // e.g., Click to select signature...
+  | 'singlePathPickerLoading' // e.g., Loading signature...
+  | 'singlePathPickerClearTooltip'
+  | 'readOnly'
+  | 'noDescription'
+  | 'componentNoComponentsFound'
+  | 'elementHasParentsLabel'
+  | 'elementBrowserBuildPathHint'
+  | 'elementBrowserSearchPlaceholder'
+  | 'elementBrowserSearchElements'
+  | 'elementBrowserSelectElementFrom'
+  | 'elementBrowserSelectElementIn'
+  | 'elementBrowserSelectChildOf'
+  | 'componentAdminRequiredError' // Generic error for admin actions
+  | 'componentAuthTokenMissingError' // Generic error for missing token
+  | 'elementIndexAuto' // Placeholder for auto index in ElementList
+  ;
+
+
+export type SignatureTranslationSet = TranslationSet<SignatureTranslationKey>;

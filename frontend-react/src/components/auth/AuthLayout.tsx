@@ -8,7 +8,7 @@ import {
 } from "@/components/ui/select";
 import { Languages } from 'lucide-react';
 // Import types and constants from the new models file
-import { supportedLanguages as appSupportedLanguages, defaultLanguage as appDefaultLanguage, type SupportedLanguage as AppSupportedLanguage } from '@/translations/models/auth';
+import { supportedLanguages as appSupportedLanguages, defaultLanguage as appDefaultLanguage, type SupportedLanguage as AppSupportedLanguage } from '@/translations/models'; // Updated path
 // Import the translation function from the new utils file
 import { t } from '@/translations/utils';
 import { useAuth } from '@/hooks/useAuth'; // Import useAuth to update context

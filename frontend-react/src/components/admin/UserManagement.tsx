@@ -27,9 +27,10 @@ import { cn } from '@/lib/utils';
 import { KeyRound, Ban, Tags, PlusCircle, Languages } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"; // Import Tooltip
+import { t } from '@/translations/utils'; // Import translation utility
 
 const UserManagement: React.FC = () => {
-    const { token, user: adminUser, updateContextUser } = useAuth(); // Added updateContextUser
+    const { token, user: adminUser, updateContextUser, preferredLanguage } = useAuth(); // Get preferredLanguage
     // User type now potentially includes assignedTags and preferredLanguage
     const [users, setUsers] = useState<Omit<User, 'password'>[]>([]);
     const [isLoading, setIsLoading] = useState(true);
@@ -93,27 +94,55 @@ const UserManagement: React.FC = () => {
 
     useEffect(() => { fetchUsers(); fetchAvailableTags(); }, [fetchUsers, fetchAvailableTags]);
 
+    // --- FIX: Define openAssignTagsDialog before handleRoleChange ---
+    const openAssignTagsDialog = useCallback(async (userToAssign: Omit<User, 'password'>) => {
+        if (userToAssign.role !== 'user') {
+            // Use translated warning
+            toast.info(t('tagsCannotBeAssignedWarning', preferredLanguage));
+            return;
+        }
+        setTargetUserForTags(userToAssign);
+        setUpdateError(null);
+        setIsLoadingTags(true);
+        // Use tags already fetched for the user list if available, otherwise fetch fresh
+        const currentTags = userToAssign.assignedTags?.map(t => t.tagId!) ?? [];
+        setAssignedTags(currentTags);
+        setIsAssignTagsDialogOpen(true);
+        setIsLoadingTags(false); // Assume tags are loaded or use cached
+
+    }, [token, preferredLanguage]); // Added preferredLanguage dependency
+    // --- END FIX ---
+
     // --- Handlers ---
     const handleRoleChange = useCallback(async (login: string, newRole: UserRole | null) => {
-        if (!token || login === adminUser?.login) { toast.warning("Cannot change your own role."); return; }
+        // Use translated warning
+        if (!token || login === adminUser?.login) { toast.warning(t('cannotChangeOwnRoleWarning', preferredLanguage)); return; }
         setUpdatingLogin(login); setUpdateError(null);
         const originalUser = users.find(u => u.login === login);
         if (!originalUser) return; // Safety check
 
         const originalRole = originalUser.role;
+        let roleText = ''; // Translate role for toast
+        switch(newRole) {
+            case 'admin': roleText = t('adminRoleOption', preferredLanguage); break;
+            case 'employee': roleText = t('employeeRoleOption', preferredLanguage); break;
+            case 'user': roleText = t('userRoleOption', preferredLanguage); break;
+            default: roleText = t('noRoleOption', preferredLanguage);
+        }
+
         try {
             // Optimistic UI update
             setUsers(prev => prev.map(u => (u.login === login ? { ...u, role: newRole, assignedTags: newRole === 'user' ? u.assignedTags : undefined } : u)));
             await api.updateUserRole(login, newRole, token);
-            const roleText = newRole === null ? 'disabled (No Role)' : newRole === 'user' ? 'User (Restricted)' : newRole === 'employee' ? 'Employee' : 'Admin';
-            toast.success(`Role/Status for "${login}" updated to ${roleText}.`);
+            // Use translated success message
+            toast.success(t('roleUpdatedSuccess', preferredLanguage, { login, roleText }));
 
             // If changed TO 'user', open tag assignment dialog AFTER successful role update
             // Fetch the updated user details to ensure we have the userId for tag assignment
              if (newRole === 'user') {
                  const updatedUser = await api.getUserByLogin(login, token); // Fetch fresh user data
                  if(updatedUser) {
-                     openAssignTagsDialog(updatedUser);
+                     openAssignTagsDialog(updatedUser); // This should now be defined
                  } else {
                      toast.error("Failed to fetch updated user details for tag assignment.");
                  }
@@ -122,11 +151,13 @@ const UserManagement: React.FC = () => {
                  fetchUsers();
              }
         } catch (err: any) {
-            const msg = `Failed to update role for ${login}: ${err.message}`; setUpdateError(msg); toast.error(msg);
+            const msg = `Failed to update role for ${login}: ${err.message}`; setUpdateError(msg);
+            // Use translated error template
+            toast.error(t('errorMessageTemplate', preferredLanguage, { message: msg }));
             // Revert UI on error
             setUsers(prev => prev.map(u => (u.login === login ? { ...u, role: originalRole, assignedTags: originalRole === 'user' ? originalUser.assignedTags : undefined } : u)));
         } finally { setUpdatingLogin(null); }
-    }, [token, adminUser?.login, users, fetchUsers]); // Added fetchUsers dependency
+    }, [token, adminUser?.login, users, fetchUsers, preferredLanguage, openAssignTagsDialog]); // Added openAssignTagsDialog
 
     const openSetPasswordDialog = (userToSet: Omit<User, 'password'>) => {
         setTargetUserForPassword(userToSet);
@@ -141,13 +172,15 @@ const UserManagement: React.FC = () => {
         setUpdateError(null);
         try {
             await api.adminSetUserPassword(targetUserForPassword.login, data.password, token);
-            toast.success(`Password for user "${targetUserForPassword.login}" has been set.`);
+            // Use translated success message
+            toast.success(t('passwordSetSuccess', preferredLanguage, { login: targetUserForPassword.login }));
             setIsSetPasswordDialogOpen(false);
             setTargetUserForPassword(null);
         } catch (err: any) {
             const msg = `Failed to set password for ${targetUserForPassword.login}: ${err.message}`;
             setUpdateError(msg);
-            toast.error(msg);
+            // Use translated error template
+            toast.error(t('errorMessageTemplate', preferredLanguage, { message: msg }));
         } finally {
             setSettingPasswordLogin(null);
         }
@@ -167,7 +200,8 @@ const UserManagement: React.FC = () => {
         setUpdateError(null);
         try {
             const updatedUser = await api.updateUserPreferredLanguage(targetUserForLanguage.login, data.preferredLanguage, token);
-            toast.success(`Preferred language for "${targetUserForLanguage.login}" updated to ${data.preferredLanguage.toUpperCase()}.`);
+            // Use translated success message
+            toast.success(t('languageUpdatedSuccess', preferredLanguage, { login: targetUserForLanguage.login, language: data.preferredLanguage.toUpperCase() }));
             // Update local users state
             setUsers(prevUsers => prevUsers.map(u => u.userId === updatedUser.userId ? { ...u, preferredLanguage: updatedUser.preferredLanguage } : u));
             // If the updated user is the current admin, update context
@@ -179,29 +213,13 @@ const UserManagement: React.FC = () => {
         } catch (err: any) {
             const msg = `Failed to update language for ${targetUserForLanguage.login}: ${err.message}`;
             setUpdateError(msg);
-            toast.error(msg);
+            // Use translated error template
+            toast.error(t('errorMessageTemplate', preferredLanguage, { message: msg }));
         } finally {
             setUpdatingLogin(null);
         }
     };
     // --- END NEW ---
-
-
-    const openAssignTagsDialog = useCallback(async (userToAssign: Omit<User, 'password'>) => {
-        if (userToAssign.role !== 'user') {
-            toast.info("Tags can only be assigned to users with the 'user' role.");
-            return;
-        }
-        setTargetUserForTags(userToAssign);
-        setUpdateError(null);
-        setIsLoadingTags(true);
-        // Use tags already fetched for the user list if available, otherwise fetch fresh
-        const currentTags = userToAssign.assignedTags?.map(t => t.tagId!) ?? [];
-        setAssignedTags(currentTags);
-        setIsAssignTagsDialogOpen(true);
-        setIsLoadingTags(false); // Assume tags are loaded or use cached
-
-    }, [token]);
 
     const handleAssignTagsSave = async () => {
         if (!token || !targetUserForTags) return;
@@ -209,14 +227,16 @@ const UserManagement: React.FC = () => {
         setUpdateError(null);
         try {
             await api.assignTagsToUser(targetUserForTags.login, assignedTags, token);
-            toast.success(`Tags assigned successfully to ${targetUserForTags.login}.`);
+            // Use translated success message
+            toast.success(t('tagsAssignedSuccess', preferredLanguage, { login: targetUserForTags.login }));
             setIsAssignTagsDialogOpen(false);
             setTargetUserForTags(null);
             fetchUsers(); // Refresh user list to show updated tags
         } catch (err: any) {
             const msg = `Failed to assign tags: ${err.message}`;
             setUpdateError(msg);
-            toast.error(msg);
+            // Use translated error template
+            toast.error(t('errorMessageTemplate', preferredLanguage, { message: msg }));
         } finally {
             setUpdatingLogin(null);
         }
@@ -229,12 +249,23 @@ const UserManagement: React.FC = () => {
     };
     // -------------------------------------------
 
+    // Get translated role display text or badge
     const getRoleDisplay = (role: UserRole | null): React.ReactNode => {
-        if (role === 'admin') return <Badge variant="default">Admin</Badge>;
-        if (role === 'employee') return <Badge variant="secondary">Employee</Badge>;
-        if (role === 'user') return <Badge variant="outline" className="text-blue-700 border-blue-300">User (Restricted)</Badge>; // Custom style for user
-        return <Badge variant="outline" className='border-dashed text-muted-foreground'>No Role</Badge>;
+        if (role === 'admin') return <Badge variant="default">{t('adminRoleOption', preferredLanguage)}</Badge>;
+        if (role === 'employee') return <Badge variant="secondary">{t('employeeRoleOption', preferredLanguage)}</Badge>;
+        if (role === 'user') return <Badge variant="outline" className="text-blue-700 border-blue-300">{t('userRoleOption', preferredLanguage)}</Badge>;
+        return <Badge variant="outline" className='border-dashed text-muted-foreground'>{t('noRoleOption', preferredLanguage)}</Badge>;
     };
+
+    // Get translated language display text
+    const getLanguageDisplay = (langCode: SupportedLanguage | undefined): string => {
+        if (!langCode) return 'EN'; // Default if somehow undefined
+        switch (langCode) {
+            case 'en': return 'English (EN)';
+            case 'pl': return 'Polski (PL)';
+            default: return langCode.toUpperCase();
+        }
+    }
 
     return (
         <TooltipProvider delayDuration={150}> {/* Wrap table for Tooltips */}
@@ -242,8 +273,9 @@ const UserManagement: React.FC = () => {
                 <CardHeader>
                     <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                          <div>
-                             <CardTitle>User Management</CardTitle>
-                             <CardDescription>Manage user roles, access, and preferred language.</CardDescription>
+                             {/* Use translated title and description */}
+                             <CardTitle>{t('userManagementTitleAdmin', preferredLanguage)}</CardTitle>
+                             <CardDescription>{t('userManagementDescriptionAdmin', preferredLanguage)}</CardDescription>
                          </div>
                          {/* --- Create User Button & Dialog Trigger --- */}
                          <UserCreateDialog
@@ -252,7 +284,9 @@ const UserManagement: React.FC = () => {
                             onUserCreated={handleUserCreated}
                          >
                              <Button size="sm" className='shrink-0'>
-                                 <PlusCircle className="mr-2 h-4 w-4" /> Create User
+                                 <PlusCircle className="mr-2 h-4 w-4" />
+                                 {/* Use translated button text */}
+                                 {t('createUserButtonAdmin', preferredLanguage)}
                              </Button>
                          </UserCreateDialog>
                          {/* ---------------------------------------- */}
@@ -268,11 +302,12 @@ const UserManagement: React.FC = () => {
                             <Table>
                                 <TableHeader>
                                     <TableRow>
-                                        <TableHead>Login</TableHead>
-                                        <TableHead>Role</TableHead>
-                                        <TableHead>Language</TableHead> {/* NEW Header */}
-                                        <TableHead>Assigned Tags</TableHead>
-                                        <TableHead className="text-right w-[180px]">Actions</TableHead> {/* Adjusted width */}
+                                         {/* Use translated column headers */}
+                                        <TableHead>{t('userLoginColumn', preferredLanguage)}</TableHead>
+                                        <TableHead>{t('userRoleColumn', preferredLanguage)}</TableHead>
+                                        <TableHead>{t('userLanguageColumn', preferredLanguage)}</TableHead>
+                                        <TableHead>{t('userAssignedTagsColumn', preferredLanguage)}</TableHead>
+                                        <TableHead className="text-right w-[180px]">{t('userActionsColumn', preferredLanguage)}</TableHead>
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
@@ -290,14 +325,14 @@ const UserManagement: React.FC = () => {
                                                             onValueChange={(value) => handleRoleChange(user.login, value === 'null' ? null : value as UserRole)}
                                                             disabled={isSelf || isProcessing}
                                                         >
-                                                            <SelectTrigger className={cn('w-[160px] h-9', updatingLogin === user.login && 'opacity-70')} aria-label={`Change role for ${user.login}`}>
-                                                                <SelectValue placeholder="Change role...">{getRoleDisplay(user.role)}</SelectValue>
+                                                            <SelectTrigger className={cn('w-[160px] h-9', updatingLogin === user.login && 'opacity-70')} aria-label={t('selectRolePlaceholder', preferredLanguage)}>
+                                                                <SelectValue placeholder={t('selectRolePlaceholder', preferredLanguage)}>{getRoleDisplay(user.role)}</SelectValue>
                                                             </SelectTrigger>
                                                             <SelectContent>
-                                                                <SelectItem value="admin">Admin</SelectItem>
-                                                                <SelectItem value="employee">Employee</SelectItem>
-                                                                <SelectItem value="user">User (Restricted)</SelectItem>
-                                                                <SelectItem value="null"><span className='text-muted-foreground italic flex items-center gap-1'><Ban className='h-3 w-3'/> No Role / Disabled</span></SelectItem>
+                                                                <SelectItem value="admin">{t('adminRoleOption', preferredLanguage)}</SelectItem>
+                                                                <SelectItem value="employee">{t('employeeRoleOption', preferredLanguage)}</SelectItem>
+                                                                <SelectItem value="user">{t('userRoleOption', preferredLanguage)}</SelectItem>
+                                                                <SelectItem value="null"><span className='text-muted-foreground italic flex items-center gap-1'><Ban className='h-3 w-3'/> {t('noRoleOption', preferredLanguage)}</span></SelectItem>
                                                             </SelectContent>
                                                         </Select>
                                                         {updatingLogin === user.login && !isAssignTagsDialogOpen && !isSetLanguageDialogOpen && <LoadingSpinner size="sm" />}
@@ -305,7 +340,8 @@ const UserManagement: React.FC = () => {
                                                 </TableCell>
                                                 {/* Preferred Language Cell */}
                                                 <TableCell>
-                                                     <Badge variant="outline" className="font-normal">{user.preferredLanguage?.toUpperCase() || 'EN'}</Badge>
+                                                     {/* Use translated language display */}
+                                                     <Badge variant="outline" className="font-normal">{getLanguageDisplay(user.preferredLanguage)}</Badge>
                                                 </TableCell>
                                                 {/* Assigned Tags Cell */}
                                                 <TableCell>
@@ -316,7 +352,8 @@ const UserManagement: React.FC = () => {
                                                                     <Badge key={tag.tagId} variant="outline" className='font-normal'>{tag.name}</Badge>
                                                                 ))
                                                             ) : (
-                                                                <span className="text-xs text-muted-foreground italic">None assigned</span>
+                                                                 // Use translated text
+                                                                <span className="text-xs text-muted-foreground italic">{t('noneLabel', preferredLanguage)} {t('assignButton', preferredLanguage).toLowerCase()}ed</span>
                                                             )
                                                         ) : (
                                                             <span className="text-xs text-muted-foreground">—</span>
@@ -336,16 +373,16 @@ const UserManagement: React.FC = () => {
                                                 <TableCell className="text-right space-x-1">
                                                     {/* Language Button - Visible for admin, not for self */}
                                                     {!isSelf && (
-                                                         <Button variant="ghost" size="icon" onClick={() => openSetLanguageDialog(user)} disabled={isProcessing} title={`Set language for ${user.login}`}>
+                                                         <Button variant="ghost" size="icon" onClick={() => openSetLanguageDialog(user)} disabled={isProcessing} title={t('setLanguageButtonTooltip', preferredLanguage, { login: user.login })}>
                                                              {updatingLogin === user.login && isSetLanguageDialogOpen ? <LoadingSpinner size="sm"/> : <Languages className="h-4 w-4 text-purple-600" />}
                                                          </Button>
                                                     )}
                                                     {user.role === 'user' && !isSelf && (
-                                                         <Button variant="ghost" size="icon" onClick={() => openAssignTagsDialog(user)} disabled={isProcessing} title={`Assign tags for ${user.login}`}>
+                                                         <Button variant="ghost" size="icon" onClick={() => openAssignTagsDialog(user)} disabled={isProcessing} title={t('assignTagsButtonTooltip', preferredLanguage, { login: user.login })}>
                                                             {updatingLogin === user.login && isAssignTagsDialogOpen ? <LoadingSpinner size="sm"/> : <Tags className="h-4 w-4 text-blue-600" />}
                                                         </Button>
                                                     )}
-                                                    <Button variant="ghost" size="icon" onClick={() => openSetPasswordDialog(user)} disabled={isSelf || isProcessing} title={`Set password for ${user.login}`}>
+                                                    <Button variant="ghost" size="icon" onClick={() => openSetPasswordDialog(user)} disabled={isSelf || isProcessing} title={t('setPasswordButtonTooltip', preferredLanguage, { login: user.login })}>
                                                         {settingPasswordLogin === user.login ? <LoadingSpinner size="sm"/> : <KeyRound className="h-4 w-4" />}
                                                     </Button>
                                                 </TableCell>
@@ -356,50 +393,61 @@ const UserManagement: React.FC = () => {
                             </Table>
                         </div>
                     )}
-                    {!isLoading && !fetchError && users.length === 0 && (<p className='text-muted-foreground text-center py-6'>No users found.</p>)}
+                     {/* Use translated empty state */}
+                    {!isLoading && !fetchError && users.length === 0 && (<p className='text-muted-foreground text-center py-6'>{t('noUsersFound', preferredLanguage)}</p>)}
                 </CardContent>
 
                  <Dialog open={isSetPasswordDialogOpen} onOpenChange={setIsSetPasswordDialogOpen}>
                      <DialogContent className="sm:max-w-[425px]">
-                         <DialogHeader><DialogTitle>Set Password for "{targetUserForPassword?.login}"</DialogTitle><DialogDescription>Enter the new password.</DialogDescription></DialogHeader>
+                         {/* Use translated title and description */}
+                          <DialogHeader><DialogTitle>{t('setPasswordDialogTitle', preferredLanguage, { login: targetUserForPassword?.login || '...' })}</DialogTitle><DialogDescription>{t('setPasswordDialogDescription', preferredLanguage)}</DialogDescription></DialogHeader>
                           {updateError && <ErrorDisplay message={updateError} className='my-2' />}
                           <form onSubmit={handlePasswordSubmit(onSetPasswordSubmit)}>
-                             <div className="grid gap-4 py-4"> <div className="grid grid-cols-4 items-start gap-x-4 gap-y-1"> <Label htmlFor="new-password" className="text-right pt-2">New Password</Label> <div className="col-span-3 space-y-1"> <Input id="new-password" type="password" {...registerPassword("password")} className={cn(passwordErrors.password && "border-destructive")} aria-invalid={!!passwordErrors.password}/> {passwordErrors.password && <p className="text-xs text-destructive">{passwordErrors.password.message}</p>} </div> </div> </div>
-                             <DialogFooter> <DialogClose asChild><Button type="button" variant="outline" disabled={!!settingPasswordLogin}>Cancel</Button></DialogClose> <Button type="submit" disabled={!!settingPasswordLogin || !!passwordErrors.password}>{settingPasswordLogin ? <LoadingSpinner size="sm" className="mr-2" /> : 'Set Password'}</Button> </DialogFooter>
+                             <div className="grid gap-4 py-4"> <div className="grid grid-cols-4 items-start gap-x-4 gap-y-1">
+                                  {/* Use translated label */}
+                                  <Label htmlFor="new-password" className="text-right pt-2">{t('newPasswordLabel', preferredLanguage)}</Label>
+                                 <div className="col-span-3 space-y-1"> <Input id="new-password" type="password" {...registerPassword("password")} className={cn(passwordErrors.password && "border-destructive")} aria-invalid={!!passwordErrors.password}/> {passwordErrors.password && <p className="text-xs text-destructive">{passwordErrors.password.message}</p>} </div> </div> </div>
+                              {/* Use translated button text */}
+                             <DialogFooter> <DialogClose asChild><Button type="button" variant="outline" disabled={!!settingPasswordLogin}>{t('cancelButton', preferredLanguage)}</Button></DialogClose> <Button type="submit" disabled={!!settingPasswordLogin || !!passwordErrors.password}>{settingPasswordLogin ? <LoadingSpinner size="sm" className="mr-2" /> : t('setPasswordButtonTooltip', preferredLanguage, {login: ''}).replace(' for ','')}</Button> </DialogFooter>
                           </form>
                      </DialogContent>
                  </Dialog>
                  <Dialog open={isAssignTagsDialogOpen} onOpenChange={setIsAssignTagsDialogOpen}>
                      <DialogContent className="sm:max-w-md">
-                         <DialogHeader> <DialogTitle>Assign Allowed Tags for "{targetUserForTags?.login}"</DialogTitle> <DialogDescription>Select the tags this 'user' role account is allowed to view/search within the archive.</DialogDescription> </DialogHeader>
+                          {/* Use translated title and description */}
+                         <DialogHeader> <DialogTitle>{t('assignTagsDialogTitle', preferredLanguage, { login: targetUserForTags?.login || '...' })}</DialogTitle> <DialogDescription>{t('assignTagsDialogDescription', preferredLanguage)}</DialogDescription> </DialogHeader>
                          {updateError && <ErrorDisplay message={updateError} className='my-2' />}
                          {isLoadingTags ? (<div className="flex justify-center py-4"><LoadingSpinner /></div>) : ( <div className="py-4"> <TagSelector selectedTagIds={assignedTags} onChange={setAssignedTags} availableTags={availableTags}/> </div> )}
-                         <DialogFooter> <DialogClose asChild><Button type="button" variant="outline" disabled={updatingLogin === targetUserForTags?.login}>Cancel</Button></DialogClose> <Button type="button" onClick={handleAssignTagsSave} disabled={isLoadingTags || updatingLogin === targetUserForTags?.login}> {updatingLogin === targetUserForTags?.login ? <LoadingSpinner size="sm" className="mr-2" /> : 'Save Assignments'} </Button> </DialogFooter>
+                          {/* Use translated button text */}
+                         <DialogFooter> <DialogClose asChild><Button type="button" variant="outline" disabled={updatingLogin === targetUserForTags?.login}>{t('cancelButton', preferredLanguage)}</Button></DialogClose> <Button type="button" onClick={handleAssignTagsSave} disabled={isLoadingTags || updatingLogin === targetUserForTags?.login}> {updatingLogin === targetUserForTags?.login ? <LoadingSpinner size="sm" className="mr-2" /> : t('saveButton', preferredLanguage)} </Button> </DialogFooter>
                      </DialogContent>
                  </Dialog>
                  {/* --- NEW: Preferred Language Dialog --- */}
                  <Dialog open={isSetLanguageDialogOpen} onOpenChange={setIsSetLanguageDialogOpen}>
                      <DialogContent className="sm:max-w-[425px]">
                          <DialogHeader>
-                             <DialogTitle>Set Preferred Language for "{targetUserForLanguage?.login}"</DialogTitle>
-                             <DialogDescription>Select the user's preferred language for the interface (currently only English is fully supported).</DialogDescription>
+                             {/* Use translated title and description */}
+                             <DialogTitle>{t('setLanguageDialogTitle', preferredLanguage, { login: targetUserForLanguage?.login || '...' })}</DialogTitle>
+                             <DialogDescription>{t('setLanguageDialogDescription', preferredLanguage)}</DialogDescription>
                          </DialogHeader>
                          {updateError && <ErrorDisplay message={updateError} className='my-2' />}
                          <form onSubmit={handleLanguageSubmit(onSetLanguageSubmit)}>
                             <div className="grid gap-4 py-4">
                                 <div className="grid gap-1.5">
-                                    <Label htmlFor="preferredLanguage">Language</Label>
+                                     {/* Use translated label */}
+                                    <Label htmlFor="preferredLanguage">{t('languageLabel', preferredLanguage)}</Label>
                                     <Controller
                                         name="preferredLanguage"
                                         control={languageControl}
                                         render={({ field }) => (
                                             <Select onValueChange={field.onChange} value={field.value}>
-                                                <SelectTrigger id="preferredLanguage" className={cn(languageErrors.preferredLanguage && "border-destructive")}>
-                                                    <SelectValue placeholder="Select language..." />
+                                                 <SelectTrigger id="preferredLanguage" className={cn(languageErrors.preferredLanguage && "border-destructive")}>
+                                                     <SelectValue placeholder={t('selectLanguagePlaceholder', preferredLanguage)} />
                                                 </SelectTrigger>
                                                 <SelectContent>
                                                     {supportedLanguages.map(lang => (
-                                                        <SelectItem key={lang} value={lang}>{lang.toUpperCase()}</SelectItem>
+                                                        // Use translated language display
+                                                        <SelectItem key={lang} value={lang}>{getLanguageDisplay(lang)}</SelectItem>
                                                     ))}
                                                 </SelectContent>
                                             </Select>
@@ -408,12 +456,13 @@ const UserManagement: React.FC = () => {
                                     {languageErrors.preferredLanguage && <p className="text-xs text-destructive">{languageErrors.preferredLanguage.message}</p>}
                                 </div>
                             </div>
+                             {/* Use translated button text */}
                             <DialogFooter>
                                 <DialogClose asChild>
-                                    <Button type="button" variant="outline" disabled={updatingLogin === targetUserForLanguage?.login}>Cancel</Button>
+                                    <Button type="button" variant="outline" disabled={updatingLogin === targetUserForLanguage?.login}>{t('cancelButton', preferredLanguage)}</Button>
                                 </DialogClose>
                                 <Button type="submit" disabled={updatingLogin === targetUserForLanguage?.login || !!languageErrors.preferredLanguage}>
-                                    {updatingLogin === targetUserForLanguage?.login ? <LoadingSpinner size="sm" className="mr-2" /> : 'Set Language'}
+                                    {updatingLogin === targetUserForLanguage?.login ? <LoadingSpinner size="sm" className="mr-2" /> : t('saveButton', preferredLanguage)}
                                 </Button>
                             </DialogFooter>
                          </form>

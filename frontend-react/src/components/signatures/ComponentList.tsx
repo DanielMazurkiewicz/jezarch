@@ -6,6 +6,7 @@ import { Edit, Trash2, ListRestart, FolderOpen } from 'lucide-react'; // Added F
 import type { SignatureComponent } from '../../../../backend/src/functionalities/signature/component/models';
 import { useAuth } from '@/hooks/useAuth';
 import { cn } from '@/lib/utils';
+import { t } from '@/translations/utils'; // Import translation utility
 
 interface ComponentListProps {
     components: SignatureComponent[];
@@ -20,7 +21,7 @@ interface ComponentListProps {
 const ComponentList: React.FC<ComponentListProps> = React.memo(({
     components, onEdit, onDelete, onOpen, onReindex // Updated prop name
 }) => {
-    const { user } = useAuth();
+    const { user, preferredLanguage } = useAuth(); // Get preferredLanguage
     const isAdmin = user?.role === 'admin';
 
     // Handle row click to open the component's element page
@@ -28,12 +29,15 @@ const ComponentList: React.FC<ComponentListProps> = React.memo(({
         onOpen(component);
     };
 
-    // Map index types to readable labels
-    const indexTypeLabels: Record<string, string> = {
-        dec: 'Decimal (1, 2)',
-        roman: 'Roman (I, II)',
-        small_char: 'Letters (a, b)',
-        capital_char: 'Capital Letters (A, B)'
+    // Map index types to readable labels using translations
+    const getIndexTypeLabel = (type: SignatureComponent['index_type']): string => {
+         switch(type) {
+             case 'dec': return t('indexTypeDecimal', preferredLanguage);
+             case 'roman': return t('indexTypeRoman', preferredLanguage);
+             case 'small_char': return t('indexTypeLowerLetter', preferredLanguage);
+             case 'capital_char': return t('indexTypeUpperLetter', preferredLanguage);
+             default: return type;
+         }
     };
 
     // Return null if list is empty (parent handles empty message)
@@ -49,12 +53,13 @@ const ComponentList: React.FC<ComponentListProps> = React.memo(({
             <Table>
                 <TableHeader>
                     <TableRow>
-                        <TableHead>Name</TableHead>
-                        <TableHead>Description</TableHead>
-                        <TableHead>Index Type</TableHead>
-                        <TableHead className='text-center w-[100px]'>Elements</TableHead>
+                         {/* Use translated headers */}
+                        <TableHead>{t('componentNameLabel', preferredLanguage)}</TableHead>
+                        <TableHead>{t('componentDescriptionLabel', preferredLanguage)}</TableHead>
+                        <TableHead>{t('componentIndexTypeLabel', preferredLanguage)}</TableHead>
+                        <TableHead className='text-center w-[100px]'>{t('componentElementsCountLabel', preferredLanguage)}</TableHead>
                         {/* Actions column header always present, content conditional */}
-                        <TableHead className="text-right w-[150px]">Actions</TableHead>
+                        <TableHead className="text-right w-[150px]">{t('actionsLabel', preferredLanguage)}</TableHead>
                     </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -71,26 +76,29 @@ const ComponentList: React.FC<ComponentListProps> = React.memo(({
                                 <FolderOpen className="h-4 w-4 text-muted-foreground shrink-0" />
                                 {component.name}
                             </TableCell>
-                            <TableCell className='text-sm text-muted-foreground max-w-xs truncate' title={component.description || ''}>
-                                {component.description || <i className='not-italic'>None</i>}
+                             {/* Use translated placeholder */}
+                             <TableCell className='text-sm text-muted-foreground max-w-xs truncate' title={component.description || ''}>
+                                {component.description || <i className='not-italic'>{t('noDescription', preferredLanguage)}</i>} {/* TODO: Add noDescription */}
                             </TableCell>
-                            <TableCell><Badge variant="outline">{indexTypeLabels[component.index_type] || component.index_type}</Badge></TableCell>
+                            <TableCell><Badge variant="outline">{getIndexTypeLabel(component.index_type)}</Badge></TableCell>
                             <TableCell className="text-center">{component.index_count ?? 0}</TableCell>
                             <TableCell className="text-right space-x-1">
                                 {isAdmin ? (
                                     <>
-                                        <Button variant="ghost" size="icon" onClick={(e) => { e.stopPropagation(); onReindex(component.signatureComponentId!); }} title="Re-index Elements">
+                                         {/* Use translated titles */}
+                                        <Button variant="ghost" size="icon" onClick={(e) => { e.stopPropagation(); onReindex(component.signatureComponentId!); }} title={t('reindexElementsButtonTooltip', preferredLanguage)}>
                                             <ListRestart className="h-4 w-4" />
                                         </Button>
-                                        <Button variant="ghost" size="icon" onClick={(e) => { e.stopPropagation(); onEdit(component); }} title="Edit Component">
+                                        <Button variant="ghost" size="icon" onClick={(e) => { e.stopPropagation(); onEdit(component); }} title={t('editComponentButtonTooltip', preferredLanguage)}>
                                             <Edit className="h-4 w-4" />
                                         </Button>
-                                        <Button variant="ghost" size="icon" onClick={(e) => { e.stopPropagation(); onDelete(component.signatureComponentId!); }} title="Delete Component">
+                                        <Button variant="ghost" size="icon" onClick={(e) => { e.stopPropagation(); onDelete(component.signatureComponentId!); }} title={t('deleteComponentButtonTooltip', preferredLanguage)}>
                                             <Trash2 className="h-4 w-4 text-destructive" />
                                         </Button>
                                     </>
                                 ) : (
-                                    <span className="text-xs text-muted-foreground italic">Read-only</span>
+                                     // Use translated read-only text
+                                    <span className="text-xs text-muted-foreground italic">{t('readOnly', preferredLanguage)}</span> // TODO: Add readOnly
                                 )}
                             </TableCell>
                         </TableRow>

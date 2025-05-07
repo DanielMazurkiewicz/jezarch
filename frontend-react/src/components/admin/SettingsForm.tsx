@@ -16,9 +16,10 @@ import { settingsSchema, SettingsFormData } from '@/lib/zodSchemas'; // Updated 
 import { toast } from "sonner";
 import { Trash2 } from 'lucide-react'; // Import Trash2 icon
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
+import { t } from '@/translations/utils'; // Import translation utility
 
 const SettingsForm: React.FC = () => {
-    const { token } = useAuth();
+    const { token, preferredLanguage } = useAuth(); // Get preferredLanguage
     const [isLoading, setIsLoading] = useState(true);
     const [loadError, setLoadError] = useState<string | null>(null);
     const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'success' | 'error'>('idle');
@@ -127,15 +128,17 @@ const SettingsForm: React.FC = () => {
                          newFormValues[key] = typeof value === 'string' && value.trim().length > 0 ? value : 'en';
                          break;
                     case AppConfigKeys.HTTPS_KEY_PATH:
-                        newFormValues[key] = value ?? ''; // Use empty string for null/undefined
-                        setOriginalKeyPath(value); // Store original null/string
+                        // Value from API might be "*** SET (Path Hidden) ***" or actual path (if API doesn't hide) or null
+                        // For the form, we just need to know IF it's set or not. Use empty string if null/hidden.
+                        newFormValues[key] = value && typeof value === 'string' && !value.includes('SET (Path Hidden)') ? value : '';
+                        setOriginalKeyPath(value); // Store original value (could be hidden placeholder)
                         break;
                     case AppConfigKeys.HTTPS_CERT_PATH:
-                        newFormValues[key] = value ?? '';
+                        newFormValues[key] = value && typeof value === 'string' && !value.includes('SET (Path Hidden)') ? value : '';
                         setOriginalCertPath(value);
                         break;
                     case AppConfigKeys.HTTPS_CA_PATH:
-                        newFormValues[key] = value ?? '';
+                        newFormValues[key] = value && typeof value === 'string' && !value.includes('SET (Path Hidden)') ? value : '';
                         setOriginalCaPath(value);
                         break;
                 }
@@ -198,7 +201,8 @@ const SettingsForm: React.FC = () => {
                     anyError = true;
                     const msg = result.error?.message || `Failed to save ${result.key}.`;
                     setSaveError(prev => (prev ? `${prev}\n${msg}` : msg));
-                    toast.error(`${result.key} Save Error: ${msg}`);
+                    // Use translated error template
+                    toast.error(t('errorMessageTemplate', preferredLanguage, { message: `Failed to save ${result.key}: ${msg}` }));
                     console.error(`${result.key} Save Error:`, result.error);
                 } else {
                     // Check if this specific setting required a restart
@@ -214,13 +218,15 @@ const SettingsForm: React.FC = () => {
 
             if (!anyError) {
                 setSaveStatus('success');
+                // Use translated success message
+                const baseSuccessMsg = t('saveSettingsSuccessMessage', preferredLanguage);
                 // Fetch again to get potentially masked values and update originals
                 await fetchSettings(); // fetchSettings now updates originals
-                const finalMessage = `Settings saved successfully.`;
                 if (restartRequiredBySave) {
-                    toast.warning(`${finalMessage} Server action triggered (check logs).`);
+                    // Use translated warning message
+                    toast.warning(`${baseSuccessMsg} ${t('saveSettingsRestartWarning', preferredLanguage)}`);
                 } else {
-                    toast.success(finalMessage);
+                    toast.success(baseSuccessMsg);
                 }
                 // Form is reset by fetchSettings, keep success status briefly
                 setTimeout(() => setSaveStatus('idle'), 2500);
@@ -232,7 +238,9 @@ const SettingsForm: React.FC = () => {
 
         } catch (err: any) {
             const msg = err.message || 'An unexpected error occurred while saving settings';
-            setSaveError(msg); toast.error(msg);
+            setSaveError(msg);
+            // Use translated error template
+            toast.error(t('errorMessageTemplate', preferredLanguage, { message: msg }));
             setSaveStatus('error');
             console.error("SettingsForm: Unexpected Save error:", err);
             // Attempt to refetch settings on major failure
@@ -247,14 +255,16 @@ const SettingsForm: React.FC = () => {
          setSaveError(null); // Clear previous save errors
          try {
              const response = await api.clearHttpsConfig(token);
-             toast.success(response.message || "HTTPS settings cleared.");
+             // Use translated success message from response or default
+             toast.success(response.message || t('clearHttpsSuccessMessage', preferredLanguage));
              // Refresh the form state to reflect cleared values
              await fetchSettings();
              setIsClearConfirmOpen(false); // Close confirmation dialog
          } catch (err: any) {
              const msg = err.message || "Failed to clear HTTPS settings.";
              setSaveError(msg); // Show error in the main error display
-             toast.error(msg);
+             // Use translated error template
+             toast.error(t('errorMessageTemplate', preferredLanguage, { message: msg }));
          } finally {
              setIsClearingHttps(false);
          }
@@ -267,8 +277,9 @@ const SettingsForm: React.FC = () => {
     return (
         <Card className="bg-white dark:bg-white text-neutral-900 dark:text-neutral-900">
             <CardHeader>
-                <CardTitle>Application Settings</CardTitle>
-                <CardDescription>Configure server ports, language, and HTTPS settings. Changes related to ports or HTTPS require a manual server restart or trigger automatic actions.</CardDescription>
+                {/* Use translated title and description */}
+                <CardTitle>{t('appSettingsTitleAdmin', preferredLanguage)}</CardTitle>
+                <CardDescription>{t('appSettingsDescriptionAdmin', preferredLanguage)}</CardDescription>
             </CardHeader>
             <CardContent>
                 <form onSubmit={handleSubmit(onSubmit)} className="space-y-6 max-w-2xl"> {/* Increased max-width */}
@@ -276,12 +287,14 @@ const SettingsForm: React.FC = () => {
 
                     {/* General Settings Section */}
                     <div className="space-y-4 border-b pb-4">
-                         <h3 className="text-lg font-medium">General</h3>
+                         {/* Use translated heading */}
+                         <h3 className="text-lg font-medium">{t('generalLabel', preferredLanguage)}</h3>
                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                              {/* Default Language */}
                              <div className="grid gap-1.5">
-                                <Label htmlFor="language">Default Language</Label>
-                                <Input id="language" {...register(AppConfigKeys.DEFAULT_LANGUAGE)} placeholder="e.g., en, de" aria-invalid={!!errors[AppConfigKeys.DEFAULT_LANGUAGE]} className={cn(errors[AppConfigKeys.DEFAULT_LANGUAGE] && "border-destructive")} />
+                                {/* Use translated label */}
+                                <Label htmlFor="language">{t('defaultLanguageLabel', preferredLanguage)}</Label>
+                                <Input id="language" {...register(AppConfigKeys.DEFAULT_LANGUAGE)} placeholder="e.g., en, pl" aria-invalid={!!errors[AppConfigKeys.DEFAULT_LANGUAGE]} className={cn(errors[AppConfigKeys.DEFAULT_LANGUAGE] && "border-destructive")} />
                                 {errors[AppConfigKeys.DEFAULT_LANGUAGE] && <p className="text-xs text-destructive">{errors[AppConfigKeys.DEFAULT_LANGUAGE]?.message}</p>}
                              </div>
                          </div>
@@ -289,17 +302,20 @@ const SettingsForm: React.FC = () => {
 
                     {/* Network Settings Section */}
                     <div className="space-y-4 border-b pb-4">
-                        <h3 className="text-lg font-medium">Network Ports</h3>
+                         {/* Use translated heading */}
+                        <h3 className="text-lg font-medium">{t('networkPortsLabel', preferredLanguage)}</h3>
                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                              {/* HTTP Port */}
                              <div className="grid gap-1.5">
-                                <Label htmlFor="http-port">HTTP Port</Label>
+                                {/* Use translated label */}
+                                <Label htmlFor="http-port">{t('httpPortLabel', preferredLanguage)}</Label>
                                 <Input id="http-port" type="number" {...register(AppConfigKeys.HTTP_PORT, { valueAsNumber: true })} aria-invalid={!!errors[AppConfigKeys.HTTP_PORT]} className={cn(errors[AppConfigKeys.HTTP_PORT] && "border-destructive")} />
                                 {errors[AppConfigKeys.HTTP_PORT] && <p className="text-xs text-destructive">{errors[AppConfigKeys.HTTP_PORT]?.message}</p>}
                              </div>
                              {/* HTTPS Port */}
                              <div className="grid gap-1.5">
-                                <Label htmlFor="https-port">HTTPS Port</Label>
+                                 {/* Use translated label */}
+                                <Label htmlFor="https-port">{t('httpsPortLabel', preferredLanguage)}</Label>
                                 <Input id="https-port" type="number" {...register(AppConfigKeys.HTTPS_PORT, { valueAsNumber: true })} aria-invalid={!!errors[AppConfigKeys.HTTPS_PORT]} className={cn(errors[AppConfigKeys.HTTPS_PORT] && "border-destructive")} />
                                 {errors[AppConfigKeys.HTTPS_PORT] && <p className="text-xs text-destructive">{errors[AppConfigKeys.HTTPS_PORT]?.message}</p>}
                              </div>
@@ -310,9 +326,10 @@ const SettingsForm: React.FC = () => {
                     <div className="space-y-4">
                           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
                              <div>
-                                 <h3 className="text-lg font-medium">HTTPS/SSL Configuration</h3>
+                                  {/* Use translated heading and description */}
+                                 <h3 className="text-lg font-medium">{t('httpsConfigTitle', preferredLanguage)}</h3>
                                  <p className="text-sm text-muted-foreground">
-                                     Provide paths to your PEM-encoded key, certificate, and optional CA chain files. Enable HTTPS by providing valid key and certificate paths. Paths must exist on the server.
+                                     {t('httpsConfigDescription', preferredLanguage)}
                                  </p>
                              </div>
                              {/* Clear HTTPS Button */}
@@ -320,21 +337,24 @@ const SettingsForm: React.FC = () => {
                                  <AlertDialogTrigger asChild>
                                      <Button type="button" variant="destructive" size="sm" className='shrink-0' disabled={!isHttpsCurrentlyEnabled || isClearingHttps}>
                                         {isClearingHttps ? <LoadingSpinner size='sm' className='mr-2' /> : <Trash2 className="mr-2 h-4 w-4" />}
-                                        Clear HTTPS Settings
+                                         {/* Use translated button text */}
+                                         {t('clearHttpsSettingsButton', preferredLanguage)}
                                      </Button>
                                  </AlertDialogTrigger>
                                  <AlertDialogContent>
                                      <AlertDialogHeader>
-                                         <AlertDialogTitle>Confirm Clear HTTPS Settings</AlertDialogTitle>
+                                         {/* Use translated title and message */}
+                                         <AlertDialogTitle>{t('confirmClearHttpsTitle', preferredLanguage)}</AlertDialogTitle>
                                          <AlertDialogDescription>
-                                            This will remove the key, certificate, and CA paths, disabling HTTPS. The server will stop the HTTPS service. Are you sure?
+                                            {t('confirmClearHttpsMessage', preferredLanguage)}
                                          </AlertDialogDescription>
                                      </AlertDialogHeader>
                                      <AlertDialogFooter>
-                                         <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                          <AlertDialogCancel>{t('cancelButton', preferredLanguage)}</AlertDialogCancel>
                                          <AlertDialogAction onClick={handleClearHttps} disabled={isClearingHttps}>
                                              {isClearingHttps ? <LoadingSpinner size='sm' className='mr-2'/> : null}
-                                             Yes, Clear and Disable
+                                             {/* Use translated button text */}
+                                              {t('yesButton', preferredLanguage)}, {t('clearButton', preferredLanguage)} HTTPS
                                          </AlertDialogAction>
                                      </AlertDialogFooter>
                                  </AlertDialogContent>
@@ -343,19 +363,22 @@ const SettingsForm: React.FC = () => {
                          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                             {/* Key Path */}
                             <div className="grid gap-1.5">
-                                <Label htmlFor="https-key-path">Private Key Path (.key)</Label>
+                                 {/* Use translated label */}
+                                <Label htmlFor="https-key-path">{t('httpsKeyPathLabel', preferredLanguage)}</Label>
                                 <Input id="https-key-path" {...register(AppConfigKeys.HTTPS_KEY_PATH)} placeholder="/path/to/your/private.key" aria-invalid={!!errors[AppConfigKeys.HTTPS_KEY_PATH]} className={cn(errors[AppConfigKeys.HTTPS_KEY_PATH] && "border-destructive")} />
                                 {errors[AppConfigKeys.HTTPS_KEY_PATH] && <p className="text-xs text-destructive">{errors[AppConfigKeys.HTTPS_KEY_PATH]?.message}</p>}
                             </div>
                              {/* Cert Path */}
                             <div className="grid gap-1.5">
-                                <Label htmlFor="https-cert-path">Certificate Path (.crt/.pem)</Label>
+                                 {/* Use translated label */}
+                                <Label htmlFor="https-cert-path">{t('httpsCertPathLabel', preferredLanguage)}</Label>
                                 <Input id="https-cert-path" {...register(AppConfigKeys.HTTPS_CERT_PATH)} placeholder="/path/to/your/certificate.crt" aria-invalid={!!errors[AppConfigKeys.HTTPS_CERT_PATH]} className={cn(errors[AppConfigKeys.HTTPS_CERT_PATH] && "border-destructive")} />
                                 {errors[AppConfigKeys.HTTPS_CERT_PATH] && <p className="text-xs text-destructive">{errors[AppConfigKeys.HTTPS_CERT_PATH]?.message}</p>}
                             </div>
                              {/* CA Path */}
                             <div className="grid gap-1.5">
-                                <Label htmlFor="https-ca-path">CA Chain Path (Optional)</Label>
+                                 {/* Use translated label */}
+                                <Label htmlFor="https-ca-path">{t('httpsCaPathLabel', preferredLanguage)}</Label>
                                 <Input id="https-ca-path" {...register(AppConfigKeys.HTTPS_CA_PATH)} placeholder="/path/to/your/ca_bundle.crt" aria-invalid={!!errors[AppConfigKeys.HTTPS_CA_PATH]} className={cn(errors[AppConfigKeys.HTTPS_CA_PATH] && "border-destructive")} />
                                 {errors[AppConfigKeys.HTTPS_CA_PATH] && <p className="text-xs text-destructive">{errors[AppConfigKeys.HTTPS_CA_PATH]?.message}</p>}
                             </div>
@@ -366,12 +389,13 @@ const SettingsForm: React.FC = () => {
                     <div className='flex flex-col sm:flex-row items-center gap-4 pt-4'>
                          <Button type="submit" disabled={saveStatus === 'saving' || !isDirty}>
                             {saveStatus === 'saving' && <LoadingSpinner size="sm" className="mr-2" />}
-                            {saveStatus === 'success' && 'Saved!'}
-                            {(saveStatus === 'idle' || saveStatus === 'error') && 'Save Settings'}
+                            {/* Use translated button text */}
+                             {saveStatus === 'success' && t('saveButton', preferredLanguage) + '!'}
+                            {(saveStatus === 'idle' || saveStatus === 'error') && t('saveButton', preferredLanguage)}
                          </Button>
                          {/* Show restart warning if relevant fields changed */}
                          {needsRestart && isDirty && ( // Only show if dirty and needs restart
-                            <p className="text-sm text-orange-600 font-medium">Info: Changes may require a manual server restart or trigger server actions.</p>
+                            <p className="text-sm text-orange-600 font-medium">{t('saveSettingsRestartWarning', preferredLanguage)}</p>
                          )}
                     </div>
                 </form>

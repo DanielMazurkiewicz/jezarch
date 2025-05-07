@@ -12,10 +12,11 @@ import api from '@/lib/api';
 import type { SignatureComponent } from '../../../../backend/src/functionalities/signature/component/models';
 import { toast } from "sonner";
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/components/ui/card';
+import { t } from '@/translations/utils'; // Import translation utility
 
 // Renamed from SignaturesPage to ComponentsPage
 const ComponentsPage: React.FC = () => {
-    const { token, user } = useAuth();
+    const { token, user, preferredLanguage } = useAuth(); // Get preferredLanguage
     const navigate = useNavigate(); // Hook for navigation
     const isAdmin = user?.role === 'admin';
 
@@ -44,13 +45,14 @@ const ComponentsPage: React.FC = () => {
         } catch (err: any) {
             const msg = err.message || 'Failed to fetch components';
             setComponentsError(msg);
-            toast.error(msg);
+            // Use translated error template
+            toast.error(t('errorMessageTemplate', preferredLanguage, { message: msg }));
             console.error("Fetch Components Error:", err);
             setComponents([]);
         } finally {
             setIsComponentsLoading(false);
         }
-    }, [token]);
+    }, [token, preferredLanguage]); // Add preferredLanguage
 
     // Effect: Fetch components when token changes
     useEffect(() => {
@@ -59,7 +61,7 @@ const ComponentsPage: React.FC = () => {
 
     // Component Callbacks
     const handleEditComponent = useCallback((component: SignatureComponent) => {
-        if (!isAdmin) { toast.error("Admin privileges required."); return; }
+        if (!isAdmin) { toast.error("Admin privileges required."); return; } // TODO: Translate
         setEditingComponent(component);
         setIsComponentFormOpen(true);
     }, [isAdmin]);
@@ -70,49 +72,58 @@ const ComponentsPage: React.FC = () => {
     }, []);
 
     const handleDeleteComponent = useCallback(async (componentId: number) => {
-        if (!isAdmin) { toast.error("Admin privileges required."); return; }
-        if (!token) { toast.error("Authentication token missing."); return; }
-        if (!window.confirm("WARNING: Deleting a component will also delete ALL its elements and potentially break references. This cannot be undone. Are you sure?")) return;
+        if (!isAdmin) { toast.error("Admin privileges required."); return; } // TODO: Translate
+        if (!token) { toast.error("Authentication token missing."); return; } // TODO: Translate
+        // Use translated confirmation
+        if (!window.confirm(t('confirmDeleteComponentMessage', preferredLanguage))) return;
 
         setIsComponentsLoading(true); setComponentsError(null);
         try {
             await api.deleteSignatureComponent(componentId, token);
-            toast.success("Component deleted successfully.");
+            // Use translated success message
+            toast.success(t('componentDeletedSuccess', preferredLanguage));
             // Refetch after successful delete
             await fetchComponents();
         } catch(e: any) {
             const msg = e.message || "Failed to delete component";
-            setComponentsError(msg); toast.error(msg);
+            setComponentsError(msg);
+            // Use translated error template
+            toast.error(t('errorMessageTemplate', preferredLanguage, { message: t('componentDeleteFailedError', preferredLanguage) + `: ${msg}` }));
             setIsComponentsLoading(false); // Stop loading on error
         }
         // Loading state will be reset by fetchComponents on success
-    }, [isAdmin, token, fetchComponents]);
+    }, [isAdmin, token, fetchComponents, preferredLanguage]); // Add preferredLanguage
 
     const handleReindexComponent = useCallback(async (componentId: number) => {
-        if (!isAdmin) { toast.error("Admin privileges required."); return; }
-        if (!token) { toast.error("Authentication token missing."); return; }
-        if (!window.confirm(`Re-indexing will recalculate indices for all elements in component ID ${componentId}. Continue?`)) return;
+        if (!isAdmin) { toast.error("Admin privileges required."); return; } // TODO: Translate
+        if (!token) { toast.error("Authentication token missing."); return; } // TODO: Translate
+        // Use translated confirmation
+        if (!window.confirm(t('confirmReindexComponentMessage', preferredLanguage, { componentId }))) return;
 
         setIsComponentsLoading(true); setComponentsError(null);
         try {
             await api.reindexComponentElements(componentId, token);
-            toast.success("Component re-indexed successfully.");
+            // Use translated success message
+            toast.success(t('componentReindexedSuccess', preferredLanguage));
             // Refetch to update counts etc.
             await fetchComponents();
         } catch(e: any) {
             const msg = e.message || "Failed to re-index component";
-            setComponentsError(msg); toast.error(msg);
+            setComponentsError(msg);
+            // Use translated error template
+            toast.error(t('errorMessageTemplate', preferredLanguage, { message: t('componentReindexFailedError', preferredLanguage) + `: ${msg}` }));
             setIsComponentsLoading(false); // Stop loading on error
         }
         // Loading state will be reset by fetchComponents on success
-    }, [isAdmin, token, fetchComponents]);
+    }, [isAdmin, token, fetchComponents, preferredLanguage]); // Add preferredLanguage
 
     const handleComponentSaveSuccess = useCallback(() => {
         setIsComponentFormOpen(false);
         setEditingComponent(null);
-        toast.success("Component saved successfully.");
+        // Use translated success message
+        toast.success(editingComponent ? t('componentUpdatedSuccess', preferredLanguage) : t('componentCreatedSuccess', preferredLanguage));
         fetchComponents(); // Refetch list after saving
-    }, [fetchComponents]);
+    }, [fetchComponents, editingComponent, preferredLanguage]); // Add preferredLanguage
 
     // Navigate to Elements Page when a component is clicked
     const handleOpenComponent = useCallback((component: SignatureComponent) => {
@@ -125,8 +136,9 @@ const ComponentsPage: React.FC = () => {
         <div className="space-y-6">
             {/* Page Header */}
             <div>
-                <h1 className="text-2xl font-bold">Signature Components</h1>
-                <p className='text-muted-foreground'>Define hierarchical components (like folders) for signatures.</p>
+                 {/* Use translated title and description */}
+                <h1 className="text-2xl font-bold">{t('componentsTitle', preferredLanguage)}</h1>
+                <p className='text-muted-foreground'>{t('componentsDescription', preferredLanguage)}</p>
             </div>
 
             {/* Components Section */}
@@ -134,24 +146,27 @@ const ComponentsPage: React.FC = () => {
                 <CardHeader>
                      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                          <div>
-                             <CardTitle>Components</CardTitle>
-                             <CardDescription>Click a component to view its elements.</CardDescription>
+                              {/* Use translated title and description */}
+                             <CardTitle>{t('componentsTitle', preferredLanguage)}</CardTitle>
+                             <CardDescription>{t('clickComponentToViewElements', preferredLanguage)}</CardDescription>
                          </div>
                          {isAdmin ? (
                              <Dialog open={isComponentFormOpen} onOpenChange={setIsComponentFormOpen}>
                                  <DialogTrigger asChild>
+                                     {/* Use translated button text */}
                                      <Button onClick={handleCreateComponent} size="sm" className='shrink-0'>
-                                         <PlusCircle className="mr-2 h-4 w-4" /> New Component
+                                         <PlusCircle className="mr-2 h-4 w-4" /> {t('newComponentButton', preferredLanguage)}
                                      </Button>
                                  </DialogTrigger>
                                  <DialogContent className="sm:max-w-[500px]">
-                                     <DialogHeader><DialogTitle>{editingComponent ? 'Edit Component' : 'Create New Component'}</DialogTitle></DialogHeader>
+                                      {/* Use translated dialog title */}
+                                     <DialogHeader><DialogTitle>{editingComponent ? t('editComponentDialogTitle', preferredLanguage) : t('createComponentDialogTitle', preferredLanguage)}</DialogTitle></DialogHeader>
                                      <ComponentForm componentToEdit={editingComponent} onSave={handleComponentSaveSuccess} />
                                  </DialogContent>
                              </Dialog>
                          ) : (
                              <Button size="sm" className='shrink-0' disabled title="Admin privileges required">
-                                <PlusCircle className="mr-2 h-4 w-4" /> New Component
+                                <PlusCircle className="mr-2 h-4 w-4" /> {t('newComponentButton', preferredLanguage)}
                              </Button>
                          )}
                      </div>
@@ -169,8 +184,9 @@ const ComponentsPage: React.FC = () => {
                             onReindex={handleReindexComponent}
                          />
                     )}
+                     {/* Use translated empty state */}
                     {!isComponentsLoading && !componentsError && components.length === 0 && (
-                        <p className="text-center text-muted-foreground py-4">No components created yet. {isAdmin ? 'Click "New Component".' : ''}</p>
+                        <p className="text-center text-muted-foreground py-4">{t('noComponentsFound', preferredLanguage)} {isAdmin ? t('newComponentButton', preferredLanguage) + '.' : ''}</p>
                     )}
                 </CardContent>
             </Card>

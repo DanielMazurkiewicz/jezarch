@@ -8,6 +8,8 @@ import { FileText, Folder, Trash2, Edit } from 'lucide-react';
 // Updated type import to include search result type
 import type { ArchiveDocument, ArchiveDocumentSearchResult } from '../../../../backend/src/functionalities/archive/document/models'; // Type now includes topographicSignature
 import { useAuth } from '@/hooks/useAuth';
+import { t } from '@/translations/utils'; // Import translation utility
+import { cn } from '@/lib/utils'; // Ensure cn is imported
 
 // Define a local type extending the search result to include optional resolved fields
 // This acknowledges the backend might not always send them or the type definition is out of sync
@@ -47,7 +49,7 @@ const DocumentPreviewDialog: React.FC<DocumentPreviewDialogProps> = ({
     onDisable,
     parentUnitTitle,
 }) => {
-    const { user } = useAuth();
+    const { user, preferredLanguage } = useAuth(); // Get preferredLanguage
 
     // Cast the document to our local type for easier access to potentially resolved fields
     const previewingDoc = originalDoc as PreviewDocumentType | null;
@@ -81,6 +83,7 @@ const DocumentPreviewDialog: React.FC<DocumentPreviewDialogProps> = ({
                         {previewingDoc.type === 'unit' ? <Folder className='h-5 w-5 text-blue-600'/> : <FileText className='h-5 w-5 text-green-600'/>}
                         {previewingDoc.title}
                     </DialogTitle>
+                     {/* TODO: Translate labels like "Creator:", "Date:", "Parent Unit:", "Owner:", "Tags:", "Topo Sig:", "Desc Sigs:" */}
                     <DialogDescription className='space-y-1 pt-1 text-left'>
                         <p><strong>Creator:</strong> {previewingDoc.creator}</p>
                         <p><strong>Date:</strong> {previewingDoc.creationDate}</p>
@@ -119,6 +122,7 @@ const DocumentPreviewDialog: React.FC<DocumentPreviewDialogProps> = ({
 
                 {/* Make preview content scrollable */}
                 <ScrollArea className="max-h-[50vh] my-4 space-y-4 pr-3 border-t border-b py-4">
+                     {/* TODO: Translate section titles and labels */}
                     {/* Content Description */}
                     {previewingDoc.contentDescription && (
                         <div>
@@ -168,19 +172,27 @@ const DocumentPreviewDialog: React.FC<DocumentPreviewDialogProps> = ({
                     {/* Disable button placed on the left */}
                     <div>
                         {isOwnerOrAdminOrEmployee && ( // Updated check
-                             <Button variant="outline" className='border-destructive text-destructive hover:bg-destructive/10 hover:text-destructive' size="sm" onClick={handleDisableClick}>
-                                 <Trash2 className='h-4 w-4 mr-2'/> Disable Item
+
+                             <Button
+                                variant="outline"
+                                className={cn('border-destructive text-destructive hover:bg-destructive/10 hover:text-destructive')}
+                                size="sm"
+                                onClick={handleDisableClick}
+                            >
+                                <Trash2 className='h-4 w-4 mr-2'/> {t('disableButton', preferredLanguage)} {t('itemLabel', preferredLanguage)}
                             </Button>
                         )}
                     </div>
                     {/* Edit and Close buttons on the right */}
                     <div className='flex gap-2'>
                          {isOwnerOrAdminOrEmployee && ( // Updated check
+                             // Use translated button text
                             <Button variant="secondary" size="sm" onClick={handleEditClick}>
-                                <Edit className='h-4 w-4 mr-2'/> Edit
+                                <Edit className='h-4 w-4 mr-2'/> {t('editButton', preferredLanguage)}
                             </Button>
                          )}
-                        <Button variant="outline" size="sm" onClick={() => onOpenChange(false)}>Close</Button>
+                         {/* Use translated button text */}
+                        <Button variant="outline" size="sm" onClick={() => onOpenChange(false)}>{t('closeButton', preferredLanguage)}</Button>
                     </div>
                 </DialogFooter>
             </DialogContent>

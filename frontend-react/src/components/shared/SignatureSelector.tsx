@@ -10,12 +10,13 @@ import type { SignatureElement } from '../../../../backend/src/functionalities/s
 import { cn } from '@/lib/utils';
 import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
 import ElementBrowserPopoverContent from './ElementBrowserPopoverContent';
+import { t } from '@/translations/utils'; // Import translation utility
 
 type ResolvedSignature = { idPath: number[]; display: string };
 
 interface SignatureSelectorProps {
   label: string;
-  signatures: number[][];
+  signatures: number[][]; // Array of paths, e.g., [[1, 5], [1, 8, 3]]
   onChange: (newSignatures: number[][]) => void;
   className?: string;
 }
@@ -26,7 +27,7 @@ const SignatureSelector: React.FC<SignatureSelectorProps> = ({
     onChange,
     className,
 }) => {
-  const { token } = useAuth();
+  const { token, preferredLanguage } = useAuth(); // Get preferredLanguage
   const [resolvedSignatures, setResolvedSignatures] = useState<ResolvedSignature[]>([]);
   const [isLoadingSignatures, setIsLoadingSignatures] = useState(false);
   const [isBrowserOpen, setIsBrowserOpen] = useState(false);
@@ -50,19 +51,20 @@ const SignatureSelector: React.FC<SignatureSelectorProps> = ({
                 );
                  const displayParts = elementsInPath.map((el: SignatureElement | null, index: number) => {
                      if (el) return `${el.index ? `[${el.index}]` : ''}${el.name}`;
-                     // Ensure idPath[index] is valid before accessing
-                     else return `[Error ID: ${idPath[index] !== undefined ? idPath[index] : 'unknown'}]`;
+                     // Use translated error
+                     return `[${t('errorText', preferredLanguage)} ID: ${idPath[index] !== undefined ? idPath[index] : 'unknown'}]`;
                  });
                  resolved.push({ idPath, display: displayParts.join(' / ') });
             }
              setResolvedSignatures(resolved.sort((a, b) => a.display.localeCompare(b.display)));
         } catch (error) {
              console.error("Error resolving signatures:", error);
-             setResolvedSignatures(currentSignatures.map((p: number[]) => ({idPath: p, display: `[${p.join(' / ')}] (Resolve Error)`})));
+              // Use translated error
+             setResolvedSignatures(currentSignatures.map((p: number[]) => ({idPath: p, display: `[${p.join(' / ')}] (${t('errorText', preferredLanguage)})`})));
         } finally { setIsLoadingSignatures(false); }
     };
     resolveAllSignatures();
-  }, [stringifiedSignatures, token]); // Depend on the memoized string
+  }, [stringifiedSignatures, token, preferredLanguage]); // Add preferredLanguage
 
   const addSignatureCallback = useCallback((newSignature: number[]) => {
       const newSignatureStr = JSON.stringify(newSignature);
@@ -88,11 +90,13 @@ const SignatureSelector: React.FC<SignatureSelectorProps> = ({
   return (
     <div className={cn("flex flex-col space-y-2 rounded border p-3 bg-muted", className)}>
       <div className="flex justify-between items-center mb-1">
+          {/* Use the passed label prop */}
          <Label className='text-sm font-medium'>{label}</Label>
          <Popover open={isBrowserOpen} onOpenChange={setIsBrowserOpen}>
              <PopoverTrigger asChild>
+                 {/* Use translated button text */}
                 <Button type="button" size="sm" variant="outline" className='shrink-0'>
-                    <Plus className="mr-1 h-3 w-3" /> Add Signature
+                    <Plus className="mr-1 h-3 w-3" /> {t('addSignaturePathButton', preferredLanguage)}
                 </Button>
              </PopoverTrigger>
              <PopoverContent className="w-[500px] max-w-[calc(100vw-2rem)] p-0" align="start">
@@ -104,18 +108,29 @@ const SignatureSelector: React.FC<SignatureSelectorProps> = ({
          </Popover>
        </div>
       <div className="flex-grow space-y-1 min-h-[40px] max-h-[150px] overflow-y-auto border rounded bg-background p-2">
+          {/* Use translated loading text */}
          {isLoadingSignatures && <div className='flex justify-center p-2'><LoadingSpinner size='sm' /></div>}
-         {!isLoadingSignatures && resolvedSignatures.map((resolved) => (
-          <div key={JSON.stringify(resolved.idPath)} className="flex items-center justify-between gap-2 rounded bg-muted p-1 px-2 text-sm">
+         {!isLoadingSignatures && resolvedSignatures.map((resolved) => ( // Removed index from map parameters
+          <div key={JSON.stringify(resolved.idPath)} className="flex items-center justify-between gap-2 rounded bg-muted p-1 px-2 text-sm"> {/* Use stringified path as key */}
             <span className="font-mono text-xs flex-grow break-words min-w-0">
+                {/* TODO: Translate placeholder */}
                 {resolved.display || <span className='italic text-muted-foreground'>Empty Signature</span>}
             </span>
-            <Button type="button" variant="ghost" size="icon" className="h-5 w-5 shrink-0 text-muted-foreground hover:text-destructive" onClick={() => removeSignature(resolved.idPath)} aria-label={`Remove signature ${resolved.display}`}>
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="h-5 w-5 shrink-0 text-muted-foreground hover:text-destructive"
+              onClick={() => removeSignature(resolved.idPath)}
+              // Use translated aria-label
+              aria-label={`${t('removeButton', preferredLanguage)} ${resolved.display}`}
+            >
               <X className="h-3 w-3" />
             </Button>
           </div>
         ))}
-         {!isLoadingSignatures && signatures.length === 0 && <p className="text-xs text-muted-foreground italic text-center py-1">No signatures added.</p>}
+          {/* Use translated placeholder */}
+         {!isLoadingSignatures && signatures.length === 0 && <p className="text-xs text-muted-foreground italic text-center py-1">{t('noSignaturesAddedHint', preferredLanguage)}</p>} {/* TODO: Add noSignaturesAddedHint */}
       </div>
     </div>
   );

@@ -9,13 +9,15 @@ import {
   LayoutDashboard, StickyNote, Tag, PenTool, Archive, ShieldAlert, LogOut, FileSearch // Added FileSearch
 } from 'lucide-react';
 import { toast } from "sonner"; // Import toast for logout feedback
+import { t } from '@/translations/utils'; // Import translation utility
+import type { AppTranslationKey } from '@/translations/models'; // Import key type
 
 interface SidebarProps {
   className?: string;
 }
 
 const Sidebar: React.FC<SidebarProps> = ({ className }) => {
-  const { logout, user } = useAuth();
+  const { logout, user, preferredLanguage } = useAuth(); // Get preferredLanguage
   const navigate = useNavigate();
   const isAdmin = user?.role === 'admin';
   // Added check for employee role
@@ -26,18 +28,29 @@ const Sidebar: React.FC<SidebarProps> = ({ className }) => {
       try {
           await logout();
       } catch (error: any) {
-          toast.error(`Logout failed: ${error.message}`);
+          // Use translated error message
+          toast.error(t('errorMessageTemplate', preferredLanguage, { message: `Logout failed: ${error.message}` }));
       }
   }
 
+  // Map paths to translation keys
+  const navItemTranslations: Record<string, AppTranslationKey> = {
+    '/': 'dashboardTitle',
+    '/archive': 'archiveTitle' as AppTranslationKey, // Assuming 'archiveTitle' exists or will be added
+    '/signatures': 'signaturesTitle' as AppTranslationKey, // Assuming 'signaturesTitle' exists
+    '/tags': 'tagsTitle' as AppTranslationKey, // Assuming 'tagsTitle' exists
+    '/notes': 'notesTitle' as AppTranslationKey, // Assuming 'notesTitle' exists
+    '/admin': 'adminPanelTitle',
+  };
+
   // Define navigation items based on roles
   const navItems = [
-    { path: '/', label: 'Dashboard', icon: LayoutDashboard, exact: true, roles: ['admin', 'employee', 'user'] }, // All roles see dashboard
-    { path: '/archive', label: 'Archive', icon: isUserRole ? FileSearch : Archive, roles: ['admin', 'employee', 'user'] }, // All roles can access Archive (permissions handled inside)
-    { path: '/signatures', label: 'Signatures', icon: PenTool, roles: ['admin', 'employee'] }, // Only admin/employee manage signatures
-    { path: '/tags', label: 'Tags', icon: Tag, roles: ['admin', 'employee'] }, // Only admin/employee manage tags
-    { path: '/notes', label: 'Notes', icon: StickyNote, roles: ['admin', 'employee'] }, // Only admin/employee access notes
-    { path: '/admin', label: 'Admin', icon: ShieldAlert, roles: ['admin'] }, // Only admin sees Admin section
+    { path: '/', labelKey: navItemTranslations['/'], icon: LayoutDashboard, exact: true, roles: ['admin', 'employee', 'user'] }, // All roles see dashboard
+    { path: '/archive', labelKey: navItemTranslations['/archive'], icon: isUserRole ? FileSearch : Archive, roles: ['admin', 'employee', 'user'] }, // All roles can access Archive (permissions handled inside)
+    { path: '/signatures', labelKey: navItemTranslations['/signatures'], icon: PenTool, roles: ['admin', 'employee'] }, // Only admin/employee manage signatures
+    { path: '/tags', labelKey: navItemTranslations['/tags'], icon: Tag, roles: ['admin', 'employee'] }, // Only admin/employee manage tags
+    { path: '/notes', labelKey: navItemTranslations['/notes'], icon: StickyNote, roles: ['admin', 'employee'] }, // Only admin/employee access notes
+    { path: '/admin', labelKey: navItemTranslations['/admin'], icon: ShieldAlert, roles: ['admin'] }, // Only admin sees Admin section
   ].filter(item => item.roles.includes(user?.role || '')); // Filter items based on current user's role
 
 
@@ -48,6 +61,7 @@ const Sidebar: React.FC<SidebarProps> = ({ className }) => {
     )}>
        <div className="p-4 border-b border-sidebar-border">
          <h2 className="text-lg font-semibold">JezArch FE</h2>
+         {/* TODO: Translate "Logged in as" */}
          {user && <span className="text-sm text-muted-foreground block truncate">Logged in as: {user.login} ({user.role})</span>}
        </div>
 
@@ -69,15 +83,18 @@ const Sidebar: React.FC<SidebarProps> = ({ className }) => {
               }
             >
                <item.icon className="mr-2 h-4 w-4" />
-               {item.label}
+               {/* Translate nav item labels */}
+               {t(item.labelKey, preferredLanguage)}
             </NavLink>
           ))}
         </nav>
       </ScrollArea>
 
        <div className="p-4 mt-auto border-t border-sidebar-border">
+         {/* Translate logout button */}
          <Button variant="outline" className="w-full justify-start" onClick={handleLogout}>
            <LogOut className="mr-2 h-4 w-4" />
+           {/* TODO: Translate "Logout" */}
            Logout
          </Button>
        </div>

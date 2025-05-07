@@ -15,6 +15,7 @@ import { toast } from "sonner";
 import { cn } from '@/lib/utils';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { CheckCircle } from 'lucide-react';
+import { t } from '@/translations/utils'; // Import translation utility
 
 interface ChangePasswordDialogProps {
     isOpen: boolean;
@@ -22,7 +23,7 @@ interface ChangePasswordDialogProps {
 }
 
 const ChangePasswordDialog: React.FC<ChangePasswordDialogProps> = ({ isOpen, onOpenChange }) => {
-    const { token } = useAuth();
+    const { token, preferredLanguage } = useAuth(); // Get preferredLanguage
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [isSuccess, setIsSuccess] = useState(false);
@@ -39,7 +40,7 @@ const ChangePasswordDialog: React.FC<ChangePasswordDialogProps> = ({ isOpen, onO
 
         try {
             await api.changePassword(apiData, token);
-            toast.success("Password changed successfully!");
+            toast.success(t('changePasswordSuccessAlertDescription', preferredLanguage)); // Use translated success message
             setIsSuccess(true); // Show success message
             reset(); // Clear form
             setTimeout(() => { // Close dialog after a delay
@@ -48,13 +49,14 @@ const ChangePasswordDialog: React.FC<ChangePasswordDialogProps> = ({ isOpen, onO
             }, 2500);
         } catch (err: any) {
             const errorMsg = err.response?.data?.message || err.message || 'Failed to change password.';
-             // Check specifically for old password mismatch error (status 401 from backend)
+            // Check specifically for old password mismatch error (status 401 from backend)
             if (err.message?.includes("Invalid current password") || err.status === 401) {
-                setError("Incorrect current password.");
+                setError(t('changePasswordCurrentPasswordIncorrect', preferredLanguage)); // Use translated error
             } else {
                 setError(errorMsg);
             }
-            toast.error(`Error: ${errorMsg}`);
+             // Use translated error template
+            toast.error(t('errorMessageTemplate', preferredLanguage, { message: errorMsg }));
         } finally {
             setIsLoading(false);
         }
@@ -71,11 +73,7 @@ const ChangePasswordDialog: React.FC<ChangePasswordDialogProps> = ({ isOpen, onO
 
     // --- WORKAROUND: Explicitly remove pointer-events style on close ---
     useEffect(() => {
-        // This effect runs when the `isOpen` prop changes.
         if (!isOpen) {
-            // Use requestAnimationFrame to ensure the style change happens slightly after
-            // the state update, potentially giving Radix time to finish its own logic,
-            // but this will override it if necessary.
             requestAnimationFrame(() => {
                 if (document.body.style.pointerEvents === 'none') {
                     console.log("ChangePasswordDialog: Forcing removal of 'pointer-events: none' from body.");
@@ -83,24 +81,23 @@ const ChangePasswordDialog: React.FC<ChangePasswordDialogProps> = ({ isOpen, onO
                 }
             });
         }
-        // No specific cleanup needed here, as we're correcting a potentially stuck global style.
-    }, [isOpen]); // Re-run only when isOpen changes
+    }, [isOpen]);
     // --- END WORKAROUND ---
 
     return (
         <Dialog open={isOpen} onOpenChange={onOpenChange}>
             <DialogContent className="sm:max-w-[425px]">
                 <DialogHeader>
-                    <DialogTitle>Change Your Password</DialogTitle>
-                    <DialogDescription>Enter your current password and choose a new one.</DialogDescription>
+                    <DialogTitle>{t('changePasswordDialogTitle', preferredLanguage)}</DialogTitle>
+                    <DialogDescription>{t('changePasswordDialogDescription', preferredLanguage)}</DialogDescription>
                 </DialogHeader>
 
                 {isSuccess ? (
                     <div className="py-4">
                          <Alert variant="default" className="border-green-600 bg-green-50 dark:bg-green-50 text-green-700 dark:text-green-700">
                              <CheckCircle className="h-5 w-5 text-green-600" />
-                             <AlertTitle>Success!</AlertTitle>
-                             <AlertDescription>Your password has been updated.</AlertDescription>
+                             <AlertTitle>{t('changePasswordSuccessAlertTitle', preferredLanguage)}</AlertTitle>
+                             <AlertDescription>{t('changePasswordSuccessAlertDescription', preferredLanguage)}</AlertDescription>
                          </Alert>
                     </div>
                 ) : (
@@ -108,7 +105,7 @@ const ChangePasswordDialog: React.FC<ChangePasswordDialogProps> = ({ isOpen, onO
                          {error && <ErrorDisplay message={error} />}
 
                         <div className="grid gap-1.5">
-                            <Label htmlFor="oldPassword">Current Password</Label>
+                            <Label htmlFor="oldPassword">{t('changePasswordCurrentPasswordLabel', preferredLanguage)}</Label>
                             <Input
                                 id="oldPassword"
                                 type="password"
@@ -120,7 +117,7 @@ const ChangePasswordDialog: React.FC<ChangePasswordDialogProps> = ({ isOpen, onO
                         </div>
 
                         <div className="grid gap-1.5">
-                            <Label htmlFor="newPassword">New Password</Label>
+                            <Label htmlFor="newPassword">{t('newPasswordLabel', preferredLanguage)}</Label>
                             <Input
                                 id="newPassword"
                                 type="password"
@@ -129,11 +126,11 @@ const ChangePasswordDialog: React.FC<ChangePasswordDialogProps> = ({ isOpen, onO
                                 className={cn(errors.password && "border-destructive")}
                             />
                              {errors.password && <p className="text-xs text-destructive">{errors.password.message}</p>}
-                             <p className='text-xs text-muted-foreground'>Min 8 chars, 1 uppercase, 1 lowercase, 1 number.</p>
+                             <p className='text-xs text-muted-foreground'>{t('passwordRequirementsHint', preferredLanguage)}</p>
                         </div>
 
                         <div className="grid gap-1.5">
-                            <Label htmlFor="confirmPassword">Confirm New Password</Label>
+                            <Label htmlFor="confirmPassword">{t('confirmPasswordLabel', preferredLanguage)}</Label>
                             <Input
                                 id="confirmPassword"
                                 type="password"
@@ -145,12 +142,11 @@ const ChangePasswordDialog: React.FC<ChangePasswordDialogProps> = ({ isOpen, onO
                         </div>
 
                          <DialogFooter className='mt-2'>
-                             {/* DialogClose triggers onOpenChange(false) */}
                              <DialogClose asChild>
-                                 <Button type="button" variant="outline" disabled={isLoading}>Cancel</Button>
+                                 <Button type="button" variant="outline" disabled={isLoading}>{t('cancelButton', preferredLanguage)}</Button>
                              </DialogClose>
                              <Button type="submit" disabled={isLoading}>
-                                 {isLoading ? <LoadingSpinner size="sm" className="mr-2" /> : 'Change Password'}
+                                 {isLoading ? <LoadingSpinner size="sm" className="mr-2" /> : t('headerChangePassword', preferredLanguage)}
                              </Button>
                          </DialogFooter>
                     </form>
