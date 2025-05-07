@@ -9,8 +9,8 @@ export interface UserCredentials {
 // Base User Roles - Updated: 'regular_user' -> 'employee', added 'user'
 export type UserRole = "admin" | "employee" | "user";
 
-// Supported languages - only English for now
-export const supportedLanguages = ['en'] as const;
+// Supported languages - added Polish
+export const supportedLanguages = ['en', 'pl'] as const;
 export type SupportedLanguage = typeof supportedLanguages[number];
 
 // User interface allows role to be null
@@ -48,7 +48,12 @@ export const updateUserRoleSchema = z.object({
 // --- NEW: Schema for preferred language update ---
 export const updatePreferredLanguageSchema = z.object({
     preferredLanguage: z.enum(supportedLanguages, {
-        errorMap: () => ({ message: "Invalid language selected. Only 'en' is currently supported." })
+        errorMap: (issue, ctx) => {
+            if (issue.code === z.ZodIssueCode.invalid_enum_value) {
+                return { message: `Invalid language. Supported: ${supportedLanguages.join(', ')}.` };
+            }
+            return { message: ctx.defaultError };
+        }
     }),
 });
 // --- END NEW ---

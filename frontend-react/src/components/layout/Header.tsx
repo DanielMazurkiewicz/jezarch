@@ -1,7 +1,7 @@
 import React, { useState, useCallback } from 'react';
 import { useLocation, useNavigate, Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { LogOut, Menu, Settings, User as UserIcon, Languages } from 'lucide-react'; // Added Languages
+import { LogOut, Menu, Settings, User as UserIcon, Languages } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import ChangePasswordDialog from '@/components/user/ChangePasswordDialog';
 import {
@@ -11,16 +11,17 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-  DropdownMenuSub, // Added Sub components
+  DropdownMenuSub,
   DropdownMenuSubTrigger,
   DropdownMenuSubContent,
   DropdownMenuPortal,
   DropdownMenuRadioGroup,
   DropdownMenuRadioItem,
 } from "@/components/ui/dropdown-menu";
-// Backend model import for SupportedLanguage
-import type { SupportedLanguage, supportedLanguages as backendSupportedLanguages } from '../../../../backend/src/functionalities/user/models';
-
+// Updated imports: Get types and constants from new models file
+import { type SupportedLanguage, supportedLanguages as appSupportedLanguages, defaultLanguage as appDefaultLanguage } from '@/translations/models/auth';
+import api from '@/lib/api';
+import { toast } from "sonner";
 
 interface HeaderProps {
   toggleSidebar?: () => void; // For mobile sidebar toggle (optional)
@@ -34,7 +35,7 @@ const getTitleFromPath = (pathname: string): string => {
 };
 
 const Header: React.FC<HeaderProps> = ({ toggleSidebar }) => {
-  const { logout, user, updateContextUser, token } = useAuth(); // Added updateContextUser and token
+  const { logout, user, updateContextUser, setContextPreferredLanguage, token } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
   const currentPageTitle = getTitleFromPath(location.pathname);
@@ -45,30 +46,26 @@ const Header: React.FC<HeaderProps> = ({ toggleSidebar }) => {
       // Navigation handled by AuthContext/App.tsx
   }
 
-  // --- NEW: Language Change Handler ---
-  const handleLanguageChange = useCallback(async (newLanguage: SupportedLanguage) => {
+  const handleLanguageChange = useCallback(async (newLanguage: AppSupportedLanguage) => {
       if (!user || !token || user.preferredLanguage === newLanguage) return;
+      const oldLanguage = user.preferredLanguage;
       try {
-          // Optimistically update context
-          updateContextUser({ preferredLanguage: newLanguage });
-          // API call to persist the change for the current user (admin changes via UserManagement)
-          // Assuming an API endpoint like '/api/user/language' (PATCH)
-          // This specific endpoint is not added in this iteration for brevity,
-          // but this is where it would go. For now, it's a local preference change.
-          // await api.updateSelfPreferredLanguage(newLanguage, token);
-          // toast.success(`Language changed to ${newLanguage.toUpperCase()}.`);
-          console.log(`Frontend: Language preference changed to ${newLanguage.toUpperCase()}`);
-          // Force a re-render or reload if necessary for UI text changes,
-          // though with simple 'EN' only, not much will change visually yet.
-          // window.location.reload(); // Drastic, consider better state management for i18n
+          // Optimistically update context and local storage
+          setContextPreferredLanguage(newLanguage);
+
+          // API call to persist the change for the logged-in user (admin changes via UserManagement)
+          await api.updateUserPreferredLanguage(user.login, newLanguage, token);
+          console.log(`User language preference updated to ${newLanguage.toUpperCase()} via API.`);
       } catch (error: any) {
-          console.error("Failed to update language preference:", error);
+          console.error("Failed to update user language preference via API:", error);
           // Revert optimistic update if API call fails
-          // updateContextUser({ preferredLanguage: user.preferredLanguage });
-          // toast.error(`Failed to change language: ${error.message}`);
+          setContextPreferredLanguage(oldLanguage);
+          toast.error(`Failed to save language preference: ${error.message}`);
       }
-  }, [user, token, updateContextUser]);
-  // --- END NEW ---
+  }, [user, token, setContextPreferredLanguage]);
+
+
+  const displayLanguage = user?.preferredLanguage || appDefaultLanguage;
 
   return (
     <header className="sticky top-0 z-30 flex h-14 items-center gap-4 border-b bg-background px-4 sm:static sm:h-auto sm:border-0 sm:bg-transparent sm:px-6">
@@ -97,19 +94,20 @@ const Header: React.FC<HeaderProps> = ({ toggleSidebar }) => {
               <DropdownMenuSub>
                   <DropdownMenuSubTrigger>
                       <Languages className="mr-2 h-4 w-4" />
-                      <span>Language ({user?.preferredLanguage.toUpperCase() || 'EN'})</span>
+                      <span>Language ({displayLanguage.toUpperCase()})</span>
                   </DropdownMenuSubTrigger>
                   <DropdownMenuPortal>
                       <DropdownMenuSubContent>
                           <DropdownMenuRadioGroup
-                              value={user?.preferredLanguage || 'en'}
-                              onValueChange={(value) => handleLanguageChange(value as SupportedLanguage)}
+                              value={displayLanguage}
+                              onValueChange={(value) => handleLanguageChange(value as AppSupportedLanguage)}
                           >
-                              {/* Only English is supported for now */}
-                              <DropdownMenuRadioItem value="en">English (EN)</DropdownMenuRadioItem>
-                              {/* Example for future languages:
-                              <DropdownMenuRadioItem value="de" disabled>Deutsch (DE) - Soon</DropdownMenuRadioItem>
-                              */}
+                              {/* Use imported language constants */}
+                              {appSupportedLanguages.map(lang => (
+                                <DropdownMenuRadioItem key={lang} value={lang}>
+                                    {lang === 'en' ? 'English (EN)' : lang === 'pl' ? 'Polski (PL)' : lang.toUpperCase()}
+                                </DropdownMenuRadioItem>
+                              ))}
                           </DropdownMenuRadioGroup>
                       </DropdownMenuSubContent>
                   </DropdownMenuPortal>

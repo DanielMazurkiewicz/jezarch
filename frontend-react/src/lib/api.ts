@@ -161,12 +161,19 @@ interface PurgeLogsResponse {
     deletedCount: number;
 }
 
+// Define payload for user registration including optional language
+interface RegisterPayload extends UserCredentials {
+    preferredLanguage?: SupportedLanguage;
+}
+
+
 // --- API Function Exports (Updated Config section) ---
 const getApiStatus = () => fetchApi<{ message: string }>("/api/status");
 const pingApi = () => fetchApi<string>("/api/ping");
 const login = (credentials: UserCredentials) => fetchApi<{ token: string } & Omit<User, 'password'>>("/user/login", "POST", credentials);
 const logout = (token: string) => fetchApi<{ success: boolean }>("/user/logout", "POST", null, token);
-const register = (userData: UserCredentials) => fetchApi<Omit<User, 'password'>>("/user/create", "POST", userData);
+// Register now accepts preferredLanguage
+const register = (userData: RegisterPayload) => fetchApi<Omit<User, 'password'>>("/user/create", "POST", userData);
 const getAllUsers = (token: string) => fetchApi<Omit<User, "password">[]>("/users/all", "GET", null, token);
 const getUserByLogin = (login: string, token: string) => fetchApi<Omit<User, "password">>(`/user/by-login/${login}`, "GET", null, token);
 const updateUserRole = (login: string, role: UserRole | null, token: string) => fetchApi<{ message: string }>(`/user/by-login/${login}`, "PATCH", { role }, token);

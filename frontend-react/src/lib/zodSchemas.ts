@@ -9,6 +9,7 @@ import { supportedLanguages } from '../../../backend/src/functionalities/user/mo
 export const loginSchema = z.object({
     login: z.string().min(1, "Login is required"),
     password: z.string().min(1, "Password is required"),
+    // preferredLanguage is not part of login form data, but handled by AuthLayout/AuthContext
 });
 export type LoginFormData = z.infer<typeof loginSchema>;
 
@@ -20,7 +21,9 @@ export const passwordSchema = z.string().min(8, "Password must be at least 8 cha
 export const registerSchema = z.object({
     login: z.string().min(3, "Login must be at least 3 characters").max(50),
     password: passwordSchema,
-    confirmPassword: z.string()
+    confirmPassword: z.string(),
+    // preferredLanguage will be handled by AuthLayout and passed to API separately or by context
+    // preferredLanguage: z.enum(supportedLanguages).optional().default('en'),
 }).refine(data => data.password === data.confirmPassword, {
     message: "Passwords don't match",
     path: ["confirmPassword"],
@@ -32,6 +35,7 @@ export const userCreateSchema = z.object({
     login: z.string().min(3, "Login must be at least 3 characters").max(50),
     password: passwordSchema,
     confirmPassword: z.string(),
+    // preferredLanguage is not part of this admin create form (defaults on backend, admin can change later)
 }).refine(data => data.password === data.confirmPassword, {
     message: "Passwords don't match",
     path: ["confirmPassword"],
@@ -61,7 +65,12 @@ export type UpdateUserRoleFormData = z.infer<typeof updateUserRoleSchema>;
 // --- NEW: User Preferred Language Schema ---
 export const updatePreferredLanguageFormSchema = z.object({
     preferredLanguage: z.enum(supportedLanguages, {
-        errorMap: () => ({ message: "Please select a valid language." })
+        errorMap: (issue, ctx) => {
+             if (issue.code === z.ZodIssueCode.invalid_enum_value) {
+                 return { message: `Please select a valid language. Supported: ${supportedLanguages.map(s => s.toUpperCase()).join(', ')}.` };
+             }
+             return { message: ctx.defaultError };
+        }
     }),
 });
 export type UpdatePreferredLanguageFormData = z.infer<typeof updatePreferredLanguageFormSchema>;
