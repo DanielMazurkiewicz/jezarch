@@ -1,4 +1,5 @@
 // Added getAssignedTagsForUserController, assignTagsToUserController
+// Added updateUserPreferredLanguageController
 import {
     createUserController,
     getAllUsersController,
@@ -9,7 +10,8 @@ import {
     updateUserRoleController,
     adminSetUserPasswordController,
     getAssignedTagsForUserController, // New import
-    assignTagsToUserController        // New import
+    assignTagsToUserController,       // New import
+    updateUserPreferredLanguageController, // New import
 } from './controllers';
 
 export const userRoutes = {
@@ -26,6 +28,11 @@ export const userRoutes = {
     '/api/user/by-login/:login/set-password': {
         PATCH: adminSetUserPasswordController, // Admin only (cannot set self)
     },
+    // --- NEW: Admin set preferred language for a user ---
+    '/api/user/by-login/:login/language': {
+        PATCH: updateUserPreferredLanguageController, // Admin only
+    },
+    // --- END NEW ---
     // --- New routes for User Tag Assignment (Admin only) ---
     '/api/user/by-login/:login/tags': {
         GET: getAssignedTagsForUserController, // Get tags assigned to a 'user' role user

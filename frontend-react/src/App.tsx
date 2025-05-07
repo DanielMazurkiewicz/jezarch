@@ -5,6 +5,7 @@ import { useAuth } from '@/hooks/useAuth';
 import Layout from '@/components/layout/Layout';
 import LoginForm from '@/components/auth/LoginForm';
 import RegisterForm from '@/components/auth/RegisterForm';
+import AuthLayout from '@/components/auth/AuthLayout'; // Import the new AuthLayout
 import NotesPage from '@/components/notes/NotesPage';
 import TagsPage from '@/components/tags/TagsPage';
 import ComponentsPage from '@/components/signatures/ComponentsPage';
@@ -47,11 +48,7 @@ function AppContent() {
         );
     }
 
-    const AuthLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => (
-        <div className="flex justify-center items-center min-h-screen w-full bg-muted/40 p-4">
-            {children}
-        </div>
-    );
+    // AuthLayout is now a separate component
 
     return (
         <Routes>

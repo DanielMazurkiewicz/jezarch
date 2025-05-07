@@ -1,8 +1,9 @@
 // Import backend types with adjusted paths assuming sibling structure
 import type {
     UserCredentials,
-    User, // User now includes assignedTags?
+    User, // User now includes assignedTags and preferredLanguage
     UserRole,
+    SupportedLanguage, // Import SupportedLanguage
 } from "../../../backend/src/functionalities/user/models";
 // Config models include updated AppConfigKeys
 import type { Config, AppConfigKeys } from "../../../backend/src/functionalities/config/models";
@@ -169,6 +170,7 @@ const register = (userData: UserCredentials) => fetchApi<Omit<User, 'password'>>
 const getAllUsers = (token: string) => fetchApi<Omit<User, "password">[]>("/users/all", "GET", null, token);
 const getUserByLogin = (login: string, token: string) => fetchApi<Omit<User, "password">>(`/user/by-login/${login}`, "GET", null, token);
 const updateUserRole = (login: string, role: UserRole | null, token: string) => fetchApi<{ message: string }>(`/user/by-login/${login}`, "PATCH", { role }, token);
+const updateUserPreferredLanguage = (login: string, language: SupportedLanguage, token: string) => fetchApi<Omit<User, "password">>(`/user/by-login/${login}/language`, "PATCH", { preferredLanguage: language }, token);
 const changePassword = (passwords: { oldPassword: string; password: string; }, token: string) => fetchApi<{ success: boolean }>("/user/change-password", "POST", passwords, token);
 const adminSetUserPassword = (login: string, password: string, token: string) => fetchApi<{ success: boolean }>(`/user/by-login/${login}/set-password`, "PATCH", { password }, token);
 const getAssignedTagsForUser = (login: string, token: string) => fetchApi<Tag[]>(`/user/by-login/${login}/tags`, "GET", null, token);
@@ -217,7 +219,7 @@ const backupDatabase = (token: string) => fetchApi<Blob>("/admin/db/backup", "GE
 export default {
     getApiStatus, pingApi, login, logout, register, getAllUsers, getUserByLogin,
     updateUserRole, changePassword, adminSetUserPassword,
-    getAssignedTagsForUser, assignTagsToUser,
+    getAssignedTagsForUser, assignTagsToUser, updateUserPreferredLanguage, // Added updateUserPreferredLanguage
     getConfig, setConfig, clearHttpsConfig, // Added clearHttpsConfig
     searchLogs, purgeLogs,
     createTag, getAllTags, getTagById, updateTag, deleteTag,

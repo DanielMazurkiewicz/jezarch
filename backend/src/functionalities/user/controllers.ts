@@ -10,9 +10,10 @@ import {
     adminSetUserPassword,
     getUserByLoginSafe,
     assignTagsToUser,
-    getAssignedTagsForUser
+    getAssignedTagsForUser,
+    updateUserPreferredLanguage, // Import new DB function
 } from './db';
-// Updated UserRole import, added schemas for password changes
+// Updated UserRole import, added schemas for password changes and language
 import {
     User,
     UserCredentials,
@@ -20,7 +21,9 @@ import {
     UserRole,
     updateUserRoleSchema,
     changePasswordSchema, // Import change password schema
-    setPasswordSchema // Import set password schema
+    setPasswordSchema, // Import set password schema
+    updatePreferredLanguageSchema, // Import preferred language schema
+    SupportedLanguage, // Import SupportedLanguage type
 } from './models';
 import { createSession, deleteSession } from '../session/db';
 import { getSessionAndUser, isAllowedRole, isOwner } from '../session/controllers';
@@ -31,16 +34,16 @@ import { z } from 'zod'; // Import z
 export const createUserController = async (req: BunRequest) => {
     try {
         const body = await req.json();
-        // Validate against userSchema (which includes password complexity)
+        // Validate against userSchema (which includes password complexity and optional preferredLanguage)
         const validatedData = userSchema.parse(body);
 
         if (await getUserByLoginSafe(validatedData.login)) {
             return new Response(JSON.stringify({ message: "Username already exists" }), { status: 409, headers: { 'Content-Type': 'application/json' } });
         }
 
-        // Backend decides default role (e.g., null or 'user') - Currently handled in createUser db func
-        await createUser(validatedData.login, validatedData.password, null); // Pass explicit null, admin can change later
-        await Log.info(`User created: ${validatedData.login}`, 'system', 'user');
+        // Backend decides default role (null). Pass preferredLanguage from validated data.
+        await createUser(validatedData.login, validatedData.password, null, validatedData.preferredLanguage);
+        await Log.info(`User created: ${validatedData.login} with lang ${validatedData.preferredLanguage}`, 'system', 'user');
 
         const newUser = await getUserByLoginSafe(validatedData.login); // Fetches user without password
 
@@ -58,14 +61,14 @@ export const createUserController = async (req: BunRequest) => {
     }
 };
 
-// Updated to return users including assignedTags for 'user' role
+// Updated to return users including assignedTags for 'user' role and preferredLanguage
 export const getAllUsersController = async (req: BunRequest) => {
     const sessionAndUser = await getSessionAndUser(req);
     if (!sessionAndUser) return new Response(JSON.stringify({ message: "Unauthorized" }), { status: 401, headers: { 'Content-Type': 'application/json' } });
     if (!isAllowedRole(sessionAndUser, 'admin')) return new Response(JSON.stringify({ message: "Forbidden" }), { status: 403, headers: { 'Content-Type': 'application/json' } });
 
     try {
-        // getAllUsers from db now fetches assigned tags for 'user' roles
+        // getAllUsers from db now fetches assigned tags for 'user' roles and preferredLanguage
         const users = await getAllUsers();
         return new Response(JSON.stringify(users), {
             status: 200,
@@ -89,13 +92,13 @@ export const getUserByUserIdController = async (req: BunRequest<":userId">) => {
     }
 
     try {
-        // getUserByUserId now fetches assigned tags if role is 'user'
+        // getUserByUserId now fetches assigned tags if role is 'user' and preferredLanguage
         const user = await getUserByUserId(targetUserId);
         if (!user) {
             await Log.warn(`User not found by ID: ${targetUserId}`, sessionAndUser.user.login, 'user');
             return new Response(JSON.stringify({ message: 'User not found' }), { status: 404, headers: { 'Content-Type': 'application/json' } });
         }
-        return new Response(JSON.stringify(user), { // Return user data (safe, includes tags if applicable)
+        return new Response(JSON.stringify(user), { // Return user data (safe, includes tags if applicable, and language)
             status: 200,
             headers: { 'Content-Type': 'application/json' }
         });
@@ -114,13 +117,13 @@ export const getUserByLoginController = async (req: BunRequest<":login">) => {
     }
 
     try {
-        // getUserByLoginSafe now fetches assigned tags if role is 'user'
+        // getUserByLoginSafe now fetches assigned tags if role is 'user' and preferredLanguage
         const user = await getUserByLoginSafe(targetLogin);
         if (!user) {
             await Log.warn(`User not found by login: ${targetLogin}`, sessionAndUser.user.login, 'user');
             return new Response(JSON.stringify({ message: 'User not found' }), { status: 404, headers: { 'Content-Type': 'application/json' } });
         }
-        return new Response(JSON.stringify(user), { // Return safe user data (includes tags if applicable)
+        return new Response(JSON.stringify(user), { // Return safe user data (includes tags if applicable, and language)
             status: 200,
             headers: { 'Content-Type': 'application/json' }
         });
@@ -173,6 +176,40 @@ export const updateUserRoleController = async (req: BunRequest<":login">) => {
         return new Response(JSON.stringify({ message: 'Failed to update user role', error: error instanceof Error ? error.message : String(error) }), { status: 500, headers: { 'Content-Type': 'application/json' } });
     }
 };
+
+// --- NEW: Controller for Admin updating user's preferred language ---
+export const updateUserPreferredLanguageController = async (req: BunRequest<":login">) => {
+    const sessionAndUser = await getSessionAndUser(req);
+    if (!sessionAndUser) return new Response(JSON.stringify({ message: "Unauthorized" }), { status: 401, headers: { 'Content-Type': 'application/json' } });
+    if (!isAllowedRole(sessionAndUser, 'admin')) return new Response(JSON.stringify({ message: "Forbidden" }), { status: 403, headers: { 'Content-Type': 'application/json' } });
+
+    try {
+        const targetLogin = req.params.login;
+        const body = await req.json() as { preferredLanguage: SupportedLanguage };
+        const validation = updatePreferredLanguageSchema.safeParse(body);
+
+        if (!validation.success) {
+            return new Response(JSON.stringify({ message: 'Invalid language specified', errors: validation.error.format() }), { status: 400, headers: { 'Content-Type': 'application/json' } });
+        }
+        const { preferredLanguage } = validation.data;
+
+        const targetUser = await getUserByLoginSafe(targetLogin);
+        if (!targetUser) {
+            return new Response(JSON.stringify({ message: 'User not found' }), { status: 404, headers: { 'Content-Type': 'application/json' } });
+        }
+
+        await updateUserPreferredLanguage(targetLogin, preferredLanguage);
+        await Log.info(`User preferred language updated for ${targetLogin} to ${preferredLanguage}`, sessionAndUser.user.login, 'user');
+        const updatedUser = await getUserByLoginSafe(targetLogin); // Fetch updated user
+        return new Response(JSON.stringify(updatedUser), { status: 200, headers: { 'Content-Type': 'application/json' } });
+
+    } catch (error: any) {
+        await Log.error('Error updating user preferred language', sessionAndUser.user.login, 'user', { login: req.params.login, error });
+        return new Response(JSON.stringify({ message: 'Failed to update user preferred language', error: error.message ?? String(error) }), { status: 500, headers: { 'Content-Type': 'application/json' } });
+    }
+};
+// --- END NEW ---
+
 
 // Controller for user changing their OWN password
 export const updateUserPasswordController = async (req: BunRequest) => {
@@ -261,7 +298,7 @@ export const loginController = async (req: BunRequest) => {
             return new Response(JSON.stringify({ message: "Invalid credentials" }), { status: 401, headers: { 'Content-Type': 'application/json' } });
         }
 
-        const user = await getUserByLogin(login); // Fetches user details including role and ID (and tags if applicable)
+        const user = await getUserByLogin(login); // Fetches user details including role, ID, preferredLanguage, and tags
         if (!user || user.userId === undefined) {
             await Log.error(`User data (incl. ID) not found after successful password verification: ${login}`, login, 'auth', { login });
             return new Response(JSON.stringify({ message: "Login failed due to internal inconsistency" }), { status: 500, headers: { 'Content-Type': 'application/json' } });
@@ -272,12 +309,12 @@ export const loginController = async (req: BunRequest) => {
         }
         const token = await createSession(user.userId);
 
-        // Return user details WITHOUT password, but include assigned tags if present
+        // Return user details WITHOUT password, but include assigned tags and preferredLanguage
         const { password: _pwd, ...userResponseData } = user;
 
         return new Response(JSON.stringify({
             token,
-            ...userResponseData // Includes userId, login, role, assignedTags (if any)
+            ...userResponseData // Includes userId, login, role, assignedTags, preferredLanguage
         }), {
             status: 200,
             headers: { 'Content-Type': 'application/json' }

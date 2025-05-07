@@ -3,6 +3,7 @@ import type { SignatureComponentIndexType } from '../../../backend/src/functiona
 import type { ArchiveDocumentType } from '../../../backend/src/functionalities/archive/document/models';
 import { AppConfigKeys } from '../../../backend/src/functionalities/config/models';
 import { searchRequestSchema as backendSearchRequestSchema } from '../../../backend/src/utils/search_validation';
+import { supportedLanguages } from '../../../backend/src/functionalities/user/models'; // Import supportedLanguages
 
 // --- Auth ---
 export const loginSchema = z.object({
@@ -56,6 +57,16 @@ export const updateUserRoleSchema = z.object({
     role: z.enum(['admin', 'employee', 'user']).nullable(),
 });
 export type UpdateUserRoleFormData = z.infer<typeof updateUserRoleSchema>;
+
+// --- NEW: User Preferred Language Schema ---
+export const updatePreferredLanguageFormSchema = z.object({
+    preferredLanguage: z.enum(supportedLanguages, {
+        errorMap: () => ({ message: "Please select a valid language." })
+    }),
+});
+export type UpdatePreferredLanguageFormData = z.infer<typeof updatePreferredLanguageFormSchema>;
+// --- END NEW ---
+
 
 // --- Tag ---
 export const tagFormSchema = z.object({

@@ -9,14 +9,20 @@ export interface UserCredentials {
 // Base User Roles - Updated: 'regular_user' -> 'employee', added 'user'
 export type UserRole = "admin" | "employee" | "user";
 
+// Supported languages - only English for now
+export const supportedLanguages = ['en'] as const;
+export type SupportedLanguage = typeof supportedLanguages[number];
+
 // User interface allows role to be null
 // Added optional assignedTags field
+// Added preferredLanguage field
 export interface User {
     userId: number;
     login: string;
     password?: string; // Store hashed password only
     role: UserRole | null; // Role can now be null
     assignedTags?: Tag[]; // Tags assigned to this user (relevant for 'user' role)
+    preferredLanguage: SupportedLanguage; // Added preferred language
 }
 
 // Schema for registration allows optional role
@@ -29,6 +35,8 @@ export const userSchema = z.object({
   // Role is optional on creation, backend handles default assignment
   // Role field removed from frontend schema, assigned by backend/admin
   // role: z.enum(['admin', 'employee', 'user']).optional(),
+  // --- NEW: Allow preferredLanguage on creation, defaults to 'en' if not provided ---
+  preferredLanguage: z.enum(supportedLanguages).optional().default('en'),
 });
 
 // Schema for role update allows specific roles or null
@@ -36,6 +44,14 @@ export const updateUserRoleSchema = z.object({
     // Updated role enum for validation
     role: z.enum(['admin', 'employee', 'user']).nullable(),
 });
+
+// --- NEW: Schema for preferred language update ---
+export const updatePreferredLanguageSchema = z.object({
+    preferredLanguage: z.enum(supportedLanguages, {
+        errorMap: () => ({ message: "Invalid language selected. Only 'en' is currently supported." })
+    }),
+});
+// --- END NEW ---
 
 // --- User Allowed Tags ---
 // Model for the relationship between users and allowed tags

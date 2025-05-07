@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { useForm } from 'react-hook-form';
+import { useForm, Controller } from 'react-hook-form'; // Added Controller
 import { zodResolver } from '@hookform/resolvers/zod';
-// Updated import: Added userCreateSchema and UserCreateFormData
-import { setPasswordSchema, SetPasswordFormData, updateUserRoleSchema, userCreateSchema, UserCreateFormData } from '@/lib/zodSchemas';
+// Updated import: Added userCreateSchema and UserCreateFormData, updatePreferredLanguageFormSchema
+import { setPasswordSchema, SetPasswordFormData, updateUserRoleSchema, userCreateSchema, UserCreateFormData, updatePreferredLanguageFormSchema, UpdatePreferredLanguageFormData } from '@/lib/zodSchemas';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from '@/components/ui/button';
@@ -16,19 +16,21 @@ import UserCreateDialog from './UserCreateDialog'; // Import the new create user
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useAuth } from '@/hooks/useAuth';
 import api from '@/lib/api';
-// Updated UserRole import - User now potentially includes assignedTags
-import type { User, UserRole } from '../../../../backend/src/functionalities/user/models';
+// Updated UserRole import - User now potentially includes assignedTags and preferredLanguage
+// Import supportedLanguages constant from backend models
+import type { User, UserRole, SupportedLanguage } from '../../../../backend/src/functionalities/user/models';
+import { supportedLanguages } from '../../../../backend/src/functionalities/user/models'; // Import the constant
 import type { Tag } from '../../../../backend/src/functionalities/tag/models';
 import { toast } from "sonner";
 import { cn } from '@/lib/utils';
-// Updated imports: Added PlusCircle
-import { KeyRound, Ban, Tags, PlusCircle } from 'lucide-react';
+// Updated imports: Added PlusCircle, Languages icon
+import { KeyRound, Ban, Tags, PlusCircle, Languages } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"; // Import Tooltip
 
 const UserManagement: React.FC = () => {
-    const { token, user: adminUser } = useAuth();
-    // User type now potentially includes assignedTags
+    const { token, user: adminUser, updateContextUser } = useAuth(); // Added updateContextUser
+    // User type now potentially includes assignedTags and preferredLanguage
     const [users, setUsers] = useState<Omit<User, 'password'>[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [fetchError, setFetchError] = useState<string | null>(null);
@@ -44,6 +46,11 @@ const UserManagement: React.FC = () => {
     const [availableTags, setAvailableTags] = useState<Tag[]>([]);
     const [isLoadingTags, setIsLoadingTags] = useState(false);
 
+    // --- NEW: State for Preferred Language Dialog ---
+    const [isSetLanguageDialogOpen, setIsSetLanguageDialogOpen] = useState(false);
+    const [targetUserForLanguage, setTargetUserForLanguage] = useState<Omit<User, 'password'> | null>(null);
+    // ---------------------------------------------
+
     // --- State for Create User Dialog ---
     const [isCreateUserDialogOpen, setIsCreateUserDialogOpen] = useState(false);
     // ------------------------------------
@@ -52,12 +59,19 @@ const UserManagement: React.FC = () => {
         resolver: zodResolver(setPasswordSchema), defaultValues: { password: '' },
     });
 
+    // --- NEW: Form for Preferred Language ---
+    const { control: languageControl, handleSubmit: handleLanguageSubmit, reset: resetLanguageForm, formState: { errors: languageErrors } } = useForm<UpdatePreferredLanguageFormData>({
+        resolver: zodResolver(updatePreferredLanguageFormSchema), defaultValues: { preferredLanguage: 'en' },
+    });
+    // --------------------------------------
+
+
     // --- Fetching Data ---
     const fetchUsers = useCallback(async () => {
         if (!token) { setIsLoading(false); setFetchError("Authentication token not found."); return; }
         setIsLoading(true); setFetchError(null); setUpdateError(null);
         try {
-            // API now returns assignedTags for 'user' roles
+            // API now returns assignedTags for 'user' roles and preferredLanguage
             const fetchedUsers = await api.getAllUsers(token);
             setUsers(fetchedUsers.sort((a, b) => a.login.localeCompare(b.login)));
         } catch (err: any) {
@@ -139,6 +153,40 @@ const UserManagement: React.FC = () => {
         }
     };
 
+    // --- NEW: Handlers for Preferred Language Dialog ---
+    const openSetLanguageDialog = (userToSet: Omit<User, 'password'>) => {
+        setTargetUserForLanguage(userToSet);
+        resetLanguageForm({ preferredLanguage: userToSet.preferredLanguage || 'en' });
+        setUpdateError(null);
+        setIsSetLanguageDialogOpen(true);
+    };
+
+    const onSetLanguageSubmit = async (data: UpdatePreferredLanguageFormData) => {
+        if (!token || !targetUserForLanguage) return;
+        setUpdatingLogin(targetUserForLanguage.login); // Reuse updatingLogin for loading state
+        setUpdateError(null);
+        try {
+            const updatedUser = await api.updateUserPreferredLanguage(targetUserForLanguage.login, data.preferredLanguage, token);
+            toast.success(`Preferred language for "${targetUserForLanguage.login}" updated to ${data.preferredLanguage.toUpperCase()}.`);
+            // Update local users state
+            setUsers(prevUsers => prevUsers.map(u => u.userId === updatedUser.userId ? { ...u, preferredLanguage: updatedUser.preferredLanguage } : u));
+            // If the updated user is the current admin, update context
+            if (adminUser && adminUser.userId === updatedUser.userId) {
+                 updateContextUser({ preferredLanguage: updatedUser.preferredLanguage });
+            }
+            setIsSetLanguageDialogOpen(false);
+            setTargetUserForLanguage(null);
+        } catch (err: any) {
+            const msg = `Failed to update language for ${targetUserForLanguage.login}: ${err.message}`;
+            setUpdateError(msg);
+            toast.error(msg);
+        } finally {
+            setUpdatingLogin(null);
+        }
+    };
+    // --- END NEW ---
+
+
     const openAssignTagsDialog = useCallback(async (userToAssign: Omit<User, 'password'>) => {
         if (userToAssign.role !== 'user') {
             toast.info("Tags can only be assigned to users with the 'user' role.");
@@ -195,7 +243,7 @@ const UserManagement: React.FC = () => {
                     <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                          <div>
                              <CardTitle>User Management</CardTitle>
-                             <CardDescription>Manage user roles and access. 'Employee' has general access, 'User' has restricted access based on assigned tags.</CardDescription>
+                             <CardDescription>Manage user roles, access, and preferred language.</CardDescription>
                          </div>
                          {/* --- Create User Button & Dialog Trigger --- */}
                          <UserCreateDialog
@@ -222,8 +270,9 @@ const UserManagement: React.FC = () => {
                                     <TableRow>
                                         <TableHead>Login</TableHead>
                                         <TableHead>Role</TableHead>
-                                        <TableHead>Assigned Tags</TableHead> {/* New Header */}
-                                        <TableHead className="text-right w-[150px]">Actions</TableHead>
+                                        <TableHead>Language</TableHead> {/* NEW Header */}
+                                        <TableHead>Assigned Tags</TableHead>
+                                        <TableHead className="text-right w-[180px]">Actions</TableHead> {/* Adjusted width */}
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
@@ -251,8 +300,12 @@ const UserManagement: React.FC = () => {
                                                                 <SelectItem value="null"><span className='text-muted-foreground italic flex items-center gap-1'><Ban className='h-3 w-3'/> No Role / Disabled</span></SelectItem>
                                                             </SelectContent>
                                                         </Select>
-                                                        {updatingLogin === user.login && !isAssignTagsDialogOpen && <LoadingSpinner size="sm" />}
+                                                        {updatingLogin === user.login && !isAssignTagsDialogOpen && !isSetLanguageDialogOpen && <LoadingSpinner size="sm" />}
                                                     </div>
+                                                </TableCell>
+                                                {/* Preferred Language Cell */}
+                                                <TableCell>
+                                                     <Badge variant="outline" className="font-normal">{user.preferredLanguage?.toUpperCase() || 'EN'}</Badge>
                                                 </TableCell>
                                                 {/* Assigned Tags Cell */}
                                                 <TableCell>
@@ -281,16 +334,20 @@ const UserManagement: React.FC = () => {
                                                     </div>
                                                 </TableCell>
                                                 <TableCell className="text-right space-x-1">
+                                                    {/* Language Button - Visible for admin, not for self */}
+                                                    {!isSelf && (
+                                                         <Button variant="ghost" size="icon" onClick={() => openSetLanguageDialog(user)} disabled={isProcessing} title={`Set language for ${user.login}`}>
+                                                             {updatingLogin === user.login && isSetLanguageDialogOpen ? <LoadingSpinner size="sm"/> : <Languages className="h-4 w-4 text-purple-600" />}
+                                                         </Button>
+                                                    )}
                                                     {user.role === 'user' && !isSelf && (
                                                          <Button variant="ghost" size="icon" onClick={() => openAssignTagsDialog(user)} disabled={isProcessing} title={`Assign tags for ${user.login}`}>
-                                                            {updatingLogin === user.login ? <LoadingSpinner size="sm"/> : <Tags className="h-4 w-4 text-blue-600" />}
+                                                            {updatingLogin === user.login && isAssignTagsDialogOpen ? <LoadingSpinner size="sm"/> : <Tags className="h-4 w-4 text-blue-600" />}
                                                         </Button>
                                                     )}
                                                     <Button variant="ghost" size="icon" onClick={() => openSetPasswordDialog(user)} disabled={isSelf || isProcessing} title={`Set password for ${user.login}`}>
                                                         {settingPasswordLogin === user.login ? <LoadingSpinner size="sm"/> : <KeyRound className="h-4 w-4" />}
                                                     </Button>
-                                                    {/* Placeholder for alignment if needed */}
-                                                    {(user.role !== 'user' && !isSelf) && <span className='inline-block w-9 h-9'></span>}
                                                 </TableCell>
                                             </TableRow>
                                         );
@@ -302,7 +359,6 @@ const UserManagement: React.FC = () => {
                     {!isLoading && !fetchError && users.length === 0 && (<p className='text-muted-foreground text-center py-6'>No users found.</p>)}
                 </CardContent>
 
-                {/* Dialogs remain the same */}
                  <Dialog open={isSetPasswordDialogOpen} onOpenChange={setIsSetPasswordDialogOpen}>
                      <DialogContent className="sm:max-w-[425px]">
                          <DialogHeader><DialogTitle>Set Password for "{targetUserForPassword?.login}"</DialogTitle><DialogDescription>Enter the new password.</DialogDescription></DialogHeader>
@@ -321,6 +377,49 @@ const UserManagement: React.FC = () => {
                          <DialogFooter> <DialogClose asChild><Button type="button" variant="outline" disabled={updatingLogin === targetUserForTags?.login}>Cancel</Button></DialogClose> <Button type="button" onClick={handleAssignTagsSave} disabled={isLoadingTags || updatingLogin === targetUserForTags?.login}> {updatingLogin === targetUserForTags?.login ? <LoadingSpinner size="sm" className="mr-2" /> : 'Save Assignments'} </Button> </DialogFooter>
                      </DialogContent>
                  </Dialog>
+                 {/* --- NEW: Preferred Language Dialog --- */}
+                 <Dialog open={isSetLanguageDialogOpen} onOpenChange={setIsSetLanguageDialogOpen}>
+                     <DialogContent className="sm:max-w-[425px]">
+                         <DialogHeader>
+                             <DialogTitle>Set Preferred Language for "{targetUserForLanguage?.login}"</DialogTitle>
+                             <DialogDescription>Select the user's preferred language for the interface (currently only English is fully supported).</DialogDescription>
+                         </DialogHeader>
+                         {updateError && <ErrorDisplay message={updateError} className='my-2' />}
+                         <form onSubmit={handleLanguageSubmit(onSetLanguageSubmit)}>
+                            <div className="grid gap-4 py-4">
+                                <div className="grid gap-1.5">
+                                    <Label htmlFor="preferredLanguage">Language</Label>
+                                    <Controller
+                                        name="preferredLanguage"
+                                        control={languageControl}
+                                        render={({ field }) => (
+                                            <Select onValueChange={field.onChange} value={field.value}>
+                                                <SelectTrigger id="preferredLanguage" className={cn(languageErrors.preferredLanguage && "border-destructive")}>
+                                                    <SelectValue placeholder="Select language..." />
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                    {supportedLanguages.map(lang => (
+                                                        <SelectItem key={lang} value={lang}>{lang.toUpperCase()}</SelectItem>
+                                                    ))}
+                                                </SelectContent>
+                                            </Select>
+                                        )}
+                                    />
+                                    {languageErrors.preferredLanguage && <p className="text-xs text-destructive">{languageErrors.preferredLanguage.message}</p>}
+                                </div>
+                            </div>
+                            <DialogFooter>
+                                <DialogClose asChild>
+                                    <Button type="button" variant="outline" disabled={updatingLogin === targetUserForLanguage?.login}>Cancel</Button>
+                                </DialogClose>
+                                <Button type="submit" disabled={updatingLogin === targetUserForLanguage?.login || !!languageErrors.preferredLanguage}>
+                                    {updatingLogin === targetUserForLanguage?.login ? <LoadingSpinner size="sm" className="mr-2" /> : 'Set Language'}
+                                </Button>
+                            </DialogFooter>
+                         </form>
+                     </DialogContent>
+                 </Dialog>
+                 {/* --- END NEW --- */}
             </Card>
         </TooltipProvider>
     );

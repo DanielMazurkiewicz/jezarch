@@ -1,6 +1,6 @@
 import { db } from '../../initialization/db';
 import { Log } from '../log/db';
-import { User, UserRole } from './models'; // Import UserRole
+import { User, UserRole, SupportedLanguage, supportedLanguages } from './models'; // Import UserRole, SupportedLanguage
 import * as bcrypt from 'bcryptjs';
 import { Tag } from '../tag/models'; // Import Tag model for return type
 
@@ -11,13 +11,15 @@ export async function initializeUserTable() {
       userId INTEGER PRIMARY KEY AUTOINCREMENT,
       login TEXT UNIQUE NOT NULL,
       password TEXT NOT NULL,
-      role TEXT DEFAULT NULL CHECK(role IS NULL OR role IN ('admin', 'employee', 'user'))
+      role TEXT DEFAULT NULL CHECK(role IS NULL OR role IN ('admin', 'employee', 'user')),
+      preferredLanguage TEXT DEFAULT 'en' NOT NULL CHECK(preferredLanguage IN ('${supportedLanguages.join("','")}')) -- Added column
     )
   `);
 
     const admin = await getUserByLogin('admin');
     if (!admin) {
-        await createUser('admin', 'admin', 'admin');
+        // Create admin with default 'en' language
+        await createUser('admin', 'admin', 'admin', 'en');
         await Log.info('Default admin user created', 'system', 'database', { action: 'initialization' });
     }
 }
@@ -35,18 +37,29 @@ export async function initializeUserAllowedTagTable() {
     await db.exec(`CREATE INDEX IF NOT EXISTS idx_uat_user ON user_allowed_tags (userId);`);
 }
 
-export async function createUser(login: string, password: string, role: UserRole | null = null) {
+export async function createUser(
+    login: string,
+    password: string,
+    role: UserRole | null = null,
+    preferredLanguage: SupportedLanguage = 'en' // Add preferredLanguage parameter
+) {
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(password, salt);
     const validRoles: (UserRole | null)[] = ['admin', 'employee', 'user', null];
     const finalRole = validRoles.includes(role) ? role : null;
-    const statement = db.prepare(`INSERT INTO users (login, password, role) VALUES (?, ?, ?)`);
+    const finalLanguage = supportedLanguages.includes(preferredLanguage) ? preferredLanguage : 'en';
+
+    const statement = db.prepare(`INSERT INTO users (login, password, role, preferredLanguage) VALUES (?, ?, ?, ?)`);
     try {
-        statement.run(login, hashedPassword, finalRole);
+        statement.run(login, hashedPassword, finalRole, finalLanguage);
     } catch (error: any) {
-        await Log.error('Failed to insert user', 'system', 'database', { login, role: finalRole, error });
+        await Log.error('Failed to insert user', 'system', 'database', { login, role: finalRole, preferredLanguage: finalLanguage, error });
          if (error.message?.includes('UNIQUE constraint failed')) throw new Error(`User with login '${login}' already exists.`);
-         else if (error.message?.includes('CHECK constraint failed')) throw new Error(`Invalid role specified: ${finalRole}`);
+         else if (error.message?.includes('CHECK constraint failed')) {
+             if (!validRoles.includes(finalRole)) throw new Error(`Invalid role specified: ${finalRole}`);
+             if (!supportedLanguages.includes(finalLanguage)) throw new Error(`Invalid preferred language specified: ${finalLanguage}`);
+             throw error; // Other CHECK constraint
+         }
          else throw error;
     }
 }
@@ -88,6 +101,7 @@ const mapDbRowToUserBase = (row: any): Omit<User, 'password' | 'assignedTags'> |
         userId: row.userId,
         login: row.login,
         role: row.role as UserRole | null,
+        preferredLanguage: row.preferredLanguage as SupportedLanguage, // Map preferredLanguage
     };
 }
 
@@ -99,11 +113,12 @@ const mapDbRowToUserWithPassword = (row: any): User | undefined => {
         login: row.login,
         password: row.password, // Include password
         role: row.role as UserRole | null,
+        preferredLanguage: row.preferredLanguage as SupportedLanguage, // Map preferredLanguage
     };
 }
 
 export async function getUserByUserId(userId: number): Promise<User | undefined> {
-    const statement = db.prepare(`SELECT userId, login, role FROM users WHERE userId = ?`);
+    const statement = db.prepare(`SELECT userId, login, role, preferredLanguage FROM users WHERE userId = ?`); // Added preferredLanguage
     const row = statement.get(userId);
     const userBase = mapDbRowToUserBase(row);
     if (!userBase) return undefined;
@@ -118,7 +133,7 @@ export async function getUserByUserId(userId: number): Promise<User | undefined>
 
 export async function getUserByLogin(login: string): Promise<User | undefined> {
     // Fetches password hash, needed for verification
-    const statement = db.prepare(`SELECT * FROM users WHERE login = ?`);
+    const statement = db.prepare(`SELECT * FROM users WHERE login = ?`); // Selects all columns including preferredLanguage
     const row = statement.get(login);
     const userWithPassword = mapDbRowToUserWithPassword(row);
     if (!userWithPassword) return undefined;
@@ -133,7 +148,7 @@ export async function getUserByLogin(login: string): Promise<User | undefined> {
 
 // Fetches user details *without* the password hash, but *with* assigned tags if applicable
 export async function getUserByLoginSafe(login: string): Promise<Omit<User, 'password'> | undefined> {
-    const statement = db.prepare(`SELECT userId, login, role FROM users WHERE login = ?`);
+    const statement = db.prepare(`SELECT userId, login, role, preferredLanguage FROM users WHERE login = ?`); // Added preferredLanguage
     const row = statement.get(login);
     const userBase = mapDbRowToUserBase(row);
     if (!userBase) return undefined;
@@ -161,6 +176,24 @@ export async function updateUserRole(login: string, role: UserRole | null) {
         else throw error;
     }
 }
+
+// --- NEW: Update user's preferred language ---
+export async function updateUserPreferredLanguage(login: string, language: SupportedLanguage) {
+    if (!supportedLanguages.includes(language)) {
+        throw new Error(`Invalid preferred language specified: ${language}. Supported: ${supportedLanguages.join(', ')}`);
+    }
+    const statement = db.prepare(`UPDATE users SET preferredLanguage = ? WHERE login = ?`);
+    try {
+        const result = statement.run(language, login);
+        if (result.changes === 0) throw new Error(`User '${login}' not found for preferred language update.`);
+    } catch (error: any) {
+        await Log.error('Failed to update user preferred language', 'system', 'database', { login, language, error });
+        if (error.message?.includes('CHECK constraint failed')) throw new Error(`Invalid preferred language specified: ${language}`);
+        else throw error;
+    }
+}
+// --- END NEW ---
+
 
 export async function updateUserPassword(login: string, newPassword: string) {
     const salt = await bcrypt.genSalt(10);
@@ -190,7 +223,7 @@ export async function adminSetUserPassword(login: string, newPassword: string) {
 
 // Updated getAllUsers to fetch and include assigned tags for 'user' roles
 export async function getAllUsers(): Promise<Omit<User, 'password'>[]> {
-    const statement = db.prepare(`SELECT userId, login, role FROM users`);
+    const statement = db.prepare(`SELECT userId, login, role, preferredLanguage FROM users`); // Added preferredLanguage
     const rows = statement.all();
 
     const userBases = rows.map(mapDbRowToUserBase).filter((u): u is Omit<User, 'password' | 'assignedTags'> => u !== undefined);
