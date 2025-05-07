@@ -46,10 +46,9 @@ const BatchTagDialog: React.FC<BatchTagDialogProps> = ({
         }
     };
 
-    // TODO: Translate titles and descriptions
-    const title = action === 'add' ? "Add Tags to Filtered Items" : "Remove Tags from Filtered Items";
-    const description = `Select tags to ${action} for all ${itemCount.toLocaleString()} items matching the current filters. This action cannot be undone easily.`;
-    const confirmText = action === 'add' ? `${t('addButton', preferredLanguage)} ${t('tagsLabel', preferredLanguage)} (${selectedTagIds.length})` : `${t('removeButton', preferredLanguage)} ${t('tagsLabel', preferredLanguage)} (${selectedTagIds.length})`; // TODO: Add tagsLabel
+    const title = t(action === 'add' ? 'archiveBatchTagsAddTitle' : 'archiveBatchTagsRemoveTitle', preferredLanguage);
+    const description = t('archiveBatchTagsDescription', preferredLanguage, { action: t(action === 'add' ? 'addButton' : 'removeButton', preferredLanguage).toLowerCase(), count: itemCount.toLocaleString() });
+    const confirmText = t(action === 'add' ? 'archiveBatchTagsConfirmAdd' : 'archiveBatchTagsConfirmRemove', preferredLanguage, { count: selectedTagIds.length });
     const icon = action === 'add' ? <Tags className='h-4 w-4' /> : <MinusCircle className='h-4 w-4'/>;
 
     return (
@@ -63,11 +62,9 @@ const BatchTagDialog: React.FC<BatchTagDialogProps> = ({
                  {/* Warning */}
                  <Alert variant="destructive" className="mt-2">
                      <AlertTriangle className="h-4 w-4" />
-                      {/* TODO: Translate warning title */}
-                     <AlertTitle>{t('warningMessage', preferredLanguage)}</AlertTitle>
+                     <AlertTitle>{t('archiveBatchTagsWarningTitle', preferredLanguage)}</AlertTitle>
                      <AlertDescription>
-                          {/* TODO: Translate warning message */}
-                         This action affects {itemCount.toLocaleString()} items based on your current search filters. Double-check your filters before proceeding.
+                         {t('archiveBatchTagsWarningText', preferredLanguage, { count: itemCount.toLocaleString() })}
                      </AlertDescription>
                  </Alert>
 
@@ -78,8 +75,7 @@ const BatchTagDialog: React.FC<BatchTagDialogProps> = ({
                         onChange={setSelectedTagIds}
                         availableTags={availableTags}
                     />
-                      {/* TODO: Translate hint */}
-                     {selectedTagIds.length === 0 && <p className='text-xs text-muted-foreground mt-1 text-center'>Please select at least one tag.</p>}
+                     {selectedTagIds.length === 0 && <p className='text-xs text-muted-foreground mt-1 text-center'>{t('archiveBatchTagsPlaceholder', preferredLanguage)}</p>}
                 </div>
 
                 <DialogFooter className='gap-2'>

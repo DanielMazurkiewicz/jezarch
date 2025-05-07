@@ -99,7 +99,7 @@ export const commonTranslationsPL: CommonTranslationSet = {
   unitSelectorPlaceholder: 'Wybierz jednostkę nadrzędną...',
   unitSelectorSearchPlaceholder: 'Szukaj jednostek...',
   unitSelectorNoUnitsFound: 'Nie znaleziono jednostek.',
-  selection: 'wybór',
+  selection: 'wybór', // e.g., "Clear selection"
   noSignaturesAddedHint: 'Nie dodano jeszcze sygnatur.',
   conditionEqNum: '=',
   conditionGt: '>',
@@ -131,4 +131,23 @@ export const commonTranslationsPL: CommonTranslationSet = {
   elementSelectorNoParentsSelected: 'Nie wybrano elementów nadrzędnych',
   searchNoOptionsAvailable: 'Brak dostępnych opcji wyszukiwania.',
   passwordRequirementsHint: 'Min. 8 znaków, 1 duża litera, 1 mała litera, 1 cyfra.',
+  updated: 'zaktualizowano',
+  created: 'utworzono',
+  invalidRequestError: 'Nieprawidłowe żądanie.',
+  authTokenMissingError: 'Brak tokenu uwierzytelniającego.',
+  thisUnit: 'tę jednostkę',
+  notLabel: 'NIE',
+  enterValuesPlaceholder: 'wartość1, wartość2...',
+  clickToCreate: 'Kliknij {item}.',
+  insufficientPermissionsError: 'Niewystarczające uprawnienia.',
+  notAvailableAbbr: 'B/D', // Brak Danych
+  unknown: 'nieznany',
+  // Added/Corrected PL Keys
+  sidebarLoggedInAs: 'Zalogowany jako:',
+  tagSelectorSelectPlaceholder: 'Wybierz tagi...',
+  tagSelectorSearchPlaceholder: 'Szukaj tagów...',
+  tagSelectorLoading: 'Ładowanie tagów...',
+  tagSelectorError: 'Błąd ładowania tagów',
+  tagSelectorNoTags: 'Nie znaleziono tagów.',
+  signaturesTitle: 'Sygnatury',
 };

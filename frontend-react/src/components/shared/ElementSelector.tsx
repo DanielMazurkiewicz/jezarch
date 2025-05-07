@@ -53,8 +53,7 @@ const ElementSelector: React.FC<ElementSelectorProps> = ({
                 const comps = await api.getAllSignatureComponents(token);
                 setAvailableComponents(comps.sort((a,b) => a.name.localeCompare(b.name))); // Sort components
             } catch (err: any) {
-                // Use translated error
-                const msg = err.message || t('componentLoadFailedError', preferredLanguage); // TODO: Add componentLoadFailedError
+                const msg = err.message || t('componentLoadFailedError', preferredLanguage);
                 setError(msg);
             } finally {
                 setIsLoadingComponents(false);
@@ -81,8 +80,7 @@ const ElementSelector: React.FC<ElementSelectorProps> = ({
                         .sort((a,b) => (a.index ?? a.name).localeCompare(b.index ?? b.name)) // Sort elements
                  );
             } catch (err: any) {
-                 // Use translated error
-                const msg = err.message || t('elementLoadFailedError', preferredLanguage); // TODO: Add elementLoadFailedError
+                const msg = err.message || t('elementLoadFailedError', preferredLanguage);
                 setError(msg);
                 setAvailableElements([]);
             } finally {
@@ -110,9 +108,8 @@ const ElementSelector: React.FC<ElementSelectorProps> = ({
                  setSelectedElementObjects(results.filter((el): el is SignatureElement => el !== null)
                                             .sort((a,b) => a.name.localeCompare(b.name))); // Filter out nulls and sort
             } catch (err) {
-                 // Use translated error
                  console.error("Failed to fetch selected element details:", err);
-                 setError(t('selectedElementLoadFailedError', preferredLanguage)); // TODO: Add selectedElementLoadFailedError
+                 setError(t('selectedElementLoadFailedError', preferredLanguage));
                  setSelectedElementObjects([]); // Clear on error
             } finally {
                  setIsLoadingSelectedDetails(false);
@@ -161,7 +158,7 @@ const ElementSelector: React.FC<ElementSelectorProps> = ({
                         </SelectItem>
                     ))}
                      {/* Use translated placeholder */}
-                     {!isLoadingComponents && availableComponents.length === 0 && <SelectItem value="no-comps" disabled>{t('componentNoComponentsFound', preferredLanguage)}</SelectItem>} {/* TODO: Add componentNoComponentsFound */}
+                     {!isLoadingComponents && availableComponents.length === 0 && <SelectItem value="no-comps" disabled>{t('componentNoComponentsFound', preferredLanguage)}</SelectItem>}
                 </SelectContent>
             </Select>
 
@@ -178,9 +175,9 @@ const ElementSelector: React.FC<ElementSelectorProps> = ({
                         <span className='truncate'>
                             {/* Use translated placeholders/states */}
                             {isLoadingElements ? t('elementBrowserLoadingElements', preferredLanguage) :
-                             !searchComponentId ? t('elementBrowserSelectComponentFirst', preferredLanguage) : // TODO: Add elementBrowserSelectComponentFirst
+                             !searchComponentId ? t('elementBrowserSelectComponentFirst', preferredLanguage) :
                              error ? t('errorText', preferredLanguage) :
-                             t('elementBrowserSelectElements', preferredLanguage)} {/* TODO: Add elementBrowserSelectElements */}
+                             t('elementBrowserSelectElements', preferredLanguage)}
                         </span>
                         {isLoadingElements ? <LoadingSpinner size='sm' className='ml-2'/> : <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />}
                     </Button>
@@ -191,7 +188,7 @@ const ElementSelector: React.FC<ElementSelectorProps> = ({
                     <Command shouldFilter={false}> {/* Manual filtering */}
                         <CommandInput
                              // Use translated placeholder
-                            placeholder={t('elementBrowserSearchPlaceholder', preferredLanguage)} // TODO: Add elementBrowserSearchPlaceholder
+                            placeholder={t('elementBrowserSearchPlaceholder', preferredLanguage)}
                             value={searchTerm}
                             onValueChange={setSearchTerm}
                         />
@@ -240,7 +237,7 @@ const ElementSelector: React.FC<ElementSelectorProps> = ({
                                  className="ml-1 p-0.5 rounded-full text-muted-foreground hover:text-foreground hover:bg-background/50 focus:outline-none focus:ring-1 focus:ring-ring focus:ring-offset-1"
                                  onClick={() => handleSelectElement(el.signatureElementId!)}
                                  // Use translated aria-label
-                                 aria-label={t('removeButton', preferredLanguage) + ` ${el.name}`}
+                                 aria-label={`${t('removeButton', preferredLanguage)} ${el.name}`}
                              >
                                 <X className="h-3 w-3"/>
                              </button>
@@ -249,7 +246,7 @@ const ElementSelector: React.FC<ElementSelectorProps> = ({
                  )}
                  {/* Use translated placeholder */}
                  {!isLoadingSelectedDetails && selectedElementIds.length === 0 && (
-                     <span className='text-xs text-muted-foreground italic'>{t('elementSelectorNoParentsSelected', preferredLanguage)}</span> // TODO: Add elementSelectorNoParentsSelected
+                     <span className='text-xs text-muted-foreground italic'>{t('elementSelectorNoParentsSelected', preferredLanguage)}</span>
                  )}
             </div>
 

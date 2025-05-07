@@ -72,10 +72,9 @@ const NoteEditor: React.FC<NoteEditorProps> = ({ noteToEdit, onSave }) => {
                });
                setSelectedTagIds(tagIds); // Sync TagSelector state
            } catch (err: any) {
-                const msg = err.message || "Failed to load note details";
+                const msg = err.message || t('notesLoadDetailsError', preferredLanguage); // Use translated error
                 setError(msg);
-                // TODO: Translate error
-                toast.error(msg);
+                toast.error(t('errorMessageTemplate', preferredLanguage, { message: msg }));
                 console.error("Fetch Note Details Error:", err);
                 // Reset to potentially stale data from list or defaults
                 reset({
@@ -99,7 +98,7 @@ const NoteEditor: React.FC<NoteEditorProps> = ({ noteToEdit, onSave }) => {
            setError(null); // Clear any previous errors
            setIsFetchingDetails(false); // Not fetching details for new note
        }
-   }, [noteToEdit, reset, token]);
+   }, [noteToEdit, reset, token, preferredLanguage]); // Add preferredLanguage
 
 
   // Update form's tagIds when TagSelector changes
@@ -133,10 +132,9 @@ const NoteEditor: React.FC<NoteEditorProps> = ({ noteToEdit, onSave }) => {
       }
       onSave(); // Call the success callback (which handles toast and closing)
     } catch (err: any) {
-      const msg = err.message || 'Failed to save note';
+      const msg = err.message || t('notesSaveFailed', preferredLanguage, { message: '' }).replace(': {message}', ''); // Use translated error
       setError(msg);
-      // TODO: Translate error
-      toast.error(`Error saving note: ${msg}`);
+      toast.error(t('errorMessageTemplate', preferredLanguage, { message: t('notesSaveFailed', preferredLanguage, { message: msg }) }));
       console.error("Save Note Error:", err);
     } finally {
       setIsLoading(false);
@@ -156,22 +154,19 @@ const NoteEditor: React.FC<NoteEditorProps> = ({ noteToEdit, onSave }) => {
         {isLoading && <div className='absolute inset-0 bg-background/50 flex items-center justify-center z-10 rounded-md'><LoadingSpinner/></div>}
 
       <div className="grid gap-1.5"> {/* Adjusted gap */}
-         {/* Use translated label */}
         <Label htmlFor="title">{t('titleLabel', preferredLanguage)}</Label>
         <Input id="title" {...register('title')} aria-invalid={errors.title ? "true" : "false"} className={cn(errors.title && "border-destructive")}/>
         {errors.title && <p className="text-xs text-destructive">{errors.title.message}</p>}
       </div>
 
       <div className="grid gap-1.5"> {/* Adjusted gap */}
-         {/* TODO: Translate label */}
-        <Label htmlFor="content">Content</Label>
+        <Label htmlFor="content">{t('notesContentLabel', preferredLanguage)}</Label>
         <Textarea id="content" {...register('content')} rows={6} aria-invalid={errors.content ? "true" : "false"} className={cn(errors.content && "border-destructive")}/>
         {errors.content && <p className="text-xs text-destructive">{errors.content?.message}</p>}
       </div>
 
        <div className="grid gap-1.5"> {/* Adjusted gap */}
-         {/* TODO: Translate label */}
-         <Label htmlFor="tags">Tags</Label>
+         <Label htmlFor="tags">{t('tagsLabel', preferredLanguage)}</Label>
          <TagSelector selectedTagIds={selectedTagIds} onChange={setSelectedTagIds} />
          {/* Hidden input registered with RHF for validation */}
          <input type="hidden" {...register('tagIds')} />
@@ -197,8 +192,7 @@ const NoteEditor: React.FC<NoteEditorProps> = ({ noteToEdit, onSave }) => {
                          className={cn(errors.shared && "border-destructive")}
                          // Disable checkbox if user is not the owner AND not an admin
                          disabled={!isOwner && !isAdmin}
-                         // TODO: Translate title
-                         title={(!isOwner && !isAdmin) ? "Only the owner or an admin can change the shared status" : undefined}
+                         title={(!isOwner && !isAdmin) ? t('notesShareTooltip', preferredLanguage) : undefined}
                      />
                  )}
            />
@@ -209,15 +203,13 @@ const NoteEditor: React.FC<NoteEditorProps> = ({ noteToEdit, onSave }) => {
                  (!isOwner && !isAdmin) && 'cursor-not-allowed opacity-70' // Style label when disabled
              )}
            >
-             {/* TODO: Translate label */}
-             Share this note publicly
+             {t('notesSharePubliclyLabel', preferredLanguage)}
           </Label>
         </div>
          {errors.shared && <p className="text-xs text-destructive">{errors.shared.message}</p>}
 
-      {/* Use translated button text */}
       <Button type="submit" disabled={isLoading || isFetchingDetails} className="mt-4 justify-self-start"> {/* Align button left */}
-        {isLoading ? <LoadingSpinner size="sm" className='mr-2' /> : (noteToEdit ? t('editButton', preferredLanguage) : t('createButton', preferredLanguage))} {t('notesTitle', preferredLanguage, { count: 1 }).replace('Notes', 'Note')} {/* Example */}
+        {isLoading ? <LoadingSpinner size="sm" className='mr-2' /> : (noteToEdit ? t('editButton', preferredLanguage) : t('createButton', preferredLanguage))} {t('notesTitleSingular', preferredLanguage)} {/* TODO: Add notesTitleSingular */}
       </Button>
     </form>
   );

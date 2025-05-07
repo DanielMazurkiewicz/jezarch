@@ -15,19 +15,20 @@ interface NotePreviewDialogProps {
 
 // --- Date Formatter (Copied from NotesPage) ---
 const formatDate = (dateInput: Date | string | undefined | null): string => {
-    if (!dateInput) return "N/A";
+    if (!dateInput) return "N/A"; // TODO: Translate N/A if needed
     try {
         const date = new Date(dateInput);
         if (isNaN(date.getTime())) {
             console.error("formatDate received invalid date input:", dateInput);
-            return "Invalid Date";
+            return "Invalid Date"; // TODO: Translate "Invalid Date"
         }
+        // Use locale string for date formatting
         return date.toLocaleDateString(undefined, {
             year: 'numeric', month: 'short', day: 'numeric',
         });
     } catch (e) {
         console.error("Error formatting date:", dateInput, e);
-        return "Error";
+        return "Error"; // TODO: Translate "Error"
     }
 };
 // ------------------------------------------------
@@ -48,11 +49,9 @@ const NotePreviewDialog: React.FC<NotePreviewDialogProps> = ({
             <DialogContent className="sm:max-w-2xl">
                 <DialogHeader>
                     <DialogTitle>{previewingNote.title}</DialogTitle>
-                     {/* TODO: Translate "By", "on" */}
                     <DialogDescription>
-                        By {previewingNote.ownerLogin ?? 'Unknown'} on {formatDate(previewingNote.createdOn)}
-                         {/* TODO: Translate badge text */}
-                        {previewingNote.shared ? <Badge variant="outline" className='ml-2'>Shared</Badge> : null}
+                        {t('notesPreviewBy', preferredLanguage)} {previewingNote.ownerLogin ?? 'Unknown'} {t('notesPreviewOn', preferredLanguage)} {formatDate(previewingNote.createdOn)}
+                        {previewingNote.shared ? <Badge variant="outline" className='ml-2'>{t('notesSharedBadge', preferredLanguage)}</Badge> : null}
                     </DialogDescription>
                     {/* Display Tags */}
                     {previewingNote.tags && previewingNote.tags.length > 0 && (
@@ -67,8 +66,7 @@ const NotePreviewDialog: React.FC<NotePreviewDialogProps> = ({
                 <ScrollArea className="max-h-[60vh] my-4">
                     {/* Use pre-wrap to preserve whitespace and line breaks */}
                     <pre className="text-sm whitespace-pre-wrap font-sans p-1">
-                         {/* TODO: Translate placeholder */}
-                       {previewingNote.content || <i className="text-muted-foreground">No content.</i>}
+                       {previewingNote.content || <i className="text-muted-foreground">{t('notesNoContentPlaceholder', preferredLanguage)}</i>}
                     </pre>
                 </ScrollArea>
                 <DialogFooter>

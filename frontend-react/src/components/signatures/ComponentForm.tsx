@@ -15,6 +15,7 @@ import api from '@/lib/api';
 import type { SignatureComponent, SignatureComponentIndexType, CreateSignatureComponentInput, UpdateSignatureComponentInput } from '../../../../backend/src/functionalities/signature/component/models';
 import { cn } from '@/lib/utils'; // Import cn
 import { t } from '@/translations/utils'; // Import translation utility
+import { toast } from "sonner"; // Import toast
 
 interface ComponentFormProps {
   componentToEdit: SignatureComponent | null;
@@ -59,8 +60,7 @@ const ComponentForm: React.FC<ComponentFormProps> = ({ componentToEdit, onSave }
              await api.updateSignatureComponent(componentToEdit.signatureComponentId, updatePayload, token);
         } else {
             console.log("No changes detected for component update.");
-            // Optionally show a toast message indicating no changes
-            // toast.info("No changes detected.");
+            toast.info(t('componentNoChangesFound', preferredLanguage)); // Use translated info
             onSave(); // Still call onSave to close the dialog
             return; // Exit early
         }
@@ -75,7 +75,6 @@ const ComponentForm: React.FC<ComponentFormProps> = ({ componentToEdit, onSave }
       }
       onSave();
     } catch (err: any) {
-       // Use translated error message
        const msg = err.message || t('componentSaveFailedError', preferredLanguage);
        setError(msg);
        toast.error(t('errorMessageTemplate', preferredLanguage, { message: msg })); // Also show in toast
@@ -127,7 +126,7 @@ const ComponentForm: React.FC<ComponentFormProps> = ({ componentToEdit, onSave }
        </div>
         {/* Use translated button text */}
        <Button type="submit" disabled={isLoading} className="mt-2 justify-self-start"> {/* Align left */}
-         {isLoading ? <LoadingSpinner size="sm" className='mr-2' /> : (componentToEdit ? t('editButton', preferredLanguage) : t('createButton', preferredLanguage))} {t('componentsTitle', preferredLanguage).replace('s', '')} {/* Example of adapting plural */}
+         {isLoading ? <LoadingSpinner size="sm" className='mr-2' /> : (componentToEdit ? t('editButton', preferredLanguage) : t('createButton', preferredLanguage))} {t('componentSingularLabel', preferredLanguage)}
        </Button>
     </form>
   );

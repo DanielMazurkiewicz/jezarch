@@ -5,7 +5,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { PlusCircle, ArrowLeft } from 'lucide-react';
 import ElementList from './ElementList';
 import ElementForm from './ElementForm';
-import SearchBar from '@/components/shared/SearchBar';
+import SearchBar, { type SearchFieldOption } from '@/components/shared/SearchBar';
 import { Pagination } from '@/components/shared/Pagination';
 import LoadingSpinner from '@/components/shared/LoadingSpinner';
 import ErrorDisplay from '@/components/shared/ErrorDisplay';
@@ -51,7 +51,7 @@ const ElementsPage: React.FC = () => {
         const fetchParent = async () => {
             if (!token || isNaN(componentId)) { // Added NaN check
                 setIsParentLoading(false);
-                setParentError("Invalid component ID."); // TODO: Translate
+                setParentError(t('invalidComponentIdError', preferredLanguage)); // Use translated error
                 return;
             }
             setIsParentLoading(true);
@@ -60,9 +60,9 @@ const ElementsPage: React.FC = () => {
                 const fetchedComponent = await api.getSignatureComponentById(componentId, token);
                 setParentComponent(fetchedComponent);
             } catch (err: any) {
-                const msg = err.message || `Failed to fetch component (ID: ${componentId})`;
+                const msg = err.message || t('componentFetchByIdError', preferredLanguage, { id: componentId }); // Use translated error
                 setParentError(msg);
-                toast.error(t('errorMessageTemplate', preferredLanguage, { message: msg })); // Use translated error
+                toast.error(t('errorMessageTemplate', preferredLanguage, { message: msg }));
                 console.error("Fetch Parent Component Error:", err);
                 setParentComponent(null);
             } finally {
@@ -76,7 +76,7 @@ const ElementsPage: React.FC = () => {
     const fetchElements = useCallback(async (page = 1, query: SearchRequest['query'] = []) => {
         if (!token || isNaN(componentId)) { // Added NaN check
             setIsElementsLoading(false);
-            setElementsError("Component ID or authentication token missing or invalid."); // TODO: Translate
+            setElementsError(t('elementFetchPrereqError', preferredLanguage)); // Use translated error
             return;
         }
         setIsElementsLoading(true);
@@ -91,9 +91,8 @@ const ElementsPage: React.FC = () => {
             setTotalElementPages(response.totalPages);
             setCurrentElementPage(response.page);
         } catch (err: any) {
-             const msg = err.message || 'Failed to fetch elements';
+             const msg = err.message || t('elementFetchFailedError', preferredLanguage); // Use translated error
              setElementsError(msg);
-             // Use translated error template
              toast.error(t('errorMessageTemplate', preferredLanguage, { message: msg }));
              console.error("Fetch Elements Error:", err);
              setElements([]); setTotalElements(0); setTotalElementPages(1);
@@ -113,30 +112,28 @@ const ElementsPage: React.FC = () => {
 
     // --- Element CRUD & Other Callbacks ---
     const handleEditElement = useCallback((element: SignatureElement) => {
-        if (!canModify) { toast.error("Insufficient permissions."); return; } // TODO: Translate
+        if (!canModify) { toast.error(t('insufficientPermissionsError', preferredLanguage)); return; } // Use translated error
         setEditingElement(element);
         setIsElementFormOpen(true);
-    }, [canModify]);
+    }, [canModify, preferredLanguage]); // Add preferredLanguage
 
     const handleCreateElement = useCallback(() => {
-        if (!canModify) { toast.error("Insufficient permissions."); return; } // TODO: Translate
-        if (!parentComponent) { toast.warning("Parent component not loaded."); return; } // TODO: Translate
+        if (!canModify) { toast.error(t('insufficientPermissionsError', preferredLanguage)); return; }
+        if (!parentComponent) { toast.warning(t('parentComponentNotLoadedWarning', preferredLanguage)); return; } // Use translated warning
         setEditingElement(null);
         setIsElementFormOpen(true);
-    }, [canModify, parentComponent]);
+    }, [canModify, parentComponent, preferredLanguage]); // Add preferredLanguage
 
     const handleDeleteElement = useCallback(async (elementId: number) => {
-        if (!canModify) { toast.error("Insufficient permissions."); return; } // TODO: Translate
+        if (!canModify) { toast.error(t('insufficientPermissionsError', preferredLanguage)); return; }
         if (!parentComponent || !token) {
-            toast.error("Parent component or authentication token missing."); return; // TODO: Translate
+            toast.error(t('elementDeletePrereqError', preferredLanguage)); return; // Use translated error
         }
-        // Use translated confirmation
         if (!window.confirm(t('confirmDeleteElementMessage', preferredLanguage))) return;
 
         setIsElementsLoading(true); setElementsError(null);
         try {
             await api.deleteSignatureElement(elementId, token);
-            // Use translated success message
             toast.success(t('elementDeletedSuccess', preferredLanguage));
             const newTotalElements = totalElements - 1;
             const newTotalPages = Math.max(1, Math.ceil(newTotalElements / ELEMENTS_PAGE_SIZE));
@@ -153,9 +150,8 @@ const ElementsPage: React.FC = () => {
                 setCurrentElementPage(newPage);
             }
         } catch(e: any){
-            const msg = e.message || "Failed to delete element";
-            setElementsError(msg);
-            // Use translated error template
+            const msg = e.message || "Failed";
+            setElementsError(t('elementDeleteFailedError', preferredLanguage));
             toast.error(t('errorMessageTemplate', preferredLanguage, { message: t('elementDeleteFailedError', preferredLanguage) + `: ${msg}` }));
         } finally {
             setIsElementsLoading(false);
@@ -167,7 +163,6 @@ const ElementsPage: React.FC = () => {
         setEditingElement(null);
         // Show success only if an element was actually created/updated
         if (savedElement) {
-             // Use translated success message
              toast.success(editingElement ? t('elementUpdatedSuccess', preferredLanguage) : t('elementCreatedSuccess', preferredLanguage, { name: savedElement.name }));
         }
         const currentParentId = parentComponent?.signatureComponentId; // Store ID before potential async operations
@@ -185,8 +180,7 @@ const ElementsPage: React.FC = () => {
                      setParentComponent(updatedParent);
                  } catch (err) {
                      console.error("Failed to refresh parent component after element save", err);
-                     // Optionally, manually adjust count if fetch fails
-                      // setParentComponent(prev => prev ? {...prev, index_count: (prev.index_count ?? 0) + (editingElement ? 0 : 1)} : null);
+                     toast.warn(t('parentComponentRefreshError', preferredLanguage)); // Use translated warning
                  }
             }
         } else {
@@ -211,28 +205,24 @@ const ElementsPage: React.FC = () => {
     if (parentError) {
         return <ErrorDisplay message={parentError} />;
     }
-    // Check for NaN as well, just in case parseInt failed silently earlier
     if (!parentComponent || isNaN(componentId)) {
-        return <ErrorDisplay message={`Component with ID ${componentIdStr || 'invalid'} not found or failed to load.`} />;
+        return <ErrorDisplay message={t('componentNotFoundError', preferredLanguage, { id: componentIdStr || 'invalid' })} />; // Use translated error
     }
 
     return (
         <div className="space-y-6">
             {/* Page Header */}
             <div className="flex items-center gap-4">
-                 {/* Use translated title */}
                 <Button variant="outline" size="icon" onClick={() => navigate('/signatures')} title={t('backToComponentsButton', preferredLanguage)}>
                     <ArrowLeft className="h-4 w-4" />
                 </Button>
                 <div>
-                     {/* Use translated title */}
                     <h1 className="text-2xl font-bold">
                          {t('elementsForComponentTitle', preferredLanguage, { componentName: parentComponent.name })}
                     </h1>
                     <p className='text-muted-foreground'>{t('elementsDescription', preferredLanguage)}</p>
-                    {/* Use translated badges */}
                     <Badge variant="secondary" className='mt-1'>{t('componentBadgeIndexType', preferredLanguage, { type: parentComponent.index_type })}</Badge>
-                    <Badge variant="outline" className='mt-1 ml-2'>{t('componentBadgeElementsCount', preferredLanguage, { count: parentComponent.index_count ?? 'N/A' })}</Badge>
+                    <Badge variant="outline" className='mt-1 ml-2'>{t('componentBadgeElementsCount', preferredLanguage, { count: parentComponent.index_count ?? t('notAvailableAbbr', preferredLanguage) })}</Badge> {/* TODO: Add notAvailableAbbr */}
                  </div>
             </div>
 
@@ -241,19 +231,16 @@ const ElementsPage: React.FC = () => {
                  <CardHeader>
                       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                           <div>
-                               {/* Use translated title and description */}
                               <CardTitle>{t('elementListElementsHeader', preferredLanguage)}</CardTitle>
                               <CardDescription>{t('elementsDescription', preferredLanguage)}</CardDescription>
                            </div>
                          <Dialog open={isElementFormOpen} onOpenChange={setIsElementFormOpen}>
                             <DialogTrigger asChild>
-                                 {/* Use translated button text */}
-                                <Button onClick={handleCreateElement} size="sm" className='shrink-0' disabled={!canModify}>
+                                <Button onClick={handleCreateElement} size="sm" className='shrink-0' disabled={!canModify} title={!canModify ? t('insufficientPermissionsError', preferredLanguage) : ''}>
                                     <PlusCircle className="mr-2 h-4 w-4" /> {t('newElementButton', preferredLanguage)}
                                 </Button>
                             </DialogTrigger>
                             <DialogContent className="sm:max-w-[600px]">
-                                 {/* Use translated dialog title */}
                                 <DialogHeader><DialogTitle>{editingElement ? t('editElementDialogTitle', preferredLanguage) : t('createElementDialogTitle', preferredLanguage)}</DialogTitle></DialogHeader>
                                 {/* Ensure element form only renders when dialog is open and parent is loaded */}
                                 {isElementFormOpen && parentComponent && (
@@ -274,8 +261,8 @@ const ElementsPage: React.FC = () => {
                         fields={[ // Use translated labels
                             { value: 'name', label: t('elementNameLabel', preferredLanguage), type: 'text' as const },
                             { value: 'description', label: t('elementDescriptionLabel', preferredLanguage), type: 'text' as const},
-                            { value: 'index', label: t('elementIndexLabel', preferredLanguage).split(' (')[0], type: 'text' as const}, // Only "Index" part
-                            { value: 'hasParents', label: t('elementHasParentsLabel', preferredLanguage), type: 'boolean' as const }, // TODO: Add elementHasParentsLabel
+                            { value: 'index', label: t('elementIndexLabel', preferredLanguage).split(' (')[0], type: 'text' as const},
+                            { value: 'hasParents', label: t('elementHasParentsLabel', preferredLanguage), type: 'boolean' as const },
                          ]}
                         onSearch={handleElementSearch}
                         isLoading={isElementsLoading}
@@ -299,7 +286,7 @@ const ElementsPage: React.FC = () => {
                                 </div>
                              )}
                               {/* Use translated empty states */}
-                            {elements.length === 0 && elementSearchQuery.length === 0 && ( <p className="text-center text-muted-foreground py-6">{t('noElementsFoundInComponent', preferredLanguage)} {canModify ? t('clickCreateElementHint', preferredLanguage) : ''}</p> )}
+                            {elements.length === 0 && elementSearchQuery.length === 0 && ( <p className="text-center text-muted-foreground py-6">{t('noElementsFoundInComponent', preferredLanguage)} {canModify ? t('clickToCreate', preferredLanguage, { item: t('newElementButton', preferredLanguage) }) : ''}</p> )}
                             {elements.length === 0 && elementSearchQuery.length > 0 && ( <p className="text-center text-muted-foreground py-6">{t('noResultsFound', preferredLanguage)}</p> )}
                         </>
                     )}

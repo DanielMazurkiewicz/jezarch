@@ -69,16 +69,16 @@ const UserManagement: React.FC = () => {
 
     // --- Fetching Data ---
     const fetchUsers = useCallback(async () => {
-        if (!token) { setIsLoading(false); setFetchError("Authentication token not found."); return; }
+        if (!token) { setIsLoading(false); setFetchError(t('authTokenMissingError', preferredLanguage)); return; } // Use translated error
         setIsLoading(true); setFetchError(null); setUpdateError(null);
         try {
             // API now returns assignedTags for 'user' roles and preferredLanguage
             const fetchedUsers = await api.getAllUsers(token);
             setUsers(fetchedUsers.sort((a, b) => a.login.localeCompare(b.login)));
         } catch (err: any) {
-            const msg = err.message || 'Failed to fetch users'; setFetchError(msg); toast.error(`Fetch users failed: ${msg}`);
+            const msg = err.message || t('userFetchFailedError', preferredLanguage); setFetchError(msg); toast.error(`${t('userFetchFailedError', preferredLanguage)}: ${msg}`); // Use translated error
         } finally { setIsLoading(false); }
-    }, [token]);
+    }, [token, preferredLanguage]); // Add preferredLanguage
 
     const fetchAvailableTags = useCallback(async () => {
         if (!token) return;
@@ -87,10 +87,10 @@ const UserManagement: React.FC = () => {
             const tags = await api.getAllTags(token);
             setAvailableTags(tags.sort((a, b) => a.name.localeCompare(b.name))); // Sort available tags
         } catch (err) {
-            toast.error("Failed to load available tags for assignment.");
+            toast.error(t('tagLoadFailedError', preferredLanguage)); // Use translated error
             console.error("Failed to load available tags:", err);
         } finally { setIsLoadingTags(false); }
-    }, [token]);
+    }, [token, preferredLanguage]); // Add preferredLanguage
 
     useEffect(() => { fetchUsers(); fetchAvailableTags(); }, [fetchUsers, fetchAvailableTags]);
 
@@ -144,15 +144,15 @@ const UserManagement: React.FC = () => {
                  if(updatedUser) {
                      openAssignTagsDialog(updatedUser); // This should now be defined
                  } else {
-                     toast.error("Failed to fetch updated user details for tag assignment.");
+                     toast.error(t('userFetchDetailsFailedError', preferredLanguage)); // Use translated error
                  }
              } else {
                  // Refresh the user list to ensure assignedTags field is correctly updated (removed)
                  fetchUsers();
              }
         } catch (err: any) {
-            const msg = `Failed to update role for ${login}: ${err.message}`; setUpdateError(msg);
-            // Use translated error template
+            const msg = t('userRoleUpdateFailedError', preferredLanguage, { login, message: err.message }); // Use translated error template
+            setUpdateError(msg);
             toast.error(t('errorMessageTemplate', preferredLanguage, { message: msg }));
             // Revert UI on error
             setUsers(prev => prev.map(u => (u.login === login ? { ...u, role: originalRole, assignedTags: originalRole === 'user' ? originalUser.assignedTags : undefined } : u)));
@@ -177,9 +177,8 @@ const UserManagement: React.FC = () => {
             setIsSetPasswordDialogOpen(false);
             setTargetUserForPassword(null);
         } catch (err: any) {
-            const msg = `Failed to set password for ${targetUserForPassword.login}: ${err.message}`;
+            const msg = t('userPasswordSetFailedError', preferredLanguage, { login: targetUserForPassword.login, message: err.message }); // Use translated error
             setUpdateError(msg);
-            // Use translated error template
             toast.error(t('errorMessageTemplate', preferredLanguage, { message: msg }));
         } finally {
             setSettingPasswordLogin(null);
@@ -211,9 +210,8 @@ const UserManagement: React.FC = () => {
             setIsSetLanguageDialogOpen(false);
             setTargetUserForLanguage(null);
         } catch (err: any) {
-            const msg = `Failed to update language for ${targetUserForLanguage.login}: ${err.message}`;
+            const msg = t('userLanguageUpdateFailedError', preferredLanguage, { login: targetUserForLanguage.login, message: err.message }); // Use translated error
             setUpdateError(msg);
-            // Use translated error template
             toast.error(t('errorMessageTemplate', preferredLanguage, { message: msg }));
         } finally {
             setUpdatingLogin(null);
@@ -233,9 +231,8 @@ const UserManagement: React.FC = () => {
             setTargetUserForTags(null);
             fetchUsers(); // Refresh user list to show updated tags
         } catch (err: any) {
-            const msg = `Failed to assign tags: ${err.message}`;
+            const msg = t('userTagAssignFailedError', preferredLanguage, { message: err.message }); // Use translated error
             setUpdateError(msg);
-            // Use translated error template
             toast.error(t('errorMessageTemplate', preferredLanguage, { message: msg }));
         } finally {
             setUpdatingLogin(null);
@@ -408,7 +405,7 @@ const UserManagement: React.FC = () => {
                                   <Label htmlFor="new-password" className="text-right pt-2">{t('newPasswordLabel', preferredLanguage)}</Label>
                                  <div className="col-span-3 space-y-1"> <Input id="new-password" type="password" {...registerPassword("password")} className={cn(passwordErrors.password && "border-destructive")} aria-invalid={!!passwordErrors.password}/> {passwordErrors.password && <p className="text-xs text-destructive">{passwordErrors.password.message}</p>} </div> </div> </div>
                               {/* Use translated button text */}
-                             <DialogFooter> <DialogClose asChild><Button type="button" variant="outline" disabled={!!settingPasswordLogin}>{t('cancelButton', preferredLanguage)}</Button></DialogClose> <Button type="submit" disabled={!!settingPasswordLogin || !!passwordErrors.password}>{settingPasswordLogin ? <LoadingSpinner size="sm" className="mr-2" /> : t('setPasswordButtonTooltip', preferredLanguage, {login: ''}).replace(' for ','')}</Button> </DialogFooter>
+                             <DialogFooter> <DialogClose asChild><Button type="button" variant="outline" disabled={!!settingPasswordLogin}>{t('cancelButton', preferredLanguage)}</Button></DialogClose> <Button type="submit" disabled={!!settingPasswordLogin || !!passwordErrors.password}>{settingPasswordLogin ? <LoadingSpinner size="sm" className="mr-2" /> : t('setPasswordButton', preferredLanguage)}</Button> </DialogFooter>
                           </form>
                      </DialogContent>
                  </Dialog>

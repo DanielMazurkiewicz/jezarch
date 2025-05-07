@@ -99,6 +99,28 @@ export type SignatureTranslationKey =
   | 'componentAdminRequiredError' // Generic error for admin actions
   | 'componentAuthTokenMissingError' // Generic error for missing token
   | 'elementIndexAuto' // Placeholder for auto index in ElementList
+  | 'invalidComponentIdError'
+  | 'componentFetchByIdError'
+  | 'elementFetchPrereqError'
+  | 'parentComponentNotLoadedWarning'
+  | 'elementDeletePrereqError'
+  | 'elementLoadDetailsError'
+  | 'componentContextMissingError'
+  | 'elementNoChangesDetected'
+  | 'elementSingularLabel'
+  | 'signaturePathResolveError'
+  | 'signaturePathInitialResolveError'
+  | 'emptySignaturePlaceholder'
+  | 'elementBrowserSelectComponentOptional'
+  | 'elementBrowserSelectNextElement'
+  | 'elementBrowserTooManyResultsHint'
+  | 'componentNoChangesFound'
+  | 'parentComponentRefreshError'
+  | 'componentSingularLabel' // Added Key
+  | 'notAvailableAbbr'
+  | 'componentLoadFailedError'
+  | 'elementLoadFailedError'
+  | 'componentNoChangesDetected' // Added Key
   ;
 
 

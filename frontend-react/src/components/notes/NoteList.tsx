@@ -29,10 +29,10 @@ const NoteList: React.FC<NoteListProps> = ({ notes, onEdit, onDelete, onPreview 
             <TableRow>
                  {/* Use translated headers */}
                 <TableHead>{t('titleLabel', preferredLanguage)}</TableHead>
-                <TableHead className='w-[150px]'>{t('notesAuthorColumn', preferredLanguage)}</TableHead> {/* TODO: Add notesAuthorColumn */}
-                <TableHead className='w-[120px]'>{t('notesModifiedColumn', preferredLanguage)}</TableHead> {/* TODO: Add notesModifiedColumn */}
-                <TableHead className='w-[100px]'>{t('notesSharedColumn', preferredLanguage)}</TableHead> {/* TODO: Add notesSharedColumn */}
-                <TableHead>{t('tagsLabel', preferredLanguage)}</TableHead> {/* TODO: Add tagsLabel */}
+                <TableHead className='w-[150px]'>{t('notesAuthorColumn', preferredLanguage)}</TableHead>
+                <TableHead className='w-[120px]'>{t('notesModifiedColumn', preferredLanguage)}</TableHead>
+                <TableHead className='w-[100px]'>{t('notesSharedColumn', preferredLanguage)}</TableHead>
+                <TableHead>{t('tagsLabel', preferredLanguage)}</TableHead>
                 <TableHead className="text-right w-[130px]">{t('actionsLabel', preferredLanguage)}</TableHead> {/* Increased width */}
             </TableRow>
         </TableHeader>
@@ -47,14 +47,12 @@ const NoteList: React.FC<NoteListProps> = ({ notes, onEdit, onDelete, onPreview 
                         <TableCell
                            className="font-medium cursor-pointer hover:text-primary hover:underline"
                            onClick={() => onPreview(note)}
-                            // TODO: Translate title attribute
-                           title={`Click to preview "${note.title}"`}
+                           title={t('notesPreviewTitleTooltip', preferredLanguage, { title: note.title })} // Use translated tooltip
                         >
                            {note.title}
                         </TableCell>
                          {/* Author Column */}
                          <TableCell className='text-sm text-muted-foreground'>
-                              {/* TODO: Translate title attribute */}
                              <div className='flex items-center gap-1' title={note.ownerLogin}>
                                 {isOwner ? <User className='h-3 w-3 text-primary'/> : <User className='h-3 w-3'/>}
                                 <span className={cn(isOwner && 'font-medium text-foreground')}>{note.ownerLogin ?? 'Unknown'}</span>
@@ -62,8 +60,7 @@ const NoteList: React.FC<NoteListProps> = ({ notes, onEdit, onDelete, onPreview 
                          </TableCell>
                         <TableCell className='text-sm'>{new Date(note.modifiedOn).toLocaleDateString()}</TableCell>
                         <TableCell>
-                             {/* TODO: Translate badge text */}
-                            {note.shared ? <Badge variant="outline">Shared</Badge> : <Badge variant="secondary">Private</Badge>}
+                            {note.shared ? <Badge variant="outline">{t('notesSharedBadge', preferredLanguage)}</Badge> : <Badge variant="secondary">{t('notesPrivateBadge', preferredLanguage)}</Badge>}
                         </TableCell>
                          <TableCell>
                              <div className='flex flex-wrap gap-1 max-w-[200px]'>
@@ -71,11 +68,9 @@ const NoteList: React.FC<NoteListProps> = ({ notes, onEdit, onDelete, onPreview 
                                      <Badge key={tag.tagId} variant='secondary' className='text-xs font-normal'>{tag.name}</Badge>
                                  ))}
                                  {note.tags && note.tags.length > 3 && (
-                                     // TODO: Translate badge text
                                     <Badge variant='outline' className='text-xs font-normal'>+{note.tags.length - 3} more</Badge>
                                  )}
-                                  {/* TODO: Translate placeholder */}
-                                 {(!note.tags || note.tags.length === 0) && <span className='text-xs italic text-muted-foreground'>No tags</span>}
+                                 {(!note.tags || note.tags.length === 0) && <span className='text-xs italic text-muted-foreground'>{t('notesNoTagsPlaceholder', preferredLanguage)}</span>}
                              </div>
                          </TableCell>
                         <TableCell className="text-right space-x-1">

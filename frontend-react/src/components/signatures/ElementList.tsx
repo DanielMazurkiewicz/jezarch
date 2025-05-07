@@ -18,7 +18,6 @@ interface ElementListProps {
 const ElementList: React.FC<ElementListProps> = React.memo(({ elements, onEdit, onDelete }) => {
   const { user, preferredLanguage } = useAuth(); // Get preferredLanguage
   // Determine if the current user can modify elements (e.g., admin or potentially regular user)
-  // TODO: Define actual permissions logic if needed
   const canModify = user?.role === 'admin' || user?.role === 'employee'; // Allow admin and employees
 
   // Return null if list is empty (parent handles empty message)
@@ -35,10 +34,9 @@ const ElementList: React.FC<ElementListProps> = React.memo(({ elements, onEdit, 
             <TableHeader>
                 <TableRow>
                     {/* Use translated headers */}
-                    <TableHead className="w-[80px] text-center">{t('elementIndexLabel', preferredLanguage).split(' (')[0]}</TableHead> {/* Get only "Index" part */}
+                    <TableHead className="w-[80px] text-center">{t('elementIndexLabel', preferredLanguage).split(' (')[0]}</TableHead>
                     <TableHead>{t('elementNameLabel', preferredLanguage)}</TableHead>
                     <TableHead>{t('elementDescriptionLabel', preferredLanguage)}</TableHead>
-                    {/* REMOVED Parents Header */}
                     {/* Actions column if user can modify */}
                     {canModify && <TableHead className="text-right w-[100px]">{t('actionsLabel', preferredLanguage)}</TableHead>}
                 </TableRow>
@@ -48,16 +46,13 @@ const ElementList: React.FC<ElementListProps> = React.memo(({ elements, onEdit, 
                     <TableRow key={element.signatureElementId}>
                         {/* Display index or placeholder */}
                         <TableCell className="font-mono text-center text-sm">
-                             {/* TODO: Translate "Auto" */}
-                            {element.index || <i className='text-muted-foreground not-italic'>Auto</i>}
+                            {element.index || <i className='text-muted-foreground not-italic'>{t('elementIndexAuto', preferredLanguage)}</i>}
                         </TableCell>
                         <TableCell className="font-medium">{element.name}</TableCell>
                         {/* Truncate description, show placeholder */}
-                         {/* TODO: Translate "None" */}
                         <TableCell className='text-sm text-muted-foreground max-w-xs truncate' title={element.description || ''}>
-                            {element.description || <i className='not-italic'>None</i>}
+                            {element.description || <i className='not-italic'>{t('noneLabel', preferredLanguage)}</i>}
                         </TableCell>
-                        {/* REMOVED Parents Cell */}
                         {/* Action Buttons */}
                         {canModify && (
                             <TableCell className="text-right space-x-1">

@@ -76,8 +76,7 @@ const ElementBrowserPopoverContent: React.FC<ElementBrowserPopoverContentProps> 
                     const element = await api.getSignatureElementById(elementId, [], token);
                     if (element) resolvedElements.push(element);
                     else {
-                        // TODO: Translate warning
-                        toast.warn(`Could not fully resolve initial signature path (element ID: ${elementId} not found).`);
+                        toast.warn(t('signaturePathResolveError', preferredLanguage, { elementId }));
                         setCurrentSignatureElements([]);
                         setIsLoadingElements(false);
                         return;
@@ -85,8 +84,7 @@ const ElementBrowserPopoverContent: React.FC<ElementBrowserPopoverContentProps> 
                 }
                 setCurrentSignatureElements(resolvedElements);
             } catch (err) {
-                // Use translated error
-                toast.error(t('errorMessageTemplate', preferredLanguage, { message: 'Error resolving initial signature.' })); // TODO: Add specific key
+                toast.error(t('errorMessageTemplate', preferredLanguage, { message: t('signaturePathInitialResolveError', preferredLanguage) })); // Use translated error
                 setCurrentSignatureElements([]);
             } finally {
                 setIsLoadingElements(false);
@@ -103,8 +101,7 @@ const ElementBrowserPopoverContent: React.FC<ElementBrowserPopoverContentProps> 
             try {
                 setComponents((await api.getAllSignatureComponents(token)).sort((a,b) => a.name.localeCompare(b.name)));
             } catch (err: any) {
-                 // Use translated error
-                 const msg = err.message || t('componentLoadFailedError', preferredLanguage); // TODO: Add componentLoadFailedError
+                 const msg = err.message || t('componentLoadFailedError', preferredLanguage);
                 setError(msg);
             } finally { setIsLoadingComponents(false); }
         };
@@ -162,8 +159,7 @@ const ElementBrowserPopoverContent: React.FC<ElementBrowserPopoverContentProps> 
                 const response = await api.searchSignatureElements(searchRequest, token);
                 setElements(response.data.sort(compareElements));
             } catch (err: any) {
-                 // Use translated error
-                 const msg = err.message || t('elementLoadFailedError', preferredLanguage); // TODO: Add elementLoadFailedError
+                 const msg = err.message || t('elementLoadFailedError', preferredLanguage);
                 setError(msg); setElements([]);
             } finally { setIsLoadingElements(false); }
         };
@@ -202,7 +198,6 @@ const ElementBrowserPopoverContent: React.FC<ElementBrowserPopoverContentProps> 
             setComponentForCreate(component);
             setIsCreateElementDialogOpen(true);
         } else {
-             // Use translated error
              toast.error(t('cannotCreateElementError', preferredLanguage));
         }
     }, [components, selectedComponentId, preferredLanguage]); // Add preferredLanguage
@@ -211,7 +206,6 @@ const ElementBrowserPopoverContent: React.FC<ElementBrowserPopoverContentProps> 
         setIsCreateElementDialogOpen(false);
         setComponentForCreate(null);
         if (createdElement) {
-             // Use translated success message
             toast.success(t('elementCreatedSuccess', preferredLanguage, { name: createdElement.name }));
             setRefetchElementsTrigger(prev => prev + 1);
         }
@@ -240,15 +234,13 @@ const ElementBrowserPopoverContent: React.FC<ElementBrowserPopoverContentProps> 
 
     const getNextStepPrompt = useCallback((): string => {
         if (mode === 'hierarchical') {
-             // TODO: Translate prompts
-            if (currentSignatureElements.length === 0) return "1. Select Component to Start";
-            return `2. Select Child of "${currentSignatureElements[currentSignatureElements.length - 1].name}"`;
+            if (currentSignatureElements.length === 0) return t('elementBrowserSelectComponentFirst', preferredLanguage);
+            return t('elementBrowserSelectChildOf', preferredLanguage, { name: currentSignatureElements[currentSignatureElements.length - 1].name });
         } else {
-             // TODO: Translate prompts
-            if (currentSignatureElements.length === 0) return "1. Select Component (Optional)";
-            return "2. Select Next Component or Element";
+            if (currentSignatureElements.length === 0) return t('elementBrowserSelectComponentOptional', preferredLanguage); // TODO: Add elementBrowserSelectComponentOptional
+            return t('elementBrowserSelectNextElement', preferredLanguage); // TODO: Add elementBrowserSelectNextElement
         }
-    }, [mode, currentSignatureElements]);
+    }, [mode, currentSignatureElements, preferredLanguage]); // Add preferredLanguage
 
      // Can create if a component is selected and it's free mode OR hierarchical mode at the root level
      const canTriggerCreateElement = useMemo(() => !!selectedComponentId && !isLoadingComponents && !isNaN(parseInt(selectedComponentId, 10)) &&
@@ -258,19 +250,15 @@ const ElementBrowserPopoverContent: React.FC<ElementBrowserPopoverContentProps> 
     return (
         <div className="space-y-3 p-4 w-full">
             <div className='flex flex-col gap-1.5'>
-                 {/* Use translated label */}
                 <Label className='text-xs font-medium'>{t('elementBrowserSelectionModeLabel', preferredLanguage)}</Label>
                 <ToggleGroup type="single" value={mode} defaultValue="hierarchical" onValueChange={handleModeChange} aria-label={t('elementBrowserSelectionModeLabel', preferredLanguage)} size="sm">
-                     {/* Use translated mode names */}
                     <ToggleGroupItem value="hierarchical" aria-label={t('elementBrowserModeHierarchical', preferredLanguage)} className='flex-1 gap-1'><Network className='h-4 w-4'/><span className={cn(mode === 'hierarchical' && 'font-bold')}>{t('elementBrowserModeHierarchical', preferredLanguage)}</span></ToggleGroupItem>
                     <ToggleGroupItem value="free" aria-label={t('elementBrowserModeFree', preferredLanguage)} className='flex-1 gap-1'><ArrowRight className='h-4 w-4'/><span className={cn(mode === 'free' && 'font-bold')}>{t('elementBrowserModeFree', preferredLanguage)}</span></ToggleGroupItem>
                 </ToggleGroup>
-                 {/* Use translated mode hints */}
                  <p className='text-xs text-muted-foreground px-1'>{mode === 'hierarchical' ? t('elementBrowserModeHierarchicalHint', preferredLanguage) : t('elementBrowserModeFreeHint', preferredLanguage)}</p>
             </div>
 
              <div className="flex flex-wrap items-center gap-1 border rounded p-2 bg-muted min-h-[40px]">
-                  {/* Use translated label */}
                  <Label className='mr-2 shrink-0 text-xs font-semibold'>{t('elementBrowserPopoverCurrentPathLabel', preferredLanguage)}</Label>
                 {currentSignatureElements.map((el, index) => (
                     <React.Fragment key={el.signatureElementId}>
@@ -278,15 +266,13 @@ const ElementBrowserPopoverContent: React.FC<ElementBrowserPopoverContentProps> 
                        <Badge variant="secondary" className='font-mono text-xs'>{el.index ? `[${el.index}] ` : ''}{el.name}</Badge>
                     </React.Fragment>
                  ))}
-                  {/* Use translated placeholder */}
-                 {currentSignatureElements.length === 0 && <span className="text-xs text-muted-foreground italic">{t('elementBrowserBuildPathHint', preferredLanguage)}</span>} {/* TODO: Add elementBrowserBuildPathHint */}
+                 {currentSignatureElements.length === 0 && <span className="text-xs text-muted-foreground italic">{t('elementBrowserBuildPathHint', preferredLanguage)}</span>}
             </div>
 
             {(currentSignatureElements.length === 0 || mode === 'free') && (
                  <Select value={selectedComponentId} onValueChange={setSelectedComponentId} disabled={isLoadingComponents || (mode === 'hierarchical' && currentSignatureElements.length > 0)}>
                      <SelectTrigger className='w-full text-sm h-9'><SelectValue placeholder={t('elementBrowserPopoverSelectComponentPlaceholder', preferredLanguage)} /></SelectTrigger>
                      <SelectContent>
-                          {/* Use translated loading/empty states */}
                          {isLoadingComponents && <SelectItem value="loading" disabled><div className='flex items-center'><LoadingSpinner size='sm' className='mr-2'/>{t('elementBrowserPopoverLoadingComponents', preferredLanguage)}</div></SelectItem>}
                          {components.map(comp => (<SelectItem key={comp.signatureComponentId} value={String(comp.signatureComponentId)}>{comp.name}</SelectItem>))}
                          {!isLoadingComponents && components.length === 0 && <SelectItem value="no-comps" disabled>{t('elementBrowserPopoverNoComponentsFound', preferredLanguage)}</SelectItem>}
@@ -299,18 +285,12 @@ const ElementBrowserPopoverContent: React.FC<ElementBrowserPopoverContentProps> 
                 (mode === 'free' && (selectedComponentId || debouncedSearchTerm.trim()))
              ) && (
                 <div className="flex-1 overflow-hidden flex flex-col gap-2">
-                     {/* Use translated label */}
                      <Label className='text-xs mb-1 block'>
-                         {mode === 'hierarchical'
-                            ? currentSignatureElements.length > 0 ? t('elementBrowserSelectChildOf', preferredLanguage, { name: currentSignatureElements[currentSignatureElements.length - 1].name }) : t('elementBrowserSelectElementIn', preferredLanguage, { name: selectedComponentName || '...' }) // TODO: Add keys
-                            : selectedComponentName ? t('elementBrowserSelectElementFrom', preferredLanguage, { name: selectedComponentName }) : t('elementBrowserSearchElements', preferredLanguage) // TODO: Add keys
-                         }
+                         {getNextStepPrompt()}
                      </Label>
                     <Command className='rounded-lg border shadow-sm' filter={() => 1}>
-                         {/* Use translated placeholder */}
                         <CommandInput placeholder={t('elementBrowserSearchPlaceholder', preferredLanguage)} value={searchTerm} onValueChange={setSearchTerm} disabled={isLoadingElements}/>
                          <CommandList className="max-h-[200px]">
-                              {/* Use translated loading/empty states */}
                              {isLoadingElements && <div className='p-4 text-center'><LoadingSpinner size='sm' /></div>}
                              {error && !isLoadingElements && <CommandEmpty className='text-destructive px-2 py-4 text-center'>{error}</CommandEmpty>}
                              {!error && !isLoadingElements && elements.length === 0 && <CommandEmpty>{t('elementBrowserPopoverNoElementsFound', preferredLanguage)}</CommandEmpty>}
@@ -324,12 +304,10 @@ const ElementBrowserPopoverContent: React.FC<ElementBrowserPopoverContentProps> 
                                      ))}
                                  </CommandGroup>
                              )}
-                              {/* TODO: Translate hint */}
-                             {elements.length >= MAX_SEARCH_RESULTS && !isLoadingElements && (<div className='text-xs text-muted-foreground text-center p-1 italic'>More elements may exist. Refine your search.</div>)}
+                             {elements.length >= MAX_SEARCH_RESULTS && !isLoadingElements && (<div className='text-xs text-muted-foreground text-center p-1 italic'>{t('elementBrowserTooManyResultsHint', preferredLanguage)}</div>)} {/* TODO: Add elementBrowserTooManyResultsHint */}
                         </CommandList>
                          {canTriggerCreateElement && (
                              <div className='p-2 border-t'>
-                                  {/* Use translated button text */}
                                 <Button type="button" variant="outline" size="sm" className='w-full justify-start text-muted-foreground' onClick={handleOpenCreateElementDialog}>
                                     <PlusCircle className='mr-2 h-4 w-4'/> {t('elementBrowserCreateElementButtonHint', preferredLanguage, { componentName: selectedComponentName || '...' })}
                                 </Button>
@@ -341,17 +319,14 @@ const ElementBrowserPopoverContent: React.FC<ElementBrowserPopoverContentProps> 
 
             <div className="flex justify-between items-center mt-auto pt-3 border-t">
                 <div className='flex gap-2'>
-                      {/* Use translated button text */}
                      <Button type="button" variant="outline" size="sm" onClick={handleRemoveLastElement} disabled={currentSignatureElements.length === 0}><X className="mr-1 h-3 w-3" /> {t('elementBrowserPopoverRemoveLastButton', preferredLanguage)}</Button>
                      <Button type="button" variant="ghost" size="sm" onClick={onClosePopover}><Ban className='mr-1 h-3 w-3'/> {t('cancelButton', preferredLanguage)}</Button>
                 </div>
-                  {/* Use translated button text */}
                  <Button type="button" size="sm" onClick={handleConfirmSignature} disabled={currentSignatureElements.length === 0}>{t('elementBrowserPopoverAddPathButton', preferredLanguage)}</Button>
              </div>
 
             <Dialog open={isCreateElementDialogOpen} onOpenChange={setIsCreateElementDialogOpen}>
                <DialogContent className="sm:max-w-[600px]">
-                    {/* Use translated dialog title */}
                    <DialogHeader><DialogTitle>{t('createElementDialogTitle', preferredLanguage)}</DialogTitle></DialogHeader>
                    {componentForCreate && (
                        <ElementForm

@@ -43,9 +43,8 @@ const ComponentsPage: React.FC = () => {
                                         .sort((a, b) => a.name.localeCompare(b.name));
             setComponents(fetchedComponents);
         } catch (err: any) {
-            const msg = err.message || 'Failed to fetch components';
+            const msg = err.message || t('componentLoadFailedError', preferredLanguage); // Use translated error
             setComponentsError(msg);
-            // Use translated error template
             toast.error(t('errorMessageTemplate', preferredLanguage, { message: msg }));
             console.error("Fetch Components Error:", err);
             setComponents([]);
@@ -61,10 +60,10 @@ const ComponentsPage: React.FC = () => {
 
     // Component Callbacks
     const handleEditComponent = useCallback((component: SignatureComponent) => {
-        if (!isAdmin) { toast.error("Admin privileges required."); return; } // TODO: Translate
+        if (!isAdmin) { toast.error(t('componentAdminRequiredError', preferredLanguage)); return; }
         setEditingComponent(component);
         setIsComponentFormOpen(true);
-    }, [isAdmin]);
+    }, [isAdmin, preferredLanguage]); // Add preferredLanguage
 
     const handleCreateComponent = useCallback(() => {
         setEditingComponent(null);
@@ -72,22 +71,19 @@ const ComponentsPage: React.FC = () => {
     }, []);
 
     const handleDeleteComponent = useCallback(async (componentId: number) => {
-        if (!isAdmin) { toast.error("Admin privileges required."); return; } // TODO: Translate
-        if (!token) { toast.error("Authentication token missing."); return; } // TODO: Translate
-        // Use translated confirmation
+        if (!isAdmin) { toast.error(t('componentAdminRequiredError', preferredLanguage)); return; }
+        if (!token) { toast.error(t('componentAuthTokenMissingError', preferredLanguage)); return; }
         if (!window.confirm(t('confirmDeleteComponentMessage', preferredLanguage))) return;
 
         setIsComponentsLoading(true); setComponentsError(null);
         try {
             await api.deleteSignatureComponent(componentId, token);
-            // Use translated success message
             toast.success(t('componentDeletedSuccess', preferredLanguage));
             // Refetch after successful delete
             await fetchComponents();
         } catch(e: any) {
-            const msg = e.message || "Failed to delete component";
-            setComponentsError(msg);
-            // Use translated error template
+            const msg = e.message || "Failed";
+            setComponentsError(t('componentDeleteFailedError', preferredLanguage));
             toast.error(t('errorMessageTemplate', preferredLanguage, { message: t('componentDeleteFailedError', preferredLanguage) + `: ${msg}` }));
             setIsComponentsLoading(false); // Stop loading on error
         }
@@ -95,22 +91,19 @@ const ComponentsPage: React.FC = () => {
     }, [isAdmin, token, fetchComponents, preferredLanguage]); // Add preferredLanguage
 
     const handleReindexComponent = useCallback(async (componentId: number) => {
-        if (!isAdmin) { toast.error("Admin privileges required."); return; } // TODO: Translate
-        if (!token) { toast.error("Authentication token missing."); return; } // TODO: Translate
-        // Use translated confirmation
+        if (!isAdmin) { toast.error(t('componentAdminRequiredError', preferredLanguage)); return; }
+        if (!token) { toast.error(t('componentAuthTokenMissingError', preferredLanguage)); return; }
         if (!window.confirm(t('confirmReindexComponentMessage', preferredLanguage, { componentId }))) return;
 
         setIsComponentsLoading(true); setComponentsError(null);
         try {
             await api.reindexComponentElements(componentId, token);
-            // Use translated success message
             toast.success(t('componentReindexedSuccess', preferredLanguage));
             // Refetch to update counts etc.
             await fetchComponents();
         } catch(e: any) {
-            const msg = e.message || "Failed to re-index component";
-            setComponentsError(msg);
-            // Use translated error template
+            const msg = e.message || "Failed";
+            setComponentsError(t('componentReindexFailedError', preferredLanguage));
             toast.error(t('errorMessageTemplate', preferredLanguage, { message: t('componentReindexFailedError', preferredLanguage) + `: ${msg}` }));
             setIsComponentsLoading(false); // Stop loading on error
         }
@@ -120,7 +113,6 @@ const ComponentsPage: React.FC = () => {
     const handleComponentSaveSuccess = useCallback(() => {
         setIsComponentFormOpen(false);
         setEditingComponent(null);
-        // Use translated success message
         toast.success(editingComponent ? t('componentUpdatedSuccess', preferredLanguage) : t('componentCreatedSuccess', preferredLanguage));
         fetchComponents(); // Refetch list after saving
     }, [fetchComponents, editingComponent, preferredLanguage]); // Add preferredLanguage
@@ -137,8 +129,8 @@ const ComponentsPage: React.FC = () => {
             {/* Page Header */}
             <div>
                  {/* Use translated title and description */}
-                <h1 className="text-2xl font-bold">{t('componentsTitle', preferredLanguage)}</h1>
-                <p className='text-muted-foreground'>{t('componentsDescription', preferredLanguage)}</p>
+                <h1 className="text-2xl font-bold">{t('signaturesTitle', preferredLanguage)}</h1>
+                <p className='text-muted-foreground'>{t('signaturesDescription', preferredLanguage)}</p>
             </div>
 
             {/* Components Section */}
@@ -165,7 +157,7 @@ const ComponentsPage: React.FC = () => {
                                  </DialogContent>
                              </Dialog>
                          ) : (
-                             <Button size="sm" className='shrink-0' disabled title="Admin privileges required">
+                             <Button size="sm" className='shrink-0' disabled title={t('componentAdminRequiredError', preferredLanguage)}>
                                 <PlusCircle className="mr-2 h-4 w-4" /> {t('newComponentButton', preferredLanguage)}
                              </Button>
                          )}
@@ -186,7 +178,7 @@ const ComponentsPage: React.FC = () => {
                     )}
                      {/* Use translated empty state */}
                     {!isComponentsLoading && !componentsError && components.length === 0 && (
-                        <p className="text-center text-muted-foreground py-4">{t('noComponentsFound', preferredLanguage)} {isAdmin ? t('newComponentButton', preferredLanguage) + '.' : ''}</p>
+                        <p className="text-center text-muted-foreground py-4">{t('noComponentsFound', preferredLanguage)} {isAdmin ? t('clickToCreate', preferredLanguage, { item: t('newComponentButton', preferredLanguage) }) : ''}</p> // TODO: Add clickToCreate key
                     )}
                 </CardContent>
             </Card>

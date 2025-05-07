@@ -78,7 +78,7 @@ const ComponentList: React.FC<ComponentListProps> = React.memo(({
                             </TableCell>
                              {/* Use translated placeholder */}
                              <TableCell className='text-sm text-muted-foreground max-w-xs truncate' title={component.description || ''}>
-                                {component.description || <i className='not-italic'>{t('noDescription', preferredLanguage)}</i>} {/* TODO: Add noDescription */}
+                                {component.description || <i className='not-italic'>{t('noDescription', preferredLanguage)}</i>}
                             </TableCell>
                             <TableCell><Badge variant="outline">{getIndexTypeLabel(component.index_type)}</Badge></TableCell>
                             <TableCell className="text-center">{component.index_count ?? 0}</TableCell>
@@ -98,7 +98,7 @@ const ComponentList: React.FC<ComponentListProps> = React.memo(({
                                     </>
                                 ) : (
                                      // Use translated read-only text
-                                    <span className="text-xs text-muted-foreground italic">{t('readOnly', preferredLanguage)}</span> // TODO: Add readOnly
+                                    <span className="text-xs text-muted-foreground italic">{t('readOnly', preferredLanguage)}</span>
                                 )}
                             </TableCell>
                         </TableRow>

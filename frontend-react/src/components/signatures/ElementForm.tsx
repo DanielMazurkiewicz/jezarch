@@ -66,9 +66,8 @@ const ElementForm: React.FC<ElementFormProps> = ({ elementToEdit, currentCompone
                      });
                     setSelectedParentIds(parentIds); // Sync local state for selector
                 } catch (err: any) {
-                    const msg = err.message || "Failed to load element details";
+                    const msg = err.message || t('elementLoadDetailsError', preferredLanguage); // Use translated error
                     setError(msg);
-                    // Use translated error template
                     toast.error(t('errorMessageTemplate', preferredLanguage, { message: msg }));
                     console.error("Fetch Element Parents Error:", err);
                      reset({
@@ -100,7 +99,7 @@ const ElementForm: React.FC<ElementFormProps> = ({ elementToEdit, currentCompone
     // Renamed from onSubmit to avoid conflict with form prop, though not strictly necessary here
     const handleFormSubmit: SubmitHandler<ElementFormData> = async (data) => {
         if (!token || !currentComponent.signatureComponentId) {
-            setError("Component context is missing."); // TODO: Translate
+            setError(t('componentContextMissingError', preferredLanguage)); // Use translated error
             return;
         }
         setIsLoading(true);
@@ -148,8 +147,7 @@ const ElementForm: React.FC<ElementFormProps> = ({ elementToEdit, currentCompone
                      savedElementResult = await api.updateSignatureElement(elementToEdit.signatureElementId, updatePayload, token);
                  } else {
                      console.log("No changes detected for element update.");
-                     // TODO: Translate info message
-                     toast.info("No changes detected."); // Inform user
+                     toast.info(t('elementNoChangesDetected', preferredLanguage)); // Use translated info message
                      // Pass back the original element if no changes were made but save was clicked
                      savedElementResult = elementToEdit;
                  }
@@ -158,10 +156,8 @@ const ElementForm: React.FC<ElementFormProps> = ({ elementToEdit, currentCompone
             }
             onSave(savedElementResult); // Trigger success callback with the result
         } catch (err: any) {
-             // Use translated error message
             const msg = err.message || t('elementSaveFailedError', preferredLanguage);
             setError(msg);
-             // Use translated error template
             toast.error(t('errorMessageTemplate', preferredLanguage, { message: msg }));
             console.error("Save Element Error:", err);
             onSave(null); // Indicate save failed / pass null
@@ -181,7 +177,7 @@ const ElementForm: React.FC<ElementFormProps> = ({ elementToEdit, currentCompone
             {isLoading && <div className='absolute inset-0 bg-background/50 flex items-center justify-center z-10 rounded-md'><LoadingSpinner/></div>}
 
             {/* Display Current Component Info */}
-            <div className='text-sm p-2 bg-muted rounded border'> {t('elementListComponentHeader', preferredLanguage)}: <Badge variant="secondary">{currentComponent.name}</Badge> ({currentComponent.index_type}) </div>
+            <div className='text-sm p-2 bg-muted rounded border'> {t('elementListComponentHeader', preferredLanguage)}: <Badge variant="secondary">{currentComponent.name}</Badge> ({t('componentBadgeIndexType', preferredLanguage, { type: currentComponent.index_type })}) </div>
 
             {/* Form Fields */}
             <div className="grid gap-1.5">
@@ -222,7 +218,7 @@ const ElementForm: React.FC<ElementFormProps> = ({ elementToEdit, currentCompone
                 disabled={isLoading || isFetchingDetails}
                 className="mt-2 justify-self-start"
             >
-                {isLoading ? <LoadingSpinner size="sm" className='mr-2' /> : (elementToEdit ? t('editButton', preferredLanguage) : t('createButton', preferredLanguage))} {t('elementsTitle', preferredLanguage).replace('s', '')} {/* Example */}
+                {isLoading ? <LoadingSpinner size="sm" className='mr-2' /> : (elementToEdit ? t('editButton', preferredLanguage) : t('createButton', preferredLanguage))} {t('elementSingularLabel', preferredLanguage)} {/* TODO: Add elementSingularLabel */}
             </Button>
         </div>
     );

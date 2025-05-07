@@ -29,17 +29,17 @@ const Sidebar: React.FC<SidebarProps> = ({ className }) => {
           await logout();
       } catch (error: any) {
           // Use translated error message
-          toast.error(t('errorMessageTemplate', preferredLanguage, { message: `Logout failed: ${error.message}` }));
+          toast.error(t('errorMessageTemplate', preferredLanguage, { message: t('logoutFailedError', preferredLanguage, { message: error.message }) })); // TODO: Add logoutFailedError
       }
   }
 
   // Map paths to translation keys
   const navItemTranslations: Record<string, AppTranslationKey> = {
     '/': 'dashboardTitle',
-    '/archive': 'archiveTitle' as AppTranslationKey, // Assuming 'archiveTitle' exists or will be added
-    '/signatures': 'signaturesTitle' as AppTranslationKey, // Assuming 'signaturesTitle' exists
-    '/tags': 'tagsTitle' as AppTranslationKey, // Assuming 'tagsTitle' exists
-    '/notes': 'notesTitle' as AppTranslationKey, // Assuming 'notesTitle' exists
+    '/archive': 'archiveTitle',
+    '/signatures': 'signaturesTitle', // Use common key now
+    '/tags': 'tagsTitle',
+    '/notes': 'notesTitle',
     '/admin': 'adminPanelTitle',
   };
 
@@ -61,8 +61,7 @@ const Sidebar: React.FC<SidebarProps> = ({ className }) => {
     )}>
        <div className="p-4 border-b border-sidebar-border">
          <h2 className="text-lg font-semibold">JezArch FE</h2>
-         {/* TODO: Translate "Logged in as" */}
-         {user && <span className="text-sm text-muted-foreground block truncate">Logged in as: {user.login} ({user.role})</span>}
+         {user && <span className="text-sm text-muted-foreground block truncate">{t('sidebarLoggedInAs', preferredLanguage)} {user.login} ({user.role})</span>}
        </div>
 
       <ScrollArea className="flex-1 px-4 py-2">
@@ -76,14 +75,13 @@ const Sidebar: React.FC<SidebarProps> = ({ className }) => {
                 cn(
                   "inline-flex items-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50",
                   "justify-start px-3 py-2",
-                  (isActive || location.pathname.startsWith(item.path + '/'))
+                  (isActive || (item.exact ? location.pathname === item.path : location.pathname.startsWith(item.path + '/'))) // Adjusted active check
                     ? "bg-sidebar-accent text-sidebar-accent-foreground font-semibold"
                     : "hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
                 )
               }
             >
                <item.icon className="mr-2 h-4 w-4" />
-               {/* Translate nav item labels */}
                {t(item.labelKey, preferredLanguage)}
             </NavLink>
           ))}
@@ -91,11 +89,9 @@ const Sidebar: React.FC<SidebarProps> = ({ className }) => {
       </ScrollArea>
 
        <div className="p-4 mt-auto border-t border-sidebar-border">
-         {/* Translate logout button */}
          <Button variant="outline" className="w-full justify-start" onClick={handleLogout}>
            <LogOut className="mr-2 h-4 w-4" />
-           {/* TODO: Translate "Logout" */}
-           Logout
+           {t('headerLogout', preferredLanguage)}
          </Button>
        </div>
     </aside>

@@ -116,7 +116,6 @@ export type CommonTranslationKey =
   | 'conditionEqualsPath'
   | 'conditionStartsWithPath'
   | 'conditionContainsSequence'
-  // --- Added Keys ---
   | 'noDescription' // Used in several lists
   | 'readOnly' // Used in component list
   | 'headerSignedInAs' // Used in Header dropdown
@@ -131,6 +130,25 @@ export type CommonTranslationKey =
   | 'changePasswordCurrentPasswordIncorrect'
   | 'elementSelectorNoParentsSelected' // Used in ElementSelector
   | 'searchNoOptionsAvailable' // Used in SearchBar
+  | 'passwordRequirementsHint' // Used in Register/Password forms
+  | 'updated'
+  | 'created'
+  | 'invalidRequestError'
+  | 'authTokenMissingError'
+  | 'thisUnit'
+  | 'notLabel'
+  | 'enterValuesPlaceholder'
+  | 'clickToCreate'
+  | 'insufficientPermissionsError'
+  | 'notAvailableAbbr'
+  | 'unknown'
+  | 'sidebarLoggedInAs' // Added Key
+  | 'tagSelectorSelectPlaceholder' // Added Key
+  | 'tagSelectorSearchPlaceholder' // Added Key
+  | 'tagSelectorLoading' // Added Key
+  | 'tagSelectorError' // Added Key
+  | 'tagSelectorNoTags' // Added Key
+  | 'signaturesTitle' // Added Key (used in Sidebar)
   ;
 
 

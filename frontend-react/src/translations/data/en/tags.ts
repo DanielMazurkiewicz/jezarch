@@ -17,4 +17,8 @@ export const tagsTranslationsEN: TagsTranslationSet = {
   tagsSaveFailed: 'Failed to save tag: {message}',
   tagsPermissionErrorEdit: 'Only administrators can edit tags.',
   tagsPermissionErrorDelete: 'Only administrators can delete tags.',
+  // New Tags Keys
+  tagLoadFailedError: 'Failed to load tags',
+  tagSaveSuccess: 'Tag {action} successfully.',
+  tagsLoadErrorPlaceholder: 'Could not load tags. Please try again later.',
 };

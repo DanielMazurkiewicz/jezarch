@@ -9,7 +9,9 @@ export const archiveTranslationsPL: ArchiveTranslationSet = {
   archiveNoItemsInUnit: 'Nie znaleziono pozycji w jednostce "{unitTitle}".',
   archiveNoItemsForUserTags: 'Nie znaleziono dokumentów pasujących do przypisanych tagów.',
   archiveIsEmpty: 'Archiwum jest obecnie puste.',
-  archiveItemLabel: 'Pozycja Archiwalna',
+  // --- UPDATED: Changed case ---
+  archiveItemLabel: 'Pozycję', // e.g., used for "Create Item" -> Utwórz Pozycję
+  // -----------------------------
   archiveUnitLabel: 'Jednostka',
   archiveDocumentLabel: 'Dokument',
   backToArchiveButton: 'Wróć do Głównego Widoku Archiwum',
@@ -26,7 +28,7 @@ export const archiveTranslationsPL: ArchiveTranslationSet = {
   archiveSaveSuccess: 'Pozycja została {action} pomyślnie.', // action -> utworzona / zaktualizowana
   archiveSaveFailed: 'Nie udało się zapisać pozycji: {message}',
   archiveDetailsLoadFailed: 'Nie udało się załadować szczegółów dokumentu: {message}',
-  archiveFoundItems: 'Znaleziono {count} pozycji.',
+  archiveFoundItems: 'Znaleziono {count, plural, one {# pozycję} few {# pozycje} many {# pozycji} other {# pozycji}}.', // Improved pluralization
   archiveBatchActionWarning: 'Akcje wsadowe wpłyną na {count} pozycji pasujących do obecnych filtrów.',
   archiveBatchActionNoFilterWarning: 'Akcje wsadowe wpłyną na wszystkie {count} pozycji w archiwum (brak aktywnych filtrów).',
   archiveBatchActionLoading: 'Wykonywanie operacji wsadowej na tagach...',
@@ -67,12 +69,13 @@ export const archiveTranslationsPL: ArchiveTranslationSet = {
   archivePreviewRemarksLabel: 'Uwagi',
   archivePreviewAccessLabel: 'Dostęp',
   archivePreviewAdditionalInfoLabel: 'Dodatkowe Informacje',
-  archivePreviewRelatedDocsLabel: 'Powiązane Dokumenty',
+  archivePreviewRelatedDocsLabel: 'Powiązane Dok.',
   archivePreviewDigitizedLabel: 'Zdigitalizowano',
   archivePreviewDigitizedYesLink: 'Tak - Link:',
   archivePreviewDigitizedYes: 'Tak',
   archivePreviewDigitizedNo: 'Nie',
   archivePreviewEmptyContent: 'Brak treści.',
+  // --- Start Archive Form PL Keys ---
   archiveFormBasicInfoTitle: 'Informacje Podstawowe',
   archiveFormPhysicalDescTitle: 'Opis Fizyczny',
   archiveFormContentContextTitle: 'Treść i Kontekst',
@@ -120,6 +123,30 @@ export const archiveTranslationsPL: ArchiveTranslationSet = {
   archiveFormDescSigLabel: 'Sygnatury Opisowe',
   archiveFormTagsLabel: 'Tagi',
   archiveFormUpdateItemButton: 'Aktualizuj Pozycję',
-  archiveFormCreateItemButton: 'Utwórz Pozycję',
+  archiveFormCreateItemButton: 'Utwórz Pozycję', // This is for the FORM button
   archiveFormNoChangesDetected: 'Nie wykryto żadnych zmian.',
+  // --- End Archive Form PL Keys ---
+  archiveInvalidParentTypeError: 'Pozycja o ID {id} nie jest Jednostką.',
+  archiveParentUnitLoadError: 'Nie udało się załadować jednostki nadrzędnej: {message}',
+  archiveFetchError: 'Nie udało się pobrać dokumentów',
+  archiveBatchAddTooltipFiltered: 'Dodaj tagi do wyfiltrowanych pozycji',
+  archiveBatchAddTooltipAll: 'Dodaj tagi do WSZYSTKICH pozycji w archiwum',
+  archiveBatchRemoveTooltipFiltered: 'Usuń tagi z wyfiltrowanych pozycji',
+  archiveBatchRemoveTooltipAll: 'Usuń tagi ze WSZYSTKICH pozycji w archiwum',
+  archiveIsActiveLabel: 'Czy Aktywny',
+  unitLabel: 'Jednostka',
+  archiveBrowsingUnit: 'Przeglądanie pozycji w jednostce "{unitTitle}".',
+  archiveDescriptionUser: 'Przeszukuj dokumenty na podstawie przypisanych tagów.',
+  archiveClickCreateHint: 'Kliknij "Utwórz Pozycję", aby rozpocząć.',
+  archivePreviewBy: 'Autor:', // Re-adding/confirming
+  archivePreviewOn: 'dnia', // Re-adding/confirming
+  archivePreviewInvalidDate: 'Nieprawidłowa Data',
+  archivePreviewErrorDate: 'Błąd Daty',
+  archivePreviewNotApplicable: 'Nie dotyczy', // Translation for N/A
+  added: 'Dodano', // For batch tags success
+  removed: 'Usunięto', // For batch tags success
+  thisUnit: 'tę jednostkę',
+  // --- ADDED Key for root create button ---
+  createRootItemButton: 'Utwórz Pozycję',
+  // -----------------------------------------
 };

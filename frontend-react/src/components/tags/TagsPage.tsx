@@ -36,9 +36,8 @@ const TagsPage: React.FC = () => {
       // Sort tags alphabetically by name
       setTags(fetchedTags.sort((a, b) => a.name.localeCompare(b.name)));
     } catch (err: any) {
-      const msg = err.message || 'Failed to fetch tags';
+      const msg = err.message || t('tagLoadFailedError', preferredLanguage); // Use translated error
       setError(msg);
-      // Use translated error template
       toast.error(t('errorMessageTemplate', preferredLanguage, { message: msg }));
       console.error("Fetch Tags Error:", err);
     } finally {
@@ -53,10 +52,8 @@ const TagsPage: React.FC = () => {
 
   // --- CRUD Handlers ---
   const handleEdit = (tag: Tag) => {
-    // Only allow admins to edit
     if (!isAdmin) {
-        // Use translated error
-        toast.error(t('errorMessageTemplate', preferredLanguage, { message: "Only administrators can edit tags."})); // TODO: Add specific key
+        toast.error(t('tagsPermissionErrorEdit', preferredLanguage));
         return;
     };
     setEditingTag(tag);
@@ -64,20 +61,17 @@ const TagsPage: React.FC = () => {
   };
 
   const handleCreateNew = () => {
-    // Allow any authenticated user to open the create form (backend enforces creation permission)
     setEditingTag(null);
     setIsFormOpen(true);
   };
 
   const handleDelete = async (tagId: number) => {
-      // Only allow admins to delete
       if (!token || !tagId || !isAdmin) {
-          // Use translated error
-          toast.error(t('errorMessageTemplate', preferredLanguage, { message: "Only administrators can delete tags."})); // TODO: Add specific key
+          toast.error(t('tagsPermissionErrorDelete', preferredLanguage));
           return;
       }
-      // Use translated confirmation
-      if (!window.confirm(t('confirmActionMessage', preferredLanguage) + " (Tag Delete)")) { // TODO: Add specific key
+      const tagToDelete = tags.find(t => t.tagId === tagId);
+      if (!window.confirm(t('tagsConfirmDeleteMessage', preferredLanguage, { tagName: tagToDelete?.name ?? tagId }))) {
           return;
       }
 
@@ -86,14 +80,12 @@ const TagsPage: React.FC = () => {
 
       try {
           await api.deleteTag(tagId, token);
-          // Use translated success message
-          toast.success(t('successMessageTemplate', preferredLanguage, { message: "Tag deleted successfully."})); // TODO: Add specific key
+          toast.success(t('tagsDeleteSuccess', preferredLanguage, { tagName: tagToDelete?.name ?? tagId }));
           await fetchTags(); // Refresh list after delete
       } catch (err: any) {
-           const msg = err.message || 'Failed to delete tag';
-           setError(msg); // Show error message on page
-           // Use translated error template
-           toast.error(t('errorMessageTemplate', preferredLanguage, { message: msg }));
+           const msg = err.message || 'Failed';
+           setError(t('tagsDeleteFailed', preferredLanguage, { message: msg }));
+           toast.error(t('errorMessageTemplate', preferredLanguage, { message: t('tagsDeleteFailed', preferredLanguage, { message: msg }) }));
            console.error("Delete Tag Error:", err);
       } finally {
           setIsLoading(false); // Hide loading indicator
@@ -104,8 +96,8 @@ const TagsPage: React.FC = () => {
   const handleSaveSuccess = async () => {
     setIsFormOpen(false); // Close the dialog
     setEditingTag(null); // Reset editing state
-    // Use translated success message
-    toast.success(t('successMessageTemplate', preferredLanguage, { message: editingTag ? "Tag updated successfully." : "Tag created successfully."})); // TODO: Add specific keys
+    const actionText = editingTag ? t('updated', preferredLanguage) : t('created', preferredLanguage); // TODO: Add updated/created keys
+    toast.success(t('tagSaveSuccess', preferredLanguage, { action: actionText })); // TODO: Add tagSaveSuccess
     await fetchTags(); // Refresh the list to show changes
   };
 
@@ -114,7 +106,6 @@ const TagsPage: React.FC = () => {
        {/* Header Section */}
        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
            <div>
-                 {/* Use translated title and description */}
                 <h1 className="text-2xl font-bold">{t('tagsTitle', preferredLanguage)}</h1>
                 <p className='text-muted-foreground'>{t('tagsDescription', preferredLanguage)}</p>
             </div>
@@ -124,17 +115,14 @@ const TagsPage: React.FC = () => {
                 {/* Allow any authenticated user to trigger create */}
                 <Button onClick={handleCreateNew} className='shrink-0'>
                     <PlusCircle className="mr-2 h-4 w-4" />
-                     {/* Use translated button */}
-                    {t('createButton', preferredLanguage)} {t('tagLabelSingular', preferredLanguage)} {/* Use singular key */}
+                    {t('createButton', preferredLanguage)} {t('tagLabelSingular', preferredLanguage)}
                 </Button>
                 </DialogTrigger>
                 {/* Dialog Content for the form */}
                 <DialogContent className="sm:max-w-[425px]">
                 <DialogHeader>
-                     {/* Use translated title */}
-                    <DialogTitle>{editingTag ? t('tagsEditTitle', preferredLanguage) : t('tagsCreateTitle', preferredLanguage)}</DialogTitle> {/* Use specific titles */}
-                     {/* --- ADDED DialogDescription --- */}
-                     <DialogDescription>{editingTag ? `Edit the tag "${editingTag.name}".` : 'Create a new tag to organize content.'}</DialogDescription> {/* TODO: Translate descriptions */}
+                    <DialogTitle>{editingTag ? t('tagsEditTitle', preferredLanguage) : t('tagsCreateTitle', preferredLanguage)}</DialogTitle>
+                    <DialogDescription>{editingTag ? t('tagsEditDialogDescription', preferredLanguage, { tagName: editingTag.name }) : t('tagsCreateDialogDescription', preferredLanguage)}</DialogDescription>
                 </DialogHeader>
                 {/* Conditionally render form to reset state when closed/reopened */}
                 {isFormOpen && <TagForm tagToEdit={editingTag} onSave={handleSaveSuccess} />}
@@ -145,8 +133,6 @@ const TagsPage: React.FC = () => {
         {/* Tags List Section */}
         <Card>
             <CardHeader>
-                 {/* Optional Title: <CardTitle>Available Tags</CardTitle> */}
-                 {/* Error display */}
                  {error && <ErrorDisplay message={error} />}
             </CardHeader>
             <CardContent>
@@ -159,8 +145,11 @@ const TagsPage: React.FC = () => {
                 )}
                 {/* Empty State Message */}
                 {!isLoading && !error && tags.length === 0 && (
-                     // Use translated empty state
                      <p className="text-center text-muted-foreground pt-6">{t('tagsNoTagsFound', preferredLanguage)} {t('tagsClickCreateHint', preferredLanguage)}</p>
+                )}
+                 {/* Error State Message */}
+                {!isLoading && error && tags.length === 0 && (
+                    <p className="text-center text-destructive pt-6">{t('tagsLoadErrorPlaceholder', preferredLanguage)}</p> // TODO: Add tagsLoadErrorPlaceholder
                 )}
             </CardContent>
         </Card>

@@ -17,4 +17,8 @@ export const tagsTranslationsPL: TagsTranslationSet = {
   tagsSaveFailed: 'Nie udało się zapisać taga: {message}',
   tagsPermissionErrorEdit: 'Tylko administratorzy mogą edytować tagi.',
   tagsPermissionErrorDelete: 'Tylko administratorzy mogą usuwać tagi.',
+  // New Tags PL Keys
+  tagLoadFailedError: 'Nie udało się załadować tagów',
+  tagSaveSuccess: 'Tag {action} pomyślnie.', // action: utworzono/zaktualizowano
+  tagsLoadErrorPlaceholder: 'Nie udało się załadować tagów. Spróbuj ponownie później.',
 };

@@ -15,16 +15,20 @@ export const notesTranslationsEN: NotesTranslationSet = {
   notesSharePubliclyLabel: 'Share this note publicly',
   notesContentLabel: 'Content',
   notesShareTooltip: "Only the owner or an admin can change the shared status",
-  notesNoContentPlaceholder: 'No content.',
-  notesSharedBadge: 'Shared',
-  notesPrivateBadge: 'Private',
+  notesPreviewTitleTooltip: 'Click to preview "{title}"', // Added Key
+  notesNoTagsPlaceholder: 'No tags', // Added Key
+  notesLoadErrorPlaceholder: 'Could not load notes. Please try again later.', // Added Key
+  notesTitleSingular: 'Note', // Added Key
+  notesFetchError: 'Failed to fetch notes', // Added Key
+  notesLoadDetailsError: 'Failed to load note details', // Added Key
+  notesPermissionErrorDelete: 'You can only delete your own notes, unless you are an admin.',
   notesDeleteConfirm: 'Are you sure you want to delete this note?',
   notesDeleteSuccess: 'Note deleted successfully.',
   notesDeleteFailed: 'Failed to delete note: {message}',
   notesSaveSuccess: 'Note {action} successfully.', // action: created/updated
   notesSaveFailed: 'Failed to save note: {message}',
-  notesPermissionErrorDelete: 'You can only delete your own notes, unless you are an admin.',
   notesPreviewTitle: 'Note Preview',
   notesPreviewBy: 'By',
   notesPreviewOn: 'on',
+  notesNoContentPlaceholder: 'No content.', // Added Key
 };

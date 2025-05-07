@@ -9,6 +9,7 @@ import api from '@/lib/api';
 import type { Tag } from '../../../../backend/src/functionalities/tag/models';
 import { cn } from '@/lib/utils';
 import LoadingSpinner from './LoadingSpinner'; // Import spinner
+import { t } from '@/translations/utils'; // Import translation utility
 
 interface TagSelectorProps {
   selectedTagIds: number[];
@@ -24,7 +25,7 @@ const TagSelector: React.FC<TagSelectorProps> = ({
   className,
   availableTags: preFetchedTags // Renamed prop for clarity
 }) => {
-  const { token } = useAuth();
+  const { token, preferredLanguage } = useAuth(); // Get preferredLanguage
   const [internalTags, setInternalTags] = useState<Tag[]>(preFetchedTags ?? []);
   const [isLoading, setIsLoading] = useState(!preFetchedTags);
   const [error, setError] = useState<string | null>(null);
@@ -45,14 +46,14 @@ const TagSelector: React.FC<TagSelectorProps> = ({
         const tags = await api.getAllTags(token);
         setInternalTags(tags);
       } catch (err: any) {
-        setError(err.message || "Failed to load tags");
+        setError(err.message || t('tagSelectorError', preferredLanguage));
         console.error("Failed to load tags:", err);
       } finally {
         setIsLoading(false);
       }
     };
     fetchTags();
-  }, [token, preFetchedTags]);
+  }, [token, preFetchedTags, preferredLanguage]); // Add preferredLanguage
 
   const handleSelect = (tagId: number) => {
     const newSelectedIds = selectedTagIds.includes(tagId)
@@ -86,27 +87,25 @@ const TagSelector: React.FC<TagSelectorProps> = ({
                     disabled={isLoading || !!error}
                 >
                   <span className="truncate">
-                    {isLoading ? 'Loading tags...' :
-                     error ? 'Error loading tags' :
-                     selectedTags.length > 0 ? `${selectedTags.length} tags selected` :
-                     'Select tags...'}
+                    {isLoading ? t('tagSelectorLoading', preferredLanguage) :
+                     error ? t('tagSelectorError', preferredLanguage) :
+                     selectedTags.length > 0 ? `${t('tagsLabel', preferredLanguage)}: ${selectedTags.length}` : // Use translated label
+                     t('tagSelectorSelectPlaceholder', preferredLanguage)}
                   </span>
                    {isLoading ? <LoadingSpinner size="sm" className='ml-2'/> : <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />}
                 </Button>
              </PopoverTrigger>
-             {/* PopoverContent uses bg-popover by default, remove explicit bg override */}
              <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
                  <Command shouldFilter={false}>
                     <CommandInput
-                        placeholder="Search tags..."
+                        placeholder={t('tagSelectorSearchPlaceholder', preferredLanguage)}
                         value={searchTerm}
                         onValueChange={setSearchTerm}
                     />
-                    {/* CommandList uses bg-popover by default */}
                     <CommandList>
-                        <CommandEmpty>{isLoading ? 'Loading...' : 'No tags found.'}</CommandEmpty>
+                        <CommandEmpty>{isLoading ? t('loadingText', preferredLanguage) : t('tagSelectorNoTags', preferredLanguage)}</CommandEmpty>
                          {!isLoading && !preFetchedTags && tagsToUse.length === 0 && !error && (
-                             <div className='text-center text-xs text-muted-foreground p-2'>No tags created yet.</div>
+                             <div className='text-center text-xs text-muted-foreground p-2'>{t('tagsNoTagsFound', preferredLanguage)}</div> // Use specific key from tags
                          )}
                          {!isLoading && (
                             <CommandGroup>
@@ -144,7 +143,7 @@ const TagSelector: React.FC<TagSelectorProps> = ({
                              type="button"
                              className="ml-1 p-0.5 rounded-full text-muted-foreground hover:text-foreground hover:bg-background/50 focus:outline-none focus:ring-1 focus:ring-ring focus:ring-offset-1"
                              onClick={() => handleSelect(tag.tagId!)}
-                             aria-label={`Remove ${tag.name} tag`}
+                             aria-label={`${t('removeButton', preferredLanguage)} ${tag.name} ${t('tagLabelSingular', preferredLanguage).toLowerCase()}`} // Use translated aria-label
                          >
                            <X className="h-3 w-3"/>
                          </button>

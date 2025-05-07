@@ -43,8 +43,6 @@ const UnitSelector: React.FC<UnitSelectorProps> = ({
             query: [ { field: 'type', condition: 'EQ', value: 'unit', not: false } ],
             page: 1,
             pageSize: 500, // Fetch a reasonable number of units for selection
-            // Add sorting if desired, e.g., by title
-            // sort: [{ field: 'title', direction: 'ASC' }]
         };
         const response = await api.searchArchiveDocuments(searchRequest, token);
         // Filter out the potential parent document itself
@@ -53,8 +51,7 @@ const UnitSelector: React.FC<UnitSelectorProps> = ({
                            .sort((a, b) => a.title.localeCompare(b.title)) // Sort locally
         );
       } catch (err: any) {
-         // Use translated error
-        const msg = err.message || t('unitLoadFailedError', preferredLanguage); // TODO: Add unitLoadFailedError
+        const msg = err.message || t('unitLoadFailedError', preferredLanguage);
         setError(msg);
         console.error("Failed to load units:", err);
       } finally {
@@ -77,8 +74,6 @@ const UnitSelector: React.FC<UnitSelectorProps> = ({
    const filteredDropdownUnits = useMemo(() => {
        return availableUnits
            .filter(unit => unit.title.toLowerCase().includes(searchTerm.toLowerCase()))
-           // Sorting is done after fetch now
-           // .sort((a, b) => a.title.localeCompare(b.title));
    }, [availableUnits, searchTerm]);
 
 
@@ -94,11 +89,10 @@ const UnitSelector: React.FC<UnitSelectorProps> = ({
                     disabled={isLoading || !!error}
                 >
                   <span className="truncate">
-                     {/* Use translated placeholders/states */}
                     {isLoading ? t('loadingText', preferredLanguage) :
                      error ? t('errorText', preferredLanguage) :
                      selectedUnit ? selectedUnit.title :
-                     t('unitSelectorPlaceholder', preferredLanguage)} {/* TODO: Add unitSelectorPlaceholder */}
+                     t('unitSelectorPlaceholder', preferredLanguage)}
                   </span>
                    {isLoading ? <LoadingSpinner size="sm" className='ml-2'/> : <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />}
                 </Button>
@@ -106,17 +100,14 @@ const UnitSelector: React.FC<UnitSelectorProps> = ({
              <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
                  <Command shouldFilter={false}>
                     <CommandInput
-                         // Use translated placeholder
-                        placeholder={t('unitSelectorSearchPlaceholder', preferredLanguage)} // TODO: Add unitSelectorSearchPlaceholder
+                        placeholder={t('unitSelectorSearchPlaceholder', preferredLanguage)}
                         value={searchTerm}
                         onValueChange={setSearchTerm}
                     />
                     <CommandList>
-                         {/* Use translated placeholders/states */}
-                        <CommandEmpty>{isLoading ? t('loadingText', preferredLanguage) : t('unitSelectorNoUnitsFound', preferredLanguage)}</CommandEmpty> {/* TODO: Add unitSelectorNoUnitsFound */}
+                        <CommandEmpty>{isLoading ? t('loadingText', preferredLanguage) : t('unitSelectorNoUnitsFound', preferredLanguage)}</CommandEmpty>
                          {!isLoading && (
                             <CommandGroup>
-                                {/* Use translated clear option */}
                                 <CommandItem
                                     key="clear-unit"
                                     value="--clear--"
@@ -124,7 +115,7 @@ const UnitSelector: React.FC<UnitSelectorProps> = ({
                                     className='cursor-pointer text-muted-foreground italic'
                                 >
                                     <X className="mr-2 h-4 w-4 opacity-50" />
-                                    {t('clearButton', preferredLanguage)} {t('selection', preferredLanguage)} {/* TODO: Add selection */}
+                                    {t('clearButton', preferredLanguage)} {t('selection', preferredLanguage)}
                                 </CommandItem>
                                 {filteredDropdownUnits.map((unit) => (
                                 <CommandItem

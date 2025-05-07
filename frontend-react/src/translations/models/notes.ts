@@ -16,6 +16,24 @@ export type NotesTranslationKey =
   | 'notesSharePubliclyLabel' // Used in NoteEditor
   | 'notesContentLabel' // Used in NoteEditor
   | 'notesShareTooltip' // Used in NoteEditor
+  | 'notesPreviewTitleTooltip'
+  | 'notesNoTagsPlaceholder'
+  | 'notesLoadErrorPlaceholder'
+  | 'notesTitleSingular'
+  | 'notesFetchError'
+  | 'notesLoadDetailsError'
+  | 'notesPermissionErrorDelete'
+  | 'notesDeleteConfirm'
+  | 'notesDeleteSuccess'
+  | 'notesDeleteFailed'
+  | 'notesSaveSuccess'
+  | 'notesSaveFailed'
+  | 'notesPreviewTitle'
+  | 'notesPreviewBy'
+  | 'notesPreviewOn'
+  | 'notesNoContentPlaceholder' // Added missing key
+  | 'notesSharedBadge' // Added missing key
+  | 'notesPrivateBadge' // Added missing key
   ;
 
 export type NotesTranslationSet = TranslationSet<NotesTranslationKey>;

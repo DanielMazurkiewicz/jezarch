@@ -18,6 +18,9 @@ export type TagsTranslationKey =
   | 'tagsSaveFailed' // e.g., Failed to save tag: {message}
   | 'tagsPermissionErrorEdit' // e.g., Only administrators can edit tags.
   | 'tagsPermissionErrorDelete' // e.g., Only administrators can delete tags.
+  | 'tagLoadFailedError' // Added Key
+  | 'tagSaveSuccess' // Added Key
+  | 'tagsLoadErrorPlaceholder' // Added Key
   ;
 
 export type TagsTranslationSet = TranslationSet<TagsTranslationKey>;

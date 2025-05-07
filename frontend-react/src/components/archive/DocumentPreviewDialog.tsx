@@ -30,16 +30,17 @@ interface DocumentPreviewDialogProps {
     parentUnitTitle?: string | null;
 }
 
-// --- Date Formatter (Copied from ArchivePage) ---
+// --- Date Formatter ---
 const formatDate = (dateInput: Date | string | undefined | null): string => {
-    if (!dateInput) return "N/A";
+    if (!dateInput) return t('archivePreviewNotApplicable', preferredLanguage); // Use translation
     try {
         const date = new Date(dateInput);
-        if (isNaN(date.getTime())) return "Invalid Date";
+        if (isNaN(date.getTime())) return t('archivePreviewInvalidDate', preferredLanguage); // Use translation
         return date.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
-    } catch (e) { return "Error"; }
+    } catch (e) { return t('archivePreviewErrorDate', preferredLanguage); } // Use translation
 };
-// ---------------------------------------------------
+// --- Global preferredLanguage for formatter ---
+let preferredLanguage: string = 'en';
 
 const DocumentPreviewDialog: React.FC<DocumentPreviewDialogProps> = ({
     isOpen,
@@ -49,7 +50,8 @@ const DocumentPreviewDialog: React.FC<DocumentPreviewDialogProps> = ({
     onDisable,
     parentUnitTitle,
 }) => {
-    const { user, preferredLanguage } = useAuth(); // Get preferredLanguage
+    const { user, preferredLanguage: contextLang } = useAuth(); // Get preferredLanguage from context
+    preferredLanguage = contextLang; // Update global for formatter
 
     // Cast the document to our local type for easier access to potentially resolved fields
     const previewingDoc = originalDoc as PreviewDocumentType | null;
@@ -60,8 +62,6 @@ const DocumentPreviewDialog: React.FC<DocumentPreviewDialogProps> = ({
 
     // --- UPDATED: Allow employees to modify ---
     const isOwnerOrAdminOrEmployee = user?.role === 'admin' || user?.role === 'employee';
-    // Previous logic:
-    // const isOwnerOrAdmin = user?.role === 'admin' || user?.userId === previewingDoc.ownerUserId;
 
     const handleEditClick = () => {
         onOpenChange(false); // Close preview
@@ -83,18 +83,17 @@ const DocumentPreviewDialog: React.FC<DocumentPreviewDialogProps> = ({
                         {previewingDoc.type === 'unit' ? <Folder className='h-5 w-5 text-blue-600'/> : <FileText className='h-5 w-5 text-green-600'/>}
                         {previewingDoc.title}
                     </DialogTitle>
-                     {/* TODO: Translate labels like "Creator:", "Date:", "Parent Unit:", "Owner:", "Tags:", "Topo Sig:", "Desc Sigs:" */}
                     <DialogDescription className='space-y-1 pt-1 text-left'>
-                        <p><strong>Creator:</strong> {previewingDoc.creator}</p>
-                        <p><strong>Date:</strong> {previewingDoc.creationDate}</p>
+                        <p><strong>{t('archivePreviewCreatorLabel', preferredLanguage)}:</strong> {previewingDoc.creator}</p>
+                        <p><strong>{t('archivePreviewDateLabel', preferredLanguage)}:</strong> {previewingDoc.creationDate}</p>
                         {previewingDoc.parentUnitArchiveDocumentId && (
-                            <p><strong>Parent Unit:</strong> <Link to={`/archive?unitId=${previewingDoc.parentUnitArchiveDocumentId}`} className='text-primary hover:underline' onClick={()=> onOpenChange(false)}>{parentUnitTitle || `ID ${previewingDoc.parentUnitArchiveDocumentId}`}</Link></p>
+                            <p><strong>{t('archivePreviewParentUnitLabel', preferredLanguage)}:</strong> <Link to={`/archive?unitId=${previewingDoc.parentUnitArchiveDocumentId}`} className='text-primary hover:underline' onClick={()=> onOpenChange(false)}>{parentUnitTitle || `ID ${previewingDoc.parentUnitArchiveDocumentId}`}</Link></p>
                         )}
-                        <p><strong>Owner:</strong> {previewingDoc.ownerLogin ?? 'N/A'} (ID: {previewingDoc.ownerUserId})</p>
+                        <p><strong>{t('archivePreviewOwnerLabel', preferredLanguage)}:</strong> {previewingDoc.ownerLogin ?? t('archivePreviewNotApplicable', preferredLanguage)} (ID: {previewingDoc.ownerUserId})</p>
                         {/* Display Tags */}
                         {previewingDoc.tags && previewingDoc.tags.length > 0 && (
                             <div className="flex flex-wrap gap-1 pt-1 items-center">
-                                <strong className='mr-1'>Tags:</strong>
+                                <strong className='mr-1'>{t('archivePreviewTagsLabel', preferredLanguage)}:</strong>
                                 {previewingDoc.tags.map(tag => (
                                     <Badge key={tag.tagId} variant="secondary" className="text-xs font-normal">{tag.name}</Badge>
                                 ))}
@@ -103,14 +102,14 @@ const DocumentPreviewDialog: React.FC<DocumentPreviewDialogProps> = ({
                          {/* --- UPDATED: Display topographic signature string --- */}
                          {previewingDoc.topographicSignature && (
                              <div className='flex flex-wrap gap-1 pt-1 items-center'>
-                                 <strong className='mr-1'>Topo Sig:</strong>
+                                 <strong className='mr-1'>{t('archivePreviewTopoSigLabel', preferredLanguage)}:</strong>
                                  <Badge variant="outline" className='font-mono text-xs'>{previewingDoc.topographicSignature}</Badge>
                              </div>
                          )}
                         {/* Display Descriptive Signatures (using optional chaining on the potentially resolved fields) */}
                         {previewingDoc?.resolvedDescriptiveSignatures && previewingDoc.resolvedDescriptiveSignatures.length > 0 && (
                              <div className='flex flex-wrap gap-1 pt-1 items-center'>
-                                 <strong className='mr-1'>Desc Sigs:</strong>
+                                 <strong className='mr-1'>{t('archivePreviewDescSigLabel', preferredLanguage)}:</strong>
                                  {/* Explicitly type sig and idx */}
                                  {previewingDoc.resolvedDescriptiveSignatures.map((sig: string, idx: number) => (
                                      <Badge key={`desc-${idx}`} variant="outline" className='font-mono text-xs'>{sig}</Badge>
@@ -122,50 +121,53 @@ const DocumentPreviewDialog: React.FC<DocumentPreviewDialogProps> = ({
 
                 {/* Make preview content scrollable */}
                 <ScrollArea className="max-h-[50vh] my-4 space-y-4 pr-3 border-t border-b py-4">
-                     {/* TODO: Translate section titles and labels */}
                     {/* Content Description */}
                     {previewingDoc.contentDescription && (
                         <div>
-                           <h4 className='font-semibold mb-1 text-base'>Content Description</h4>
+                           <h4 className='font-semibold mb-1 text-base'>{t('archivePreviewContentDescriptionLabel', preferredLanguage)}</h4>
                            <p className="text-sm whitespace-pre-wrap">{previewingDoc.contentDescription}</p>
                         </div>
                     )}
                      {/* Physical Description */}
                     {(previewingDoc.numberOfPages || previewingDoc.documentType || previewingDoc.dimensions || previewingDoc.binding || previewingDoc.condition || previewingDoc.documentLanguage) && (
                         <div>
-                           <h4 className='font-semibold mb-1 text-base'>Physical Details</h4>
+                           <h4 className='font-semibold mb-1 text-base'>{t('archivePreviewPhysicalDetailsLabel', preferredLanguage)}</h4>
                            <ul className='list-disc list-inside text-sm space-y-0.5'>
-                               {previewingDoc.numberOfPages && <li>Pages: {previewingDoc.numberOfPages}</li>}
-                               {previewingDoc.documentType && <li>Type: {previewingDoc.documentType}</li>}
-                               {previewingDoc.dimensions && <li>Dimensions: {previewingDoc.dimensions}</li>}
-                               {previewingDoc.binding && <li>Binding: {previewingDoc.binding}</li>}
-                               {previewingDoc.condition && <li>Condition: {previewingDoc.condition}</li>}
-                               {previewingDoc.documentLanguage && <li>Language: {previewingDoc.documentLanguage}</li>}
+                               {previewingDoc.numberOfPages && <li>{t('archivePreviewPagesLabel', preferredLanguage)}: {previewingDoc.numberOfPages}</li>}
+                               {previewingDoc.documentType && <li>{t('archivePreviewTypeLabel', preferredLanguage)}: {previewingDoc.documentType}</li>}
+                               {previewingDoc.dimensions && <li>{t('archivePreviewDimensionsLabel', preferredLanguage)}: {previewingDoc.dimensions}</li>}
+                               {previewingDoc.binding && <li>{t('archivePreviewBindingLabel', preferredLanguage)}: {previewingDoc.binding}</li>}
+                               {previewingDoc.condition && <li>{t('archivePreviewConditionLabel', preferredLanguage)}: {previewingDoc.condition}</li>}
+                               {previewingDoc.documentLanguage && <li>{t('archivePreviewLanguageLabel', preferredLanguage)}: {previewingDoc.documentLanguage}</li>}
                            </ul>
                         </div>
                     )}
                     {/* Other Details */}
                      {(previewingDoc.remarks || previewingDoc.accessLevel || previewingDoc.additionalInformation || previewingDoc.relatedDocumentsReferences || previewingDoc.isDigitized !== null || previewingDoc.isDigitized !== undefined) && ( // Simplified check
                          <div>
-                            <h4 className='font-semibold mb-1 text-base'>Other Details</h4>
+                            <h4 className='font-semibold mb-1 text-base'>{t('archivePreviewOtherDetailsLabel', preferredLanguage)}</h4>
                             <div className='text-sm space-y-1'>
                                 {previewingDoc.remarks && (
-                                    <p><strong>Remarks:</strong> {previewingDoc.remarks}</p>
+                                    <p><strong>{t('archivePreviewRemarksLabel', preferredLanguage)}:</strong> {previewingDoc.remarks}</p>
                                 )}
                                 {previewingDoc.accessLevel && (
-                                     <p><strong>Access:</strong> {previewingDoc.accessLevel} {previewingDoc.accessConditions ? `(${previewingDoc.accessConditions})` : ''}</p>
+                                     <p><strong>{t('archivePreviewAccessLabel', preferredLanguage)}:</strong> {previewingDoc.accessLevel} {previewingDoc.accessConditions ? `(${previewingDoc.accessConditions})` : ''}</p>
                                 )}
                                 {previewingDoc.additionalInformation && (
-                                     <p><strong>Additional Info:</strong> {previewingDoc.additionalInformation}</p>
+                                     <p><strong>{t('archivePreviewAdditionalInfoLabel', preferredLanguage)}:</strong> {previewingDoc.additionalInformation}</p>
                                 )}
                                 {previewingDoc.relatedDocumentsReferences && (
-                                     <p><strong>Related Docs:</strong> {previewingDoc.relatedDocumentsReferences}</p>
+                                     <p><strong>{t('archivePreviewRelatedDocsLabel', preferredLanguage)}:</strong> {previewingDoc.relatedDocumentsReferences}</p>
                                 )}
                                 {(previewingDoc.isDigitized !== null && previewingDoc.isDigitized !== undefined) && (
-                                    <p><strong>Digitized:</strong> {previewingDoc.isDigitized ? `Yes ${previewingDoc.digitizedVersionLink ? `- Link: ` : ''}` : 'No'}{previewingDoc.digitizedVersionLink && <a href={previewingDoc.digitizedVersionLink} target="_blank" rel="noopener noreferrer" className='text-primary hover:underline break-all'>{previewingDoc.digitizedVersionLink}</a>}</p>
+                                    <p><strong>{t('archivePreviewDigitizedLabel', preferredLanguage)}:</strong> {previewingDoc.isDigitized ? `${t('archivePreviewDigitizedYes', preferredLanguage)} ${previewingDoc.digitizedVersionLink ? `- ${t('archivePreviewDigitizedYesLink', preferredLanguage)} ` : ''}` : t('archivePreviewDigitizedNo', preferredLanguage)}{previewingDoc.digitizedVersionLink && <a href={previewingDoc.digitizedVersionLink} target="_blank" rel="noopener noreferrer" className='text-primary hover:underline break-all'>{previewingDoc.digitizedVersionLink}</a>}</p>
                                 )}
                             </div>
                          </div>
+                     )}
+                     {/* Empty Content Placeholder */}
+                     {!previewingDoc.contentDescription && !(previewingDoc.numberOfPages || previewingDoc.documentType || previewingDoc.dimensions || previewingDoc.binding || previewingDoc.condition || previewingDoc.documentLanguage) && !(previewingDoc.remarks || previewingDoc.accessLevel || previewingDoc.additionalInformation || previewingDoc.relatedDocumentsReferences || previewingDoc.isDigitized !== null || previewingDoc.isDigitized !== undefined) && (
+                          <p className="text-sm text-muted-foreground italic text-center py-4">{t('archivePreviewEmptyContent', preferredLanguage)}</p>
                      )}
                 </ScrollArea>
                 <DialogFooter className='gap-2 sm:justify-between pt-4'>
@@ -186,12 +188,10 @@ const DocumentPreviewDialog: React.FC<DocumentPreviewDialogProps> = ({
                     {/* Edit and Close buttons on the right */}
                     <div className='flex gap-2'>
                          {isOwnerOrAdminOrEmployee && ( // Updated check
-                             // Use translated button text
                             <Button variant="secondary" size="sm" onClick={handleEditClick}>
                                 <Edit className='h-4 w-4 mr-2'/> {t('editButton', preferredLanguage)}
                             </Button>
                          )}
-                         {/* Use translated button text */}
                         <Button variant="outline" size="sm" onClick={() => onOpenChange(false)}>{t('closeButton', preferredLanguage)}</Button>
                     </div>
                 </DialogFooter>

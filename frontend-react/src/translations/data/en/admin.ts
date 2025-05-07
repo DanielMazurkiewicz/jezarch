@@ -102,4 +102,13 @@ export const adminTranslationsEN: AdminTranslationSet = {
   unitLoadFailedError: 'Failed to load units',
   selectedElementLoadFailedError: 'Failed to load details for selected elements',
   errorMessageTemplate: 'Error: {message}', // Added missing key
+  // New Admin Keys
+  userFetchFailedError: 'Failed to fetch users',
+  tagLoadFailedError: 'Failed to load tags',
+  userFetchDetailsFailedError: 'Failed to fetch updated user details',
+  userRoleUpdateFailedError: 'Failed to update role for {login}: {message}',
+  userPasswordSetFailedError: 'Failed to set password for {login}: {message}',
+  userLanguageUpdateFailedError: 'Failed to update language for {login}: {message}',
+  userTagAssignFailedError: 'Failed to assign tags: {message}',
+  setPasswordButton: 'Set Password',
 };

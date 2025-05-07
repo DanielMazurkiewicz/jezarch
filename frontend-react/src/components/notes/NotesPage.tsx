@@ -70,8 +70,8 @@ const NotesPage: React.FC = () => {
         setTotalPages(response.totalPages);
         setCurrentPage(response.page);
     } catch (err: any) {
-        const msg = err.message || 'Failed to fetch notes'; setError(msg);
-        // Use translated error template
+        const msg = err.message || t('notesFetchError', preferredLanguage); // Use translated error
+        setError(msg);
         toast.error(t('errorMessageTemplate', preferredLanguage, { message: msg }));
         console.error("NotesPage: Fetch Notes Error:", err);
         setNotes([]); setTotalNotes(0); setTotalPages(1);
@@ -101,32 +101,29 @@ const NotesPage: React.FC = () => {
   };
 
    const handleDelete = async (noteId: number) => {
-       if (!token || !noteId) { toast.error("Invalid request."); return; };
+       if (!token || !noteId) { toast.error(t('invalidRequestError', preferredLanguage)); return; }; // Use translated error
        const noteToDelete = notes.find(n => n.noteId === noteId);
        if (!noteToDelete) return;
        const isOwner = noteToDelete.ownerUserId === user?.userId;
        if (!isOwner && !isAdmin) {
-           // TODO: Translate error
-           toast.error("You can only delete your own notes."); return;
+           toast.error(t('notesPermissionErrorDelete', preferredLanguage)); return;
        }
-        // Use translated confirmation
-       if (!window.confirm(t('confirmActionMessage', preferredLanguage) + " (Note Delete)")) { // TODO: Add specific key
+       if (!window.confirm(t('notesDeleteConfirm', preferredLanguage))) { // Use translated confirmation
            return;
        }
 
        setError(null); setIsLoading(true);
        try {
            await api.deleteNote(noteId, token);
-           // TODO: Translate success
-           toast.success("Note deleted successfully.");
+           toast.success(t('notesDeleteSuccess', preferredLanguage));
            const newTotalPages = Math.ceil((totalNotes - 1) / NOTES_PAGE_SIZE);
            const newCurrentPage = Math.max(1, (currentPage > newTotalPages) ? newTotalPages : currentPage);
            if (currentPage !== newCurrentPage) { setCurrentPage(newCurrentPage); }
            else { await fetchNotes(newCurrentPage, searchQuery); }
        } catch (err: any) {
-            const msg = err.message || 'Failed to delete note'; setError(msg);
-            // Use translated error template
-            toast.error(t('errorMessageTemplate', preferredLanguage, { message: `Delete failed: ${msg}` }));
+            const msg = err.message || 'unknown error';
+            setError(t('notesDeleteFailed', preferredLanguage, { message: msg }));
+            toast.error(t('errorMessageTemplate', preferredLanguage, { message: t('notesDeleteFailed', preferredLanguage, { message: msg }) }));
             console.error("NotesPage: Delete Note Error:", err); setIsLoading(false);
        }
    };
@@ -134,8 +131,8 @@ const NotesPage: React.FC = () => {
   const handleSaveSuccess = async () => {
     setIsEditorOpen(false);
     setEditingNote(null);
-     // TODO: Translate success
-    toast.success(editingNote ? "Note updated successfully." : "Note created successfully.");
+    const actionText = editingNote ? t('updated', preferredLanguage) : t('created', preferredLanguage); // TODO: Add updated/created keys
+    toast.success(t('notesSaveSuccess', preferredLanguage, { action: actionText }));
     await fetchNotes(currentPage, searchQuery);
   };
 
@@ -158,18 +155,17 @@ const NotesPage: React.FC = () => {
   // Define fields for the SearchBar using translations
   const searchFields: SearchFieldOption[] = [
       { value: 'title', label: t('titleLabel', preferredLanguage), type: 'text' },
-      { value: 'content', label: t('notesContentColumn', preferredLanguage), type: 'text' }, // TODO: Add notesContentColumn
-      { value: 'shared', label: t('notesSharedColumn', preferredLanguage), type: 'boolean' }, // TODO: Add notesSharedColumn
+      { value: 'content', label: t('notesContentColumn', preferredLanguage), type: 'text' },
+      { value: 'shared', label: t('notesSharedColumn', preferredLanguage), type: 'boolean' },
       {
         value: 'tags',
-        label: t('tagsLabel', preferredLanguage), // TODO: Add tagsLabel
+        label: t('tagsLabel', preferredLanguage),
         type: 'tags',
         options: availableTags.map(t => ({value: t.tagId!, label: t.name}))
       },
   ];
   if (isAdmin) {
-        // TODO: Translate ownerLogin label
-       searchFields.push({ value: 'ownerLogin', label: 'Owner Login', type: 'text' });
+       searchFields.push({ value: 'ownerLogin', label: t('notesAuthorColumn', preferredLanguage), type: 'text' });
   }
 
   if (isAuthLoading) {
@@ -181,21 +177,18 @@ const NotesPage: React.FC = () => {
         {/* Header Section */}
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
             <div>
-                 {/* TODO: Translate title and description */}
-                 <h1 className="text-2xl font-bold">Notes</h1>
-                 <p className='text-muted-foreground'>Create, view, and manage personal & shared notes.</p>
+                 <h1 className="text-2xl font-bold">{t('notesTitle', preferredLanguage)}</h1>
+                 <p className='text-muted-foreground'>{t('notesDescription', preferredLanguage)}</p>
             </div>
             <Dialog open={isEditorOpen} onOpenChange={setIsEditorOpen}>
             <DialogTrigger asChild>
-                 {/* Use translated button text */}
                 <Button onClick={handleCreateNew} className='shrink-0'>
-                    <PlusCircle className="mr-2 h-4 w-4" /> {t('createButton', preferredLanguage)} {t('notesTitle', preferredLanguage, { count: 1 }).replace('Notes','Note')} {/* Example */}
+                    <PlusCircle className="mr-2 h-4 w-4" /> {t('createButton', preferredLanguage)} {t('notesTitleSingular', preferredLanguage)} {/* TODO: Add notesTitleSingular */}
                 </Button>
             </DialogTrigger>
             <DialogContent className="sm:max-w-[600px]">
                 <DialogHeader>
-                 {/* Use translated title */}
-                 <DialogTitle>{editingNote ? t('editButton', preferredLanguage) : t('createButton', preferredLanguage)} {t('notesTitle', preferredLanguage, { count: 1 }).replace('Notes','Note')}</DialogTitle> {/* Example */}
+                 <DialogTitle>{editingNote ? t('notesEditTitle', preferredLanguage) : t('notesCreateTitle', preferredLanguage)}</DialogTitle>
                 </DialogHeader>
                 {isEditorOpen && <NoteEditor noteToEdit={editingNote} onSave={handleSaveSuccess} />}
             </DialogContent>
@@ -231,12 +224,11 @@ const NotesPage: React.FC = () => {
                          {/* Use translated empty states */}
                         {notes.length === 0 && !error && (
                             searchQuery.length > 0
-                                ? <p className="text-center text-muted-foreground pt-6">{t('noResultsFound', preferredLanguage)}</p> // Use common key
-                                : <p className="text-center text-muted-foreground pt-6">{t('notesNoNotesFound', preferredLanguage)} {t('notesClickCreateHint', preferredLanguage)}</p> // TODO: Add keys
+                                ? <p className="text-center text-muted-foreground pt-6">{t('noResultsFound', preferredLanguage)}</p>
+                                : <p className="text-center text-muted-foreground pt-6">{t('notesNoNotesFound', preferredLanguage)} {t('notesClickCreateHint', preferredLanguage)}</p>
                         )}
                         {error && notes.length === 0 && (
-                             // TODO: Translate error message
-                            <p className="text-center text-destructive pt-6">Could not load notes. Please try again later.</p>
+                            <p className="text-center text-destructive pt-6">{t('notesLoadErrorPlaceholder', preferredLanguage)}</p> // Use translated error placeholder
                         )}
                     </>
                 )}

@@ -102,4 +102,13 @@ export const adminTranslationsPL: AdminTranslationSet = {
   unitLoadFailedError: 'Nie udało się załadować jednostek',
   selectedElementLoadFailedError: 'Nie udało się załadować szczegółów wybranych elementów',
   errorMessageTemplate: 'Błąd: {message}', // Added missing key
+  // New Admin PL Keys
+  userFetchFailedError: 'Nie udało się pobrać użytkowników',
+  tagLoadFailedError: 'Nie udało się załadować tagów',
+  userFetchDetailsFailedError: 'Nie udało się pobrać zaktualizowanych szczegółów użytkownika',
+  userRoleUpdateFailedError: 'Nie udało się zaktualizować roli dla {login}: {message}',
+  userPasswordSetFailedError: 'Nie udało się ustawić hasła dla {login}: {message}',
+  userLanguageUpdateFailedError: 'Nie udało się zaktualizować języka dla {login}: {message}',
+  userTagAssignFailedError: 'Nie udało się przypisać tagów: {message}',
+  setPasswordButton: 'Ustaw Hasło',
 };

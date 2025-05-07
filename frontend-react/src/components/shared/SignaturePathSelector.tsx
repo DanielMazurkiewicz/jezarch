@@ -51,15 +51,13 @@ const SignaturePathSelector: React.FC<SignaturePathSelectorProps> = ({
                 );
                  const displayParts = elementsInPath.map((el: SignatureElement | null, index: number) => {
                      if (el) return `${el.index ? `[${el.index}]` : ''}${el.name}`;
-                     // Use translated error
-                     return `[${t('errorText', preferredLanguage)} ID: ${idPath[index] !== undefined ? idPath[index] : 'unknown'}]`;
+                     return `[${t('errorText', preferredLanguage)} ID: ${idPath[index] !== undefined ? idPath[index] : t('unknown', preferredLanguage)}]`; // Use translated unknown
                  });
                  resolved.push({ idPath, display: displayParts.join(' / ') });
             }
              setResolvedSignatures(resolved.sort((a, b) => a.display.localeCompare(b.display)));
         } catch (error) {
              console.error("Error resolving signatures:", error);
-              // Use translated error
              setResolvedSignatures(currentSignatures.map((p: number[]) => ({idPath: p, display: `[${p.join(' / ')}] (${t('errorText', preferredLanguage)})`})));
         } finally { setIsLoadingSignatures(false); }
     };
@@ -113,8 +111,7 @@ const SignaturePathSelector: React.FC<SignaturePathSelectorProps> = ({
          {!isLoadingSignatures && resolvedSignatures.map((resolved) => ( // Removed index from map parameters
           <div key={JSON.stringify(resolved.idPath)} className="flex items-center justify-between gap-2 rounded bg-muted p-1 px-2 text-sm"> {/* Use stringified path as key */}
             <span className="font-mono text-xs flex-grow break-words min-w-0">
-                {/* TODO: Translate placeholder */}
-                {resolved.display || <span className='italic text-muted-foreground'>Empty Signature</span>}
+                {resolved.display || <span className='italic text-muted-foreground'>{t('emptySignaturePlaceholder', preferredLanguage)}</span>} {/* Use translated placeholder */}
             </span>
             <Button
               type="button"
@@ -122,7 +119,6 @@ const SignaturePathSelector: React.FC<SignaturePathSelectorProps> = ({
               size="icon"
               className="h-5 w-5 shrink-0 text-muted-foreground hover:text-destructive"
               onClick={() => removeSignature(resolved.idPath)}
-               // Use translated aria-label
               aria-label={`${t('removeButton', preferredLanguage)} ${resolved.display}`}
             >
               <X className="h-3 w-3" />
@@ -130,7 +126,7 @@ const SignaturePathSelector: React.FC<SignaturePathSelectorProps> = ({
           </div>
         ))}
          {/* Use translated placeholder */}
-         {!isLoadingSignatures && signatures.length === 0 && <p className="text-xs text-muted-foreground italic text-center py-1">{t('noSignaturesAddedHint', preferredLanguage)}</p>} {/* TODO: Add noSignaturesAddedHint */}
+         {!isLoadingSignatures && signatures.length === 0 && <p className="text-xs text-muted-foreground italic text-center py-1">{t('noSignaturesAddedHint', preferredLanguage)}</p>}
       </div>
     </div>
   );

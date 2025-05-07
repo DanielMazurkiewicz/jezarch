@@ -13,6 +13,7 @@ import SingleSignaturePathPicker from './SingleSignaturePathPicker'; // New impo
 import type { Tag } from '../../../../backend/src/functionalities/tag/models';
 import { useAuth } from '@/hooks/useAuth'; // Import useAuth
 import { t } from '@/translations/utils'; // Import translation utility
+import type { AppTranslationKey } from '@/translations/models'; // Import key type
 
 export type FieldType = 'text' | 'number' | 'boolean' | 'select' | 'date' | 'tags' | 'signaturePath'; // Added 'signaturePath'
 
@@ -32,22 +33,22 @@ interface SearchBarProps {
 
 // Translate condition labels
 const getConditionLabel = (condition: SearchQueryElement['condition'], lang: string): string => {
-     // TODO: Add translation keys for conditions (e.g., 'conditionEquals', 'conditionContains')
-    switch (condition) {
-        case 'EQ': return 'Equals'; // =
-        case 'GT': return '>';
-        case 'GTE': return '>=';
-        case 'LT': return '<';
-        case 'LTE': return '<=';
-        case 'FRAGMENT': return 'Contains';
-        case 'ANY_OF': return 'Is Any Of';
-        case 'STARTS_WITH': return 'Starts With Path';
-        case 'CONTAINS_SEQUENCE': return 'Contains Sequence';
-        default: return condition;
-    }
+    const keyMap: Partial<Record<SearchQueryElement['condition'], AppTranslationKey>> = {
+        'EQ': 'conditionEquals',
+        'GT': 'conditionGt',
+        'GTE': 'conditionGte',
+        'LT': 'conditionLt',
+        'LTE': 'conditionLte',
+        'FRAGMENT': 'conditionContains',
+        'ANY_OF': 'conditionIsAnyOf',
+        'STARTS_WITH': 'conditionStartsWithPath',
+        'CONTAINS_SEQUENCE': 'conditionContainsSequence',
+    };
+    const key = keyMap[condition];
+    return key ? t(key, lang) : condition;
 }
 
-const conditionsByType: Record<FieldType, { value: SearchQueryElement['condition']; labelKey: string }[]> = { // Use labelKey
+const conditionsByType: Record<FieldType, { value: SearchQueryElement['condition']; labelKey: AppTranslationKey }[]> = {
   text: [ { value: 'FRAGMENT', labelKey: 'conditionContains' }, { value: 'EQ', labelKey: 'conditionEquals' } ],
   number: [ { value: 'EQ', labelKey: 'conditionEqNum' }, { value: 'GT', labelKey: 'conditionGt' }, { value: 'GTE', labelKey: 'conditionGte' }, { value: 'LT', labelKey: 'conditionLt' }, { value: 'LTE', labelKey: 'conditionLte' } ],
   boolean: [ { value: 'EQ', labelKey: 'conditionIs' } ],
@@ -227,7 +228,7 @@ const SearchBar: React.FC<SearchBarProps> = ({
     }, [criteria, fields, getInitialCriterion]);
 
       // Use translated empty state
-     if (fields.length === 0 && !isLoading) { return ( <div className="p-4 border rounded-lg bg-card text-center text-muted-foreground shadow-sm"> {t('searchNoOptionsAvailable', preferredLanguage)} </div> ); } // TODO: Add searchNoOptionsAvailable
+     if (fields.length === 0 && !isLoading) { return ( <div className="p-4 border rounded-lg bg-card text-center text-muted-foreground shadow-sm"> {t('searchNoOptionsAvailable', preferredLanguage)} </div> ); }
 
     return (
         <div className="p-4 border rounded-lg bg-card space-y-3 shadow-sm">
@@ -242,22 +243,18 @@ const SearchBar: React.FC<SearchBarProps> = ({
                 return (
                 <div key={criterion._key} className="flex flex-wrap items-end gap-2 p-2 border rounded bg-background">
                     <div className='flex-grow min-w-[150px]'>
-                         {/* Use translated label */}
                         <Label htmlFor={`field-${criterion._key}`} className='text-xs mb-1 block'>{t('fieldLabel', preferredLanguage)}</Label>
                         <Select value={criterion.field} onValueChange={(value) => handleCriterionChange(criterion._key!, 'field', value)} disabled={fields.length === 0}>
-                             {/* Use translated placeholder */}
                             <SelectTrigger id={`field-${criterion._key}`} className='h-9 text-sm'><SelectValue placeholder={t('selectPlaceholder', preferredLanguage)} /></SelectTrigger>
                             <SelectContent> {fields.map(f => ( <SelectItem key={f.value} value={f.value}>{f.label}</SelectItem> ))} </SelectContent>
                         </Select>
                     </div>
                     <div className='flex items-center space-x-1 self-end pb-1.5'>
-                         {/* TODO: Translate 'NOT' label */}
                         <Checkbox id={`not-${criterion._key}`} checked={criterion.not || false} onCheckedChange={(checked) => handleCriterionChange(criterion._key!, 'not', !!checked)} className='h-4 w-4' disabled={fields.length === 0}/>
-                        <Label htmlFor={`not-${criterion._key}`} className={cn('text-xs font-medium cursor-pointer', fields.length === 0 && 'opacity-50')}>NOT</Label>
+                        <Label htmlFor={`not-${criterion._key}`} className={cn('text-xs font-medium cursor-pointer', fields.length === 0 && 'opacity-50')}>{t('notLabel', preferredLanguage)}</Label> {/* TODO: Add notLabel */}
                     </div>
                     {criterion.field && (
                         <div className='flex-grow min-w-[120px]'>
-                             {/* Use translated label */}
                             <Label htmlFor={`condition-${criterion._key}`} className='text-xs mb-1 block'>{t('conditionLabel', preferredLanguage)}</Label>
                             <Select value={criterion.condition} onValueChange={(value) => handleCriterionChange(criterion._key!, 'condition', value as SearchQueryElement['condition'])} disabled={!criterion.field} >
                                 <SelectTrigger id={`condition-${criterion._key}`} className='h-9 text-sm'><SelectValue /></SelectTrigger>
@@ -267,19 +264,16 @@ const SearchBar: React.FC<SearchBarProps> = ({
                     )}
                     {criterion.field && (
                         <div className={cn('flex-grow', fieldType === 'signaturePath' ? 'min-w-[250px]' : 'min-w-[180px]')}>
-                             {/* Use translated label */}
                             <Label htmlFor={`value-${criterion._key}`} className='text-xs mb-1 block'>{t('valueLabel', preferredLanguage)}</Label>
                             { fieldType === 'boolean' ? (
                                 <Select value={String(criterion.value ?? true)} onValueChange={(value) => handleCriterionChange(criterion._key!, 'value', value === 'true')} disabled={!criterion.field} >
                                     <SelectTrigger id={`value-${criterion._key}`} className='h-9 text-sm'><SelectValue /></SelectTrigger>
                                     <SelectContent>
-                                         {/* Use translated boolean labels */}
                                         <SelectItem value="true">{t('trueLabel', preferredLanguage)}</SelectItem>
                                         <SelectItem value="false">{t('falseLabel', preferredLanguage)}</SelectItem>
                                     </SelectContent>
                                 </Select>
                             ) : fieldType === 'select' && criterion.condition !== 'ANY_OF' ? (
-                                 // Use translated placeholder
                                 <Select value={String(criterion.value ?? '')} onValueChange={(value) => handleCriterionChange(criterion._key!, 'value', value)} disabled={!criterion.field} > <SelectTrigger id={`value-${criterion._key}`} className='h-9 text-sm'><SelectValue placeholder={t('selectPlaceholder', preferredLanguage)}/></SelectTrigger> <SelectContent> {(fieldOptions || []).map(opt => ( <SelectItem key={String(opt.value)} value={String(opt.value)}>{opt.label}</SelectItem> ))} </SelectContent> </Select>
                             ) : fieldType === 'tags' ? (
                                 <TagSelector selectedTagIds={Array.isArray(criterion.value) ? criterion.value as number[] : []} onChange={(selectedIds) => handleCriterionChange(criterion._key!, 'value', selectedIds)} availableTags={getTagsFromOptions(fieldOptions)} className='bg-card border-none p-0' />
@@ -291,12 +285,10 @@ const SearchBar: React.FC<SearchBarProps> = ({
                                     label="" // No extra label needed as it's clear from context
                                 />
                             ) : (
-                                 // Use translated placeholder
-                                <Input id={`value-${criterion._key}`} type={fieldType === 'number' ? 'number' : fieldType === 'date' ? 'date' : 'text'} value={Array.isArray(criterion.value) ? criterion.value.join(',') : criterion.value as string | number ?? ''} onChange={(e) => { const val = e.target.value; const isAnyOfSelect = fieldType === 'select' && criterion.condition === 'ANY_OF'; handleCriterionChange(criterion._key!, 'value', isAnyOfSelect ? val.split(',').map(s=>s.trim()).filter(Boolean) : val); }} placeholder={ fieldType === 'date' ? t('selectDatePlaceholder', preferredLanguage) : (fieldType === 'select' && criterion.condition === 'ANY_OF') ? 'value1, value2...' : t('enterValuePlaceholder', preferredLanguage) } disabled={!criterion.field} className='h-9 text-sm' /> // TODO: Add enterValuePlaceholder
+                                <Input id={`value-${criterion._key}`} type={fieldType === 'number' ? 'number' : fieldType === 'date' ? 'date' : 'text'} value={Array.isArray(criterion.value) ? criterion.value.join(',') : criterion.value as string | number ?? ''} onChange={(e) => { const val = e.target.value; const isAnyOfSelect = fieldType === 'select' && criterion.condition === 'ANY_OF'; handleCriterionChange(criterion._key!, 'value', isAnyOfSelect ? val.split(',').map(s=>s.trim()).filter(Boolean) : val); }} placeholder={ fieldType === 'date' ? t('selectDatePlaceholder', preferredLanguage) : (fieldType === 'select' && criterion.condition === 'ANY_OF') ? t('enterValuesPlaceholder', preferredLanguage) : t('enterValuePlaceholder', preferredLanguage) } disabled={!criterion.field} className='h-9 text-sm' /> // TODO: Add enterValuesPlaceholder
                             )}
                         </div>
                     )}
-                     {/* Use translated title */}
                     <Button variant="ghost" size="icon" onClick={() => handleRemoveCriterion(criterion._key!)} className='self-end text-muted-foreground hover:text-destructive h-9 w-9' title={t('removeFilterButton', preferredLanguage)} disabled={criteria.length <= 1 || fields.length === 0} >
                         <Trash2 className="h-4 w-4" />
                     </Button>
@@ -304,12 +296,9 @@ const SearchBar: React.FC<SearchBarProps> = ({
                 );
             })}
             <div className="flex justify-between items-center pt-2 flex-wrap gap-2">
-                 {/* Use translated button text */}
                 <Button type="button" variant="outline" onClick={handleAddCriterion} size="sm" disabled={fields.length === 0}> <PlusCircle className="mr-2 h-4 w-4" /> {t('addFilterButton', preferredLanguage)} </Button>
                 <div className="flex items-center gap-2">
-                     {/* Use translated button text */}
                     {showResetButton && ( <Button type="button" variant="ghost" onClick={handleResetClick} disabled={isLoading || !isCriteriaDirty} size='sm' title={t('resetFiltersButton', preferredLanguage)} > <RefreshCcw className={cn("mr-2 h-4 w-4", isLoading && "animate-spin")} /> {t('resetButton', preferredLanguage)} </Button> )}
-                     {/* Use translated button text */}
                     <Button type="button" onClick={handleSearchClick} disabled={isLoading || fields.length === 0} size='sm'> {isLoading && <LoadingSpinner size='sm' className='mr-2' />} <Search className="mr-2 h-4 w-4" /> {t('searchButton', preferredLanguage)} </Button>
                 </div>
             </div>

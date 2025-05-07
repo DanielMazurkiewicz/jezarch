@@ -13,6 +13,7 @@ import api from '@/lib/api';
 import type { Tag } from '../../../../backend/src/functionalities/tag/models';
 import { cn } from '@/lib/utils'; // Import cn
 import { t } from '@/translations/utils'; // Import translation utility
+import { toast } from "sonner"; // Import toast
 
 interface TagFormProps {
   tagToEdit: Tag | null;
@@ -61,7 +62,9 @@ const TagForm: React.FC<TagFormProps> = ({ tagToEdit, onSave }) => {
       }
       onSave();
     } catch (err: any) {
-      setError(err.message || 'Failed to save tag'); // TODO: Translate error
+      const msg = err.message || t('tagsSaveFailed', preferredLanguage, { message: '' }).replace(': {message}', ''); // Use translated error
+      setError(msg);
+      toast.error(t('errorMessageTemplate', preferredLanguage, { message: msg })); // Show toast as well
       console.error("Save Tag Error:", err);
     } finally {
       setIsLoading(false);
@@ -90,7 +93,7 @@ const TagForm: React.FC<TagFormProps> = ({ tagToEdit, onSave }) => {
 
        {/* Use translated button text */}
        <Button type="submit" disabled={isLoading} className="mt-2 justify-self-start"> {/* Align left */}
-        {isLoading ? <LoadingSpinner size="sm" className='mr-2' /> : (tagToEdit ? t('editButton', preferredLanguage) : t('createButton', preferredLanguage))} {t('tagsTitle', preferredLanguage, { count: 1 }).replace('Tags', 'Tag')} {/* Example of adapting plural key */}
+        {isLoading ? <LoadingSpinner size="sm" className='mr-2' /> : (tagToEdit ? t('editButton', preferredLanguage) : t('createButton', preferredLanguage))} {t('tagLabelSingular', preferredLanguage)}
       </Button>
     </form>
   );
