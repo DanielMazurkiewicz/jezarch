@@ -21,7 +21,7 @@ export let httpHostname: string | undefined = undefined;
 export let httpPort: number | undefined = undefined;
 export let httpsHostname: string | undefined = undefined;
 export let httpsPort: number | undefined = undefined;
-export const publicDir = path.resolve(import.meta.dir, '../../../frontend-react/dist');
+export const publicDir = path.resolve(import.meta.dir, '../../../frontend/dist');
 console.log(`* Serving static files from: ${publicDir}`);
 
 // --- Helper Functions ---

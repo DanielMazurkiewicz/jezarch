@@ -1,8 +1,8 @@
 {
   "scripts": {
     "dump-frontend": "~/task/code/dump ./backend/",
-    "dump-backend": "~/task/code/dump ./frontend-react",
-    "dump": "~/task/code/dump ./backend/ && ~/task/code/dump ./frontend-react -a",
+    "dump-backend": "~/task/code/dump ./frontend",
+    "dump": "~/task/code/dump ./backend/ && ~/task/code/dump ./frontend -a",
     "check-frontend": "~/task/code/dump",
     "check-backend": "~/task/code/dump"
   },
