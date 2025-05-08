@@ -1,5 +1,8 @@
 // Responsible for loading and providing access to translation sets.
+// --- UPDATED: Import frontend defaultLanguage ---
 import type { AllTranslations, SupportedLanguage, TranslationSet, AppTranslationKey } from './models';
+import { defaultLanguage as frontendDefaultLanguage } from './models'; // Use default from models
+// -------------------------------------------------
 import { authTranslationsEN } from './data/en/auth';
 import { authTranslationsPL } from './data/pl/auth';
 import { commonTranslationsEN } from './data/en/common';
@@ -44,12 +47,15 @@ const loadedTranslations: AllTranslations = {
 
 /**
  * Retrieves the complete translation set for a given language.
+ * Falls back to the frontend default language if the requested language is not found.
  *
  * @param lang The desired language code.
- * @returns The TranslationSet for the language, or undefined if not found.
+ * @returns The TranslationSet for the language.
  */
-export const getTranslationsForLanguage = (lang: SupportedLanguage): TranslationSet<AppTranslationKey> | undefined => {
-  return loadedTranslations[lang];
+export const getTranslationsForLanguage = (lang: SupportedLanguage): TranslationSet<AppTranslationKey> => {
+  // --- UPDATED: Fallback to frontend default language ---
+  return loadedTranslations[lang] || loadedTranslations[frontendDefaultLanguage];
+  // ---------------------------------------------------
 };
 
 /**

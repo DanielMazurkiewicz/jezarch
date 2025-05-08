@@ -11,7 +11,7 @@ import ErrorDisplay from '@/components/shared/ErrorDisplay';
 import LoadingSpinner from '@/components/shared/LoadingSpinner';
 import { cn } from '@/lib/utils';
 // Updated imports: Get types and function from new locations
-import { type SupportedLanguage } from '@/translations/models/auth';
+import { type SupportedLanguage } from '@/translations/models'; // Use frontend model type
 import { t } from '@/translations/utils';
 
 interface LoginFormProps {
@@ -20,6 +20,7 @@ interface LoginFormProps {
 }
 
 const LoginForm: React.FC<LoginFormProps> = ({ onSwitchToRegister, currentLanguage }) => {
+  // Get isLoading directly from useAuth, which reflects initial lang fetch too
   const { login, isLoading, error, clearError } = useAuth();
   const { register, handleSubmit, formState: { errors } } = useForm<LoginFormData>({
     resolver: zodResolver(loginSchema),
@@ -28,8 +29,8 @@ const LoginForm: React.FC<LoginFormProps> = ({ onSwitchToRegister, currentLangua
 
   const onSubmit = async (data: LoginFormData) => {
     clearError();
-    // Pass currentLanguage (selected in AuthLayout) to the login function
-    const success = await login(data, currentLanguage);
+    // Login function no longer needs language passed here
+    const success = await login(data);
     if (!success) {
         console.error("Login attempt failed.");
     }
@@ -54,6 +55,8 @@ const LoginForm: React.FC<LoginFormProps> = ({ onSwitchToRegister, currentLangua
                 {...register("login")}
                 aria-invalid={errors.login ? "true" : "false"}
                 className={cn(errors.login && "border-destructive focus-visible:ring-destructive")}
+                // Disable input while auth context is loading
+                disabled={isLoading}
              />
             {errors.login && <p className="text-xs text-destructive font-medium">{errors.login.message}</p>}
           </div>
@@ -67,11 +70,14 @@ const LoginForm: React.FC<LoginFormProps> = ({ onSwitchToRegister, currentLangua
                 {...register("password")}
                 aria-invalid={errors.password ? "true" : "false"}
                 className={cn(errors.password && "border-destructive focus-visible:ring-destructive")}
+                // Disable input while auth context is loading
+                disabled={isLoading}
             />
             {errors.password && <p className="text-xs text-destructive font-medium">{errors.password.message}</p>}
           </div>
         </CardContent>
         <CardFooter className="flex flex-col gap-4 px-6 pb-6 pt-4">
+           {/* Disable button while auth context is loading */}
           <Button type="submit" className="w-full" disabled={isLoading}>
              {isLoading ? <LoadingSpinner size="sm" className="mr-2" /> : t('signInButton', currentLanguage)}
           </Button>
@@ -82,6 +88,8 @@ const LoginForm: React.FC<LoginFormProps> = ({ onSwitchToRegister, currentLangua
                     type="button"
                     onClick={onSwitchToRegister}
                     className="p-0 h-auto font-semibold text-primary hover:underline"
+                    // Disable button while auth context is loading
+                    disabled={isLoading}
                 >
                     {t('registerLink', currentLanguage)}
                 </Button>

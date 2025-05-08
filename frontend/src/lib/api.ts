@@ -162,6 +162,11 @@ interface RegisterPayload extends UserCredentials {
     preferredLanguage?: SupportedLanguage;
 }
 
+// --- NEW: Type for public default language endpoint ---
+interface DefaultLanguageResponse {
+    defaultLanguage: SupportedLanguage;
+}
+
 
 // --- API Function Exports (Updated Config section) ---
 const getApiStatus = () => fetchApi<{ message: string }>("/api/status");
@@ -179,8 +184,12 @@ const changePassword = (passwords: { oldPassword: string; password: string; }, t
 const adminSetUserPassword = (login: string, password: string, token: string) => fetchApi<{ success: boolean }>(`/user/by-login/${login}/set-password`, "PATCH", { password }, token);
 const getAssignedTagsForUser = (login: string, token: string) => fetchApi<Tag[]>(`/user/by-login/${login}/tags`, "GET", null, token);
 const assignTagsToUser = (login: string, tagIds: number[], token: string) => fetchApi<Tag[]>(`/user/by-login/${login}/tags`, "PUT", { tagIds }, token);
+// --- UPDATED: getConfig requires auth ---
 const getConfig = <K extends AppConfigKeys>(key: K, token: string) => fetchApi<GetConfigResponse<K>>(`/configs/${key}`, "GET", null, token);
 const setConfig = (key: AppConfigKeys, value: string | null, token: string) => fetchApi<{ message: string }>(`/configs/${key}`, "PUT", { value }, token);
+// --- NEW: Public endpoint for default language ---
+const getDefaultLanguage = () => fetchApi<DefaultLanguageResponse>("/config/default-language", "GET", null, null);
+// -------------------------------------------------
 const clearHttpsConfig = (token: string) => fetchApi<{ message: string }>("/config/https", "DELETE", null, token);
 const searchLogs = (searchRequest: SearchRequest, token: string) => fetchApi<SearchResponse<LogEntry>>("/logs/search", "POST", searchRequest, token);
 const purgeLogs = (days: number, token: string) => fetchApi<PurgeLogsResponse>(`/logs/purge?days=${days}`, "DELETE", null, token);
@@ -219,7 +228,8 @@ export default {
     getApiStatus, pingApi, login, logout, register, getAllUsers, getUserByLogin,
     updateUserRole, changePassword, adminSetUserPassword,
     getAssignedTagsForUser, assignTagsToUser, updateUserPreferredLanguage,
-    getConfig, setConfig, clearHttpsConfig,
+    getConfig, setConfig, getDefaultLanguage, // Added getDefaultLanguage
+    clearHttpsConfig,
     searchLogs, purgeLogs,
     createTag, getAllTags, getTagById, updateTag, deleteTag,
     createNote, getNoteById, updateNote, deleteNote, getNotesByLogin, searchNotes,

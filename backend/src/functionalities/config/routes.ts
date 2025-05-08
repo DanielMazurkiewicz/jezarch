@@ -1,17 +1,22 @@
-import { getConfigController, setConfigController, clearHttpsConfigController } from './controllers';
+import { getConfigController, setConfigController, clearHttpsConfigController, getDefaultLanguageController } from './controllers';
 // Removed sslControllers import as those routes are gone
 
 export const configRoutes = {
-    // Route remains the same, uses :key parameter
-    '/api/configs/:key': {
-        GET: getConfigController,
-        PUT: setConfigController, // Handles key from URL, value from body
-    },
-    // --- NEW: Route to clear all HTTPS settings ---
-    '/api/config/https': {
-        DELETE: clearHttpsConfigController, // Use DELETE method for clearing action
+    // --- NEW: Public route for default language ---
+    '/api/config/default-language': {
+      GET: getDefaultLanguageController, // Publicly accessible
     },
     // --- END NEW ROUTE ---
+
+    // Authenticated routes for getting/setting specific configs
+    '/api/configs/:key': {
+        GET: getConfigController, // Requires authentication (admin/employee depending on key)
+        PUT: setConfigController, // Requires admin authentication
+    },
+    // Route to clear all HTTPS settings (Admin only)
+    '/api/config/https': {
+        DELETE: clearHttpsConfigController, // Requires admin authentication
+    },
 
     // Removed specific SSL upload/generate routes
     // '/api/config/ssl/upload': { ... },

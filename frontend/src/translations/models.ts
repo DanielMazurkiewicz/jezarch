@@ -1,7 +1,9 @@
 // Defines the supported languages for the application.
 export const supportedLanguages = ['en', 'pl'] as const;
 export type SupportedLanguage = typeof supportedLanguages[number];
+// --- Define frontend default language ---
 export const defaultLanguage: SupportedLanguage = 'en';
+// ----------------------------------------
 
 // Import key types from their respective modules
 import type { AuthTranslationKey } from './models/auth';

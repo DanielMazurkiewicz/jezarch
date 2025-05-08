@@ -13,7 +13,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { CheckCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 // Updated imports: Get types and function from new locations
-import { type SupportedLanguage } from '@/translations/models/auth';
+import { type SupportedLanguage } from '@/translations/models'; // Use frontend model type
 import { t } from '@/translations/utils';
 
 interface RegisterFormProps {
@@ -22,6 +22,7 @@ interface RegisterFormProps {
 }
 
 const RegisterForm: React.FC<RegisterFormProps> = ({ onSwitchToLogin, currentLanguage }) => {
+  // Get isLoading directly from useAuth
   const { register: registerUser, isLoading, error, clearError } = useAuth();
   const [isSuccess, setIsSuccess] = useState(false);
   const { register, handleSubmit, formState: { errors } } = useForm<RegisterFormData>({
@@ -75,6 +76,8 @@ const RegisterForm: React.FC<RegisterFormProps> = ({ onSwitchToLogin, currentLan
                         {...register("login")}
                         aria-invalid={errors.login ? "true" : "false"}
                         className={cn(errors.login && "border-destructive focus-visible:ring-destructive")}
+                        // Disable input while auth context is loading
+                        disabled={isLoading}
                     />
                     {errors.login && <p className="text-xs text-destructive font-medium">{errors.login.message}</p>}
                 </div>
@@ -88,6 +91,8 @@ const RegisterForm: React.FC<RegisterFormProps> = ({ onSwitchToLogin, currentLan
                         {...register("password")}
                         aria-invalid={errors.password ? "true" : "false"}
                         className={cn(errors.password && "border-destructive focus-visible:ring-destructive")}
+                        // Disable input while auth context is loading
+                        disabled={isLoading}
                     />
                     {errors.password && <p className="text-xs text-destructive font-medium">{errors.password.message}</p>}
                 </div>
@@ -101,11 +106,14 @@ const RegisterForm: React.FC<RegisterFormProps> = ({ onSwitchToLogin, currentLan
                         {...register("confirmPassword")}
                         aria-invalid={errors.confirmPassword ? "true" : "false"}
                         className={cn(errors.confirmPassword && "border-destructive focus-visible:ring-destructive")}
+                        // Disable input while auth context is loading
+                        disabled={isLoading}
                     />
                     {errors.confirmPassword && <p className="text-xs text-destructive font-medium">{errors.confirmPassword.message}</p>}
                 </div>
             </CardContent>
             <CardFooter className="flex flex-col gap-4 px-6 pb-6 pt-4">
+                 {/* Disable button while auth context is loading */}
                 <Button type="submit" className="w-full" disabled={isLoading}>
                     {isLoading ? <LoadingSpinner size="sm" className="mr-2" /> : t('createAccountButton', currentLanguage)}
                 </Button>
@@ -116,6 +124,8 @@ const RegisterForm: React.FC<RegisterFormProps> = ({ onSwitchToLogin, currentLan
                         type="button"
                         onClick={onSwitchToLogin}
                         className="p-0 h-auto font-semibold text-primary hover:underline"
+                        // Disable button while auth context is loading
+                        disabled={isLoading}
                     >
                         {t('loginLink', currentLanguage)}
                     </Button>

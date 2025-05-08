@@ -10,6 +10,30 @@ import { AppParams } from '../../initialization/app_params'; // Import AppParams
 import { existsSync } from 'node:fs'; // To check file existence before setting
 
 
+// --- NEW: Public Controller for Default Language ---
+export const getDefaultLanguageController = async (req: BunRequest) => {
+    try {
+        // Fetch directly from AppParams to reflect the *currently active* value
+        const defaultLanguage = AppParams.defaultLanguage;
+        // Log if needed (consider rate limiting or reducing frequency)
+        // await Log.info(`Public request for default language: ${defaultLanguage}`, 'public_api', 'config');
+        return new Response(JSON.stringify({ defaultLanguage }), {
+            status: 200,
+            headers: { 'Content-Type': 'application/json' }
+        });
+    } catch (error: any) {
+        // Avoid logging sensitive details in public endpoint error
+        console.error(`Error fetching default language for public request: ${error.message}`);
+        await Log.error('Error getting default language (public)', 'system', 'config_public', error);
+        return new Response(JSON.stringify({ message: 'Failed to get default language setting.' }), {
+            status: 500,
+            headers: { 'Content-Type': 'application/json' }
+        });
+    }
+};
+// --- END NEW CONTROLLER ---
+
+
 export const getConfigController = async (req: BunRequest<":key">) => {
     const sessionAndUser = await getSessionAndUser(req);
     if (!sessionAndUser) return new Response("Unauthorized", { status: 401 });
@@ -22,20 +46,31 @@ export const getConfigController = async (req: BunRequest<":key">) => {
         AppConfigKeys.HTTPS_CA_PATH,
     ];
 
-    // Basic Access Control (Admin can see all, Employee can see non-sensitive)
-    if (!isAllowedRole(sessionAndUser, 'admin')) {
-        if (sensitiveKeys.includes(key) || !Object.values(AppConfigKeys).includes(key)) {
-             await Log.warn(`Non-admin attempt to access sensitive/unknown config key: ${key}`, sessionAndUser.user.login, 'config');
-             return new Response("Forbidden: Access denied for this configuration key", { status: 403 });
-        }
-        // Allow employees to see non-sensitive keys like ports and language
-         if (!isAllowedRole(sessionAndUser, 'employee')) {
-              // If not even employee, deny access to all config keys via API
-             return new Response("Forbidden", { status: 403 });
-         }
-    }
+    // --- UPDATED: Allow Employee to read Default Language ---
+    const nonSensitiveKeysForEmployee: AppConfigKeys[] = [
+         AppConfigKeys.DEFAULT_LANGUAGE,
+         AppConfigKeys.HTTP_PORT,
+         AppConfigKeys.HTTPS_PORT,
+    ];
 
-    // If key is not valid enum value
+    // Basic Access Control
+    if (!isAllowedRole(sessionAndUser, 'admin')) {
+        // If employee, allow access only to specific non-sensitive keys
+        if (isAllowedRole(sessionAndUser, 'employee')) {
+            if (!nonSensitiveKeysForEmployee.includes(key)) {
+                 await Log.warn(`Employee attempt to access restricted/unknown config key: ${key}`, sessionAndUser.user.login, 'config');
+                 return new Response("Forbidden: Access denied for this configuration key", { status: 403 });
+            }
+        } else {
+             // If not admin or employee, deny all config access via this authenticated route
+             await Log.warn(`Unauthorized role (${sessionAndUser.user.role}) attempt to access config key: ${key}`, sessionAndUser.user.login, 'config');
+             return new Response("Forbidden", { status: 403 });
+        }
+    }
+    // --- END ACCESS CONTROL UPDATE ---
+
+
+    // If key is not valid enum value (even for admin)
     if (!Object.values(AppConfigKeys).includes(key)) {
          await Log.warn(`Attempt to access invalid config key: ${key}`, sessionAndUser.user.login, 'config');
          return new Response(JSON.stringify({ message: "Invalid configuration key requested." }), {
@@ -64,7 +99,7 @@ export const getConfigController = async (req: BunRequest<":key">) => {
          displayValue = value; // Start with the actual value
 
         // --- Mask sensitive values for non-admins (even if admin check passed, extra safety) ---
-        if (sensitiveKeys.includes(key)) {
+        if (sensitiveKeys.includes(key) && !isAllowedRole(sessionAndUser, 'admin')) { // Check role again for masking
             // Return a placeholder or existence status instead of the actual path
              displayValue = value ? "*** SET (Path Hidden) ***" : null; // Show if set, otherwise null
         }
@@ -130,9 +165,15 @@ export const setConfigController = async (req: BunRequest<":key">) => {
                  break;
              case AppConfigKeys.DEFAULT_LANGUAGE:
                  originalValue = AppParams.defaultLanguage;
-                 if (value === null || value.trim().length < 2) {
-                     return new Response(JSON.stringify({ message: 'Invalid Default Language value. Must be at least 2 characters.' }), { status: 400 });
+                 // --- UPDATED: Validate against known supported languages ---
+                 if (value === null || !existsSync(value)) { // Re-using existsSync logic doesn't fit, use explicit check
+                    // Correct the check to ensure the value is one of the supported languages
+                    const supportedLangs = ['en', 'pl']; // Assuming these are your supported languages
+                    if (value === null || !supportedLangs.includes(value)) {
+                         return new Response(JSON.stringify({ message: `Invalid Default Language value. Must be one of: ${supportedLangs.join(', ')}.` }), { status: 400 });
+                    }
                  }
+                 // --- END UPDATE ---
                  processedValue = value.trim();
                  break;
              case AppConfigKeys.HTTPS_KEY_PATH:

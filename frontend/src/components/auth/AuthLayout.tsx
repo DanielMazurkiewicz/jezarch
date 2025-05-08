@@ -12,65 +12,58 @@ import { supportedLanguages as appSupportedLanguages, defaultLanguage as appDefa
 // Import the translation function from the new utils file
 import { t } from '@/translations/utils';
 import { useAuth } from '@/hooks/useAuth'; // Import useAuth to update context
+import LoadingSpinner from '@/components/shared/LoadingSpinner'; // Import LoadingSpinner
 
 interface AuthLayoutProps {
   children: React.ReactNode;
-  // Add a prop to receive language changes from child forms if needed later
-  // onLanguageChange?: (lang: AppSupportedLanguage) => void;
 }
 
 const AuthLayout: React.FC<AuthLayoutProps> = ({ children }) => {
-  const { user, setContextPreferredLanguage } = useAuth(); // Get setContextPreferredLanguage
+  // Get language and loading state directly from useAuth
+  const { isLoading, preferredLanguage, setContextPreferredLanguage } = useAuth();
 
-  // Initialize language from AuthContext if user is loaded, otherwise from localStorage or default
-  const getInitialLanguage = (): AppSupportedLanguage => {
-      // Check if user language is valid
-      const userLang = user?.preferredLanguage;
-      if (userLang && appSupportedLanguages.includes(userLang)) {
-          return userLang;
-      }
-      // Check localStorage language
-      const storedLang = localStorage.getItem('authPreferredLanguage') as AppSupportedLanguage | null;
-      if (storedLang && appSupportedLanguages.includes(storedLang)) {
-          return storedLang;
-      }
-      // Fallback to default
-      return appDefaultLanguage;
-  };
+  // Local state to manage the language *displayed* in the select component
+  // Initialize with the language from context, which is now determined reliably on load
+  const [displayLanguage, setDisplayLanguage] = useState<AppSupportedLanguage>(preferredLanguage);
 
-
-  const [selectedLanguage, setSelectedLanguage] = useState<AppSupportedLanguage>(getInitialLanguage());
-
-  // Update component's selectedLanguage if AuthContext's user.preferredLanguage changes or on initial mount
+  // Update local display language if context language changes (e.g., after login/logout or fetch)
   useEffect(() => {
-      const currentContextLang = getInitialLanguage();
-      if (selectedLanguage !== currentContextLang) {
-          setSelectedLanguage(currentContextLang);
-      }
-  }, [user?.preferredLanguage]); // Re-run when user's language in context changes
+    if (preferredLanguage !== displayLanguage) {
+      setDisplayLanguage(preferredLanguage);
+    }
+  }, [preferredLanguage, displayLanguage]);
 
 
   const handleLanguageChange = (lang: AppSupportedLanguage) => {
     if (appSupportedLanguages.includes(lang)) {
-        setSelectedLanguage(lang);
-        setContextPreferredLanguage(lang); // Update language in AuthContext and localStorage
-        console.log("Auth page language preference changed to:", lang);
+        setDisplayLanguage(lang); // Update local display state immediately
+        setContextPreferredLanguage(lang); // Update global context and localStorage
+        console.log("AuthLayout: Language preference changed to:", lang);
     }
   };
+
+  // Show loading spinner while initial language/auth check is happening
+  if (isLoading) {
+    return (
+       <div className="flex flex-col justify-center items-center min-h-screen w-full bg-muted/40 p-4">
+          <LoadingSpinner />
+       </div>
+    );
+  }
 
   return (
     <div className="flex flex-col justify-center items-center min-h-screen w-full bg-muted/40 p-4">
       {/* Language Picker - Positioned at the top right */}
       <div className="absolute top-4 right-4">
         <Select
-          value={selectedLanguage}
+          value={displayLanguage} // Use local display language
           onValueChange={(value) => handleLanguageChange(value as AppSupportedLanguage)}
         >
           <SelectTrigger className="w-[150px] h-9 bg-background">
             <div className="flex items-center gap-1.5">
               <Languages className="h-4 w-4 text-muted-foreground" />
-              {/* Use the t function for the placeholder label */}
-              <SelectValue placeholder={t('languagePickerLabel', selectedLanguage)} />
+              {/* Use the t function for the placeholder label, based on displayLanguage */}
+              <SelectValue placeholder={t('languagePickerLabel', displayLanguage)} />
             </div>
           </SelectTrigger>
           <SelectContent>
@@ -85,13 +78,11 @@ const AuthLayout: React.FC<AuthLayoutProps> = ({ children }) => {
       </div>
 
       {/* Main Auth Content (Login/Register Form) */}
-      {/* Pass current language to child forms */}
+      {/* Pass current display language to child forms */}
       {React.Children.map(children, child => {
         if (React.isValidElement(child)) {
-          // Pass current language state to child components (LoginForm, RegisterForm)
-          // This ensures they use the language selected in the layout
           // @ts-ignore // TypeScript might complain about adding props to React.ReactNode
-          return React.cloneElement(child, { currentLanguage: selectedLanguage });
+          return React.cloneElement(child, { currentLanguage: displayLanguage });
         }
         return child;
       })}
