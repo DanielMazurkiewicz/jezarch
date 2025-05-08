@@ -12,14 +12,13 @@ const buttonVariants = cva(
         default:
           "bg-primary text-primary-foreground shadow-xs hover:bg-primary/90",
         destructive:
-          // Removed custom disabled styles, will use global disabled:opacity-50
-          "bg-destructive text-destructive-foreground shadow-xs hover:bg-destructive/90 focus-visible:ring-destructive/20 dark:focus-visible:ring-destructive/40 dark:bg-destructive/60",
+          "bg-destructive text-destructive-foreground shadow-xs hover:bg-destructive/90 focus-visible:ring-destructive/20 dark:focus-visible:ring-destructive/40", // Removed dark:bg-destructive/60 as bg is forced white now
         outline:
-          "border bg-background shadow-xs hover:bg-accent hover:text-accent-foreground dark:bg-input/30 dark:border-input dark:hover:bg-input/50",
+          "border bg-white text-neutral-900 shadow-xs hover:bg-neutral-100 hover:text-neutral-900 dark:bg-white dark:text-neutral-900 dark:border-neutral-300 dark:hover:bg-neutral-100", // Force white bg, neutral text/border
         secondary:
-          "bg-secondary text-secondary-foreground shadow-xs hover:bg-secondary/80",
+          "bg-secondary text-secondary-foreground shadow-xs hover:bg-secondary/80", // Secondary should work on white
         ghost:
-          "hover:bg-accent hover:text-accent-foreground dark:hover:bg-accent/50",
+          "text-neutral-900 hover:bg-neutral-100 hover:text-neutral-900 dark:text-neutral-900 dark:hover:bg-neutral-100", // Adjusted for white bg
         link: "text-primary underline-offset-4 hover:underline",
       },
       size: {

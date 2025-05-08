@@ -56,12 +56,14 @@ const Sidebar: React.FC<SidebarProps> = ({ className }) => {
 
   return (
     <aside className={cn(
-      "w-64 bg-sidebar text-sidebar-foreground border-r border-sidebar-border flex flex-col",
+      // Force white background, adjust text/border for contrast
+      "w-64 bg-white dark:bg-white text-neutral-700 border-r border-neutral-200 flex flex-col",
       className
     )}>
-       <div className="p-4 border-b border-sidebar-border">
-         <h2 className="text-lg font-semibold">JezArch FE</h2>
-         {user && <span className="text-sm text-muted-foreground block truncate">{t('sidebarLoggedInAs', preferredLanguage)} {user.login} ({user.role})</span>}
+       {/* Header - Adjust text/border */}
+       <div className="p-4 border-b border-neutral-200">
+         <h2 className="text-lg font-semibold text-neutral-900">JezArch FE</h2>
+         {user && <span className="text-sm text-neutral-600 block truncate">{t('sidebarLoggedInAs', preferredLanguage)} {user.login} ({user.role})</span>}
        </div>
 
       <ScrollArea className="flex-1 px-4 py-2">
@@ -73,11 +75,12 @@ const Sidebar: React.FC<SidebarProps> = ({ className }) => {
               end={item.exact}
               className={({ isActive }) =>
                 cn(
-                  "inline-flex items-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50",
+                  "inline-flex items-center whitespace-nowrap rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50",
                   "justify-start px-3 py-2",
+                  // Adjust hover/active states for white background
                   (isActive || (item.exact ? location.pathname === item.path : location.pathname.startsWith(item.path + '/'))) // Adjusted active check
-                    ? "bg-sidebar-accent text-sidebar-accent-foreground font-semibold"
-                    : "hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+                    ? "bg-neutral-100 text-neutral-900 font-semibold" // Active state: light gray bg, dark text
+                    : "hover:bg-neutral-100 hover:text-neutral-900 text-neutral-700" // Default/Hover state
                 )
               }
             >
@@ -88,8 +91,9 @@ const Sidebar: React.FC<SidebarProps> = ({ className }) => {
         </nav>
       </ScrollArea>
 
-       <div className="p-4 mt-auto border-t border-sidebar-border">
-         <Button variant="outline" className="w-full justify-start" onClick={handleLogout}>
+       {/* Footer - Adjust border, button variant */}
+       <div className="p-4 mt-auto border-t border-neutral-200">
+         <Button variant="outline" className="w-full justify-start text-neutral-700 border-neutral-300 hover:bg-neutral-100 hover:text-neutral-900" onClick={handleLogout}>
            <LogOut className="mr-2 h-4 w-4" />
            {t('headerLogout', preferredLanguage)}
          </Button>

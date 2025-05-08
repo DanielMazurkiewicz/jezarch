@@ -142,8 +142,8 @@ const LogViewer: React.FC = () => {
    const getBadgeVariant = (level: string): BadgeVariant => {
         switch (level.toLowerCase()) {
             case 'error': return 'destructive';
-            case 'warn': return 'secondary'; // Or choose another color
-            case 'info': return 'outline';
+            case 'warn': return 'secondary'; // Use secondary (light gray) for warn on white bg
+            case 'info': return 'outline'; // Use outline (white bg, gray border/text) for info on white bg
             default: return 'secondary';
         }
    };
@@ -160,13 +160,14 @@ const LogViewer: React.FC = () => {
 
     // Render the component within a Card - forced white background
     return (
-        <Card className="bg-white dark:bg-white text-neutral-900 dark:text-neutral-900">
+        // Card is forced white
+        <Card>
             <CardHeader>
                  <CardTitle>{t('logViewerTitle', preferredLanguage)}</CardTitle>
                  <CardDescription>{t('logViewerDescription', preferredLanguage)}</CardDescription>
             </CardHeader>
             <CardContent className='space-y-4'> {/* Add spacing inside content */}
-                 {/* Log Search Bar */}
+                 {/* Log Search Bar - forced white */}
                  <SearchBar
                      fields={[ // Define searchable fields with translated labels
                          { value: 'level', label: t('logsLevelColumn', preferredLanguage), type: 'select', options: [{value: 'info', label: t('logLevelInfo', preferredLanguage)}, {value: 'warn', label: t('logLevelWarn', preferredLanguage)}, {value: 'error', label: t('logLevelError', preferredLanguage)}]},
@@ -179,11 +180,11 @@ const LogViewer: React.FC = () => {
                      isLoading={isLoading || isPurging}
                  />
 
-                 {/* --- NEW: Purge Controls --- */}
-                  <div className="flex flex-wrap items-center justify-end gap-2 p-2 border rounded-lg bg-muted">
+                 {/* --- Purge Controls - Use light gray bg --- */}
+                  <div className="flex flex-wrap items-center justify-end gap-2 p-2 border rounded-lg bg-neutral-50"> {/* Changed bg-muted to bg-neutral-50 */}
                      {purgeError && <ErrorDisplay message={purgeError} className="mr-auto"/>}
                      <div className="flex items-center gap-2 ml-auto">
-                         <span className="text-sm text-muted-foreground">{t('purgeLogsOlderThanLabel', preferredLanguage)}</span>
+                         <span className="text-sm text-neutral-600">{t('purgeLogsOlderThanLabel', preferredLanguage)}</span> {/* Adjusted text color */}
                          <Input
                              type="number"
                              value={purgeDays}
@@ -193,7 +194,7 @@ const LogViewer: React.FC = () => {
                              disabled={isPurging}
                              aria-label={t('daysLabel', preferredLanguage)} // Add aria-label
                          />
-                         <span className="text-sm text-muted-foreground">{t('daysLabel', preferredLanguage)}</span>
+                         <span className="text-sm text-neutral-600">{t('daysLabel', preferredLanguage)}</span> {/* Adjusted text color */}
                           <AlertDialog open={isPurgeConfirmOpen} onOpenChange={setIsPurgeConfirmOpen}>
                              <AlertDialogTrigger asChild>
                                  <Button variant="destructive" size="sm" disabled={isPurging || purgeDays <= 0}>
@@ -201,6 +202,7 @@ const LogViewer: React.FC = () => {
                                      {t('purgeButton', preferredLanguage)}
                                  </Button>
                              </AlertDialogTrigger>
+                             {/* AlertDialogContent is forced white */}
                              <AlertDialogContent>
                                  <AlertDialogHeader>
                                      <AlertDialogTitle>{t('confirmLogPurgeTitle', preferredLanguage)}</AlertDialogTitle>
@@ -233,7 +235,8 @@ const LogViewer: React.FC = () => {
                     <div className="border rounded-lg overflow-hidden">
                         <div className='max-h-[60vh] overflow-y-auto relative'> {/* Add relative positioning */}
                              <Table>
-                                 <TableHeader className='sticky top-0 bg-white dark:bg-white z-10'> {/* Ensure header is white */}
+                                 {/* TableHeader forced white */}
+                                 <TableHeader className='sticky top-0 bg-white dark:bg-white z-10'>
                                     <TableRow>
                                         <TableHead className='w-[180px]'>{t('logsTimestampColumn', preferredLanguage)}</TableHead>
                                         <TableHead className='w-[100px]'>{t('logsLevelColumn', preferredLanguage)}</TableHead>
@@ -246,19 +249,21 @@ const LogViewer: React.FC = () => {
                                  <TableBody>
                                     {logs.map((log) => (
                                         <React.Fragment key={log.id}>
+                                            {/* TableRow uses light gray hover */}
                                             <TableRow>
                                                 <TableCell className='text-xs'>{new Date(log.createdOn).toLocaleString()}</TableCell>
                                                 <TableCell>
                                                     <Badge variant={getBadgeVariant(log.level)} className='capitalize'>{getLogLevelText(log.level)}</Badge>
                                                 </TableCell>
-                                                 <TableCell className='text-xs'>{log.userId || <i className='text-muted-foreground not-italic'>{t('logUserSystem', preferredLanguage)}</i>}</TableCell>
-                                                 <TableCell className='text-xs'>{log.category || <i className='text-muted-foreground not-italic'>{t('logCategoryGeneral', preferredLanguage)}</i>}</TableCell>
+                                                 <TableCell className='text-xs'>{log.userId || <i className='text-neutral-500 not-italic'>{t('logUserSystem', preferredLanguage)}</i>}</TableCell> {/* Adjusted muted color */}
+                                                 <TableCell className='text-xs'>{log.category || <i className='text-neutral-500 not-italic'>{t('logCategoryGeneral', preferredLanguage)}</i>}</TableCell> {/* Adjusted muted color */}
                                                 <TableCell className='text-sm'>{log.message}</TableCell>
                                                 {/* Data Icon Cell */}
                                                 <TableCell className='text-center'>
                                                     {log.data && (
+                                                         // Use adjusted ghost button style
                                                         <Button variant="ghost" size="icon" onClick={() => handleShowData(log.data)} className="h-6 w-6" title={t('viewButton', preferredLanguage) + ' ' + t('detailsLabel', preferredLanguage).toLowerCase()}>
-                                                            <Info className="h-4 w-4 text-muted-foreground" />
+                                                            <Info className="h-4 w-4 text-neutral-500" /> {/* Adjusted muted color */}
                                                         </Button>
                                                     )}
                                                 </TableCell>
@@ -273,7 +278,8 @@ const LogViewer: React.FC = () => {
 
                  {/* Empty State */}
                  {!isLoading && !error && logs.length === 0 && (
-                    <p className='text-muted-foreground text-center py-6'>{t('noLogsFound', preferredLanguage)}</p>
+                    // Moved comment outside the JSX element
+                    <p className='text-neutral-500 text-center py-6'>{t('noLogsFound', preferredLanguage)}</p> /* Adjusted muted color */
                  )}
 
                  {/* Pagination */}
@@ -288,16 +294,16 @@ const LogViewer: React.FC = () => {
                  )}
             </CardContent>
 
-            {/* Data Dialog */}
+            {/* Data Dialog is forced white */}
             <Dialog open={isDataDialogOpen} onOpenChange={setIsDataDialogOpen}>
                 <DialogContent className="sm:max-w-2xl">
                     <DialogHeader>
                         <DataDialogTitle>{t('logDataDialogTitle', preferredLanguage)}</DataDialogTitle>
                     </DialogHeader>
-                    {/* Use ScrollArea here */}
-                    <ScrollArea className="max-h-[60vh] my-4 border rounded p-3 bg-muted">
-                        <pre className='text-xs overflow-auto'>
-                           {viewingData || t('noAdditionalData', preferredLanguage)}
+                    {/* Use ScrollArea here - Use light gray bg */}
+                    <ScrollArea className="max-h-[60vh] my-4 border rounded p-3 bg-neutral-50">
+                        <pre className='text-xs overflow-auto text-neutral-800'> {/* Ensure text contrast */}
+                           {viewingData || <i className="text-neutral-500">{t('noAdditionalData', preferredLanguage)}</i>} {/* Adjusted muted color */}
                         </pre>
                     </ScrollArea>
                     <DialogFooter>

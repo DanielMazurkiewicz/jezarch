@@ -66,9 +66,10 @@ function DropdownMenuSubTrigger({
     <DropdownMenuPrimitive.SubTrigger
       data-slot="dropdown-menu-sub-trigger"
       className={cn(
-        // Ensure focus state uses appropriate accent color for the popover background
-        "focus:bg-accent focus:text-accent-foreground data-[state=open]:bg-accent data-[state=open]:text-accent-foreground", // Assuming accent/accent-foreground work on the forced background
-        "[&_svg:not([class*='text-'])]:text-muted-foreground",
+        // Adjust focus/selected colors for white background
+        "focus:bg-neutral-100 focus:text-neutral-900 data-[state=open]:bg-neutral-100 data-[state=open]:text-neutral-900",
+        // Ensure default text/icon colors contrast with white
+        "text-neutral-900 [&_svg:not([class*='text-'])]:text-neutral-500",
         "flex cursor-default items-center gap-2 rounded-sm px-2 py-1.5 text-sm outline-none select-none [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
         inset && "pl-8",
         className
@@ -136,7 +137,8 @@ function DropdownMenuItem({
       className={cn(
         // Adjust focus/selected colors for white background
         "focus:bg-neutral-100 focus:text-neutral-900",
-        "[&_svg:not([class*='text-'])]:text-neutral-500", // Icon color
+        // Ensure default text/icon colors contrast with white
+        "text-neutral-900 [&_svg:not([class*='text-'])]:text-neutral-500",
         "relative flex cursor-default items-center gap-2 rounded-sm px-2 py-1.5 text-sm outline-none select-none transition-colors data-[disabled]:pointer-events-none data-[disabled]:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
         inset && "pl-8",
         className
@@ -158,7 +160,8 @@ function DropdownMenuCheckboxItem({
       className={cn(
         // Adjust focus/selected colors for white background
         "focus:bg-neutral-100 focus:text-neutral-900",
-        "[&_svg:not([class*='text-'])]:text-neutral-500", // Icon color
+        // Ensure default text/icon colors contrast with white
+        "text-neutral-900 [&_svg:not([class*='text-'])]:text-neutral-500",
         "relative flex cursor-default items-center gap-2 rounded-sm py-1.5 pr-8 pl-2 text-sm outline-none select-none transition-colors data-[disabled]:pointer-events-none data-[disabled]:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
         className
       )}
@@ -186,7 +189,8 @@ function DropdownMenuRadioItem({
       className={cn(
         // Adjust focus/selected colors for white background
         "focus:bg-neutral-100 focus:text-neutral-900",
-        "[&_svg:not([class*='text-'])]:text-neutral-500", // Icon color
+        // Ensure default text/icon colors contrast with white
+        "text-neutral-900 [&_svg:not([class*='text-'])]:text-neutral-500",
         "relative flex cursor-default items-center gap-2 rounded-sm py-1.5 pr-8 pl-2 text-sm outline-none select-none transition-colors data-[disabled]:pointer-events-none data-[disabled]:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
         className
       )}

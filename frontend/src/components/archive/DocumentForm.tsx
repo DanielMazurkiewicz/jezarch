@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useCallback } from 'react';
-import { useForm, Controller, SubmitHandler } from 'react-hook-form'; // Import SubmitHandler
+import { useForm, Controller, SubmitHandler } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { createArchiveDocumentFormSchema } from '@/lib/zodSchemas'; // Schema updated here
+import { createArchiveDocumentFormSchema } from '@/lib/zodSchemas';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -12,18 +12,16 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import LoadingSpinner from '@/components/shared/LoadingSpinner';
 import ErrorDisplay from '@/components/shared/ErrorDisplay';
 import TagSelector from '@/components/shared/TagSelector';
-import SignatureSelector from '@/components/shared/SignatureSelector'; // Keep for descriptive
-import UnitSelector from './UnitSelector'; // Added UnitSelector import
+import SignatureSelector from '@/components/shared/SignatureSelector';
+import UnitSelector from './UnitSelector';
 import { useAuth } from '@/hooks/useAuth';
 import api from '@/lib/api';
-// Import ArchiveDocumentType
 import type { ArchiveDocument, ArchiveDocumentType } from '../../../../backend/src/functionalities/archive/document/models';
 import type { CreateArchiveDocumentInput, UpdateArchiveDocumentInput } from '../../../../backend/src/functionalities/archive/document/models';
-// Removed unused imports
 import { toast } from "sonner";
 import { cn } from '@/lib/utils';
 import { z } from 'zod';
-import { t } from '@/translations/utils'; // Import translation utility
+import { t } from '@/translations/utils';
 
 
 type CreateArchiveDocumentFormData = z.infer<typeof createArchiveDocumentFormSchema>;
@@ -45,7 +43,7 @@ const DocumentForm: React.FC<DocumentFormProps> = ({
     forcedParentTitle,
     onTypeChange
 }) => {
-  const { token, preferredLanguage } = useAuth(); // Get preferredLanguage
+  const { token, preferredLanguage } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
   const [isFetchingDetails, setIsFetchingDetails] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -71,7 +69,7 @@ const DocumentForm: React.FC<DocumentFormProps> = ({
 
   const watchedType = watch('type');
   useEffect(() => {
-    onTypeChange?.(watchedType); // Notify parent about type change for title
+    onTypeChange?.(watchedType);
   }, [watchedType, onTypeChange]);
 
   useEffect(() => {
@@ -151,7 +149,7 @@ const DocumentForm: React.FC<DocumentFormProps> = ({
         }
     };
     populateForm();
-  }, [docToEdit, reset, token, forceType, forcedParentId, preferredLanguage]); // Add preferredLanguage
+  }, [docToEdit, reset, token, forceType, forcedParentId, preferredLanguage]);
 
   useEffect(() => { setValue('tagIds', selectedTagIds); }, [selectedTagIds, setValue]);
   useEffect(() => { setValue('descriptiveSignatureElementIds', descriptiveSignatures); }, [descriptiveSignatures, setValue]);
@@ -248,153 +246,172 @@ const DocumentForm: React.FC<DocumentFormProps> = ({
   }
 
   return (
+    // Updated form structure for flex layout and scrolling
     <form
         onSubmit={handleSubmit(onSubmit as SubmitHandler<CreateArchiveDocumentFormData>)}
-        className="space-y-6 relative p-1 pr-3"
+        className="flex flex-col h-full overflow-hidden" // Added overflow-hidden
     >
-        {isLoading && <div className='absolute inset-0 bg-background/50 flex items-center justify-center z-20 rounded-md'><LoadingSpinner/></div>}
-        {error && <ErrorDisplay message={error} className="mb-4 sticky top-0 z-10 bg-destructive/20 backdrop-blur-sm p-3" />}
+        {/* --- Error Display Area (Non-scrolling) --- */}
+        {error && <div className="p-1 pr-3"><ErrorDisplay message={error} /></div>}
 
-        {/* --- Basic Information --- */}
-        <Card>
-            <CardHeader><CardTitle className='text-lg'>{t('archiveFormBasicInfoTitle', preferredLanguage)}</CardTitle></CardHeader>
-            <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-3">
-                <GridItem>
-                    <Label htmlFor="doc-type">{t('archiveFormTypeLabel', preferredLanguage)}</Label>
-                    <Controller control={control} name="type" render={({ field }) => (
-                        <Select
-                            onValueChange={field.onChange}
-                            value={field.value}
-                            disabled={!!docToEdit || !!forceType}
-                            >
-                            <SelectTrigger
-                                id='doc-type'
-                                aria-invalid={!!errors.type}
-                                className={cn(errors.type && "border-destructive", (!!docToEdit || !!forceType) && "text-muted-foreground")}
-                            >
-                                <SelectValue placeholder={t('archiveFormSelectTypePlaceholder', preferredLanguage)} />
-                            </SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="document">{t('archiveFormDocumentOption', preferredLanguage)}</SelectItem>
-                                <SelectItem value="unit">{t('archiveFormUnitOption', preferredLanguage)}</SelectItem>
-                            </SelectContent>
-                        </Select>
-                    )} />
-                    {errors.type && <p className="text-xs text-destructive">{errors.type.message}</p>}
-                     {(!!docToEdit || !!forceType) && <p className="text-xs text-muted-foreground italic">{t('archiveFormTypeDisabledHint', preferredLanguage)}</p>}
-                </GridItem>
-                {watchedType === 'document' && forcedParentId === undefined && (
-                    <GridItem>
-                        <Label htmlFor="doc-parent">{t('archiveFormParentUnitLabel', preferredLanguage)}</Label>
-                        <UnitSelector selectedUnitId={selectedParentUnitId} onChange={setSelectedParentUnitId} currentDocumentId={docToEdit?.archiveDocumentId} />
-                        <input type="hidden" {...register('parentUnitArchiveDocumentId')} />
-                        {errors.parentUnitArchiveDocumentId && <p className="text-xs text-destructive">{errors.parentUnitArchiveDocumentId.message}</p>}
-                    </GridItem>
-                )}
-                {watchedType === 'document' && forcedParentId !== undefined && (
-                    <GridItem>
-                        <Label>{t('archiveFormParentUnitLabel', preferredLanguage)}</Label>
-                        <Input value={forcedParentTitle ? `"${forcedParentTitle}" ${t('archiveFormParentUnitContextHint', preferredLanguage)}` : `ID: ${forcedParentId} ${t('archiveFormParentUnitContextHint', preferredLanguage)}`} disabled className='text-muted-foreground'/>
-                    </GridItem>
-                )}
-                <GridItem className="md:col-span-2">
-                    <Label htmlFor="doc-title">{t('archiveFormTitleLabel', preferredLanguage)}</Label>
-                    <Input id="doc-title" {...register('title')} aria-invalid={!!errors.title} className={cn(errors.title && "border-destructive")}/>
-                    {errors.title && <p className="text-xs text-destructive">{errors.title.message}</p>}
-                </GridItem>
-                <GridItem>
-                    <Label htmlFor="doc-creator">{t('archiveFormCreatorLabel', preferredLanguage)}</Label>
-                    <Input id="doc-creator" {...register('creator')} aria-invalid={!!errors.creator} className={cn(errors.creator && "border-destructive")}/>
-                    {errors.creator && <p className="text-xs text-destructive">{errors.creator.message}</p>}
-                </GridItem>
-                <GridItem>
-                    <Label htmlFor="doc-creationDate">{t('archiveFormCreationDateLabel', preferredLanguage)}</Label>
-                    <Input id="doc-creationDate" {...register('creationDate')} placeholder={t('archiveFormCreationDatePlaceholder', preferredLanguage)} aria-invalid={!!errors.creationDate} className={cn(errors.creationDate && "border-destructive")}/>
-                    {errors.creationDate && <p className="text-xs text-destructive">{errors.creationDate.message}</p>}
-                </GridItem>
-            </CardContent>
-        </Card>
+        {/* --- Scrollable Form Content Area --- */}
+        <div className="flex-grow p-1 pr-3 space-y-6 overflow-y-auto relative">
+            {isLoading && <div className='absolute inset-0 bg-background/80 flex items-center justify-center z-20 rounded-md'><LoadingSpinner/></div>}
 
-        {/* --- Physical Description --- */}
-        <Card>
-            <CardHeader><CardTitle className='text-lg'>{t('archiveFormPhysicalDescTitle', preferredLanguage)}</CardTitle></CardHeader>
-            <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-3">
-                <GridItem><Label htmlFor="doc-pages">{t('archiveFormPagesLabel', preferredLanguage)}</Label><Input id="doc-pages" {...register('numberOfPages')} /></GridItem>
-                <GridItem><Label htmlFor="doc-docType">{t('archiveFormDocTypeLabel', preferredLanguage)}</Label><Input id="doc-docType" {...register('documentType')} placeholder={t('archiveFormDocTypePlaceholder', preferredLanguage)} /></GridItem>
-                <GridItem><Label htmlFor="doc-dimensions">{t('archiveFormDimensionsLabel', preferredLanguage)}</Label><Input id="doc-dimensions" {...register('dimensions')} placeholder={t('archiveFormDimensionsPlaceholder', preferredLanguage)}/></GridItem>
-                <GridItem><Label htmlFor="doc-binding">{t('archiveFormBindingLabel', preferredLanguage)}</Label><Input id="doc-binding" {...register('binding')} placeholder={t('archiveFormBindingPlaceholder', preferredLanguage)} /></GridItem>
-                <GridItem className="md:col-span-2"><Label htmlFor="doc-condition">{t('archiveFormConditionLabel', preferredLanguage)}</Label><Input id="doc-condition" {...register('condition')} placeholder={t('archiveFormConditionPlaceholder', preferredLanguage)} /></GridItem>
-            </CardContent>
-        </Card>
+            {/* Main Grid for Form Sections (2 columns on lg+) */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {/* --- Basic Information --- */}
+                <Card className="lg:col-span-2">
+                    <CardHeader><CardTitle className='text-lg'>{t('archiveFormBasicInfoTitle', preferredLanguage)}</CardTitle></CardHeader>
+                    <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4">
+                        <GridItem className="md:col-span-1">
+                            <Label htmlFor="doc-type">{t('archiveFormTypeLabel', preferredLanguage)}</Label>
+                            <Controller control={control} name="type" render={({ field }) => (
+                                <Select
+                                    onValueChange={field.onChange}
+                                    value={field.value}
+                                    disabled={!!docToEdit || !!forceType}
+                                    >
+                                    <SelectTrigger
+                                        id='doc-type'
+                                        aria-invalid={!!errors.type}
+                                        className={cn("w-full", errors.type && "border-destructive", (!!docToEdit || !!forceType) && "text-muted-foreground")}
+                                    >
+                                        <SelectValue placeholder={t('archiveFormSelectTypePlaceholder', preferredLanguage)} />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="document">{t('archiveFormDocumentOption', preferredLanguage)}</SelectItem>
+                                        <SelectItem value="unit">{t('archiveFormUnitOption', preferredLanguage)}</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                            )} />
+                            {errors.type && <p className="text-xs text-destructive">{errors.type.message}</p>}
+                            {(!!docToEdit || !!forceType) && <p className="text-xs text-muted-foreground italic">{t('archiveFormTypeDisabledHint', preferredLanguage)}</p>}
+                        </GridItem>
 
-        {/* --- Content & Context --- */}
-        <Card>
-            <CardHeader><CardTitle className='text-lg'>{t('archiveFormContentContextTitle', preferredLanguage)}</CardTitle></CardHeader>
-            <CardContent className="grid grid-cols-1 gap-3">
-                <GridItem><Label htmlFor="doc-language">{t('archiveFormLanguageLabel', preferredLanguage)}</Label><Input id="doc-language" {...register('documentLanguage')} placeholder={t('archiveFormLanguagePlaceholder', preferredLanguage)} /></GridItem>
-                <GridItem><Label htmlFor="doc-contentDesc">{t('archiveFormContentDescLabel', preferredLanguage)}</Label><Textarea id="doc-contentDesc" {...register('contentDescription')} rows={4} placeholder={t('archiveFormContentDescPlaceholder', preferredLanguage)} /></GridItem>
-                <GridItem><Label htmlFor="doc-remarks">{t('archiveFormRemarksLabel', preferredLanguage)}</Label><Textarea id="doc-remarks" {...register('remarks')} rows={2} placeholder={t('archiveFormRemarksPlaceholder', preferredLanguage)} /></GridItem>
-                <GridItem><Label htmlFor="doc-related">{t('archiveFormRelatedDocsLabel', preferredLanguage)}</Label><Textarea id="doc-related" {...register('relatedDocumentsReferences')} rows={2} placeholder={t('archiveFormRelatedDocsPlaceholder', preferredLanguage)} /></GridItem>
-                <GridItem><Label htmlFor="doc-additionalInfo">{t('archiveFormAdditionalInfoLabel', preferredLanguage)}</Label><Textarea id="doc-additionalInfo" {...register('additionalInformation')} rows={2} placeholder={t('archiveFormAdditionalInfoPlaceholder', preferredLanguage)} /></GridItem>
-            </CardContent>
-        </Card>
+                         {watchedType === 'document' && forcedParentId === undefined && (
+                             <GridItem className="md:col-span-1">
+                                <Label htmlFor="doc-parent">{t('archiveFormParentUnitLabel', preferredLanguage)}</Label>
+                                <UnitSelector selectedUnitId={selectedParentUnitId} onChange={setSelectedParentUnitId} currentDocumentId={docToEdit?.archiveDocumentId} className="w-full" />
+                                <input type="hidden" {...register('parentUnitArchiveDocumentId')} />
+                                {errors.parentUnitArchiveDocumentId && <p className="text-xs text-destructive">{errors.parentUnitArchiveDocumentId.message}</p>}
+                             </GridItem>
+                        )}
+                         {watchedType === 'document' && forcedParentId !== undefined && (
+                             <GridItem className="md:col-span-1">
+                                <Label>{t('archiveFormParentUnitLabel', preferredLanguage)}</Label>
+                                <Input value={forcedParentTitle ? `"${forcedParentTitle}" ${t('archiveFormParentUnitContextHint', preferredLanguage)}` : `ID: ${forcedParentId} ${t('archiveFormParentUnitContextHint', preferredLanguage)}`} disabled className='text-muted-foreground'/>
+                             </GridItem>
+                        )}
+                        {watchedType !== 'document' && <div className="md:col-span-1"></div>}
 
-        {/* --- Access & Digitization --- */}
-        <Card>
-            <CardHeader><CardTitle className='text-lg'>{t('archiveFormAccessDigitizationTitle', preferredLanguage)}</CardTitle></CardHeader>
-            <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-3">
-                <GridItem><Label htmlFor="doc-accessLevel">{t('archiveFormAccessLevelLabel', preferredLanguage)}</Label><Input id="doc-accessLevel" {...register('accessLevel')} placeholder={t('archiveFormAccessLevelPlaceholder', preferredLanguage)} /></GridItem>
-                <GridItem><Label htmlFor="doc-accessCond">{t('archiveFormAccessConditionsLabel', preferredLanguage)}</Label><Input id="doc-accessCond" {...register('accessConditions')} placeholder={t('archiveFormAccessConditionsPlaceholder', preferredLanguage)} /></GridItem>
-                <GridItem className="flex items-center space-x-2 md:col-span-2 pt-1">
-                    <Controller control={control} name="isDigitized" render={({ field }) => ( <Checkbox id="doc-digitized" checked={field.value} onCheckedChange={field.onChange} /> )} />
-                    <Label htmlFor="doc-digitized" className='cursor-pointer font-normal'>{t('archiveFormIsDigitizedLabel', preferredLanguage)}</Label>
-                </GridItem>
-                {watch('isDigitized') && (
-                    <GridItem className="md:col-span-2">
-                        <Label htmlFor="doc-digitizedLink">{t('archiveFormDigitizedLinkLabel', preferredLanguage)}</Label>
-                        <Input id="doc-digitizedLink" {...register('digitizedVersionLink')} type="url" placeholder={t('archiveFormDigitizedLinkPlaceholder', preferredLanguage)} aria-invalid={!!errors.digitizedVersionLink} className={cn(errors.digitizedVersionLink && "border-destructive")}/>
-                        {errors.digitizedVersionLink && <p className="text-xs text-destructive">{errors.digitizedVersionLink.message}</p>}
-                    </GridItem>
-                )}
-            </CardContent>
-        </Card>
 
-        {/* --- Indexing (Signatures & Tags) --- */}
-        <Card>
-            <CardHeader><CardTitle className='text-lg'>{t('archiveFormIndexingTitle', preferredLanguage)}</CardTitle></CardHeader>
-            <CardContent className="grid grid-cols-1 gap-4 items-start">
-                 <GridItem>
-                     <Label htmlFor="doc-topo-sig">{t('archiveFormTopoSigLabel', preferredLanguage)}</Label>
-                     <Input
-                        id="doc-topo-sig"
-                        {...register('topographicSignature')}
-                        placeholder={t('archiveFormTopoSigPlaceholder', preferredLanguage)}
-                        aria-invalid={!!errors.topographicSignature}
-                        className={cn(errors.topographicSignature && "border-destructive")}
-                     />
-                    {errors.topographicSignature && <p className="text-xs text-destructive">{errors.topographicSignature.message}</p>}
-                 </GridItem>
+                        <GridItem className="md:col-span-2">
+                            <Label htmlFor="doc-title">{t('archiveFormTitleLabel', preferredLanguage)}</Label>
+                            <Input id="doc-title" {...register('title')} aria-invalid={!!errors.title} className={cn(errors.title && "border-destructive")}/>
+                            {errors.title && <p className="text-xs text-destructive">{errors.title.message}</p>}
+                        </GridItem>
+                        <GridItem className="md:col-span-1">
+                            <Label htmlFor="doc-creator">{t('archiveFormCreatorLabel', preferredLanguage)}</Label>
+                            <Input id="doc-creator" {...register('creator')} aria-invalid={!!errors.creator} className={cn(errors.creator && "border-destructive")}/>
+                            {errors.creator && <p className="text-xs text-destructive">{errors.creator.message}</p>}
+                        </GridItem>
+                        <GridItem className="md:col-span-1">
+                            <Label htmlFor="doc-creationDate">{t('archiveFormCreationDateLabel', preferredLanguage)}</Label>
+                            <Input id="doc-creationDate" {...register('creationDate')} placeholder={t('archiveFormCreationDatePlaceholder', preferredLanguage)} aria-invalid={!!errors.creationDate} className={cn(errors.creationDate && "border-destructive")}/>
+                            {errors.creationDate && <p className="text-xs text-destructive">{errors.creationDate.message}</p>}
+                        </GridItem>
+                    </CardContent>
+                </Card>
 
-                <SignatureSelector
-                    label={t('archiveFormDescSigLabel', preferredLanguage)}
-                    signatures={descriptiveSignatures}
-                    onChange={setDescriptiveSignatures}
-                    className="min-w-0"
-                />
-                <input type="hidden" {...register('descriptiveSignatureElementIds')} />
-                {errors.descriptiveSignatureElementIds && <p className="text-xs text-destructive">{errors.descriptiveSignatureElementIds.message}</p>}
+                {/* --- Physical Description (Column 1 on lg+) --- */}
+                <Card className="lg:col-span-1">
+                    <CardHeader><CardTitle className='text-lg'>{t('archiveFormPhysicalDescTitle', preferredLanguage)}</CardTitle></CardHeader>
+                    {/* CHANGE: Force single column */}
+                    <CardContent className="grid grid-cols-1 gap-x-6 gap-y-4">
+                        <GridItem><Label htmlFor="doc-pages">{t('archiveFormPagesLabel', preferredLanguage)}</Label><Input id="doc-pages" {...register('numberOfPages')} /></GridItem>
+                        <GridItem><Label htmlFor="doc-docType">{t('archiveFormDocTypeLabel', preferredLanguage)}</Label><Input id="doc-docType" {...register('documentType')} placeholder={t('archiveFormDocTypePlaceholder', preferredLanguage)} /></GridItem>
+                        <GridItem><Label htmlFor="doc-dimensions">{t('archiveFormDimensionsLabel', preferredLanguage)}</Label><Input id="doc-dimensions" {...register('dimensions')} placeholder={t('archiveFormDimensionsPlaceholder', preferredLanguage)}/></GridItem>
+                        <GridItem><Label htmlFor="doc-binding">{t('archiveFormBindingLabel', preferredLanguage)}</Label><Input id="doc-binding" {...register('binding')} placeholder={t('archiveFormBindingPlaceholder', preferredLanguage)} /></GridItem>
+                        {/* CHANGE: Removed col-span */}
+                        <GridItem><Label htmlFor="doc-condition">{t('archiveFormConditionLabel', preferredLanguage)}</Label><Input id="doc-condition" {...register('condition')} placeholder={t('archiveFormConditionPlaceholder', preferredLanguage)} /></GridItem>
+                    </CardContent>
+                </Card>
 
-                <div className="grid gap-1.5">
-                    <Label>{t('archiveFormTagsLabel', preferredLanguage)}</Label>
-                    <TagSelector selectedTagIds={selectedTagIds} onChange={setSelectedTagIds} />
-                    <input type="hidden" {...register('tagIds')} />
-                    {errors.tagIds && <p className="text-xs text-destructive">{typeof errors.tagIds.message === 'string' ? errors.tagIds.message : 'Invalid tag selection'}</p>}
-                </div>
-            </CardContent>
-        </Card>
+                {/* --- Content & Context (Column 2 on lg+) --- */}
+                <Card className="lg:col-span-1">
+                    <CardHeader><CardTitle className='text-lg'>{t('archiveFormContentContextTitle', preferredLanguage)}</CardTitle></CardHeader>
+                    <CardContent className="grid grid-cols-1 gap-4">
+                        <GridItem><Label htmlFor="doc-language">{t('archiveFormLanguageLabel', preferredLanguage)}</Label><Input id="doc-language" {...register('documentLanguage')} placeholder={t('archiveFormLanguagePlaceholder', preferredLanguage)} /></GridItem>
+                        <GridItem><Label htmlFor="doc-contentDesc">{t('archiveFormContentDescLabel', preferredLanguage)}</Label><Textarea id="doc-contentDesc" {...register('contentDescription')} rows={4} placeholder={t('archiveFormContentDescPlaceholder', preferredLanguage)} /></GridItem>
+                        <GridItem><Label htmlFor="doc-remarks">{t('archiveFormRemarksLabel', preferredLanguage)}</Label><Textarea id="doc-remarks" {...register('remarks')} rows={2} placeholder={t('archiveFormRemarksPlaceholder', preferredLanguage)} /></GridItem>
+                        <GridItem><Label htmlFor="doc-related">{t('archiveFormRelatedDocsLabel', preferredLanguage)}</Label><Textarea id="doc-related" {...register('relatedDocumentsReferences')} rows={2} placeholder={t('archiveFormRelatedDocsPlaceholder', preferredLanguage)} /></GridItem>
+                        <GridItem><Label htmlFor="doc-additionalInfo">{t('archiveFormAdditionalInfoLabel', preferredLanguage)}</Label><Textarea id="doc-additionalInfo" {...register('additionalInformation')} rows={2} placeholder={t('archiveFormAdditionalInfoPlaceholder', preferredLanguage)} /></GridItem>
+                    </CardContent>
+                </Card>
 
-        {/* Submit button */}
-        <div className="pt-2 flex justify-start sticky bottom-0 bg-background pb-1">
+                 {/* --- Access & Digitization (Column 1 on lg+) --- */}
+                 <Card className="lg:col-span-1">
+                    <CardHeader><CardTitle className='text-lg'>{t('archiveFormAccessDigitizationTitle', preferredLanguage)}</CardTitle></CardHeader>
+                    {/* CHANGE: Force single column */}
+                    <CardContent className="grid grid-cols-1 gap-x-6 gap-y-4">
+                        <GridItem><Label htmlFor="doc-accessLevel">{t('archiveFormAccessLevelLabel', preferredLanguage)}</Label><Input id="doc-accessLevel" {...register('accessLevel')} placeholder={t('archiveFormAccessLevelPlaceholder', preferredLanguage)} /></GridItem>
+                        <GridItem><Label htmlFor="doc-accessCond">{t('archiveFormAccessConditionsLabel', preferredLanguage)}</Label><Input id="doc-accessCond" {...register('accessConditions')} placeholder={t('archiveFormAccessConditionsPlaceholder', preferredLanguage)} /></GridItem>
+                        {/* CHANGE: Removed col-span */}
+                        <GridItem className="flex items-center space-x-2 pt-1">
+                            <Controller control={control} name="isDigitized" render={({ field }) => ( <Checkbox id="doc-digitized" checked={field.value} onCheckedChange={field.onChange} /> )} />
+                            <Label htmlFor="doc-digitized" className='cursor-pointer font-normal'>{t('archiveFormIsDigitizedLabel', preferredLanguage)}</Label>
+                        </GridItem>
+                        {watch('isDigitized') && (
+                            // CHANGE: Removed col-span
+                            <GridItem>
+                                <Label htmlFor="doc-digitizedLink">{t('archiveFormDigitizedLinkLabel', preferredLanguage)}</Label>
+                                <Input id="doc-digitizedLink" {...register('digitizedVersionLink')} type="url" placeholder={t('archiveFormDigitizedLinkPlaceholder', preferredLanguage)} aria-invalid={!!errors.digitizedVersionLink} className={cn(errors.digitizedVersionLink && "border-destructive")}/>
+                                {errors.digitizedVersionLink && <p className="text-xs text-destructive">{errors.digitizedVersionLink.message}</p>}
+                            </GridItem>
+                        )}
+                    </CardContent>
+                </Card>
+
+                {/* --- Indexing (Signatures & Tags) (Column 2 on lg+) --- */}
+                <Card className="lg:col-span-1">
+                    <CardHeader><CardTitle className='text-lg'>{t('archiveFormIndexingTitle', preferredLanguage)}</CardTitle></CardHeader>
+                    <CardContent className="grid grid-cols-1 gap-4 items-start">
+                        <GridItem>
+                            <Label htmlFor="doc-topo-sig">{t('archiveFormTopoSigLabel', preferredLanguage)}</Label>
+                            <Input
+                                id="doc-topo-sig"
+                                {...register('topographicSignature')}
+                                placeholder={t('archiveFormTopoSigPlaceholder', preferredLanguage)}
+                                aria-invalid={!!errors.topographicSignature}
+                                className={cn(errors.topographicSignature && "border-destructive")}
+                             />
+                            {errors.topographicSignature && <p className="text-xs text-destructive">{errors.topographicSignature.message}</p>}
+                        </GridItem>
+
+                        <SignatureSelector
+                            label={t('archiveFormDescSigLabel', preferredLanguage)}
+                            signatures={descriptiveSignatures}
+                            onChange={setDescriptiveSignatures}
+                            className="min-w-0"
+                        />
+                        <input type="hidden" {...register('descriptiveSignatureElementIds')} />
+                        {errors.descriptiveSignatureElementIds && <p className="text-xs text-destructive">{errors.descriptiveSignatureElementIds.message}</p>}
+
+                        <div className="grid gap-1.5">
+                            <Label>{t('archiveFormTagsLabel', preferredLanguage)}</Label>
+                            <TagSelector selectedTagIds={selectedTagIds} onChange={setSelectedTagIds} />
+                            <input type="hidden" {...register('tagIds')} />
+                            {errors.tagIds && <p className="text-xs text-destructive">{typeof errors.tagIds.message === 'string' ? errors.tagIds.message : 'Invalid tag selection'}</p>}
+                        </div>
+                    </CardContent>
+                </Card>
+
+            </div> {/* End of Main Grid */}
+        </div> {/* End of Scrollable Form Content Area */}
+
+        {/* Submit Button Area - Outside the scrollable content (Non-scrolling Footer) */}
+        <div className="pt-4 pb-2 px-1 border-t flex justify-start shrink-0"> {/* Added shrink-0 */}
             <Button type="submit" disabled={isLoading || isFetchingDetails}>
                 {isLoading ? <LoadingSpinner size="sm" className='mr-2' /> : (docToEdit ? t('archiveFormUpdateItemButton', preferredLanguage) : t('archiveFormCreateItemButton', preferredLanguage))}
             </Button>

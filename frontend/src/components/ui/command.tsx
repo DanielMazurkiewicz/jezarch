@@ -9,7 +9,7 @@ import {
   DialogDescription,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog"
+} from "@/components/ui/dialog" // DialogContent is already forced white
 
 function Command({
   className,
@@ -61,12 +61,14 @@ function CommandInput({
   return (
     // Use bg-white as parent is white, add border
     <div data-slot="command-input-wrapper" className="flex h-9 items-center gap-2 border-b border-neutral-200 px-3 bg-white dark:bg-white">
-      <SearchIcon className="size-4 shrink-0 opacity-50" />
+      <SearchIcon className="size-4 shrink-0 opacity-50 text-neutral-500" />
       <CommandPrimitive.Input
         data-slot="command-input"
         className={cn(
           // Input is transparent, placeholder color needs contrast
           "placeholder:text-neutral-500",
+          // Text color for input itself
+          "text-neutral-900",
           "flex h-10 w-full rounded-md bg-transparent py-3 text-sm outline-none disabled:cursor-not-allowed disabled:opacity-50",
           className
         )}
@@ -134,7 +136,7 @@ function CommandSeparator({
     <CommandPrimitive.Separator
       data-slot="command-separator"
       // Use a neutral border color
-      className={cn("bg-neutral-200 -mx-1 h-px", className)}
+      className={cn("bg-neutral-200 pointer-events-none -mx-1 my-1 h-px", className)}
       {...props}
     />
   )
@@ -148,9 +150,10 @@ function CommandItem({
     <CommandPrimitive.Item
       data-slot="command-item"
       className={cn(
-        // Ensure selected background (accent) contrasts with white, and selected text contrasts with accent
-        // Using neutral colors for selection state on white background
+        // Ensure selected background (light gray) contrasts with white, and selected text contrasts with selection bg
         "data-[selected=true]:bg-neutral-100 data-[selected=true]:text-neutral-900",
+        // Ensure default item text contrasts with white
+        "text-neutral-900",
         "[&_svg:not([class*='text-'])]:text-neutral-500", // Icon color
         "relative flex cursor-default items-center gap-2 rounded-sm px-2 py-1.5 text-sm outline-none select-none data-[disabled=true]:pointer-events-none data-[disabled=true]:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
         className

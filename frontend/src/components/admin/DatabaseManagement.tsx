@@ -59,8 +59,8 @@ const DatabaseManagement: React.FC = () => {
     return (
         // Layout remains single column
         <div className='grid grid-cols-1 gap-6'>
-             {/* Backup Card */}
-             <Card className="bg-white dark:bg-white text-neutral-900 dark:text-neutral-900">
+             {/* Backup Card - forced white */}
+             <Card>
                  <CardHeader>
                      {/* Use translated title and description */}
                      <CardTitle>{t('databaseBackupTitle', preferredLanguage)}</CardTitle>
@@ -73,8 +73,8 @@ const DatabaseManagement: React.FC = () => {
                          {/* Use translated button text */}
                          {t('downloadBackupButton', preferredLanguage)}
                      </Button>
-                     {/* Use translated restore instructions */}
-                     <p className='text-xs text-muted-foreground'>{t('dbRestoreManualInfo', preferredLanguage)}</p>
+                      {/* Adjusted muted color */}
+                     <p className='text-xs text-neutral-500'>{t('dbRestoreManualInfo', preferredLanguage)}</p>
                  </CardContent>
              </Card>
 

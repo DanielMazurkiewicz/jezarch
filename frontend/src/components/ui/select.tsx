@@ -35,9 +35,12 @@ function SelectTrigger({
       data-slot="select-trigger"
       data-size={size}
       className={cn(
-        "border-input data-[placeholder]:text-muted-foreground [&_svg:not([class*='text-'])]:text-muted-foreground focus-visible:border-ring focus-visible:ring-ring/50 aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive",
-        // Ensure trigger has a background - use default theme-aware background
-        "dark:bg-input/30 bg-background dark:hover:bg-input/50", // Kept theme-aware
+        // Use neutral colors for border, text, and placeholder on white bg
+        "border-neutral-200 data-[placeholder]:text-neutral-500 [&_svg:not([class*='text-'])]:text-neutral-500",
+        // General focus/invalid styles
+        "focus-visible:border-ring focus-visible:ring-ring/50 aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive",
+        // Force white background and dark text
+        "bg-white dark:bg-white text-neutral-900 dark:text-neutral-900 hover:bg-neutral-50", // Add slight hover bg
         "flex w-fit items-center justify-between gap-2 rounded-md border px-3 py-2 text-sm whitespace-nowrap shadow-xs transition-[color,box-shadow] outline-none focus-visible:ring-[3px] disabled:cursor-not-allowed disabled:opacity-50 data-[size=default]:h-9 data-[size=sm]:h-8 *:data-[slot=select-value]:line-clamp-1 *:data-[slot=select-value]:flex *:data-[slot=select-value]:items-center *:data-[slot=select-value]:gap-2 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
         className
       )}
@@ -115,7 +118,8 @@ function SelectItem({
       className={cn(
         // Adjust focus/selected colors for white background
         "focus:bg-neutral-100 focus:text-neutral-900",
-        "[&_svg:not([class*='text-'])]:text-neutral-500", // Icon color
+        // Ensure default text/icon colors contrast with white
+        "text-neutral-900 [&_svg:not([class*='text-'])]:text-neutral-500",
         "relative flex w-full cursor-default items-center gap-2 rounded-sm py-1.5 pr-8 pl-2 text-sm outline-none select-none data-[disabled]:pointer-events-none data-[disabled]:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4 *:[span]:last:flex *:[span]:last:items-center *:[span]:last:gap-2",
         className
       )}
@@ -153,6 +157,8 @@ function SelectScrollUpButton({
     <SelectPrimitive.ScrollUpButton
       data-slot="select-scroll-up-button"
       className={cn(
+        // Ensure icon color contrasts with white background
+        "text-neutral-500",
         "flex cursor-default items-center justify-center py-1",
         className
       )}
@@ -171,6 +177,8 @@ function SelectScrollDownButton({
     <SelectPrimitive.ScrollDownButton
       data-slot="select-scroll-down-button"
       className={cn(
+        // Ensure icon color contrasts with white background
+        "text-neutral-500",
         "flex cursor-default items-center justify-center py-1",
         className
       )}

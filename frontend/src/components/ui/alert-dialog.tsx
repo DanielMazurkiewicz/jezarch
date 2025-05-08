@@ -134,7 +134,8 @@ function AlertDialogAction({
       className={cn(
         buttonVariants(),
         // Ensure destructive variant has correct background/text on white
-        buttonVariants({ variant: "destructive" }),
+        // Destructive button style relies on its variant definition which should be fine
+        // If needed, add specific overrides: bg-destructive text-destructive-foreground hover:bg-destructive/90
         className
       )}
       {...props}
@@ -150,7 +151,7 @@ function AlertDialogCancel({
     <AlertDialogPrimitive.Cancel
       data-slot="alert-dialog-cancel"
       className={cn(
-        buttonVariants({ variant: "outline" }),
+        buttonVariants({ variant: "outline" }), // Outline button should work on white bg
         "mt-2 sm:mt-0",
         className
       )}

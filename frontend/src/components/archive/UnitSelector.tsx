@@ -78,14 +78,14 @@ const UnitSelector: React.FC<UnitSelectorProps> = ({
 
 
   return (
-    <div className={cn('space-y-2', className)}>
+    <div className={cn('space-y-2', className)}> {/* Removed p-3, border, bg-white */}
          <Popover open={open} onOpenChange={setOpen}>
              <PopoverTrigger asChild>
                 <Button
                     variant="outline"
                     role="combobox"
                     aria-expanded={open}
-                    className="w-full justify-between min-h-[36px] font-normal text-sm h-9"
+                    className="w-full justify-between min-h-[36px] font-normal text-sm h-9" // Button uses standard outline
                     disabled={isLoading || !!error}
                 >
                   <span className="truncate">
@@ -97,7 +97,7 @@ const UnitSelector: React.FC<UnitSelectorProps> = ({
                    {isLoading ? <LoadingSpinner size="sm" className='ml-2'/> : <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />}
                 </Button>
              </PopoverTrigger>
-             <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
+             <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start"> {/* Content uses standard popover bg */}
                  <Command shouldFilter={false}>
                     <CommandInput
                         placeholder={t('unitSelectorSearchPlaceholder', preferredLanguage)}

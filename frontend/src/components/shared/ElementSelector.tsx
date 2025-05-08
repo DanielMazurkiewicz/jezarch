@@ -138,18 +138,18 @@ const ElementSelector: React.FC<ElementSelectorProps> = ({
 
 
     return (
-        // Use solid muted background for the container
-        <div className={cn('space-y-2 p-3 border rounded bg-muted', className)}> {/* Changed bg-muted/30 to bg-muted */}
-            {/* Use the passed label prop, default if not provided */}
-            <Label className='text-sm font-medium'>{label || t('elementParentElementsLabel', preferredLanguage)}</Label>
+        // Use solid white background for the container
+        <div className={cn('space-y-2 p-3 border rounded bg-white dark:bg-white', className)}> {/* Changed bg-muted to bg-white */}
+            {/* Use the passed label prop, ensure text contrasts */}
+            <Label className='text-sm font-medium text-neutral-700'>{label || t('elementParentElementsLabel', preferredLanguage)}</Label>
             {/* Component Selector */}
             <Select value={searchComponentId} onValueChange={setSearchComponentId} disabled={isLoadingComponents}>
-                {/* SelectTrigger uses bg-background */}
+                {/* SelectTrigger uses bg-white */}
                 <SelectTrigger className='h-9 text-sm'>
                     {/* Use translated placeholder */}
                     <SelectValue placeholder={t('elementBrowserSelectComponentPlaceholder', preferredLanguage)} />
                 </SelectTrigger>
-                {/* SelectContent uses bg-popover */}
+                {/* SelectContent uses bg-white */}
                 <SelectContent>
                     {isLoadingComponents && <SelectItem value="loading" disabled><div className='flex items-center'><LoadingSpinner size='sm' className='mr-2'/>{t('loadingText', preferredLanguage)}...</div></SelectItem>}
                     {availableComponents.map(comp => (
@@ -169,7 +169,7 @@ const ElementSelector: React.FC<ElementSelectorProps> = ({
                         variant="outline"
                         role="combobox"
                         aria-expanded={open}
-                        className="w-full justify-between min-h-[36px] font-normal" // Button variant="outline" uses bg-background
+                        className="w-full justify-between min-h-[36px] font-normal" // Button variant="outline" uses bg-white
                         disabled={isLoadingElements || !searchComponentId || !!error}
                     >
                         <span className='truncate'>
@@ -182,9 +182,9 @@ const ElementSelector: React.FC<ElementSelectorProps> = ({
                         {isLoadingElements ? <LoadingSpinner size='sm' className='ml-2'/> : <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />}
                     </Button>
                 </PopoverTrigger>
-                {/* PopoverContent uses bg-popover */}
+                {/* PopoverContent uses bg-white */}
                 <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
-                    {/* Command uses bg-popover */}
+                    {/* Command uses bg-white */}
                     <Command shouldFilter={false}> {/* Manual filtering */}
                         <CommandInput
                              // Use translated placeholder
@@ -192,10 +192,10 @@ const ElementSelector: React.FC<ElementSelectorProps> = ({
                             value={searchTerm}
                             onValueChange={setSearchTerm}
                         />
-                         {/* CommandList uses bg-popover */}
+                         {/* CommandList uses bg-white */}
                         <CommandList>
                              {/* Use translated states */}
-                             {isLoadingElements && <div className='text-center p-2 text-sm text-muted-foreground'><LoadingSpinner size='sm'/></div>}
+                             {isLoadingElements && <div className='text-center p-2 text-sm text-neutral-600'><LoadingSpinner size='sm'/></div>}
                              <CommandEmpty>{!isLoadingElements && t('elementBrowserNoElementsFound', preferredLanguage)}</CommandEmpty>
                              {!isLoadingElements && filteredDropdownElements.length > 0 && (
                                  <CommandGroup>
@@ -214,8 +214,8 @@ const ElementSelector: React.FC<ElementSelectorProps> = ({
                                                     selectedElementIds.includes(el.signatureElementId!) ? "opacity-100" : "opacity-0"
                                                 )}
                                             />
-                                            <span className='font-mono text-xs w-10 mr-2 text-right inline-block'>{el.index || '-'}</span> {/* Styled Index */}
-                                            <span>{el.name}</span>
+                                            <span className='font-mono text-xs w-10 mr-2 text-right inline-block text-neutral-500'>{el.index || '-'}</span> {/* Styled Index */}
+                                            <span className="text-neutral-900">{el.name}</span>
                                         </CommandItem>
                                     ))}
                                  </CommandGroup>
@@ -225,7 +225,7 @@ const ElementSelector: React.FC<ElementSelectorProps> = ({
                 </PopoverContent>
             </Popover>
 
-            {/* Display Selected Badges */}
+            {/* Display Selected Badges - Use light gray background for badges */}
             <div className="flex flex-wrap gap-1 pt-1 min-h-[22px]">
                  {isLoadingSelectedDetails && <LoadingSpinner size='sm'/>}
                  {!isLoadingSelectedDetails && selectedElementObjects.length > 0 && (
@@ -234,7 +234,7 @@ const ElementSelector: React.FC<ElementSelectorProps> = ({
                              <span>{el.index ? `[${el.index}] ` : ''}{el.name}</span>
                              <button
                                  type="button"
-                                 className="ml-1 p-0.5 rounded-full text-muted-foreground hover:text-foreground hover:bg-background/50 focus:outline-none focus:ring-1 focus:ring-ring focus:ring-offset-1"
+                                 className="ml-1 p-0.5 rounded-full text-neutral-500 hover:text-neutral-900 hover:bg-white/50 focus:outline-none focus:ring-1 focus:ring-ring focus:ring-offset-1"
                                  onClick={() => handleSelectElement(el.signatureElementId!)}
                                  // Use translated aria-label
                                  aria-label={`${t('removeButton', preferredLanguage)} ${el.name}`}
@@ -246,7 +246,7 @@ const ElementSelector: React.FC<ElementSelectorProps> = ({
                  )}
                  {/* Use translated placeholder */}
                  {!isLoadingSelectedDetails && selectedElementIds.length === 0 && (
-                     <span className='text-xs text-muted-foreground italic'>{t('elementSelectorNoParentsSelected', preferredLanguage)}</span>
+                     <span className='text-xs text-neutral-500 italic'>{t('elementSelectorNoParentsSelected', preferredLanguage)}</span>
                  )}
             </div>
 

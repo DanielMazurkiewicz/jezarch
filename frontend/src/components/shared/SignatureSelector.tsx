@@ -52,14 +52,14 @@ const SignatureSelector: React.FC<SignatureSelectorProps> = ({
                  const displayParts = elementsInPath.map((el: SignatureElement | null, index: number) => {
                      if (el) return `${el.index ? `[${el.index}]` : ''}${el.name}`;
                      // Use translated error
-                     return `[${t('errorText', preferredLanguage)} ID: ${idPath[index] !== undefined ? idPath[index] : 'unknown'}]`;
+                     return `[${t('errorText', preferredLanguage)} ID: ${idPath[index] !== undefined ? idPath[index] : t('unknown', preferredLanguage)}]`; // Use translated unknown
                  });
                  resolved.push({ idPath, display: displayParts.join(' / ') });
             }
              setResolvedSignatures(resolved.sort((a, b) => a.display.localeCompare(b.display)));
         } catch (error) {
              console.error("Error resolving signatures:", error);
-              // Use translated error
+             // Use translated error
              setResolvedSignatures(currentSignatures.map((p: number[]) => ({idPath: p, display: `[${p.join(' / ')}] (${t('errorText', preferredLanguage)})`})));
         } finally { setIsLoadingSignatures(false); }
     };
@@ -88,10 +88,11 @@ const SignatureSelector: React.FC<SignatureSelectorProps> = ({
 
 
   return (
-    <div className={cn("flex flex-col space-y-2 rounded border p-3 bg-muted", className)}>
+    // Force white background for the container
+    <div className={cn("flex flex-col space-y-2 rounded border p-3 bg-white dark:bg-white", className)}>
       <div className="flex justify-between items-center mb-1">
-          {/* Use the passed label prop */}
-         <Label className='text-sm font-medium'>{label}</Label>
+         {/* Use the passed label prop, ensure text contrast */}
+         <Label className='text-sm font-medium text-neutral-700'>{label}</Label>
          <Popover open={isBrowserOpen} onOpenChange={setIsBrowserOpen}>
              <PopoverTrigger asChild>
                  {/* Use translated button text */}
@@ -99,6 +100,7 @@ const SignatureSelector: React.FC<SignatureSelectorProps> = ({
                     <Plus className="mr-1 h-3 w-3" /> {t('addSignaturePathButton', preferredLanguage)}
                 </Button>
              </PopoverTrigger>
+             {/* Popover content is forced white */}
              <PopoverContent className="w-[500px] max-w-[calc(100vw-2rem)] p-0" align="start">
                  <ElementBrowserPopoverContent
                      onSelectSignature={addSignatureCallback}
@@ -107,30 +109,29 @@ const SignatureSelector: React.FC<SignatureSelectorProps> = ({
              </PopoverContent>
          </Popover>
        </div>
-      <div className="flex-grow space-y-1 min-h-[40px] max-h-[150px] overflow-y-auto border rounded bg-background p-2">
-          {/* Use translated loading text */}
+       {/* Inner container for badges - use lighter gray background */}
+      <div className="flex-grow space-y-1 min-h-[40px] max-h-[150px] overflow-y-auto border rounded bg-neutral-50 p-2">
+         {/* Use translated loading text */}
          {isLoadingSignatures && <div className='flex justify-center p-2'><LoadingSpinner size='sm' /></div>}
          {!isLoadingSignatures && resolvedSignatures.map((resolved) => ( // Removed index from map parameters
-          <div key={JSON.stringify(resolved.idPath)} className="flex items-center justify-between gap-2 rounded bg-muted p-1 px-2 text-sm"> {/* Use stringified path as key */}
-            <span className="font-mono text-xs flex-grow break-words min-w-0">
-                {/* TODO: Translate placeholder */}
-                {resolved.display || <span className='italic text-muted-foreground'>Empty Signature</span>}
+          <div key={JSON.stringify(resolved.idPath)} className="flex items-center justify-between gap-2 rounded bg-neutral-100 p-1 px-2 text-sm"> {/* Use Badge's secondary bg */}
+            <span className="font-mono text-xs flex-grow break-words min-w-0 text-neutral-800">
+                {resolved.display || <span className='italic text-neutral-500'>{t('emptySignaturePlaceholder', preferredLanguage)}</span>} {/* Use translated placeholder */}
             </span>
             <Button
               type="button"
               variant="ghost"
               size="icon"
-              className="h-5 w-5 shrink-0 text-muted-foreground hover:text-destructive"
+              className="h-5 w-5 shrink-0 text-neutral-500 hover:text-destructive"
               onClick={() => removeSignature(resolved.idPath)}
-              // Use translated aria-label
               aria-label={`${t('removeButton', preferredLanguage)} ${resolved.display}`}
             >
               <X className="h-3 w-3" />
             </Button>
           </div>
         ))}
-          {/* Use translated placeholder */}
-         {!isLoadingSignatures && signatures.length === 0 && <p className="text-xs text-muted-foreground italic text-center py-1">{t('noSignaturesAddedHint', preferredLanguage)}</p>} {/* TODO: Add noSignaturesAddedHint */}
+         {/* Use translated placeholder */}
+         {!isLoadingSignatures && signatures.length === 0 && <p className="text-xs text-neutral-500 italic text-center py-1">{t('noSignaturesAddedHint', preferredLanguage)}</p>}
       </div>
     </div>
   );

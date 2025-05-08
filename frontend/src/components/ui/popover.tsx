@@ -28,7 +28,7 @@ function PopoverContent({
         align={align}
         sideOffset={sideOffset}
         className={cn(
-          "z-50 w-72 origin-[var(--radix-popover-content-transform-origin)] rounded-md border p-4 shadow-md outline-none", // Changed outline-hidden to outline-none
+          "z-50 w-72 origin-[var(--radix-popover-content-transform-origin)] rounded-md border p-4 shadow-md outline-none",
           // Force white background and dark text
           "bg-white dark:bg-white text-neutral-900 dark:text-neutral-900 border-neutral-200",
           // Animations

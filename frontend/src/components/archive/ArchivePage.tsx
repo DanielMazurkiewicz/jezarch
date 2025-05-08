@@ -1,9 +1,7 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useSearchParams, useNavigate, Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-// --- FIX: Added DialogTrigger to the import ---
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-// ---------------------------------------------
 import DocumentList from './DocumentList';
 import DocumentForm from './DocumentForm';
 import LoadingSpinner from '@/components/shared/LoadingSpinner';
@@ -66,9 +64,7 @@ const ArchivePage: React.FC = () => {
   useEffect(() => {
      if (editingDoc) setFormDialogTitle(t('archiveEditItemDialogTitle', preferredLanguage, { itemType: t(editingDoc.type === 'unit' ? 'archiveUnitLabel' : 'archiveDocumentLabel', preferredLanguage) }));
      else if (parentUnitId && parentUnit) setFormDialogTitle(t('archiveCreateInUnitDialogTitle', preferredLanguage, { unitTitle: parentUnit.title }));
-     // --- UPDATED: Use archiveItemLabel for the default title ---
      else setFormDialogTitle(`${t('createButton', preferredLanguage)} ${t('archiveItemLabel', preferredLanguage)}`);
-     // ----------------------------------------------------------
   }, [editingDoc, parentUnitId, parentUnit, preferredLanguage]);
 
 
@@ -78,17 +74,17 @@ const ArchivePage: React.FC = () => {
         setIsLoading(true); setError(null);
         try {
             const unit = await api.getArchiveDocumentById(parentUnitId, token);
-            if (unit.type !== 'unit') throw new Error(t('archiveInvalidParentTypeError', preferredLanguage, { id: parentUnitId })); // Use translated error
+            if (unit.type !== 'unit') throw new Error(t('archiveInvalidParentTypeError', preferredLanguage, { id: parentUnitId }));
             setParentUnit(unit);
         } catch (err: any) {
-            const msg = t('archiveParentUnitLoadError', preferredLanguage, { message: err.message }); // Use translated error
+            const msg = t('archiveParentUnitLoadError', preferredLanguage, { message: err.message });
             setError(msg);
             toast.error(t('errorMessageTemplate', preferredLanguage, { message: msg }));
             setParentUnit(null);
         } finally { setIsLoading(false); }
     };
     fetchParentUnit();
-  }, [token, parentUnitId, preferredLanguage]); // Add preferredLanguage
+  }, [token, parentUnitId, preferredLanguage]);
 
   useEffect(() => {
     const fetchTags = async () => {
@@ -121,13 +117,13 @@ const ArchivePage: React.FC = () => {
            setTotalPages(response.totalPages);
            setCurrentPage(response.page);
        } catch (err: any) {
-           const msg = err.message || t('archiveFetchError', preferredLanguage); // Use translated error
+           const msg = err.message || t('archiveFetchError', preferredLanguage);
            setError(msg);
            toast.error(t('errorMessageTemplate', preferredLanguage, { message: msg }));
            console.error("Fetch Error:", err);
            setDocuments([]); setTotalDocs(0); setTotalPages(1);
        } finally { setIsLoading(false); }
-   }, [token, pageSize, currentPage, searchQuery, parentUnitId, preferredLanguage]); // Add preferredLanguage
+   }, [token, pageSize, currentPage, searchQuery, parentUnitId, preferredLanguage]);
 
    useEffect(() => {
        if (parentUnitId && !parentUnit) {
@@ -142,7 +138,6 @@ const ArchivePage: React.FC = () => {
         if (!isAdmin && !isEmployee) { toast.error(t('archivePermissionErrorEdit', preferredLanguage)); return; }
         setEditingDoc(doc);
         setFormInitialType(undefined); setFormInitialParentId(undefined); setFormInitialParentTitle(undefined);
-        // Title set by useEffect now
         setIsFormOpen(true);
     };
 
@@ -151,11 +146,9 @@ const ArchivePage: React.FC = () => {
         if (parentUnitId && parentUnit) {
             setEditingDoc(null); setFormInitialType('document'); setFormInitialParentId(parentUnitId);
             setFormInitialParentTitle(parentUnit.title);
-            // Title set by useEffect now
         } else {
             setEditingDoc(null); setFormInitialType(undefined); setFormInitialParentId(undefined);
             setFormInitialParentTitle(undefined);
-            // Title set by useEffect now
         }
         setIsFormOpen(true);
     };
@@ -208,7 +201,7 @@ const ArchivePage: React.FC = () => {
              setPreviewingDoc(null);
              setIsPreviewOpen(false);
         } finally { setIsLoading(false); }
-    }, [token, preferredLanguage]); // Add preferredLanguage
+    }, [token, preferredLanguage]);
 
     const handleOpenUnit = useCallback((unit: ArchiveDocumentSearchResult) => {
         navigate(`/archive?unitId=${unit.archiveDocumentId}`);
@@ -272,7 +265,7 @@ const ArchivePage: React.FC = () => {
             baseFields.push({ value: 'active', label: t('archiveIsActiveLabel', preferredLanguage), type: 'boolean' });
        }
        return baseFields;
-   }, [isAdmin, isEmployee, availableTags, parentUnitId, preferredLanguage]); // Add preferredLanguage
+   }, [isAdmin, isEmployee, availableTags, parentUnitId, preferredLanguage]);
 
 
   return (
@@ -322,14 +315,14 @@ const ArchivePage: React.FC = () => {
                  {(isAdmin || isEmployee) && (
                      <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
                          <DialogTrigger asChild>
-                         {/* --- UPDATED: Use createRootItemButton or archiveCreateDocumentButton --- */}
                          <Button onClick={handleCreateNew} className='shrink-0'>
                              <PlusCircle className="mr-2 h-4 w-4" />
                              {parentUnitId ? t('archiveCreateDocumentButton', preferredLanguage) : t('createRootItemButton', preferredLanguage)}
                          </Button>
-                         {/* ----------------------------------------------------------------------- */}
                          </DialogTrigger>
-                         <DialogContent className="max-w-3xl">
+                          {/* --- INCREASED DIALOG WIDTH EVEN MORE using w-[90vw] for larger screens --- */}
+                         <DialogContent className="w-[90vw] max-w-[1200px] h-[90vh]"> {/* Adjust max-w if needed */}
+                         {/* ----------------------------------------------------------------------------- */}
                          <DialogHeader> <DialogTitle>{formDialogTitle}</DialogTitle> </DialogHeader>
                          {isFormOpen && (
                              <DocumentForm

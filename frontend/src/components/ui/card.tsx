@@ -8,8 +8,8 @@ function Card({ className, ...props }: React.ComponentProps<"div">) {
       data-slot="card"
       className={cn(
         "flex flex-col gap-6 rounded-xl border py-6 shadow-sm",
-        // Ensure background color is applied and opaque via bg-card
-        "bg-card text-card-foreground",
+        // Force white background and dark text, overriding theme variables
+        "bg-white dark:bg-white text-neutral-900 dark:text-neutral-900 border-neutral-200",
         className
       )}
       {...props}
@@ -17,7 +17,7 @@ function Card({ className, ...props }: React.ComponentProps<"div">) {
   )
 }
 
-// Header, Content, Footer inherit background from Card, no changes needed unless specific override desired.
+// Header, Content, Footer inherit background from Card, ensure text contrasts
 
 function CardHeader({ className, ...props }: React.ComponentProps<"div">) {
   return (
@@ -36,7 +36,8 @@ function CardTitle({ className, ...props }: React.ComponentProps<"div">) {
   return (
     <div
       data-slot="card-title"
-      className={cn("leading-none font-semibold", className)}
+      // Ensure title contrasts with white background
+      className={cn("leading-none font-semibold text-neutral-900", className)}
       {...props}
     />
   )
@@ -46,7 +47,8 @@ function CardDescription({ className, ...props }: React.ComponentProps<"div">) {
   return (
     <div
       data-slot="card-description"
-      className={cn("text-muted-foreground text-sm", className)}
+      // Ensure description contrasts with white background
+      className={cn("text-sm text-neutral-600", className)}
       {...props}
     />
   )
