@@ -12,7 +12,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import LoadingSpinner from '@/components/shared/LoadingSpinner';
 import ErrorDisplay from '@/components/shared/ErrorDisplay';
 import TagSelector from '@/components/shared/TagSelector';
-import SignatureSelector from '@/components/shared/SignatureSelector';
+import SignaturePathSelector from '@/components/shared/SignaturePathSelector'; // Updated import name
 import UnitSelector from './UnitSelector';
 import { useAuth } from '@/hooks/useAuth';
 import api from '@/lib/api';
@@ -389,7 +389,8 @@ const DocumentForm: React.FC<DocumentFormProps> = ({
                             {errors.topographicSignature && <p className="text-xs text-destructive">{errors.topographicSignature.message}</p>}
                         </GridItem>
 
-                        <SignatureSelector
+                        {/* Use SignaturePathSelector */}
+                        <SignaturePathSelector
                             label={t('archiveFormDescSigLabel', preferredLanguage)}
                             signatures={descriptiveSignatures}
                             onChange={setDescriptiveSignatures}

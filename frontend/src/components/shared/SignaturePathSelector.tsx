@@ -8,8 +8,10 @@ import { useAuth } from '@/hooks/useAuth';
 import api from '@/lib/api';
 import type { SignatureElement } from '../../../../backend/src/functionalities/signature/element/models';
 import { cn } from '@/lib/utils';
-import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
-import ElementBrowserPopoverContent from './ElementBrowserPopoverContent';
+// Import Dialog components
+import { Dialog, DialogTrigger, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+// Use relative path again
+import ElementBrowserDialogContent from './ElementBrowserDialogContent.tsx';
 import { t } from '@/translations/utils'; // Import translation utility
 
 type ResolvedSignature = { idPath: number[]; display: string };
@@ -30,7 +32,7 @@ const SignaturePathSelector: React.FC<SignaturePathSelectorProps> = ({
   const { token, preferredLanguage } = useAuth(); // Get preferredLanguage
   const [resolvedSignatures, setResolvedSignatures] = useState<ResolvedSignature[]>([]);
   const [isLoadingSignatures, setIsLoadingSignatures] = useState(false);
-  const [isBrowserOpen, setIsBrowserOpen] = useState(false);
+  const [isBrowserOpen, setIsBrowserOpen] = useState(false); // State for Dialog open/close
 
   // Memoize the stringified version of signatures to stabilize useEffect dependency
   const stringifiedSignatures = useMemo(() => JSON.stringify(signatures), [signatures]);
@@ -64,13 +66,14 @@ const SignaturePathSelector: React.FC<SignaturePathSelectorProps> = ({
     resolveAllSignatures();
   }, [stringifiedSignatures, token, preferredLanguage]); // Add preferredLanguage
 
-  const addSignatureCallback = useCallback((newSignature: number[]) => {
+  // Renamed callback for clarity
+  const handleAddSignatureFromBrowser = useCallback((newSignature: number[]) => {
       const newSignatureStr = JSON.stringify(newSignature);
       const currentSignatures = JSON.parse(stringifiedSignatures);
       if (!currentSignatures.some((p: number[]) => JSON.stringify(p) === newSignatureStr)) {
           onChange([...currentSignatures, newSignature]);
       }
-      setIsBrowserOpen(false);
+      setIsBrowserOpen(false); // Close the dialog
   }, [stringifiedSignatures, onChange]);
 
 
@@ -80,44 +83,55 @@ const SignaturePathSelector: React.FC<SignaturePathSelectorProps> = ({
     onChange(currentSignatures.filter((p: number[]) => JSON.stringify(p) !== signatureToRemoveStr));
   }, [stringifiedSignatures, onChange]);
 
-  const handleClosePopover = useCallback(() => {
+  // Renamed callback for clarity
+  const handleCloseBrowserDialog = useCallback(() => {
     setIsBrowserOpen(false);
   }, []);
 
 
   return (
-    <div className={cn("flex flex-col space-y-2 rounded border p-3 bg-muted", className)}>
+    <div className={cn("flex flex-col space-y-2 rounded border p-3 bg-white dark:bg-white", className)}> {/* Changed bg-muted to bg-white */}
       <div className="flex justify-between items-center mb-1">
          {/* Use the passed label prop */}
-         <Label className='text-sm font-medium'>{label}</Label>
-         <Popover open={isBrowserOpen} onOpenChange={setIsBrowserOpen}>
-             <PopoverTrigger asChild>
+         <Label className='text-sm font-medium text-neutral-700'>{label}</Label> {/* Adjusted color for white bg */}
+         {/* Use Dialog instead of Popover */}
+         <Dialog open={isBrowserOpen} onOpenChange={setIsBrowserOpen}>
+             <DialogTrigger asChild>
                  {/* Use translated button text */}
                 <Button type="button" size="sm" variant="outline" className='shrink-0'>
                     <Plus className="mr-1 h-3 w-3" /> {t('addSignaturePathButton', preferredLanguage)}
                 </Button>
-             </PopoverTrigger>
-             <PopoverContent className="w-[500px] max-w-[calc(100vw-2rem)] p-0" align="start">
-                 <ElementBrowserPopoverContent
-                     onSelectSignature={addSignatureCallback}
-                     onClosePopover={handleClosePopover}
-                 />
-             </PopoverContent>
-         </Popover>
+             </DialogTrigger>
+             <DialogContent className="w-[90vw] max-w-[700px] h-[80vh] p-0 flex flex-col"> {/* Adjust size and padding */}
+                 <DialogHeader className='p-4 border-b shrink-0'>
+                      <DialogTitle>{t('elementBrowserPopoverSelectElementPlaceholder', preferredLanguage)}</DialogTitle> {/* Use a relevant title */}
+                 </DialogHeader>
+                 {/* Render the browser content inside the dialog */}
+                 <div className='flex-grow overflow-hidden'> {/* Container for the content */}
+                     {isBrowserOpen && ( // Render only when open to reset state
+                         <ElementBrowserDialogContent
+                            onSelectSignature={handleAddSignatureFromBrowser}
+                            onCloseDialog={handleCloseBrowserDialog}
+                         />
+                     )}
+                 </div>
+             </DialogContent>
+         </Dialog>
        </div>
-      <div className="flex-grow space-y-1 min-h-[40px] max-h-[150px] overflow-y-auto border rounded bg-background p-2">
+       {/* Inner container for badges - use lighter gray background */}
+      <div className="flex-grow space-y-1 min-h-[40px] max-h-[150px] overflow-y-auto border rounded bg-neutral-50 p-2">
          {/* Use translated loading text */}
          {isLoadingSignatures && <div className='flex justify-center p-2'><LoadingSpinner size='sm' /></div>}
-         {!isLoadingSignatures && resolvedSignatures.map((resolved) => ( // Removed index from map parameters
-          <div key={JSON.stringify(resolved.idPath)} className="flex items-center justify-between gap-2 rounded bg-muted p-1 px-2 text-sm"> {/* Use stringified path as key */}
-            <span className="font-mono text-xs flex-grow break-words min-w-0">
-                {resolved.display || <span className='italic text-muted-foreground'>{t('emptySignaturePlaceholder', preferredLanguage)}</span>} {/* Use translated placeholder */}
+         {!isLoadingSignatures && resolvedSignatures.map((resolved) => (
+          <div key={JSON.stringify(resolved.idPath)} className="flex items-center justify-between gap-2 rounded bg-neutral-100 p-1 px-2 text-sm"> {/* Changed bg-muted to bg-neutral-100 */}
+            <span className="font-mono text-xs flex-grow break-words min-w-0 text-neutral-800"> {/* Adjusted text color */}
+                {resolved.display || <span className='italic text-neutral-500'>{t('emptySignaturePlaceholder', preferredLanguage)}</span>} {/* Use translated placeholder */}
             </span>
             <Button
               type="button"
               variant="ghost"
               size="icon"
-              className="h-5 w-5 shrink-0 text-muted-foreground hover:text-destructive"
+              className="h-5 w-5 shrink-0 text-neutral-500 hover:text-destructive"
               onClick={() => removeSignature(resolved.idPath)}
               aria-label={`${t('removeButton', preferredLanguage)} ${resolved.display}`}
             >
@@ -126,10 +140,11 @@ const SignaturePathSelector: React.FC<SignaturePathSelectorProps> = ({
           </div>
         ))}
          {/* Use translated placeholder */}
-         {!isLoadingSignatures && signatures.length === 0 && <p className="text-xs text-muted-foreground italic text-center py-1">{t('noSignaturesAddedHint', preferredLanguage)}</p>}
+         {!isLoadingSignatures && signatures.length === 0 && <p className="text-xs text-neutral-500 italic text-center py-1">{t('noSignaturesAddedHint', preferredLanguage)}</p>}
       </div>
     </div>
   );
 };
 
-export default SignatureSelector;
+// Changed export name to match component name
+export default SignaturePathSelector;

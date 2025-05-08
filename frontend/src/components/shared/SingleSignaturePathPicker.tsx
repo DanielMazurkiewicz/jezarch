@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
-import ElementBrowserPopoverContent from './ElementBrowserPopoverContent';
+// Use relative path again
+import ElementBrowserDialogContent from './ElementBrowserDialogContent.tsx';
 import { Badge } from '@/components/ui/badge';
 import { X, Wand2 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
@@ -10,6 +11,9 @@ import type { SignatureElement } from '../../../../backend/src/functionalities/s
 import { cn } from '@/lib/utils';
 import LoadingSpinner from './LoadingSpinner';
 import { t } from '@/translations/utils'; // Import translation utility
+// Import Dialog components
+import { Dialog, DialogTrigger, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+
 
 interface SingleSignaturePathPickerProps {
   selectedPath: number[] | null; // Array of element IDs or null if none selected
@@ -25,7 +29,7 @@ const SingleSignaturePathPicker: React.FC<SingleSignaturePathPickerProps> = ({
   className,
 }) => {
   const { token, preferredLanguage } = useAuth(); // Get preferredLanguage
-  const [isBrowserOpen, setIsBrowserOpen] = useState(false);
+  const [isBrowserOpen, setIsBrowserOpen] = useState(false); // State for Dialog open/close
   const [resolvedDisplayPath, setResolvedDisplayPath] = useState<string | null>(null);
   const [isLoadingPath, setIsLoadingPath] = useState(false);
 
@@ -59,19 +63,24 @@ const SingleSignaturePathPicker: React.FC<SingleSignaturePathPickerProps> = ({
 
   const handlePathSelected = (newPath: number[]) => {
     onChange(newPath);
-    setIsBrowserOpen(false);
+    setIsBrowserOpen(false); // Close the dialog
   };
 
   const handleClearPath = (e: React.MouseEvent) => {
-    e.stopPropagation(); // Prevent popover from opening if button is inside trigger
+    e.stopPropagation(); // Prevent dialog trigger if button is clicked
     onChange(null);
+  };
+
+  const handleCloseBrowserDialog = () => {
+      setIsBrowserOpen(false);
   };
 
   return (
     <div className={cn('flex flex-col gap-1.5', className)}>
       {label && <span className="text-xs text-muted-foreground">{label}</span>}
-      <Popover open={isBrowserOpen} onOpenChange={setIsBrowserOpen}>
-        <PopoverTrigger asChild>
+      {/* Use Dialog instead of Popover */}
+      <Dialog open={isBrowserOpen} onOpenChange={setIsBrowserOpen}>
+        <DialogTrigger asChild>
           <Button
             variant="outline"
             className="w-full justify-start text-left font-normal min-h-[36px] h-auto whitespace-normal py-1.5"
@@ -86,6 +95,7 @@ const SingleSignaturePathPicker: React.FC<SingleSignaturePathPickerProps> = ({
             ) : resolvedDisplayPath ? (
               <div className="flex items-center justify-between w-full gap-2">
                 <span className="font-mono text-xs break-all">{resolvedDisplayPath}</span>
+                {/* Clear Button */}
                 <Button
                   variant="ghost"
                   size="icon"
@@ -93,6 +103,7 @@ const SingleSignaturePathPicker: React.FC<SingleSignaturePathPickerProps> = ({
                   onClick={handleClearPath}
                    // Use translated tooltip
                   aria-label={t('singlePathPickerClearTooltip', preferredLanguage)}
+                  type="button" // Ensure it doesn't submit forms
                 >
                   <X className="h-3 w-3" />
                 </Button>
@@ -102,16 +113,24 @@ const SingleSignaturePathPicker: React.FC<SingleSignaturePathPickerProps> = ({
               <span className="text-muted-foreground">{t('singlePathPickerPlaceholder', preferredLanguage)}</span>
             )}
           </Button>
-        </PopoverTrigger>
-         {/* Increase popover width for better browsing */}
-         <PopoverContent className="w-[500px] max-w-[calc(100vw-2rem)] p-0" align="start">
-          <ElementBrowserPopoverContent
-            onSelectSignature={handlePathSelected}
-            onClosePopover={() => setIsBrowserOpen(false)}
-            initialPath={selectedPath || []}
-          />
-        </PopoverContent>
-      </Popover>
+        </DialogTrigger>
+        {/* Dialog Content */}
+        <DialogContent className="w-[90vw] max-w-[700px] h-[80vh] p-0 flex flex-col">
+           <DialogHeader className='p-4 border-b shrink-0'>
+                <DialogTitle>{t('elementBrowserPopoverSelectElementPlaceholder', preferredLanguage)}</DialogTitle>
+           </DialogHeader>
+           {/* Render the browser content inside the dialog */}
+           <div className='flex-grow overflow-hidden'>
+               {isBrowserOpen && ( // Render only when open
+                   <ElementBrowserDialogContent
+                        onSelectSignature={handlePathSelected}
+                        onCloseDialog={handleCloseBrowserDialog}
+                        initialPath={selectedPath || []}
+                   />
+               )}
+           </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

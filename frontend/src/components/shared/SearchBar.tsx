@@ -9,7 +9,7 @@ import { cn } from '@/lib/utils';
 import type { SearchRequest, SearchQuery, SearchQueryElement } from '../../../../backend/src/utils/search';
 import LoadingSpinner from './LoadingSpinner';
 import TagSelector from './TagSelector';
-import SingleSignaturePathPicker from './SingleSignaturePathPicker'; // New import
+import SingleSignaturePathPicker from './SingleSignaturePathPicker'; // Still using the picker component
 import type { Tag } from '../../../../backend/src/functionalities/tag/models';
 import { useAuth } from '@/hooks/useAuth'; // Import useAuth
 import { t } from '@/translations/utils'; // Import translation utility
@@ -279,7 +279,7 @@ const SearchBar: React.FC<SearchBarProps> = ({
                                 <Select value={String(criterion.value ?? '')} onValueChange={(value) => handleCriterionChange(criterion._key!, 'value', value)} disabled={!criterion.field} > <SelectTrigger id={`value-${criterion._key}`} className='h-9 text-sm'><SelectValue placeholder={t('selectPlaceholder', preferredLanguage)}/></SelectTrigger> <SelectContent> {(fieldOptions || []).map(opt => ( <SelectItem key={String(opt.value)} value={String(opt.value)}>{opt.label}</SelectItem> ))} </SelectContent> </Select>
                             ) : fieldType === 'tags' ? (
                                 <TagSelector selectedTagIds={Array.isArray(criterion.value) ? criterion.value as number[] : []} onChange={(selectedIds) => handleCriterionChange(criterion._key!, 'value', selectedIds)} availableTags={getTagsFromOptions(fieldOptions)} className='bg-white dark:bg-white border-neutral-200 p-0' /> // Force white bg for tag selector container
-                            ) : fieldType === 'signaturePath' ? ( // New case for signaturePath
+                            ) : fieldType === 'signaturePath' ? ( // Use the picker
                                 <SingleSignaturePathPicker
                                     selectedPath={Array.isArray(criterion.value) ? criterion.value as number[] : null}
                                     onChange={(path) => handleCriterionChange(criterion._key!, 'value', path)}
