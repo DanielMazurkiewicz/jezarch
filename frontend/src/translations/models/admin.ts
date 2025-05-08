@@ -101,6 +101,7 @@ export type AdminTranslationKey =
   | 'noAdditionalData'
   | 'unitLoadFailedError'
   | 'selectedElementLoadFailedError'
+  | 'errorMessageTemplate'
   | 'userFetchFailedError'
   | 'tagLoadFailedError'
   | 'userFetchDetailsFailedError'
@@ -109,6 +110,8 @@ export type AdminTranslationKey =
   | 'userLanguageUpdateFailedError' // Includes {login}, {message}
   | 'userTagAssignFailedError' // Includes {message}
   | 'setPasswordButton'
+  | 'createdBySearchLabel' // New
+  | 'updatedBySearchLabel' // New
   ;
 
 export type AdminTranslationSet = TranslationSet<AdminTranslationKey>;

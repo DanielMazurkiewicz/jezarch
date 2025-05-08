@@ -1,10 +1,11 @@
 import { db } from '../../../initialization/db';
-import type { ArchiveDocument, ArchiveDocumentType, UpdateArchiveDocumentInput, ArchiveDocumentSearchResult } from './models'; // Added ArchiveDocumentSearchResult
+// Removed ArchiveDocumentType import as it's inferred
+import type { ArchiveDocument, UpdateArchiveDocumentInput, ArchiveDocumentSearchResult } from './models';
 import { Log } from '../../log/db';
 import { sqliteNow } from '../../../utils/sqlite';
-import { SearchQueryElement, SearchOnCustomFieldHandlerResult, SearchRequest, buildSearchQueries } from '../../../utils/search'; // Removed SearchQuery type
+import { SearchQueryElement, SearchOnCustomFieldHandlerResult, SearchRequest, buildSearchQueries } from '../../../utils/search';
 import { Tag } from '../../tag/models';
-import { getUserByUserId } from '../../user/db';
+// Removed getUserByUserId import
 
 // Initialization function for the main archive documents table
 export async function initializeArchiveDocumentTable() {
@@ -12,7 +13,8 @@ export async function initializeArchiveDocumentTable() {
         CREATE TABLE IF NOT EXISTS archive_documents (
             archiveDocumentId INTEGER PRIMARY KEY AUTOINCREMENT,
             parentUnitArchiveDocumentId INTEGER,
-            ownerUserId INTEGER NOT NULL,
+            createdBy TEXT NOT NULL, -- Changed from ownerUserId
+            updatedBy TEXT NOT NULL, -- Added
             type TEXT NOT NULL CHECK(type IN ('unit', 'document')),
             active BOOLEAN NOT NULL DEFAULT TRUE,
             topographicSignature TEXT,
@@ -37,11 +39,13 @@ export async function initializeArchiveDocumentTable() {
             digitizedVersionLink TEXT,
             createdOn DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
             modifiedOn DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-            FOREIGN KEY (ownerUserId) REFERENCES users(userId) ON DELETE CASCADE,
+            -- FOREIGN KEY (ownerUserId) REFERENCES users(userId) ON DELETE CASCADE, -- Removed FK
             FOREIGN KEY (parentUnitArchiveDocumentId) REFERENCES archive_documents(archiveDocumentId) ON DELETE SET NULL
         )
     `);
-    await db.exec(`CREATE INDEX IF NOT EXISTS idx_ad_owner ON archive_documents (ownerUserId);`);
+    // Removed index on ownerUserId
+    await db.exec(`CREATE INDEX IF NOT EXISTS idx_ad_created_by ON archive_documents (createdBy);`); // Added index
+    await db.exec(`CREATE INDEX IF NOT EXISTS idx_ad_updated_by ON archive_documents (updatedBy);`); // Added index
     await db.exec(`CREATE INDEX IF NOT EXISTS idx_ad_parent ON archive_documents (parentUnitArchiveDocumentId);`);
     await db.exec(`CREATE INDEX IF NOT EXISTS idx_ad_type ON archive_documents (type);`);
     await db.exec(`CREATE INDEX IF NOT EXISTS idx_ad_active ON archive_documents (active);`);
@@ -55,7 +59,7 @@ export async function initializeArchiveDocumentTable() {
     // await db.exec(`CREATE INDEX IF NOT EXISTS idx_ad_desc_sig ON archive_documents (json_extract(descriptiveSignatureElementIds, '$'));`);
 }
 
-// Initialization function for the document-tag junction table
+// Initialization function for the document-tag junction table (remains the same)
 export async function initializeArchiveDocumentTagTable() {
     await db.exec(`
         CREATE TABLE IF NOT EXISTS archive_document_tags (
@@ -76,8 +80,9 @@ export const dbToArchiveDocument = async (row?: any): Promise<ArchiveDocument | 
         const document: ArchiveDocument = {
             archiveDocumentId: row.archiveDocumentId,
             parentUnitArchiveDocumentId: row.parentUnitArchiveDocumentId,
-            ownerUserId: row.ownerUserId,
-            type: row.type as ArchiveDocumentType,
+            createdBy: row.createdBy, // Changed from ownerUserId/ownerLogin
+            updatedBy: row.updatedBy, // Added
+            type: row.type, // No longer need cast if CHECK constraint is reliable
             active: Boolean(row.active),
             topographicSignature: row.topographicSignature ?? null,
             descriptiveSignatureElementIds: JSON.parse(row.descriptiveSignatureElementIds || '[]'),
@@ -101,18 +106,12 @@ export const dbToArchiveDocument = async (row?: any): Promise<ArchiveDocument | 
             digitizedVersionLink: row.digitizedVersionLink,
             createdOn: new Date(row.createdOn),
             modifiedOn: new Date(row.modifiedOn),
-            tags: row.tags ?? [],
-            ownerLogin: row.ownerLogin ?? undefined,
+            tags: row.tags ?? [], // Keep tags logic
         };
 
-        if (!document.ownerLogin && document.ownerUserId) {
-            try {
-                const owner = await getUserByUserId(document.ownerUserId);
-                document.ownerLogin = owner?.login;
-            } catch (ownerError) {
-                 await Log.error(`Failed to fetch owner login for doc ${document.archiveDocumentId}, user ${document.ownerUserId}`, "system", "database", ownerError);
-            }
-        }
+        // Removed owner login fetching logic
+
+        // Fetch tags if not joined (e.g., after insert/update)
         if (!row.tags && document.archiveDocumentId) {
              try {
                  document.tags = await getTagsForArchiveDocument(document.archiveDocumentId);
@@ -128,24 +127,27 @@ export const dbToArchiveDocument = async (row?: any): Promise<ArchiveDocument | 
 };
 
 // --- Operations ---
+// Updated signature to accept createdBy login, removed ownerUserId
 export async function createArchiveDocument(
-    input: Omit<ArchiveDocument, 'archiveDocumentId' | 'createdOn' | 'modifiedOn' | 'active' | 'tags' | 'ownerLogin'>
+    input: Omit<ArchiveDocument, 'archiveDocumentId' | 'createdOn' | 'modifiedOn' | 'active' | 'tags' | 'updatedBy'> & { createdBy: string }
 ): Promise<number> {
     const now = sqliteNow();
     const descriptiveJson = JSON.stringify(input.descriptiveSignatureElementIds || []);
     try {
         const statement = db.prepare(
             `INSERT INTO archive_documents (
-                parentUnitArchiveDocumentId, ownerUserId, type, topographicSignature,
+                parentUnitArchiveDocumentId, createdBy, updatedBy, type, topographicSignature,
                 descriptiveSignatureElementIds, title, creator, creationDate, numberOfPages, documentType,
                 dimensions, binding, condition, documentLanguage, contentDescription, remarks, accessLevel,
                 accessConditions, additionalInformation, relatedDocumentsReferences, recordChangeHistory,
                 isDigitized, digitizedVersionLink, createdOn, modifiedOn
-             ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+             ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
              RETURNING archiveDocumentId`
         );
         const result = statement.get(
-            input.parentUnitArchiveDocumentId ?? null, input.ownerUserId, input.type, input.topographicSignature ?? null,
+            input.parentUnitArchiveDocumentId ?? null,
+            input.createdBy, input.createdBy, // Set both createdBy and updatedBy on creation
+            input.type, input.topographicSignature ?? null,
             descriptiveJson, input.title, input.creator, input.creationDate, input.numberOfPages, input.documentType,
             input.dimensions, input.binding, input.condition, input.documentLanguage, input.contentDescription, input.remarks ?? null,
             input.accessLevel, input.accessConditions, input.additionalInformation ?? null, input.relatedDocumentsReferences ?? null,
@@ -159,71 +161,90 @@ export async function createArchiveDocument(
     }
 }
 
+// Removed JOIN with users
 export async function getArchiveDocumentById(id: number): Promise<ArchiveDocument | undefined> {
      const statement = db.prepare(`
-        SELECT ad.*, u.login as ownerLogin
-        FROM archive_documents ad
-        LEFT JOIN users u ON ad.ownerUserId = u.userId
-        WHERE ad.archiveDocumentId = ? AND ad.active = TRUE
+        SELECT * FROM archive_documents
+        WHERE archiveDocumentId = ? AND active = TRUE
     `);
     const row = statement.get(id);
     return await dbToArchiveDocument(row);
 }
 
+// Removed JOIN with users
 export async function getArchiveDocumentByIdInternal(id: number): Promise<ArchiveDocument | undefined> {
      const statement = db.prepare(`
-        SELECT ad.*, u.login as ownerLogin
-        FROM archive_documents ad
-        LEFT JOIN users u ON ad.ownerUserId = u.userId
-        WHERE ad.archiveDocumentId = ?
+        SELECT * FROM archive_documents
+        WHERE archiveDocumentId = ?
     `);
     const row = statement.get(id);
     return await dbToArchiveDocument(row);
 }
 
+// Updated signature to accept updatedBy login, removed ownerUserId logic
 export async function updateArchiveDocument(
     id: number,
-    data: UpdateArchiveDocumentInput
+    data: UpdateArchiveDocumentInput,
+    updatedBy: string // Add updatedBy parameter
 ): Promise<ArchiveDocument | undefined> {
     const fieldsToUpdate: string[] = [];
     const params: any[] = [];
+
     Object.entries(data).forEach(([key, value]) => {
-        if (value === undefined || key === 'tagIds' || key === 'descriptiveSignatureElementIds' || key === 'topographicSignature') return;
+        // Skip fields that are handled separately or not part of core update
+        if (value === undefined || key === 'tagIds' || key === 'descriptiveSignatureElementIds') return;
+
         let dbKey = key; let dbValue = value;
         if (key === 'isDigitized') dbValue = value ? 1 : 0;
         else if (value === null) dbValue = null;
-        if (key === 'ownerUserId') { /* No change needed */ }
+        // Add key to update list
         fieldsToUpdate.push(`${dbKey} = ?`);
         params.push(dbValue);
     });
+
+    // Handle topographicSignature separately (can be null)
     if (data.topographicSignature !== undefined) {
         fieldsToUpdate.push('topographicSignature = ?');
         params.push(data.topographicSignature);
     }
+
+    // Handle descriptiveSignatureElementIds separately
     if (data.descriptiveSignatureElementIds !== undefined) {
         fieldsToUpdate.push('descriptiveSignatureElementIds = ?');
         params.push(JSON.stringify(data.descriptiveSignatureElementIds));
     }
+
+    // Only proceed if there are actual fields to update
     if (fieldsToUpdate.length === 0) {
-        if (data.tagIds !== undefined) return getArchiveDocumentByIdInternal(id);
+        // No core data changed, maybe only tags/signatures (handled in controller)
+        // Return the current document state
         return getArchiveDocumentByIdInternal(id);
     }
+
+    // Always update modifiedOn and updatedBy
     fieldsToUpdate.push('modifiedOn = ?');
     params.push(sqliteNow());
-    const query = `UPDATE archive_documents SET ${fieldsToUpdate.join(', ')} WHERE archiveDocumentId = ? RETURNING *`;
+    fieldsToUpdate.push('updatedBy = ?');
+    params.push(updatedBy);
+
+    const query = `UPDATE archive_documents SET ${fieldsToUpdate.join(', ')} WHERE archiveDocumentId = ?`;
     params.push(id);
+
     try {
         const statement = db.prepare(query);
-        statement.get(...params); // RETURNING doesn't give joined ownerLogin
+        statement.run(...params); // Use run as RETURNING * wasn't used effectively before
+        // Fetch the updated document with all joined data
         return getArchiveDocumentByIdInternal(id);
     } catch (error: any) {
-        await Log.error('Failed to update archive document', 'system', 'database', { id, data, error });
+        await Log.error('Failed to update archive document', 'system', 'database', { id, data, updatedBy, error });
         throw error;
     }
 }
 
+
 export async function disableArchiveDocument(id: number): Promise<boolean> {
     try {
+        // Update modifiedOn when disabling
         const statement = db.prepare(`UPDATE archive_documents SET active = FALSE, modifiedOn = ? WHERE archiveDocumentId = ? AND active = TRUE`);
         const result = statement.run(sqliteNow() ?? null, id);
         const disabled = result.changes > 0;
@@ -239,7 +260,7 @@ export async function disableArchiveDocument(id: number): Promise<boolean> {
     }
 }
 
-// --- Tag Management ---
+// --- Tag Management (remains the same) ---
 export async function getTagsForArchiveDocument(archiveDocumentId: number): Promise<Tag[]> {
     const statement = db.prepare(`SELECT t.* FROM tags t JOIN archive_document_tags adt ON t.tagId = adt.tagId WHERE adt.archiveDocumentId = ? ORDER BY t.name COLLATE NOCASE`);
     return statement.all(archiveDocumentId) as Tag[];
@@ -283,7 +304,7 @@ export async function setTagsForArchiveDocument(archiveDocumentId: number, tagId
 }
 
 // --- Search Handlers ---
-// Handler for searching by descriptive signatures
+// Handler for searching by descriptive signatures (remains the same logic)
 export const archiveDocumentSignatureSearchHandler: (element: SearchQueryElement, tableAlias: string) => SearchOnCustomFieldHandlerResult = (
     element, tableAlias
 ): SearchOnCustomFieldHandlerResult => {
@@ -321,28 +342,10 @@ export const archiveDocumentSignatureSearchHandler: (element: SearchQueryElement
         )`;
         params.push(likePatternPrefix + '%', exactPathJsonString);
     } else if (element.condition === 'CONTAINS_SEQUENCE') { // Path contains the given sequence ANYWHERE
-        // This is trickier with JSON arrays of arrays. We are looking for a sub-array match.
-        // This might require iterating through each path in the DB and checking subsequence.
-        // For simplicity, we can check if the string representation of the sequence appears.
-        // This is not perfectly robust but can be a starting point.
-        // Example: path = [2,3], search for docs where a signature is [1,2,3,4] or [7,2,3]
-        // This translates to checking if ",2,3," or "[2,3," or ",2,3]" or "[2,3]" (if it's the whole path) is present.
-
-        // We'll search for the sequence as a substring within the stringified JSON array elements.
-        // This requires careful construction of the LIKE pattern.
-        const sequencePart = signaturePath.join(','); // "2,3"
-        // We need to find this sequence within a JSON array string like "[1,2,3,4]" or "[[1,2,3],[4,5,2,3]]"
-        // This is complex with simple LIKE.
-        // A more robust way for "contains sequence" might need a custom SQLite function or more complex JSON queries.
-        // For now, let's implement a simplified version for 'CONTAINS_SEQUENCE' that checks if any path *includes* all elements of signaturePath in order.
-        // This is still not a true subsequence but a "starts with" check on sub-paths or exact match of sub-paths.
-
-        // Given the UI "Contains Sequence", it's likely a contiguous subsequence.
-        // So, for a signaturePath [2,3], we want to find if ",2,3," or "[2,3," or ",2,3]" or "[2,3]" (as whole path) exists.
-        const seqStart = `[${sequencePart}`; // `[2,3`
-        const seqMiddle = `,${sequencePart},`; // `,2,3,`
-        const seqEnd = `,${sequencePart}]`; // `,2,3]`
-        const seqExact = `[${sequencePart}]`; // `[2,3]`
+        const seqStart = `[${signaturePath.join(',')}`;
+        const seqMiddle = `,${signaturePath.join(',')},`;
+        const seqEnd = `,${signaturePath.join(',')}]`;
+        const seqExact = `[${signaturePath.join(',')}]`;
 
         whereCondition = `EXISTS (
             SELECT 1 FROM json_each(${tableAlias}.descriptiveSignatureElementIds) je
@@ -365,10 +368,11 @@ export const archiveDocumentSignatureSearchHandler: (element: SearchQueryElement
 
 
 // --- Batch Tagging DB Functions ---
+// Updated allowedFields
 export async function getMatchingDocumentIds(searchRequest: SearchRequest): Promise<number[]> {
     try {
         const allowedDirectFields: (keyof ArchiveDocument)[] = [
-            'archiveDocumentId', 'parentUnitArchiveDocumentId', 'ownerUserId', 'type', 'title',
+            'archiveDocumentId', 'parentUnitArchiveDocumentId', 'createdBy', 'updatedBy', 'type', 'title', // Changed fields
             'creator', 'creationDate', 'numberOfPages', 'documentType', 'dimensions', 'binding',
             'condition', 'documentLanguage', 'contentDescription', 'remarks', 'accessLevel',
             'accessConditions', 'additionalInformation', 'relatedDocumentsReferences',
@@ -381,7 +385,7 @@ export async function getMatchingDocumentIds(searchRequest: SearchRequest): Prom
             { ...searchRequest, page: 1, pageSize: -1 },
             allowedDirectFields,
             {
-                'tags': (element, tableAlias) => { /* ... tag handler from controller (or keep it generic) ... */
+                'tags': (element, tableAlias) => {
                     if (element.field === 'tags' && element.condition === 'ANY_OF' && Array.isArray(element.value)) {
                         const tagIds = element.value.filter((id): id is number => typeof id === 'number' && Number.isInteger(id) && id > 0);
                         if (tagIds.length === 0) return { whereCondition: element.not ? '1=1' : '1=0', params: [] };
@@ -392,6 +396,7 @@ export async function getMatchingDocumentIds(searchRequest: SearchRequest): Prom
                     return null;
                 },
                 'descriptiveSignature': archiveDocumentSignatureSearchHandler,
+                // No handler needed for createdBy/updatedBy as they are direct fields
             },
             primaryKey
         );

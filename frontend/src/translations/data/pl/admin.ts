@@ -110,4 +110,6 @@ export const adminTranslationsPL: AdminTranslationSet = {
   userLanguageUpdateFailedError: 'Nie udało się zaktualizować języka dla {login}: {message}',
   userTagAssignFailedError: 'Nie udało się przypisać tagów: {message}',
   setPasswordButton: 'Ustaw Hasło',
+  createdBySearchLabel: 'Utworzone przez',
+  updatedBySearchLabel: 'Zaktualizowane przez',
 };

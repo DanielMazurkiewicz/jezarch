@@ -13,7 +13,7 @@ import api from '@/lib/api';
 import type { Tag } from '../../../../backend/src/functionalities/tag/models';
 import type { ArchiveDocument, ArchiveDocumentSearchResult, ArchiveDocumentType } from '../../../../backend/src/functionalities/archive/document/models';
 import type { SearchRequest, SearchResponse, SearchQueryElement } from '../../../../backend/src/utils/search';
-import { PlusCircle, ArrowLeft, Folder, FileText, Tags, MinusCircle, Archive as ArchiveIcon, FileSearch } from 'lucide-react'; // Added ArchiveIcon, FileSearch
+import { PlusCircle, ArrowLeft, Folder, FileText, Tags, MinusCircle, Archive as ArchiveIcon, FileSearch } from 'lucide-react';
 import { Pagination } from '@/components/shared/Pagination';
 import { toast } from "sonner";
 import { Card, CardContent, CardHeader, CardDescription } from '@/components/ui/card';
@@ -24,7 +24,7 @@ import { t } from '@/translations/utils'; // Import translation utility
 const ARCHIVE_PAGE_SIZE = 10;
 
 const ArchivePage: React.FC = () => {
-  const { token, user, preferredLanguage } = useAuth(); // Get preferredLanguage
+  const { token, user, preferredLanguage } = useAuth();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const parentUnitId = searchParams.get('unitId') ? Number(searchParams.get('unitId')) : null;
@@ -39,7 +39,7 @@ const ArchivePage: React.FC = () => {
   const [formInitialType, setFormInitialType] = useState<ArchiveDocumentType | undefined>(undefined);
   const [formInitialParentId, setFormInitialParentId] = useState<number | undefined>(undefined);
   const [formInitialParentTitle, setFormInitialParentTitle] = useState<string | undefined>(undefined);
-  const [formDialogTitle, setFormDialogTitle] = useState("Create Item"); // Will be translated
+  const [formDialogTitle, setFormDialogTitle] = useState("Create Item");
 
   const [previewingDoc, setPreviewingDoc] = useState<ArchiveDocument | null>(null);
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
@@ -60,13 +60,11 @@ const ArchivePage: React.FC = () => {
 
   const isSearchActive = useMemo(() => searchQuery.length > 0, [searchQuery]);
 
-  // --- Determine Icon based on role and context ---
   const headerIcon = useMemo(() => {
-      if (parentUnitId) return Folder; // Always Folder icon when inside a unit
-      return isUserRole ? FileSearch : ArchiveIcon; // Match sidebar logic for root
+      if (parentUnitId) return Folder;
+      return isUserRole ? FileSearch : ArchiveIcon;
   }, [parentUnitId, isUserRole]);
 
-  // --- Translate Dialog Title ---
   useEffect(() => {
      if (editingDoc) setFormDialogTitle(t('archiveEditItemDialogTitle', preferredLanguage, { itemType: t(editingDoc.type === 'unit' ? 'archiveUnitLabel' : 'archiveDocumentLabel', preferredLanguage) }));
      else if (parentUnitId && parentUnit) setFormDialogTitle(t('archiveCreateInUnitDialogTitle', preferredLanguage, { unitTitle: parentUnit.title }));
@@ -264,7 +262,11 @@ const ArchivePage: React.FC = () => {
        if (isAdmin || isEmployee) {
            baseFields.push(
                { value: 'tags', label: t('tagsLabel', preferredLanguage), type: 'tags', options: availableTags.map(t => ({value: t.tagId!, label: t.name})) },
-               { value: 'ownerUserId', label: t('archivePreviewOwnerLabel', preferredLanguage) + ' ID', type: 'number' }
+               // --- UPDATED: Changed to createdBy/updatedBy ---
+               { value: 'createdBy', label: t('createdBySearchLabel', preferredLanguage), type: 'text' },
+               { value: 'updatedBy', label: t('updatedBySearchLabel', preferredLanguage), type: 'text' },
+               // { value: 'ownerUserId', label: t('ownerUserIdSearchLabel', preferredLanguage), type: 'number' } // Removed ownerUserId
+               // ----------------------------------------------
            );
        }
        if (isAdmin) {
@@ -327,9 +329,7 @@ const ArchivePage: React.FC = () => {
                          </Button>
                          </DialogTrigger>
                          <DialogContent className="w-[90vw] max-w-[1200px] h-[90vh] flex flex-col"> {/* Added flex flex-col */}
-                            {/* Header remains non-scrollable */}
                             <DialogHeader> <DialogTitle>{formDialogTitle}</DialogTitle> </DialogHeader>
-                            {/* Form content becomes scrollable */}
                             <div className="flex-grow overflow-y-auto pr-2 pl-1"> {/* Adjusted padding */}
                                 {isFormOpen && (
                                     <DocumentForm
@@ -341,21 +341,19 @@ const ArchivePage: React.FC = () => {
                                         />
                                 )}
                             </div>
-                            {/* Footer is outside scrollable area if needed, but button is inside form */}
-                            {/* <DialogFooter className="shrink-0"> */}
-                                {/* Add any footer buttons if needed outside form submission */}
-                            {/* </DialogFooter> */}
                          </DialogContent>
                      </Dialog>
                  )}
             </div>
        </div>
 
+       {/* --- SearchBar uses the updated searchFields --- */}
        <SearchBar
            fields={searchFields}
            onSearch={handleSearch}
            isLoading={isLoading || isBatchTagLoading}
        />
+       {/* --------------------------------------------- */}
 
         <Card>
              <CardHeader>

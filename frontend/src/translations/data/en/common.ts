@@ -142,7 +142,6 @@ export const commonTranslationsEN: CommonTranslationSet = {
   insufficientPermissionsError: 'Insufficient permissions.',
   notAvailableAbbr: 'N/A',
   unknown: 'unknown',
-  // Added/Corrected Keys
   sidebarLoggedInAs: 'Logged in as:',
   tagSelectorSelectPlaceholder: 'Select tags...',
   tagSelectorSearchPlaceholder: 'Search tags...',
@@ -150,4 +149,9 @@ export const commonTranslationsEN: CommonTranslationSet = {
   tagSelectorError: 'Error loading tags',
   tagSelectorNoTags: 'No tags found.',
   signaturesTitle: 'Signatures',
+  // --- NEW/UPDATED KEYS ---
+  createdByLabel: 'Created By',
+  updatedByLabel: 'Updated By',
+  lastModifiedLabel: 'Last Modified', // Can be used instead of 'Updated By' depending on context
+  ownerLabel: 'Owner', // Keep if needed elsewhere, otherwise remove/replace
 };

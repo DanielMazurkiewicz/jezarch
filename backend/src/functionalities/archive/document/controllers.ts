@@ -23,13 +23,13 @@ import {
     batchTagDocumentsSchema,
     BatchTagDocumentsInput,
 } from './models';
-import { getSessionAndUser, isAllowedRole, isOwner } from '../../session/controllers';
+// Removed isOwner import
+import { getSessionAndUser, isAllowedRole } from '../../session/controllers';
 import { Log } from '../../log/db';
 import { buildSearchQueries, executeSearch, SearchQueryElement, SearchRequest, SearchResponse } from '../../../utils/search';
 import { Tag } from '../../tag/models';
 import { getAssignedTagIdsForUser } from '../../user/db';
 // Removed direct import of archiveDocumentTagSearchHandler, it's passed in buildSearchQueries
-// import { archiveDocumentTagSearchHandler } from './db';
 import { db } from '../../../initialization/db';
 import { populateResolvedDescriptiveSignatures } from '../../signature/element/db';
 
@@ -51,21 +51,23 @@ export const createArchiveDocumentController = async (req: BunRequest) => {
         }
 
         const { tagIds, ...docData } = validation.data;
-        const ownerUserId = sessionAndUser.user.userId;
+        const createdByLogin = sessionAndUser.user.login; // Use login for createdBy
 
         const inputForDb = {
             ...docData,
-            ownerUserId: ownerUserId,
+            createdBy: createdByLogin, // Add createdBy field
         };
 
-        const newDocumentId = await createArchiveDocument(inputForDb as any);
+        // Pass the object directly, db function expects the correct shape
+        const newDocumentId = await createArchiveDocument(inputForDb);
 
         if (tagIds && tagIds.length > 0) {
             await setTagsForArchiveDocument(newDocumentId, tagIds);
         }
 
-        await Log.info(`Archive document created: ${docData.title} (ID: ${newDocumentId})`, sessionAndUser.user.login, AREA);
+        await Log.info(`Archive document created: ${docData.title} (ID: ${newDocumentId}) by ${createdByLogin}`, sessionAndUser.user.login, AREA);
 
+        // Fetch the newly created document to return it with all fields (including updatedBy)
         const newDocument = await getArchiveDocumentByIdInternal(newDocumentId);
         if (newDocument) {
             newDocument.tags = await getTagsForArchiveDocument(newDocumentId);
@@ -88,6 +90,7 @@ export const createArchiveDocumentController = async (req: BunRequest) => {
 export const getArchiveDocumentByIdController = async (req: BunRequest<":id">) => {
     const sessionAndUser = await getSessionAndUser(req);
     if (!sessionAndUser) return new Response("Unauthorized", { status: 401 });
+    // User role access depends on tags, not ownership
     if (!isAllowedRole(sessionAndUser, 'admin', 'employee', 'user')) return new Response("Forbidden", { status: 403 });
 
     try {
@@ -102,6 +105,7 @@ export const getArchiveDocumentByIdController = async (req: BunRequest<":id">) =
         const isAdminOrEmployee = isAllowedRole(sessionAndUser, 'admin', 'employee');
         const includeInactive = isAdminOrEmployee && new URL(req.url).searchParams.get('includeInactive') === 'true';
 
+        // Fetching logic remains the same (internal fetches all, public checks active)
         if (isAdminOrEmployee && includeInactive) {
             document = await getArchiveDocumentByIdInternal(id);
             if (document) {
@@ -118,6 +122,7 @@ export const getArchiveDocumentByIdController = async (req: BunRequest<":id">) =
 
         document.tags = await getTagsForArchiveDocument(id);
 
+        // Access control for 'user' role based on tags
         if (sessionAndUser.user.role === 'user') {
             const userAllowedTagIds = await getAssignedTagIdsForUser(sessionAndUser.user.userId);
             const hasAllowedTag = document.tags.some(tag => userAllowedTagIds.includes(tag.tagId!));
@@ -128,6 +133,7 @@ export const getArchiveDocumentByIdController = async (req: BunRequest<":id">) =
              await Log.info(`'user' ${sessionAndUser.user.login} accessed document ${id} with allowed tag`, sessionAndUser.user.login, AREA);
         }
 
+        // Populate resolved signatures (remains the same)
         if (document.descriptiveSignatureElementIds && document.descriptiveSignatureElementIds.length > 0) {
             await populateResolvedDescriptiveSignatures([document as ArchiveDocumentSearchResult]);
         } else {
@@ -146,6 +152,7 @@ export const getArchiveDocumentByIdController = async (req: BunRequest<":id">) =
 export const updateArchiveDocumentController = async (req: BunRequest<":id">) => {
     const sessionAndUser = await getSessionAndUser(req);
     if (!sessionAndUser) return new Response("Unauthorized", { status: 401 });
+    // Only admins and employees can update
     if (!isAllowedRole(sessionAndUser, 'admin', 'employee')) return new Response("Forbidden", { status: 403 });
 
     try {
@@ -170,26 +177,20 @@ export const updateArchiveDocumentController = async (req: BunRequest<":id">) =>
             return new Response(JSON.stringify({ message: 'Document not found' }), { status: 404 });
         }
 
+        // Removed ownership change logic
+
         const { tagIds, ...updateData } = validation.data;
-        let finalUpdateData: UpdateArchiveDocumentInput = { ...updateData };
+        const updatedByLogin = sessionAndUser.user.login; // Use login for updatedBy
 
-        const requestedOwnerId = rawBody.ownerUserId;
-        if (requestedOwnerId !== undefined && typeof requestedOwnerId === 'number' && existingDoc.ownerUserId !== requestedOwnerId) {
-            if (!isAllowedRole(sessionAndUser, 'admin')) {
-                await Log.error(`Forbidden attempt to change owner by non-admin on document ${id}`, sessionAndUser.user.login, AREA);
-                return new Response("Forbidden: Only admins can change ownership.", { status: 403 });
-            }
-            finalUpdateData.ownerUserId = requestedOwnerId;
-        }
+        const updatedDocData = await updateArchiveDocument(id, updateData, updatedByLogin); // Pass updatedByLogin
 
-        const updatedDocData = await updateArchiveDocument(id, finalUpdateData);
-
+        // Handle tags separately (remains the same)
         const validatedTagIds = rawBody.tagIds;
         if (validatedTagIds !== undefined && Array.isArray(validatedTagIds)) {
             await setTagsForArchiveDocument(id, validatedTagIds.filter((tid): tid is number => typeof tid === 'number'));
         }
 
-        await Log.info(`Archive document updated: ${updatedDocData?.title} (ID: ${id})`, sessionAndUser.user.login, AREA);
+        await Log.info(`Archive document updated: ${updatedDocData?.title} (ID: ${id}) by ${updatedByLogin}`, sessionAndUser.user.login, AREA);
 
         const finalDocument = await getArchiveDocumentByIdInternal(id);
         if (finalDocument) {
@@ -210,9 +211,11 @@ export const updateArchiveDocumentController = async (req: BunRequest<":id">) =>
 };
 
 // --- Disable (Soft Delete) ---
+// Logic remains largely the same, but permissions are simplified
 export const disableArchiveDocumentController = async (req: BunRequest<":id">) => {
     const sessionAndUser = await getSessionAndUser(req);
     if (!sessionAndUser) return new Response("Unauthorized", { status: 401 });
+    // Only admins and employees can disable
     if (!isAllowedRole(sessionAndUser, 'admin', 'employee')) return new Response("Forbidden", { status: 403 });
 
     try {
@@ -236,9 +239,11 @@ export const disableArchiveDocumentController = async (req: BunRequest<":id">) =
         const disabled = await disableArchiveDocument(id);
 
         if (disabled) {
-            await Log.info(`Archive document disabled: ID ${id}`, sessionAndUser.user.login, AREA);
+            // Log the user who performed the disable action
+            await Log.info(`Archive document disabled: ID ${id} by ${sessionAndUser.user.login}`, sessionAndUser.user.login, AREA);
             return new Response(null, { status: 204 });
         } else {
+             // This case is less likely now with the checks above, but keep for robustness
              await Log.warn(`Document disable failed or already inactive for ID ${id}`, sessionAndUser.user.login, AREA);
              const currentDoc = await getArchiveDocumentByIdInternal(id);
              if (currentDoc && !currentDoc.active) {
@@ -254,9 +259,11 @@ export const disableArchiveDocumentController = async (req: BunRequest<":id">) =
 };
 
 // --- Search ---
+// Updated allowedDirectFields, removed ownerUserId logic
 export const searchArchiveDocumentsController = async (req: BunRequest) => {
     const sessionAndUser = await getSessionAndUser(req);
     if (!sessionAndUser) return new Response("Unauthorized", { status: 401 });
+    // User role access depends on tags
     if (!isAllowedRole(sessionAndUser, 'admin', 'employee', 'user')) return new Response("Forbidden", { status: 403 });
 
     try {
@@ -265,8 +272,9 @@ export const searchArchiveDocumentsController = async (req: BunRequest) => {
         const isEmployee = isAllowedRole(sessionAndUser, 'employee');
         const isUserRole = sessionAndUser.user.role === 'user';
 
+        // Updated allowed fields
         const allowedDirectFields: (keyof ArchiveDocument)[] = [
-            'archiveDocumentId', 'parentUnitArchiveDocumentId', 'ownerUserId', 'type',
+            'archiveDocumentId', 'parentUnitArchiveDocumentId', 'createdBy', 'updatedBy', 'type', // Changed fields
             'title', 'creator', 'creationDate', 'numberOfPages', 'documentType',
             'dimensions', 'binding', 'condition', 'documentLanguage', 'contentDescription',
             'remarks', 'accessLevel', 'accessConditions', 'additionalInformation',
@@ -278,6 +286,7 @@ export const searchArchiveDocumentsController = async (req: BunRequest) => {
 
         let queryClone = searchRequest.query ? [...searchRequest.query] : [];
 
+        // 'active' filter logic remains the same (non-admin/employee see only active)
         const activeFilterIndex = queryClone.findIndex(el => el.field === 'active');
         if (activeFilterIndex !== -1) {
             const activeFilter = queryClone[activeFilterIndex];
@@ -294,6 +303,7 @@ export const searchArchiveDocumentsController = async (req: BunRequest) => {
             }
         }
 
+        // Tag filtering logic for 'user' role remains the same
         let allowedTagIds: number[] | null = null;
         if (isUserRole) {
             allowedTagIds = await getAssignedTagIdsForUser(sessionAndUser.user.userId);
@@ -312,12 +322,14 @@ export const searchArchiveDocumentsController = async (req: BunRequest) => {
 
         const finalSearchRequest = { ...searchRequest, query: queryClone };
 
+        // Build queries using updated allowedFields
         const { dataQuery, countQuery } = await buildSearchQueries<ArchiveDocumentSearchResult>(
             'archive_documents',
             finalSearchRequest,
             allowedDirectFields,
             {
-                'tags': (element, tableAlias) => { // Re-define tag handler locally for archive docs
+                // Tag handler remains the same
+                'tags': (element, tableAlias) => {
                     if (element.field === 'tags' && element.condition === 'ANY_OF' && Array.isArray(element.value)) {
                         const tagIds = element.value.filter((id): id is number => typeof id === 'number' && Number.isInteger(id) && id > 0);
                         if (tagIds.length === 0) return { whereCondition: element.not ? '1=1' : '1=0', params: [] };
@@ -327,7 +339,9 @@ export const searchArchiveDocumentsController = async (req: BunRequest) => {
                     }
                     return null;
                 },
-                'descriptiveSignature': archiveDocumentSignatureSearchHandler, // Use the imported handler for 'descriptiveSignature'
+                // Signature handler remains the same
+                'descriptiveSignature': archiveDocumentSignatureSearchHandler,
+                // No special handler needed for createdBy/updatedBy (handled by default text search)
             },
             primaryKey
         );
@@ -341,6 +355,7 @@ export const searchArchiveDocumentsController = async (req: BunRequest) => {
 
         const searchResponse = await executeSearch<ArchiveDocumentSearchResult>(dataQuery, countQuery);
 
+        // Populate tags and resolved signatures (remains the same)
         if (searchResponse.data.length > 0) {
             const docIds = searchResponse.data.map(doc => doc.archiveDocumentId!);
             const tagsMap = await getTagsForArchiveDocumentByIds(docIds);
@@ -362,6 +377,7 @@ export const searchArchiveDocumentsController = async (req: BunRequest) => {
 };
 
 // --- Batch Tagging Controller ---
+// Logic remains mostly the same, underlying search will use updated fields
 export const batchTagArchiveDocumentsController = async (req: BunRequest) => {
     const sessionAndUser = await getSessionAndUser(req);
     if (!sessionAndUser) return new Response("Unauthorized", { status: 401 });
@@ -382,6 +398,7 @@ export const batchTagArchiveDocumentsController = async (req: BunRequest) => {
         const isEmployee = isAllowedRole(sessionAndUser, 'employee');
         const isUserRole = sessionAndUser.user.role === 'user';
 
+        // Active filter logic remains
         const activeFilterIndex = finalQuery.findIndex(el => el.field === 'active');
         if (!isAdmin && !isEmployee) {
              if (activeFilterIndex !== -1) {
@@ -392,6 +409,7 @@ export const batchTagArchiveDocumentsController = async (req: BunRequest) => {
              await Log.info(`Batch tag forced to 'active=true' for non-admin/employee (should not happen).`, sessionAndUser.user.login, AREA);
         }
 
+        // Tag filter logic remains
         if (isUserRole) {
              const allowedTagIds = await getAssignedTagIdsForUser(sessionAndUser.user.userId);
              if (allowedTagIds.length === 0) {
@@ -405,6 +423,7 @@ export const batchTagArchiveDocumentsController = async (req: BunRequest) => {
              await Log.info(`Batch tag applying mandatory tag filter for 'user' role (should not happen).`, sessionAndUser.user.login, AREA);
         }
 
+        // Get IDs using the potentially updated search fields
         const matchingIds = await getMatchingDocumentIds({ query: finalQuery, page: 1, pageSize: -1 });
 
         if (matchingIds.length === 0) {

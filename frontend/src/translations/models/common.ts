@@ -149,7 +149,10 @@ export type CommonTranslationKey =
   | 'tagSelectorError'
   | 'tagSelectorNoTags'
   | 'signaturesTitle'
+  | 'createdByLabel' // New
+  | 'updatedByLabel' // New
+  | 'lastModifiedLabel' // New/Alternative
+  | 'ownerLabel' // Keep? Remove? -> Keeping for now if used elsewhere
   ;
-
 
 export type CommonTranslationSet = TranslationSet<CommonTranslationKey>;

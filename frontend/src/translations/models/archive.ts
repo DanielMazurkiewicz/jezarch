@@ -2,14 +2,14 @@
 import { TranslationSet } from "../models";
 
 export type ArchiveTranslationKey =
-  | 'archiveTitle' // Already in common, override if needed
+  | 'archiveTitle'
   | 'archiveDescription'
   | 'archiveCreateDocumentButton'
-  | 'archiveCreateUnitButton' // Might be needed if creation logic changes
+  | 'archiveCreateUnitButton'
   | 'archiveNoItemsInUnit' // e.g., "No items found in unit '{unitTitle}'."
   | 'archiveNoItemsForUserTags' // e.g., "No documents found matching your assigned tags."
-  | 'archiveIsEmpty' // Used in ArchivePage
-  | 'archiveItemLabel' // Used in combinations
+  | 'archiveIsEmpty'
+  | 'archiveItemLabel'
   | 'archiveUnitLabel'
   | 'archiveDocumentLabel'
   | 'backToArchiveButton'
@@ -51,7 +51,8 @@ export type ArchiveTranslationKey =
   | 'archivePreviewCreatorLabel'
   | 'archivePreviewDateLabel'
   | 'archivePreviewParentUnitLabel'
-  | 'archivePreviewOwnerLabel'
+  | 'archivePreviewCreatedByLabel' // Replaced Owner
+  | 'archivePreviewUpdatedByLabel' // Added
   | 'archivePreviewTagsLabel'
   | 'archivePreviewTopoSigLabel'
   | 'archivePreviewDescSigLabel'
@@ -120,7 +121,7 @@ export type ArchiveTranslationKey =
   | 'archiveFormDescSigLabel'
   | 'archiveFormTagsLabel'
   | 'archiveFormUpdateItemButton'
-  | 'archiveFormCreateItemButton' // Key for the FORM button
+  | 'archiveFormCreateItemButton'
   | 'archiveFormNoChangesDetected'
   | 'archiveInvalidParentTypeError' // e.g., "Item ID {id} is not a Unit."
   | 'archiveParentUnitLoadError' // e.g., "Failed to load parent unit: {message}"
@@ -134,17 +135,18 @@ export type ArchiveTranslationKey =
   | 'archiveBrowsingUnit' // e.g., "Browsing items within "{unitTitle}"."
   | 'archiveDescriptionUser' // e.g., "Search documents based on your assigned tags."
   | 'archiveClickCreateHint' // e.g., 'Click "Create Item" to start.'
-  | 'archivePreviewBy'
-  | 'archivePreviewOn'
+  | 'archivePreviewBy' // Used for original document creator
+  | 'archivePreviewOn' // Used for original document creation date
   | 'archivePreviewInvalidDate'
   | 'archivePreviewErrorDate'
   | 'archivePreviewNotApplicable'
   | 'added' // For batch tag success message
   | 'removed' // For batch tag success message
   | 'thisUnit' // Placeholder for parentUnitId context
-  // --- ADDED Key for root create button ---
   | 'createRootItemButton'
-  // -----------------------------------------
+  | 'ownerUserIdSearchLabel' // Keep key for reference, but update label in translation files
+  | 'createdBySearchLabel' // New key
+  | 'updatedBySearchLabel' // New key
   ;
 
 export type ArchiveTranslationSet = TranslationSet<ArchiveTranslationKey>;

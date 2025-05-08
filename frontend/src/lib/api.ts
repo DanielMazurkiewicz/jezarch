@@ -1,13 +1,10 @@
-// Import backend types with adjusted paths assuming sibling structure
 import type {
     UserCredentials,
-    User, // User now includes assignedTags and preferredLanguage
+    User,
     UserRole,
-    SupportedLanguage, // Import SupportedLanguage
+    SupportedLanguage,
 } from "../../../backend/src/functionalities/user/models";
-// Config models include updated AppConfigKeys
 import type { Config, AppConfigKeys } from "../../../backend/src/functionalities/config/models";
-// Removed SSLConfig import
 import type { LogEntry } from "../../../backend/src/functionalities/log/models";
 import type { Tag } from "../../../backend/src/functionalities/tag/models";
 import type { Note, NoteInput, NoteWithDetails } from "../../../backend/src/functionalities/note/models";
@@ -22,6 +19,7 @@ import type {
     UpdateSignatureElementInput,
     SignatureElementSearchResult,
 } from "../../../backend/src/functionalities/signature/element/models";
+// Updated import for ArchiveDocument types
 import type {
     ArchiveDocument,
     CreateArchiveDocumentInput,
@@ -74,9 +72,9 @@ async function fetchApi<T>(
     let response: Response;
 
     try {
-        console.log(`fetchApi: Requesting ${method} ${url}`);
+        // console.log(`fetchApi: Requesting ${method} ${url}`); // Reduce console noise
         response = await fetch(url, config);
-         console.log(`fetchApi: Received response for ${url} - Status: ${response.status}, OK: ${response.ok}`);
+        // console.log(`fetchApi: Received response for ${url} - Status: ${response.status}, OK: ${response.ok}`); // Reduce console noise
     } catch (networkError: any) {
         console.error(`fetchApi: Network Error for ${url}:`, networkError);
         throw new Error(`Network error: ${networkError.message || 'Failed to connect to API'}`);
@@ -87,7 +85,7 @@ async function fetchApi<T>(
         let errorText = '(Failed to read error body)';
         try {
              errorText = await response.text();
-             console.warn(`fetchApi: Error Response Text for ${url}:`, errorText);
+             // console.warn(`fetchApi: Error Response Text for ${url}:`, errorText); // Reduce noise
              try {
                   const parsed = JSON.parse(errorText);
                   if (typeof parsed === 'object' && parsed !== null && typeof parsed.message === 'string' && parsed.message.length > 0) {
@@ -102,29 +100,27 @@ async function fetchApi<T>(
              }
         } catch (e) { console.error(`fetchApi: Failed to read error response body for ${url}:`, e); }
         console.error(`fetchApi: API Error for ${url}:`, response.status, errorData);
-        // Add status code to the error object for specific checks
         const errorToThrow = new Error(errorData.message || `API Error ${response.status}`);
         if (errorData.errors) {
             (errorToThrow as any).errors = errorData.errors;
         }
-        (errorToThrow as any).status = response.status; // Attach status code
+        (errorToThrow as any).status = response.status;
         throw errorToThrow;
     }
 
     if (options.expectBlob) {
-         console.log(`fetchApi: Handling response as Blob for ${url}`);
+        // console.log(`fetchApi: Handling response as Blob for ${url}`); // Reduce noise
         return response.blob() as Promise<T>;
     }
 
     if (response.status === 204 || response.headers.get('content-length') === '0') {
-        console.log(`fetchApi: Handling 204 No Content for ${url}`);
+        // console.log(`fetchApi: Handling 204 No Content for ${url}`); // Reduce noise
         return { success: true } as T;
     }
 
     let responseText: string | null = null;
     try {
         responseText = await response.text();
-        // console.log(`fetchApi: Raw Response Text for ${url}:`, responseText); // Reduce noise
     } catch (textError) {
         console.error(`fetchApi: Failed to read response text for ${url}:`, textError);
         throw new Error("Failed to read API response text.");
@@ -132,13 +128,12 @@ async function fetchApi<T>(
 
     const contentType = response.headers.get('content-type');
     if (endpoint.endsWith('/api/ping') && contentType?.includes('text/plain')) {
-        console.log(`fetchApi: Handling response as text/plain for ${url}`);
+        // console.log(`fetchApi: Handling response as text/plain for ${url}`); // Reduce noise
         return responseText as T;
     }
 
     try {
         const jsonData = JSON.parse(responseText);
-        // console.log(`fetchApi: Parsed JSON for ${url}:`, jsonData); // Reduce noise
         return jsonData as T;
     } catch (jsonError: any) {
         console.error("fetchApi: JSON Parsing Error:", jsonError, "URL:", url, "Status:", response.status);
@@ -162,34 +157,30 @@ interface RegisterPayload extends UserCredentials {
     preferredLanguage?: SupportedLanguage;
 }
 
-// --- NEW: Type for public default language endpoint ---
 interface DefaultLanguageResponse {
     defaultLanguage: SupportedLanguage;
 }
 
 
-// --- API Function Exports (Updated Config section) ---
+// --- API Function Exports ---
 const getApiStatus = () => fetchApi<{ message: string }>("/api/status");
 const pingApi = () => fetchApi<string>("/api/ping");
-// Login now returns the user object including preferredLanguage
+// Login response and User type now include preferredLanguage
 const login = (credentials: UserCredentials) => fetchApi<{ token: string } & Omit<User, 'password'>>("/user/login", "POST", credentials);
 const logout = (token: string) => fetchApi<{ success: boolean }>("/user/logout", "POST", null, token);
 const register = (userData: RegisterPayload) => fetchApi<Omit<User, 'password'>>("/user/create", "POST", userData);
+// User type now includes preferredLanguage and potentially assignedTags
 const getAllUsers = (token: string) => fetchApi<Omit<User, "password">[]>("/users/all", "GET", null, token);
 const getUserByLogin = (login: string, token: string) => fetchApi<Omit<User, "password">>(`/user/by-login/${login}`, "GET", null, token);
 const updateUserRole = (login: string, role: UserRole | null, token: string) => fetchApi<{ message: string }>(`/user/by-login/${login}`, "PATCH", { role }, token);
-// updateUserPreferredLanguage now returns the updated user object
 const updateUserPreferredLanguage = (login: string, language: SupportedLanguage, token: string) => fetchApi<Omit<User, "password">>(`/user/by-login/${login}/language`, "PATCH", { preferredLanguage: language }, token);
 const changePassword = (passwords: { oldPassword: string; password: string; }, token: string) => fetchApi<{ success: boolean }>("/user/change-password", "POST", passwords, token);
 const adminSetUserPassword = (login: string, password: string, token: string) => fetchApi<{ success: boolean }>(`/user/by-login/${login}/set-password`, "PATCH", { password }, token);
 const getAssignedTagsForUser = (login: string, token: string) => fetchApi<Tag[]>(`/user/by-login/${login}/tags`, "GET", null, token);
 const assignTagsToUser = (login: string, tagIds: number[], token: string) => fetchApi<Tag[]>(`/user/by-login/${login}/tags`, "PUT", { tagIds }, token);
-// --- UPDATED: getConfig requires auth ---
 const getConfig = <K extends AppConfigKeys>(key: K, token: string) => fetchApi<GetConfigResponse<K>>(`/configs/${key}`, "GET", null, token);
 const setConfig = (key: AppConfigKeys, value: string | null, token: string) => fetchApi<{ message: string }>(`/configs/${key}`, "PUT", { value }, token);
-// --- NEW: Public endpoint for default language ---
 const getDefaultLanguage = () => fetchApi<DefaultLanguageResponse>("/config/default-language", "GET", null, null);
-// -------------------------------------------------
 const clearHttpsConfig = (token: string) => fetchApi<{ message: string }>("/config/https", "DELETE", null, token);
 const searchLogs = (searchRequest: SearchRequest, token: string) => fetchApi<SearchResponse<LogEntry>>("/logs/search", "POST", searchRequest, token);
 const purgeLogs = (days: number, token: string) => fetchApi<PurgeLogsResponse>(`/logs/purge?days=${days}`, "DELETE", null, token);
@@ -216,6 +207,7 @@ const updateSignatureElement = (id: number, data: UpdateSignatureElementInput, t
 const deleteSignatureElement = (id: number, token: string) => fetchApi<{ success: boolean }>(`/signature/element/${id}`, 'DELETE', null, token);
 const getElementsByComponent = (componentId: number, token: string) => fetchApi<SignatureElement[]>(`/signature/components/id/${componentId}/elements/all`, 'GET', null, token);
 const searchSignatureElements = (searchRequest: SearchRequest, token: string) => fetchApi<SearchResponse<SignatureElementSearchResult>>("/signature/elements/search", "POST", searchRequest, token);
+// --- Archive API calls use updated types ---
 const createArchiveDocument = (data: CreateArchiveDocumentInput, token: string) => fetchApi<ArchiveDocument>('/archive/document', 'PUT', data, token);
 const getArchiveDocumentById = (id: number, token: string) => fetchApi<ArchiveDocument>(`/archive/document/id/${id}`, 'GET', null, token);
 const updateArchiveDocument = (id: number, data: UpdateArchiveDocumentInput, token: string) => fetchApi<ArchiveDocument>(`/archive/document/id/${id}`, 'PATCH', data, token);
@@ -228,7 +220,7 @@ export default {
     getApiStatus, pingApi, login, logout, register, getAllUsers, getUserByLogin,
     updateUserRole, changePassword, adminSetUserPassword,
     getAssignedTagsForUser, assignTagsToUser, updateUserPreferredLanguage,
-    getConfig, setConfig, getDefaultLanguage, // Added getDefaultLanguage
+    getConfig, setConfig, getDefaultLanguage,
     clearHttpsConfig,
     searchLogs, purgeLogs,
     createTag, getAllTags, getTagById, updateTag, deleteTag,

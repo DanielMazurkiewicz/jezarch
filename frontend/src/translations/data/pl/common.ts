@@ -142,7 +142,6 @@ export const commonTranslationsPL: CommonTranslationSet = {
   insufficientPermissionsError: 'Niewystarczające uprawnienia.',
   notAvailableAbbr: 'B/D', // Brak Danych
   unknown: 'nieznany',
-  // Added/Corrected PL Keys
   sidebarLoggedInAs: 'Zalogowany jako:',
   tagSelectorSelectPlaceholder: 'Wybierz tagi...',
   tagSelectorSearchPlaceholder: 'Szukaj tagów...',
@@ -150,4 +149,9 @@ export const commonTranslationsPL: CommonTranslationSet = {
   tagSelectorError: 'Błąd ładowania tagów',
   tagSelectorNoTags: 'Nie znaleziono tagów.',
   signaturesTitle: 'Sygnatury',
+  // --- NEW/UPDATED KEYS ---
+  createdByLabel: 'Utworzone przez',
+  updatedByLabel: 'Zaktualizowane przez',
+  lastModifiedLabel: 'Ostatnia modyfikacja', // Can be used instead of 'Updated By' depending on context
+  ownerLabel: 'Właściciel', // Keep if needed elsewhere, otherwise remove/replace
 };

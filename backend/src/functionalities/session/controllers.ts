@@ -40,6 +40,7 @@ export function isAllowedRole(sessionAndUser: SessionAndUser, ...roles: UserRole
     return roles.includes(sessionAndUser.user.role);
 }
 
+// Generic ownership check based on userId, remains unchanged
 export function isOwner(sessionAndUser: SessionAndUser, ownerUserId: number) {
     return sessionAndUser.user.userId === ownerUserId
 }

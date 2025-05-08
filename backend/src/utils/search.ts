@@ -85,7 +85,7 @@ interface BuildSearchQueriesResult {
 export async function buildSearchQueries<T extends Record<string, any>>(
     table: string,
     searchRequest: SearchRequest,
-    allowedFields: (keyof T)[],
+    allowedFields: (keyof T | string)[], // Allow string for potential JOINed fields like ownerLogin
     fieldHandlers?: Record<string, SearchOnCustomFieldHandler<T>>,
     primaryKeyField: string = `${table.slice(0, -1)}Id`
 ): Promise<BuildSearchQueriesResult> {
@@ -110,14 +110,17 @@ export async function buildSearchQueries<T extends Record<string, any>>(
             continue;
         }
 
-        if (!allowedFields.includes(field as keyof T)) {
-             await Log.warn(`Search field '${field}' not in allowedDirectFields or handled by custom handler. Proceeding, ensure JOIN/field is valid.`, 'system', 'search', { field, table });
+        // Allow strings in allowedFields for fields like 'ownerLogin' that might come from a JOIN handled elsewhere
+        // or fields like 'createdBy' which are directly searchable strings now.
+        if (!allowedFields.includes(field)) {
+             await Log.warn(`Search field '${field}' not explicitly allowed or handled. Ensure JOIN/field is valid.`, 'system', 'search', { field, table });
+             // Continue processing, assuming it's a valid column name possibly added by a JOIN in handler
         }
 
         let baseCondition: string = '';
         let elementParams: any[] = [];
         let needsHandling = true;
-        const qualifiedField = `${mainTableAlias}.${field}`;
+        const qualifiedField = `${mainTableAlias}.${field}`; // Assume field exists on main table unless handled
 
         switch (element.condition) {
             case "EQ":
@@ -132,17 +135,16 @@ export async function buildSearchQueries<T extends Record<string, any>>(
                  baseCondition = `${qualifiedField} ${operator} ?`;
                  elementParams.push(valueToUse);
                  break;
-            case "ANY_OF": // This now needs to handle arrays of arrays for signature paths correctly, or be delegated to handler
+            case "ANY_OF":
                 if (!Array.isArray(element.value)) { await Log.warn(`ANY_OF requires an array value`, 'system', 'search', { field, value: element.value, table }); needsHandling = false; break; }
                 if (element.value.length === 0) baseCondition = element.not ? "1=1" : "1=0";
                 else {
-                    // For simple arrays of primitives
                     const valuesToUse = element.value.map(v => typeof v === 'boolean' ? (v ? 1 : 0) : v);
                     const placeholders = valuesToUse.map(() => "?").join(", ");
                     baseCondition = `${qualifiedField} ${element.not ? 'NOT ' : ''}IN (${placeholders})`;
                     elementParams.push(...valuesToUse);
                 }
-                element.not = false;
+                element.not = false; // 'not' handled directly in the SQL IN operator part
                 break;
             case "FRAGMENT":
                  if (typeof element.value !== 'string') { await Log.warn(`FRAGMENT requires a string value`, 'system', 'search', { field, value: element.value, table }); needsHandling = false; break; }
@@ -162,18 +164,24 @@ export async function buildSearchQueries<T extends Record<string, any>>(
                  break;
         }
 
-        if (needsHandling) {
-            if (element.not && baseCondition) baseCondition = `NOT (${baseCondition})`;
-            if (baseCondition) whereConditions.push(baseCondition);
+        if (needsHandling && baseCondition) {
+            if (element.not) baseCondition = `NOT (${baseCondition})`;
+            whereConditions.push(baseCondition);
             allParams.push(...elementParams);
         }
     }
 
     const joins = Array.from(joinClauses).join('\n');
     const whereClause = whereConditions.length > 0 ? `WHERE ${whereConditions.join(' AND ')}` : '';
-    const orderBy = `ORDER BY ${mainTableAlias}.${primaryKeyField} DESC`;
+    const orderBy = `ORDER BY ${mainTableAlias}.${primaryKeyField} DESC`; // Consider making ORDER BY configurable
+
+    // Adjust SELECT columns based on potential JOINs (only ownerLogin handled explicitly for now)
+    // createdBy/updatedBy are now direct fields, no JOIN needed for them.
     let selectCols = `${mainTableAlias}.*`;
-    if (joins.includes('users')) selectCols += ', users.login as ownerLogin';
+    if (joins.includes('LEFT JOIN users') || joins.includes('INNER JOIN users')) { // Check if a user join exists
+        selectCols += ', users.login as ownerLogin'; // Keep selecting ownerLogin if joined for other tables (like notes)
+    }
+    // No need to explicitly select createdBy/updatedBy as they are part of `${mainTableAlias}.*`
 
     const dataQuery = { sql: `SELECT DISTINCT ${selectCols} FROM ${table} AS ${mainTableAlias} ${joins} ${whereClause} ${orderBy} LIMIT ? OFFSET ?`, params: [...allParams, pageSize, offset] };
     const countQuery = { sql: `SELECT COUNT(DISTINCT ${mainTableAlias}.${primaryKeyField}) as total FROM ${table} AS ${mainTableAlias} ${joins} ${whereClause}`, params: [...allParams] };
@@ -181,6 +189,7 @@ export async function buildSearchQueries<T extends Record<string, any>>(
     return { dataQuery, countQuery, page, pageSize, alias: mainTableAlias };
 }
 
+// executeSearch remains unchanged
 export async function executeSearch<T>(
     dataQuery: { sql: string; params: any[] },
     countQuery: { sql: string; params: any[] }

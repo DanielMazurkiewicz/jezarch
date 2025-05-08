@@ -12,10 +12,11 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import LoadingSpinner from '@/components/shared/LoadingSpinner';
 import ErrorDisplay from '@/components/shared/ErrorDisplay';
 import TagSelector from '@/components/shared/TagSelector';
-import SignaturePathSelector from '@/components/shared/SignaturePathSelector'; // Updated import name
+import SignaturePathSelector from '@/components/shared/SignaturePathSelector';
 import UnitSelector from './UnitSelector';
 import { useAuth } from '@/hooks/useAuth';
 import api from '@/lib/api';
+// Updated type imports (no ownerUserId/ownerLogin)
 import type { ArchiveDocument, ArchiveDocumentType } from '../../../../backend/src/functionalities/archive/document/models';
 import type { CreateArchiveDocumentInput, UpdateArchiveDocumentInput } from '../../../../backend/src/functionalities/archive/document/models';
 import { toast } from "sonner";
@@ -64,6 +65,7 @@ const DocumentForm: React.FC<DocumentFormProps> = ({
         isDigitized: false, digitizedVersionLink: null, tagIds: [],
         topographicSignature: null,
         descriptiveSignatureElementIds: [],
+        // createdBy, updatedBy, createdOn, modifiedOn are not part of the form
     },
   });
 
@@ -83,6 +85,7 @@ const DocumentForm: React.FC<DocumentFormProps> = ({
         if (docToEdit?.archiveDocumentId && token) {
             setIsFetchingDetails(true); setError(null);
             try {
+                // Fetch full doc details including tags
                 const fullDoc = await api.getArchiveDocumentById(docToEdit.archiveDocumentId, token);
                 const tagIds = fullDoc.tags?.map(t => t.tagId!) ?? [];
                 const parentId = fullDoc.parentUnitArchiveDocumentId ?? null;
@@ -108,18 +111,19 @@ const DocumentForm: React.FC<DocumentFormProps> = ({
                     relatedDocumentsReferences: fullDoc.relatedDocumentsReferences ?? null,
                     isDigitized: fullDoc.isDigitized ?? false,
                     digitizedVersionLink: fullDoc.digitizedVersionLink ?? null,
-                    tagIds: tagIds,
+                    tagIds: tagIds, // Set tagIds for validation
                     topographicSignature: topoSignature,
-                    descriptiveSignatureElementIds: descSignatures,
+                    descriptiveSignatureElementIds: descSignatures, // Set desc sigs for validation
                 });
-                setSelectedTagIds(tagIds);
-                setDescriptiveSignatures(descSignatures);
+                setSelectedTagIds(tagIds); // Sync TagSelector state
+                setDescriptiveSignatures(descSignatures); // Sync SignaturePathSelector state
                 if (forcedParentId === undefined) {
-                     setSelectedParentUnitId(parentId);
+                     setSelectedParentUnitId(parentId); // Sync UnitSelector state
                 }
             } catch (err: any) {
                 const msg = t('archiveDetailsLoadFailed', preferredLanguage, { message: err.message });
                 setError(msg); toast.error(msg); console.error("Load Error:", err);
+                 // Fallback to potentially partial data from list
                  reset({
                     parentUnitArchiveDocumentId: forcedParentId ?? docToEdit.parentUnitArchiveDocumentId ?? null,
                     type: forceType ?? docToEdit.type ?? 'document',
@@ -134,6 +138,7 @@ const DocumentForm: React.FC<DocumentFormProps> = ({
                  setSelectedParentUnitId(forcedParentId ?? docToEdit.parentUnitArchiveDocumentId ?? null);
             } finally { setIsFetchingDetails(false); }
         } else {
+            // Reset form for creation
             reset({
                 parentUnitArchiveDocumentId: forcedParentId ?? null,
                 type: forceType ?? 'document',
@@ -141,6 +146,11 @@ const DocumentForm: React.FC<DocumentFormProps> = ({
                 tagIds: [],
                 topographicSignature: null,
                 descriptiveSignatureElementIds: [],
+                // Reset other fields to null/default
+                numberOfPages: null, documentType: null, dimensions: null, binding: null, condition: null,
+                documentLanguage: null, contentDescription: null, remarks: null, accessLevel: null,
+                accessConditions: null, additionalInformation: null, relatedDocumentsReferences: null,
+                isDigitized: false, digitizedVersionLink: null,
             });
             setSelectedTagIds([]);
             setDescriptiveSignatures([]);
@@ -154,80 +164,72 @@ const DocumentForm: React.FC<DocumentFormProps> = ({
   useEffect(() => { setValue('tagIds', selectedTagIds); }, [selectedTagIds, setValue]);
   useEffect(() => { setValue('descriptiveSignatureElementIds', descriptiveSignatures); }, [descriptiveSignatures, setValue]);
 
+  // Removed ownerUserId from form data extraction
   const onSubmit: SubmitHandler<CreateArchiveDocumentFormData> = async (data) => {
     if (!token) return;
     setIsLoading(true); setError(null);
 
     const finalParentId = forcedParentId !== undefined ? forcedParentId : selectedParentUnitId;
-    const { tagIds: _, parentUnitArchiveDocumentId: __, type: _____, topographicSignatureElementIds: ______, descriptiveSignatureElementIds: _______, ...coreData } = data;
+    // Remove fields not directly sent to backend payload, but used for form state/validation
+    const { tagIds: _, parentUnitArchiveDocumentId: __, type: _____, descriptiveSignatureElementIds: _______, ...coreData } = data;
 
     try {
         if (docToEdit?.archiveDocumentId) {
-            const updatePayload: UpdateArchiveDocumentInput = {
-                 ...(finalParentId !== (docToEdit.parentUnitArchiveDocumentId ?? null) && { parentUnitArchiveDocumentId: finalParentId ?? undefined }),
-                 ...(coreData.title !== docToEdit.title && { title: coreData.title }),
-                 ...(coreData.creator !== docToEdit.creator && { creator: coreData.creator }),
-                 ...(coreData.creationDate !== docToEdit.creationDate && { creationDate: coreData.creationDate }),
-                 ...(coreData.numberOfPages !== docToEdit.numberOfPages && { numberOfPages: coreData.numberOfPages || undefined }),
-                 ...(coreData.documentType !== docToEdit.documentType && { documentType: coreData.documentType || undefined }),
-                 ...(coreData.dimensions !== docToEdit.dimensions && { dimensions: coreData.dimensions || undefined }),
-                 ...(coreData.binding !== docToEdit.binding && { binding: coreData.binding || undefined }),
-                 ...(coreData.condition !== docToEdit.condition && { condition: coreData.condition || undefined }),
-                 ...(coreData.documentLanguage !== docToEdit.documentLanguage && { documentLanguage: coreData.documentLanguage || undefined }),
-                 ...(coreData.contentDescription !== docToEdit.contentDescription && { contentDescription: coreData.contentDescription || undefined }),
-                 ...(coreData.remarks !== docToEdit.remarks && { remarks: coreData.remarks || undefined }),
-                 ...(coreData.accessLevel !== docToEdit.accessLevel && { accessLevel: coreData.accessLevel || undefined }),
-                 ...(coreData.accessConditions !== docToEdit.accessConditions && { accessConditions: coreData.accessConditions || undefined }),
-                 ...(coreData.additionalInformation !== docToEdit.additionalInformation && { additionalInformation: coreData.additionalInformation || undefined }),
-                 ...(coreData.relatedDocumentsReferences !== docToEdit.relatedDocumentsReferences && { relatedDocumentsReferences: coreData.relatedDocumentsReferences || undefined }),
-                 ...(coreData.isDigitized !== docToEdit.isDigitized && { isDigitized: coreData.isDigitized }),
-                 ...(coreData.digitizedVersionLink !== docToEdit.digitizedVersionLink && { digitizedVersionLink: coreData.digitizedVersionLink || undefined }),
-                 ...(coreData.topographicSignature !== docToEdit.topographicSignature && { topographicSignature: coreData.topographicSignature ?? null }),
-                 tagIds: selectedTagIds,
-                 descriptiveSignatureElementIds: descriptiveSignatures,
-            };
-            const hasCoreChanges = Object.keys(updatePayload).some(k => !['tagIds', 'descriptiveSignatureElementIds', 'parentUnitArchiveDocumentId'].includes(k));
-            const tagsChanged = JSON.stringify(selectedTagIds.sort()) !== JSON.stringify((docToEdit.tags?.map(t => t.tagId!) ?? []).sort());
-            const descChanged = JSON.stringify(descriptiveSignatures) !== JSON.stringify(docToEdit.descriptiveSignatureElementIds ?? []);
-            const parentChanged = finalParentId !== (docToEdit.parentUnitArchiveDocumentId ?? null);
+            // Construct the update payload carefully, comparing with original doc
+            const updatePayload: UpdateArchiveDocumentInput = {};
 
-            if (hasCoreChanges || tagsChanged || descChanged || parentChanged) {
+            // Add field to payload only if it has actually changed
+            if (finalParentId !== (docToEdit.parentUnitArchiveDocumentId ?? null)) updatePayload.parentUnitArchiveDocumentId = finalParentId ?? undefined;
+            if (coreData.title !== docToEdit.title) updatePayload.title = coreData.title;
+            if (coreData.creator !== docToEdit.creator) updatePayload.creator = coreData.creator;
+            if (coreData.creationDate !== docToEdit.creationDate) updatePayload.creationDate = coreData.creationDate;
+            if ((coreData.numberOfPages || null) !== docToEdit.numberOfPages) updatePayload.numberOfPages = coreData.numberOfPages || undefined;
+            if ((coreData.documentType || null) !== docToEdit.documentType) updatePayload.documentType = coreData.documentType || undefined;
+            if ((coreData.dimensions || null) !== docToEdit.dimensions) updatePayload.dimensions = coreData.dimensions || undefined;
+            if ((coreData.binding || null) !== docToEdit.binding) updatePayload.binding = coreData.binding || undefined;
+            if ((coreData.condition || null) !== docToEdit.condition) updatePayload.condition = coreData.condition || undefined;
+            if ((coreData.documentLanguage || null) !== docToEdit.documentLanguage) updatePayload.documentLanguage = coreData.documentLanguage || undefined;
+            if ((coreData.contentDescription || null) !== docToEdit.contentDescription) updatePayload.contentDescription = coreData.contentDescription || undefined;
+            if ((coreData.remarks || null) !== docToEdit.remarks) updatePayload.remarks = coreData.remarks || undefined;
+            if ((coreData.accessLevel || null) !== docToEdit.accessLevel) updatePayload.accessLevel = coreData.accessLevel || undefined;
+            if ((coreData.accessConditions || null) !== docToEdit.accessConditions) updatePayload.accessConditions = coreData.accessConditions || undefined;
+            if ((coreData.additionalInformation || null) !== docToEdit.additionalInformation) updatePayload.additionalInformation = coreData.additionalInformation || undefined;
+            if ((coreData.relatedDocumentsReferences || null) !== docToEdit.relatedDocumentsReferences) updatePayload.relatedDocumentsReferences = coreData.relatedDocumentsReferences || undefined;
+            if (coreData.isDigitized !== docToEdit.isDigitized) updatePayload.isDigitized = coreData.isDigitized;
+            if ((coreData.digitizedVersionLink || null) !== docToEdit.digitizedVersionLink) updatePayload.digitizedVersionLink = coreData.digitizedVersionLink || undefined;
+            if ((coreData.topographicSignature ?? null) !== docToEdit.topographicSignature) updatePayload.topographicSignature = coreData.topographicSignature ?? null;
+
+            // Always send tags and signatures for update (backend handles replace logic)
+            updatePayload.tagIds = selectedTagIds;
+            updatePayload.descriptiveSignatureElementIds = descriptiveSignatures;
+
+            // Check if anything actually changed besides tags/signatures/parent (which are handled by updatePayload anyway)
+            const hasCoreChanges = Object.keys(updatePayload).some(k => !['tagIds', 'descriptiveSignatureElementIds', 'parentUnitArchiveDocumentId'].includes(k));
+            const parentChanged = finalParentId !== (docToEdit.parentUnitArchiveDocumentId ?? null); // Re-check specifically
+
+            if (hasCoreChanges || parentChanged ||
+                JSON.stringify(selectedTagIds.sort()) !== JSON.stringify((docToEdit.tags?.map(t => t.tagId!) ?? []).sort()) ||
+                JSON.stringify(descriptiveSignatures) !== JSON.stringify(docToEdit.descriptiveSignatureElementIds ?? [])
+            ) {
                  await api.updateArchiveDocument(docToEdit.archiveDocumentId, updatePayload, token);
             } else {
                 toast.info(t('archiveFormNoChangesDetected', preferredLanguage));
-                onSave();
+                onSave(); // Call onSave even if no API call made
                 setIsLoading(false);
                 return;
             }
-
         } else {
+             // Create payload uses all validated data + selected tags/signatures
              const createPayload: CreateArchiveDocumentInput = {
-                type: data.type,
-                title: coreData.title,
-                creator: coreData.creator,
-                creationDate: coreData.creationDate,
+                ...coreData, // Includes all validated fields from base schema
+                type: data.type, // Ensure type is included
                 parentUnitArchiveDocumentId: finalParentId ?? undefined,
-                numberOfPages: coreData.numberOfPages ?? undefined,
-                documentType: coreData.documentType ?? undefined,
-                dimensions: coreData.dimensions ?? undefined,
-                binding: coreData.binding ?? undefined,
-                condition: coreData.condition ?? undefined,
-                documentLanguage: coreData.documentLanguage ?? undefined,
-                contentDescription: coreData.contentDescription ?? undefined,
-                accessLevel: coreData.accessLevel ?? undefined,
-                accessConditions: coreData.accessConditions ?? undefined,
-                isDigitized: coreData.isDigitized ?? false,
-                remarks: coreData.remarks ?? undefined,
-                additionalInformation: coreData.additionalInformation ?? undefined,
-                relatedDocumentsReferences: coreData.relatedDocumentsReferences ?? undefined,
-                digitizedVersionLink: coreData.digitizedVersionLink ?? undefined,
-                topographicSignature: coreData.topographicSignature ?? undefined,
                 tagIds: selectedTagIds,
                 descriptiveSignatureElementIds: descriptiveSignatures,
              };
             await api.createArchiveDocument(createPayload, token);
         }
-        onSave();
+        onSave(); // Trigger parent component refresh/close
     } catch (err: any) {
       const msg = err.message || t('archiveSaveFailed', preferredLanguage, { message: '' }).replace(': {message}', '');
       setError(msg); toast.error(t('errorMessageTemplate', preferredLanguage, { message: msg })); console.error("Save Error:", err);
@@ -246,19 +248,13 @@ const DocumentForm: React.FC<DocumentFormProps> = ({
   }
 
   return (
-    // Updated form structure for flex layout and scrolling
     <form
-        onSubmit={handleSubmit(onSubmit as SubmitHandler<CreateArchiveDocumentFormData>)}
-        className="flex flex-col h-full overflow-hidden" // Added overflow-hidden
+        onSubmit={handleSubmit(onSubmit)}
+        className="flex flex-col h-full overflow-hidden"
     >
-        {/* --- Error Display Area (Non-scrolling) --- */}
         {error && <div className="p-1 pr-3"><ErrorDisplay message={error} /></div>}
-
-        {/* --- Scrollable Form Content Area --- */}
         <div className="flex-grow p-1 pr-3 space-y-6 overflow-y-auto relative">
             {isLoading && <div className='absolute inset-0 bg-background/80 flex items-center justify-center z-20 rounded-md'><LoadingSpinner/></div>}
-
-            {/* Main Grid for Form Sections (2 columns on lg+) */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 {/* --- Basic Information --- */}
                 <Card className="lg:col-span-2">
@@ -267,16 +263,8 @@ const DocumentForm: React.FC<DocumentFormProps> = ({
                         <GridItem className="md:col-span-1">
                             <Label htmlFor="doc-type">{t('archiveFormTypeLabel', preferredLanguage)}</Label>
                             <Controller control={control} name="type" render={({ field }) => (
-                                <Select
-                                    onValueChange={field.onChange}
-                                    value={field.value}
-                                    disabled={!!docToEdit || !!forceType}
-                                    >
-                                    <SelectTrigger
-                                        id='doc-type'
-                                        aria-invalid={!!errors.type}
-                                        className={cn("w-full", errors.type && "border-destructive", (!!docToEdit || !!forceType) && "text-muted-foreground")}
-                                    >
+                                <Select onValueChange={field.onChange} value={field.value} disabled={!!docToEdit || !!forceType}>
+                                    <SelectTrigger id='doc-type' aria-invalid={!!errors.type} className={cn("w-full", errors.type && "border-destructive", (!!docToEdit || !!forceType) && "text-muted-foreground")}>
                                         <SelectValue placeholder={t('archiveFormSelectTypePlaceholder', preferredLanguage)} />
                                     </SelectTrigger>
                                     <SelectContent>
@@ -288,7 +276,6 @@ const DocumentForm: React.FC<DocumentFormProps> = ({
                             {errors.type && <p className="text-xs text-destructive">{errors.type.message}</p>}
                             {(!!docToEdit || !!forceType) && <p className="text-xs text-muted-foreground italic">{t('archiveFormTypeDisabledHint', preferredLanguage)}</p>}
                         </GridItem>
-
                          {watchedType === 'document' && forcedParentId === undefined && (
                              <GridItem className="md:col-span-1">
                                 <Label htmlFor="doc-parent">{t('archiveFormParentUnitLabel', preferredLanguage)}</Label>
@@ -304,8 +291,6 @@ const DocumentForm: React.FC<DocumentFormProps> = ({
                              </GridItem>
                         )}
                         {watchedType !== 'document' && <div className="md:col-span-1"></div>}
-
-
                         <GridItem className="md:col-span-2">
                             <Label htmlFor="doc-title">{t('archiveFormTitleLabel', preferredLanguage)}</Label>
                             <Input id="doc-title" {...register('title')} aria-invalid={!!errors.title} className={cn(errors.title && "border-destructive")}/>
@@ -323,22 +308,18 @@ const DocumentForm: React.FC<DocumentFormProps> = ({
                         </GridItem>
                     </CardContent>
                 </Card>
-
-                {/* --- Physical Description (Column 1 on lg+) --- */}
+                {/* --- Physical Description --- */}
                 <Card className="lg:col-span-1">
                     <CardHeader><CardTitle className='text-lg'>{t('archiveFormPhysicalDescTitle', preferredLanguage)}</CardTitle></CardHeader>
-                    {/* CHANGE: Force single column */}
                     <CardContent className="grid grid-cols-1 gap-x-6 gap-y-4">
                         <GridItem><Label htmlFor="doc-pages">{t('archiveFormPagesLabel', preferredLanguage)}</Label><Input id="doc-pages" {...register('numberOfPages')} /></GridItem>
                         <GridItem><Label htmlFor="doc-docType">{t('archiveFormDocTypeLabel', preferredLanguage)}</Label><Input id="doc-docType" {...register('documentType')} placeholder={t('archiveFormDocTypePlaceholder', preferredLanguage)} /></GridItem>
                         <GridItem><Label htmlFor="doc-dimensions">{t('archiveFormDimensionsLabel', preferredLanguage)}</Label><Input id="doc-dimensions" {...register('dimensions')} placeholder={t('archiveFormDimensionsPlaceholder', preferredLanguage)}/></GridItem>
                         <GridItem><Label htmlFor="doc-binding">{t('archiveFormBindingLabel', preferredLanguage)}</Label><Input id="doc-binding" {...register('binding')} placeholder={t('archiveFormBindingPlaceholder', preferredLanguage)} /></GridItem>
-                        {/* CHANGE: Removed col-span */}
                         <GridItem><Label htmlFor="doc-condition">{t('archiveFormConditionLabel', preferredLanguage)}</Label><Input id="doc-condition" {...register('condition')} placeholder={t('archiveFormConditionPlaceholder', preferredLanguage)} /></GridItem>
                     </CardContent>
                 </Card>
-
-                {/* --- Content & Context (Column 2 on lg+) --- */}
+                {/* --- Content & Context --- */}
                 <Card className="lg:col-span-1">
                     <CardHeader><CardTitle className='text-lg'>{t('archiveFormContentContextTitle', preferredLanguage)}</CardTitle></CardHeader>
                     <CardContent className="grid grid-cols-1 gap-4">
@@ -349,21 +330,17 @@ const DocumentForm: React.FC<DocumentFormProps> = ({
                         <GridItem><Label htmlFor="doc-additionalInfo">{t('archiveFormAdditionalInfoLabel', preferredLanguage)}</Label><Textarea id="doc-additionalInfo" {...register('additionalInformation')} rows={2} placeholder={t('archiveFormAdditionalInfoPlaceholder', preferredLanguage)} /></GridItem>
                     </CardContent>
                 </Card>
-
-                 {/* --- Access & Digitization (Column 1 on lg+) --- */}
+                 {/* --- Access & Digitization --- */}
                  <Card className="lg:col-span-1">
                     <CardHeader><CardTitle className='text-lg'>{t('archiveFormAccessDigitizationTitle', preferredLanguage)}</CardTitle></CardHeader>
-                    {/* CHANGE: Force single column */}
                     <CardContent className="grid grid-cols-1 gap-x-6 gap-y-4">
                         <GridItem><Label htmlFor="doc-accessLevel">{t('archiveFormAccessLevelLabel', preferredLanguage)}</Label><Input id="doc-accessLevel" {...register('accessLevel')} placeholder={t('archiveFormAccessLevelPlaceholder', preferredLanguage)} /></GridItem>
                         <GridItem><Label htmlFor="doc-accessCond">{t('archiveFormAccessConditionsLabel', preferredLanguage)}</Label><Input id="doc-accessCond" {...register('accessConditions')} placeholder={t('archiveFormAccessConditionsPlaceholder', preferredLanguage)} /></GridItem>
-                        {/* CHANGE: Removed col-span */}
                         <GridItem className="flex items-center space-x-2 pt-1">
                             <Controller control={control} name="isDigitized" render={({ field }) => ( <Checkbox id="doc-digitized" checked={field.value} onCheckedChange={field.onChange} /> )} />
                             <Label htmlFor="doc-digitized" className='cursor-pointer font-normal'>{t('archiveFormIsDigitizedLabel', preferredLanguage)}</Label>
                         </GridItem>
                         {watch('isDigitized') && (
-                            // CHANGE: Removed col-span
                             <GridItem>
                                 <Label htmlFor="doc-digitizedLink">{t('archiveFormDigitizedLinkLabel', preferredLanguage)}</Label>
                                 <Input id="doc-digitizedLink" {...register('digitizedVersionLink')} type="url" placeholder={t('archiveFormDigitizedLinkPlaceholder', preferredLanguage)} aria-invalid={!!errors.digitizedVersionLink} className={cn(errors.digitizedVersionLink && "border-destructive")}/>
@@ -372,24 +349,15 @@ const DocumentForm: React.FC<DocumentFormProps> = ({
                         )}
                     </CardContent>
                 </Card>
-
-                {/* --- Indexing (Signatures & Tags) (Column 2 on lg+) --- */}
+                {/* --- Indexing (Signatures & Tags) --- */}
                 <Card className="lg:col-span-1">
                     <CardHeader><CardTitle className='text-lg'>{t('archiveFormIndexingTitle', preferredLanguage)}</CardTitle></CardHeader>
                     <CardContent className="grid grid-cols-1 gap-4 items-start">
                         <GridItem>
                             <Label htmlFor="doc-topo-sig">{t('archiveFormTopoSigLabel', preferredLanguage)}</Label>
-                            <Input
-                                id="doc-topo-sig"
-                                {...register('topographicSignature')}
-                                placeholder={t('archiveFormTopoSigPlaceholder', preferredLanguage)}
-                                aria-invalid={!!errors.topographicSignature}
-                                className={cn(errors.topographicSignature && "border-destructive")}
-                             />
+                            <Input id="doc-topo-sig" {...register('topographicSignature')} placeholder={t('archiveFormTopoSigPlaceholder', preferredLanguage)} aria-invalid={!!errors.topographicSignature} className={cn(errors.topographicSignature && "border-destructive")} />
                             {errors.topographicSignature && <p className="text-xs text-destructive">{errors.topographicSignature.message}</p>}
                         </GridItem>
-
-                        {/* Use SignaturePathSelector */}
                         <SignaturePathSelector
                             label={t('archiveFormDescSigLabel', preferredLanguage)}
                             signatures={descriptiveSignatures}
@@ -398,7 +366,6 @@ const DocumentForm: React.FC<DocumentFormProps> = ({
                         />
                         <input type="hidden" {...register('descriptiveSignatureElementIds')} />
                         {errors.descriptiveSignatureElementIds && <p className="text-xs text-destructive">{errors.descriptiveSignatureElementIds.message}</p>}
-
                         <div className="grid gap-1.5">
                             <Label>{t('archiveFormTagsLabel', preferredLanguage)}</Label>
                             <TagSelector selectedTagIds={selectedTagIds} onChange={setSelectedTagIds} />
@@ -407,12 +374,9 @@ const DocumentForm: React.FC<DocumentFormProps> = ({
                         </div>
                     </CardContent>
                 </Card>
-
-            </div> {/* End of Main Grid */}
-        </div> {/* End of Scrollable Form Content Area */}
-
-        {/* Submit Button Area - Outside the scrollable content (Non-scrolling Footer) */}
-        <div className="pt-4 pb-2 px-1 border-t flex justify-start shrink-0"> {/* Added shrink-0 */}
+            </div>
+        </div>
+        <div className="pt-4 pb-2 px-1 border-t flex justify-start shrink-0">
             <Button type="submit" disabled={isLoading || isFetchingDetails}>
                 {isLoading ? <LoadingSpinner size="sm" className='mr-2' /> : (docToEdit ? t('archiveFormUpdateItemButton', preferredLanguage) : t('archiveFormCreateItemButton', preferredLanguage))}
             </Button>

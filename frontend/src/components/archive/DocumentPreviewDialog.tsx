@@ -5,16 +5,13 @@ import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Link } from 'react-router-dom';
 import { FileText, Folder, Trash2, Edit } from 'lucide-react';
-// Updated type import to include search result type
-import type { ArchiveDocument, ArchiveDocumentSearchResult } from '../../../../backend/src/functionalities/archive/document/models'; // Type now includes topographicSignature
+import type { ArchiveDocument, ArchiveDocumentSearchResult } from '../../../../backend/src/functionalities/archive/document/models';
 import { useAuth } from '@/hooks/useAuth';
 import { t } from '@/translations/utils'; // Import translation utility
-import { cn } from '@/lib/utils'; // Ensure cn is imported
+import { cn } from '@/lib/utils';
 
 // Define a local type extending the search result to include optional resolved fields
-// This acknowledges the backend might not always send them or the type definition is out of sync
 type PreviewDocumentType = ArchiveDocumentSearchResult & {
-    // resolvedTopographicSignatures?: string[]; // Removed
     resolvedDescriptiveSignatures?: string[];
 };
 
@@ -22,57 +19,56 @@ type PreviewDocumentType = ArchiveDocumentSearchResult & {
 interface DocumentPreviewDialogProps {
     isOpen: boolean;
     onOpenChange: (isOpen: boolean) => void;
-    // Use the SearchResult type which includes resolved signatures
     document: ArchiveDocumentSearchResult | null;
-    onEdit: (doc: ArchiveDocument) => void; // Keep base type for edit simplicity if form uses base type
+    onEdit: (doc: ArchiveDocument) => void;
     onDisable: (docId: number) => void;
-    // Added parentUnitTitle for better display in the link
     parentUnitTitle?: string | null;
 }
 
 // --- Date Formatter ---
+let preferredLanguage: string = 'en'; // Global for formatter, updated by component instance
+
 const formatDate = (dateInput: Date | string | undefined | null): string => {
-    if (!dateInput) return t('archivePreviewNotApplicable', preferredLanguage); // Use translation
+    if (!dateInput) return t('archivePreviewNotApplicable', preferredLanguage);
     try {
         const date = new Date(dateInput);
-        if (isNaN(date.getTime())) return t('archivePreviewInvalidDate', preferredLanguage); // Use translation
-        return date.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
-    } catch (e) { return t('archivePreviewErrorDate', preferredLanguage); } // Use translation
+        if (isNaN(date.getTime())) return t('archivePreviewInvalidDate', preferredLanguage);
+        // Format date and time for Created/Updated On fields
+        return date.toLocaleString(undefined, {
+             year: 'numeric', month: 'short', day: 'numeric',
+             hour: '2-digit', minute: '2-digit', second: '2-digit'
+            });
+    } catch (e) { return t('archivePreviewErrorDate', preferredLanguage); }
 };
-// --- Global preferredLanguage for formatter ---
-let preferredLanguage: string = 'en';
+
 
 const DocumentPreviewDialog: React.FC<DocumentPreviewDialogProps> = ({
     isOpen,
     onOpenChange,
-    document: originalDoc, // Use original name internally for clarity
+    document: originalDoc,
     onEdit,
     onDisable,
     parentUnitTitle,
 }) => {
-    const { user, preferredLanguage: contextLang } = useAuth(); // Get preferredLanguage from context
+    const { user, preferredLanguage: contextLang } = useAuth();
     preferredLanguage = contextLang; // Update global for formatter
 
-    // Cast the document to our local type for easier access to potentially resolved fields
     const previewingDoc = originalDoc as PreviewDocumentType | null;
 
     if (!previewingDoc) {
         return null;
     }
 
-    // --- UPDATED: Allow employees to modify ---
-    const isOwnerOrAdminOrEmployee = user?.role === 'admin' || user?.role === 'employee';
+    // --- Permission Check ---
+    const canModify = user?.role === 'admin' || user?.role === 'employee';
 
     const handleEditClick = () => {
-        onOpenChange(false); // Close preview
-        // Cast to base type if necessary for the form component
+        onOpenChange(false);
         onEdit(previewingDoc as ArchiveDocument);
     };
 
     const handleDisableClick = () => {
         onDisable(previewingDoc.archiveDocumentId!);
-        // Optionally close dialog after confirmation within onDisable, or keep open
-        // onOpenChange(false);
     };
 
     return (
@@ -89,8 +85,10 @@ const DocumentPreviewDialog: React.FC<DocumentPreviewDialogProps> = ({
                         {previewingDoc.parentUnitArchiveDocumentId && (
                             <p><strong>{t('archivePreviewParentUnitLabel', preferredLanguage)}:</strong> <Link to={`/archive?unitId=${previewingDoc.parentUnitArchiveDocumentId}`} className='text-primary hover:underline' onClick={()=> onOpenChange(false)}>{parentUnitTitle || `ID ${previewingDoc.parentUnitArchiveDocumentId}`}</Link></p>
                         )}
-                        <p><strong>{t('archivePreviewOwnerLabel', preferredLanguage)}:</strong> {previewingDoc.ownerLogin ?? t('archivePreviewNotApplicable', preferredLanguage)} (ID: {previewingDoc.ownerUserId})</p>
-                        {/* Display Tags */}
+                        {/* --- Updated: Show Created By / Updated By --- */}
+                        <p><strong>{t('archivePreviewCreatedByLabel', preferredLanguage)}:</strong> {previewingDoc.createdBy} ({formatDate(previewingDoc.createdOn)})</p>
+                        <p><strong>{t('archivePreviewUpdatedByLabel', preferredLanguage)}:</strong> {previewingDoc.updatedBy} ({formatDate(previewingDoc.modifiedOn)})</p>
+                        {/* ------------------------------------------ */}
                         {previewingDoc.tags && previewingDoc.tags.length > 0 && (
                             <div className="flex flex-wrap gap-1 pt-1 items-center">
                                 <strong className='mr-1'>{t('archivePreviewTagsLabel', preferredLanguage)}:</strong>
@@ -99,18 +97,15 @@ const DocumentPreviewDialog: React.FC<DocumentPreviewDialogProps> = ({
                                 ))}
                             </div>
                         )}
-                         {/* --- UPDATED: Display topographic signature string --- */}
                          {previewingDoc.topographicSignature && (
                              <div className='flex flex-wrap gap-1 pt-1 items-center'>
                                  <strong className='mr-1'>{t('archivePreviewTopoSigLabel', preferredLanguage)}:</strong>
                                  <Badge variant="outline" className='font-mono text-xs'>{previewingDoc.topographicSignature}</Badge>
                              </div>
                          )}
-                        {/* Display Descriptive Signatures (using optional chaining on the potentially resolved fields) */}
                         {previewingDoc?.resolvedDescriptiveSignatures && previewingDoc.resolvedDescriptiveSignatures.length > 0 && (
                              <div className='flex flex-wrap gap-1 pt-1 items-center'>
                                  <strong className='mr-1'>{t('archivePreviewDescSigLabel', preferredLanguage)}:</strong>
-                                 {/* Explicitly type sig and idx */}
                                  {previewingDoc.resolvedDescriptiveSignatures.map((sig: string, idx: number) => (
                                      <Badge key={`desc-${idx}`} variant="outline" className='font-mono text-xs'>{sig}</Badge>
                                  ))}
@@ -119,7 +114,6 @@ const DocumentPreviewDialog: React.FC<DocumentPreviewDialogProps> = ({
                     </DialogDescription>
                 </DialogHeader>
 
-                {/* Make preview content scrollable */}
                 <ScrollArea className="max-h-[50vh] my-4 space-y-4 pr-3 border-t border-b py-4">
                     {/* Content Description */}
                     {previewingDoc.contentDescription && (
@@ -143,7 +137,7 @@ const DocumentPreviewDialog: React.FC<DocumentPreviewDialogProps> = ({
                         </div>
                     )}
                     {/* Other Details */}
-                     {(previewingDoc.remarks || previewingDoc.accessLevel || previewingDoc.additionalInformation || previewingDoc.relatedDocumentsReferences || previewingDoc.isDigitized !== null || previewingDoc.isDigitized !== undefined) && ( // Simplified check
+                     {(previewingDoc.remarks || previewingDoc.accessLevel || previewingDoc.additionalInformation || previewingDoc.relatedDocumentsReferences || previewingDoc.isDigitized !== null || previewingDoc.isDigitized !== undefined) && (
                          <div>
                             <h4 className='font-semibold mb-1 text-base'>{t('archivePreviewOtherDetailsLabel', preferredLanguage)}</h4>
                             <div className='text-sm space-y-1'>
@@ -173,8 +167,7 @@ const DocumentPreviewDialog: React.FC<DocumentPreviewDialogProps> = ({
                 <DialogFooter className='gap-2 sm:justify-between pt-4'>
                     {/* Disable button placed on the left */}
                     <div>
-                        {isOwnerOrAdminOrEmployee && ( // Updated check
-
+                        {canModify && (
                              <Button
                                 variant="outline"
                                 className={cn('border-destructive text-destructive hover:bg-destructive/10 hover:text-destructive')}
@@ -187,7 +180,7 @@ const DocumentPreviewDialog: React.FC<DocumentPreviewDialogProps> = ({
                     </div>
                     {/* Edit and Close buttons on the right */}
                     <div className='flex gap-2'>
-                         {isOwnerOrAdminOrEmployee && ( // Updated check
+                         {canModify && (
                             <Button variant="secondary" size="sm" onClick={handleEditClick}>
                                 <Edit className='h-4 w-4 mr-2'/> {t('editButton', preferredLanguage)}
                             </Button>

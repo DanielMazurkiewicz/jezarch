@@ -9,14 +9,12 @@ export const archiveTranslationsPL: ArchiveTranslationSet = {
   archiveNoItemsInUnit: 'Nie znaleziono pozycji w jednostce "{unitTitle}".',
   archiveNoItemsForUserTags: 'Nie znaleziono dokumentów pasujących do przypisanych tagów.',
   archiveIsEmpty: 'Archiwum jest obecnie puste.',
-  // --- UPDATED: Changed case ---
   archiveItemLabel: 'Pozycję', // e.g., used for "Create Item" -> Utwórz Pozycję
-  // -----------------------------
   archiveUnitLabel: 'Jednostka',
   archiveDocumentLabel: 'Dokument',
   backToArchiveButton: 'Wróć do Głównego Widoku Archiwum',
-  archiveCreatorLabel: 'Twórca',
-  archiveCreationDateLabel: 'Data Utworzenia',
+  archiveCreatorLabel: 'Twórca', // Oryginalny twórca/autor dokumentu
+  archiveCreationDateLabel: 'Data Utworzenia', // Oryginalna data utworzenia dokumentu
   archiveTopoSigLabel: 'Sygn. Topograf.',
   archiveDescSigLabel: 'Sygn. Opisowa',
   archiveEditItemDialogTitle: 'Edytuj {itemType}', // itemType -> Jednostkę / Dokument
@@ -29,8 +27,8 @@ export const archiveTranslationsPL: ArchiveTranslationSet = {
   archiveSaveFailed: 'Nie udało się zapisać pozycji: {message}',
   archiveDetailsLoadFailed: 'Nie udało się załadować szczegółów dokumentu: {message}',
   archiveFoundItems: 'Znaleziono {count, plural, one {# pozycję} few {# pozycje} many {# pozycji} other {# pozycji}}.', // Improved pluralization
-  archiveBatchActionWarning: 'Operacje dodawania/usuwania tagów wpłyną na wszystkie znalezione pozycje',
-  archiveBatchActionNoFilterWarning: 'Operacje dodawania/usuwania tagów wpłyną na wszystkie pozycje w archiwum (brak aktywnych filtrów).',
+  archiveBatchActionWarning: 'Operacje dodawania/usuwania tagów wpłyną na wszystkie {count, plural, one {# znalezioną pozycję} few {# znalezione pozycje} many {# znalezionych pozycji} other {# znalezionych pozycji}} pasujące do obecnych filtrów.',
+  archiveBatchActionNoFilterWarning: 'Operacje dodawania/usuwania tagów wpłyną na wszystkie {count, plural, one {# pozycję} few {# pozycje} many {# pozycji} other {# pozycji}} w archiwum (brak aktywnych filtrów).',
   archiveBatchActionLoading: 'Wykonywanie operacji wsadowej na tagach...',
   archiveBatchTagsAddTitle: 'Dodaj Tagi do Wyfiltrowanych Pozycji',
   archiveBatchTagsRemoveTitle: 'Usuń Tagi z Wyfiltrowanych Pozycji',
@@ -53,7 +51,10 @@ export const archiveTranslationsPL: ArchiveTranslationSet = {
   archivePreviewCreatorLabel: 'Twórca',
   archivePreviewDateLabel: 'Data',
   archivePreviewParentUnitLabel: 'Jednostka Nadrzędna',
-  archivePreviewOwnerLabel: 'Właściciel',
+  // --- UPDATED: Replaced Owner with Created/Updated By ---
+  archivePreviewCreatedByLabel: 'Utworzone przez',
+  archivePreviewUpdatedByLabel: 'Zaktualizowane przez',
+  // ------------------------------------------------------
   archivePreviewTagsLabel: 'Tagi',
   archivePreviewTopoSigLabel: 'Sygn. Topograf.',
   archivePreviewDescSigLabel: 'Sygn. Opisowe',
@@ -75,7 +76,6 @@ export const archiveTranslationsPL: ArchiveTranslationSet = {
   archivePreviewDigitizedYes: 'Tak',
   archivePreviewDigitizedNo: 'Nie',
   archivePreviewEmptyContent: 'Brak treści.',
-  // --- Start Archive Form PL Keys ---
   archiveFormBasicInfoTitle: 'Informacje Podstawowe',
   archiveFormPhysicalDescTitle: 'Opis Fizyczny',
   archiveFormContentContextTitle: 'Treść i Kontekst',
@@ -125,7 +125,6 @@ export const archiveTranslationsPL: ArchiveTranslationSet = {
   archiveFormUpdateItemButton: 'Aktualizuj Pozycję',
   archiveFormCreateItemButton: 'Utwórz Pozycję', // This is for the FORM button
   archiveFormNoChangesDetected: 'Nie wykryto żadnych zmian.',
-  // --- End Archive Form PL Keys ---
   archiveInvalidParentTypeError: 'Pozycja o ID {id} nie jest Jednostką.',
   archiveParentUnitLoadError: 'Nie udało się załadować jednostki nadrzędnej: {message}',
   archiveFetchError: 'Nie udało się pobrać dokumentów',
@@ -138,15 +137,18 @@ export const archiveTranslationsPL: ArchiveTranslationSet = {
   archiveBrowsingUnit: 'Przeglądanie pozycji w jednostce "{unitTitle}".',
   archiveDescriptionUser: 'Przeszukuj dokumenty na podstawie przypisanych tagów.',
   archiveClickCreateHint: 'Kliknij "Utwórz Pozycję", aby rozpocząć.',
-  archivePreviewBy: 'Autor:', // Re-adding/confirming
-  archivePreviewOn: 'dnia', // Re-adding/confirming
+  archivePreviewBy: 'Autor:', // Used for original document creator
+  archivePreviewOn: 'dnia', // Used for original document creation date
   archivePreviewInvalidDate: 'Nieprawidłowa Data',
   archivePreviewErrorDate: 'Błąd Daty',
   archivePreviewNotApplicable: 'Nie dotyczy', // Translation for N/A
   added: 'Dodano', // For batch tags success
   removed: 'Usunięto', // For batch tags success
   thisUnit: 'tę jednostkę',
-  // --- ADDED Key for root create button ---
   createRootItemButton: 'Utwórz Pozycję',
-  // -----------------------------------------
+  // --- UPDATED: Owner ID search field label ---
+  ownerUserIdSearchLabel: 'ID Użytkownika Właściciela (Przestarzałe - Użyj Utworzone/Zaktualizowane przez)',
+  // --- NEW: createdBy/updatedBy search field labels ---
+  createdBySearchLabel: 'Utworzone przez',
+  updatedBySearchLabel: 'Zaktualizowane przez',
 };

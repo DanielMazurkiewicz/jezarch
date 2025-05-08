@@ -13,8 +13,8 @@ export const archiveTranslationsEN: ArchiveTranslationSet = {
   archiveUnitLabel: 'Unit',
   archiveDocumentLabel: 'Document',
   backToArchiveButton: 'Back to Archive Root',
-  archiveCreatorLabel: 'Creator',
-  archiveCreationDateLabel: 'Creation Date',
+  archiveCreatorLabel: 'Creator', // Original creator/author of the document itself
+  archiveCreationDateLabel: 'Creation Date', // Original creation date of the document itself
   archiveTopoSigLabel: 'Topographic Sig.',
   archiveDescSigLabel: 'Descriptive Sig.',
   archiveEditItemDialogTitle: 'Edit {itemType}', // e.g., "Edit Document", "Edit Unit"
@@ -51,7 +51,10 @@ export const archiveTranslationsEN: ArchiveTranslationSet = {
   archivePreviewCreatorLabel: 'Creator',
   archivePreviewDateLabel: 'Date',
   archivePreviewParentUnitLabel: 'Parent Unit',
-  archivePreviewOwnerLabel: 'Owner',
+  // --- UPDATED: Replaced Owner with Created/Updated By ---
+  archivePreviewCreatedByLabel: 'Created By',
+  archivePreviewUpdatedByLabel: 'Updated By',
+  // ------------------------------------------------------
   archivePreviewTagsLabel: 'Tags',
   archivePreviewTopoSigLabel: 'Topo Sig',
   archivePreviewDescSigLabel: 'Desc Sigs',
@@ -73,7 +76,6 @@ export const archiveTranslationsEN: ArchiveTranslationSet = {
   archivePreviewDigitizedYes: 'Yes',
   archivePreviewDigitizedNo: 'No',
   archivePreviewEmptyContent: 'No content.',
-  // --- Start Archive Form Keys ---
   archiveFormBasicInfoTitle: 'Basic Information',
   archiveFormPhysicalDescTitle: 'Physical Description',
   archiveFormContentContextTitle: 'Content & Context',
@@ -123,7 +125,6 @@ export const archiveTranslationsEN: ArchiveTranslationSet = {
   archiveFormUpdateItemButton: 'Update Item',
   archiveFormCreateItemButton: 'Create Item', // This is for the FORM button
   archiveFormNoChangesDetected: 'No changes detected.',
-  // --- End Archive Form Keys ---
   archiveInvalidParentTypeError: 'Item ID {id} is not a Unit.',
   archiveParentUnitLoadError: 'Failed to load parent unit: {message}',
   archiveFetchError: 'Failed to fetch documents',
@@ -136,15 +137,15 @@ export const archiveTranslationsEN: ArchiveTranslationSet = {
   archiveBrowsingUnit: 'Browsing items within "{unitTitle}".',
   archiveDescriptionUser: 'Search documents based on your assigned tags.',
   archiveClickCreateHint: 'Click "Create Item" to start.',
-  archivePreviewBy: 'By',
-  archivePreviewOn: 'on',
+  archivePreviewBy: 'By', // Used for original document creator
+  archivePreviewOn: 'on', // Used for original document creation date
   archivePreviewInvalidDate: 'Invalid Date',
   archivePreviewErrorDate: 'Error',
   archivePreviewNotApplicable: 'N/A',
   added: 'Added', // For batch tag success message
   removed: 'Removed', // For batch tag success message
   thisUnit: 'this unit',
-  // --- ADDED Key for root create button ---
   createRootItemButton: 'Create Item',
-  // -----------------------------------------
+  createdBySearchLabel: 'Created By',
+  updatedBySearchLabel: 'Updated By ',
 };
