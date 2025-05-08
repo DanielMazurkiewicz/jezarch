@@ -16,7 +16,8 @@ root.render(
     <BrowserRouter>
       <App />
       {/* Render Toaster globally - richColors applies preset styles */}
-      <Toaster richColors position="top-right" duration={6000} />
+      {/* Added closeButton={true} to allow manual closing */}
+      <Toaster richColors position="top-right" duration={6000} closeButton={true} />
     </BrowserRouter>
   </React.StrictMode>
 );

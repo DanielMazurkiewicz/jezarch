@@ -117,4 +117,9 @@ export const signatureTranslationsPL: SignatureTranslationSet = {
   componentNoChangesFound: 'Nie wykryto żadnych zmian.',
   parentComponentRefreshError: 'Nie udało się odświeżyć licznika komponentu nadrzędnego.',
   componentSingularLabel: 'Komponent', // Added Key
+  notAvailableAbbr: 'B/D',
+  componentLoadFailedError: 'Nie udało się załadować komponentów',
+  elementLoadFailedError: 'Nie udało się załadować elementów',
+  componentNoChangesDetected: 'Nie wykryto żadnych zmian.', // Added Key
+  elementBrowserSelectComponentFirst: 'Najpierw wybierz komponent, aby zobaczyć elementy.', // Added missing key
 };

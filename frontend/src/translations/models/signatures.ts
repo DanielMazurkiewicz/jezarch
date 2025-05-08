@@ -121,6 +121,7 @@ export type SignatureTranslationKey =
   | 'componentLoadFailedError'
   | 'elementLoadFailedError'
   | 'componentNoChangesDetected' // Added Key
+  | 'elementBrowserSelectComponentFirst' // Added missing key
   ;
 
 

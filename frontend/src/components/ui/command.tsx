@@ -70,6 +70,13 @@ function CommandInput({
           // Text color for input itself
           "text-neutral-900",
           "flex h-10 w-full rounded-md bg-transparent py-3 text-sm outline-none disabled:cursor-not-allowed disabled:opacity-50",
+          // --- ADDED FOCUS STYLES to inner input ---
+          "focus-visible:outline-none", // Remove browser default on the input itself
+          // Focus ring might be better on the wrapper, but let's try here first
+          // Alternatively, target the wrapper in CSS: .command-input-wrapper:focus-within { ... }
+          // For simplicity, apply directly here. Offset might look odd due to transparency.
+          // "focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1"
+          // -----------------------------------------
           className
         )}
         {...props}
@@ -156,6 +163,9 @@ function CommandItem({
         "text-neutral-900",
         "[&_svg:not([class*='text-'])]:text-neutral-500", // Icon color
         "relative flex cursor-default items-center gap-2 rounded-sm px-2 py-1.5 text-sm outline-none select-none data-[disabled=true]:pointer-events-none data-[disabled=true]:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
+         // --- ADDED FOCUS STYLES ---
+         "focus-visible:outline-none focus-visible:bg-neutral-100 focus-visible:text-neutral-900", // Match selected style on focus
+         // -------------------------
         className
       )}
       {...props}

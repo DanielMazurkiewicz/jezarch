@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react'; // Added useRef
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { X, Plus, Search as SearchIcon, ChevronsUpDown, ArrowRight, Network, Ban, PlusCircle } from 'lucide-react';
@@ -62,6 +62,10 @@ const ElementBrowserPopoverContent: React.FC<ElementBrowserPopoverContentProps> 
     const debouncedSearchTerm = useDebounce(searchTerm, DEBOUNCE_DELAY);
     const stringifiedInitialPath = useMemo(() => JSON.stringify(initialPath), [initialPath]);
 
+    // --- Ref for the search input ---
+    const searchInputRef = useRef<HTMLInputElement>(null);
+    // --------------------------------
+
     useEffect(() => {
         const resolveInitialPath = async () => {
             const currentInitialPath = JSON.parse(stringifiedInitialPath); // Use stable stringified version
@@ -117,6 +121,7 @@ const ElementBrowserPopoverContent: React.FC<ElementBrowserPopoverContentProps> 
             const componentIdToFetch = selectedComponentId ? parseInt(selectedComponentId, 10) : undefined;
             const hasSearchTerm = debouncedSearchTerm.trim().length > 0;
             const isComponentSelected = componentIdToFetch !== undefined && !isNaN(componentIdToFetch);
+            let wasTriggeredBySearch = false; // Flag to track if fetch was due to search term
 
             const searchRequest: SearchRequest = { query: [], page: 1, pageSize: MAX_SEARCH_RESULTS };
             let shouldFetch = false;
@@ -128,6 +133,7 @@ const ElementBrowserPopoverContent: React.FC<ElementBrowserPopoverContentProps> 
                     queryFilters.push({ field: 'signatureComponentId', condition: 'EQ', value: componentIdToFetch, not: false });
                 }
                 shouldFetch = true;
+                wasTriggeredBySearch = true; // Mark as search-triggered
             } else {
                 if (mode === 'hierarchical') {
                     if (lastElementId) {
@@ -161,7 +167,17 @@ const ElementBrowserPopoverContent: React.FC<ElementBrowserPopoverContentProps> 
             } catch (err: any) {
                  const msg = err.message || t('elementLoadFailedError', preferredLanguage);
                 setError(msg); setElements([]);
-            } finally { setIsLoadingElements(false); }
+            } finally {
+                setIsLoadingElements(false);
+                // --- Refocus input after search results load ---
+                 if (wasTriggeredBySearch && searchInputRef.current) {
+                     // Use requestAnimationFrame to ensure focus happens after render cycle
+                     requestAnimationFrame(() => {
+                         searchInputRef.current?.focus();
+                     });
+                 }
+                 // ----------------------------------------------
+            }
         };
         fetchElems();
     }, [token, selectedComponentId, mode, currentSignatureElements, debouncedSearchTerm, refetchElementsTrigger, preferredLanguage]); // Add preferredLanguage
@@ -289,7 +305,15 @@ const ElementBrowserPopoverContent: React.FC<ElementBrowserPopoverContentProps> 
                          {getNextStepPrompt()}
                      </Label>
                     <Command className='rounded-lg border shadow-sm' filter={() => 1}>
-                        <CommandInput placeholder={t('elementBrowserSearchPlaceholder', preferredLanguage)} value={searchTerm} onValueChange={setSearchTerm} disabled={isLoadingElements}/>
+                         {/* Attach the ref to CommandInput */}
+                        <CommandInput
+                            ref={searchInputRef}
+                            placeholder={t('elementBrowserSearchPlaceholder', preferredLanguage)}
+                            value={searchTerm}
+                            onValueChange={setSearchTerm}
+                            disabled={isLoadingElements}
+                         />
+                         {/* --------------------------- */}
                          <CommandList className="max-h-[200px]">
                              {isLoadingElements && <div className='p-4 text-center'><LoadingSpinner size='sm' /></div>}
                              {error && !isLoadingElements && <CommandEmpty className='text-destructive px-2 py-4 text-center'>{error}</CommandEmpty>}

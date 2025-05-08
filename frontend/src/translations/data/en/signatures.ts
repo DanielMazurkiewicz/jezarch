@@ -117,4 +117,9 @@ export const signatureTranslationsEN: SignatureTranslationSet = {
   componentNoChangesFound: 'No changes detected.',
   parentComponentRefreshError: 'Failed to refresh parent component count.',
   componentSingularLabel: 'Component', // Added Key
+  notAvailableAbbr: 'N/A',
+  componentLoadFailedError: 'Failed to load components',
+  elementLoadFailedError: 'Failed to load elements',
+  componentNoChangesDetected: 'No changes detected.', // Added Key
+  elementBrowserSelectComponentFirst: 'Select a component first to see elements.', // Added missing key
 };
