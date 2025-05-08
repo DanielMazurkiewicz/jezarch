@@ -38,8 +38,8 @@ function DialogOverlay({
     <DialogPrimitive.Overlay
       data-slot="dialog-overlay"
       className={cn(
-        "data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 fixed inset-0 z-50 bg-black/50", // Semi-transparent black overlay
-        "backdrop-blur-sm",
+        "data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 fixed inset-0 z-50 bg-black/50", // Use standard background dimming
+        // Removed backdrop-blur-sm
         className
       )}
       {...props}
@@ -59,18 +59,16 @@ function DialogContent({
         data-slot="dialog-content"
         className={cn(
           "fixed top-[50%] left-[50%] z-50 grid w-full translate-x-[-50%] translate-y-[-50%] gap-4 rounded-lg border p-6 shadow-lg duration-200",
-          // Removed default max-width constraint (sm:max-w-lg) to allow className override
-          "max-w-[calc(100%-2rem)]", // Keep constraint for very small screens
-          // Force white background and dark text, overriding theme variables
+          "max-w-[calc(100%-2rem)]",
           "bg-white dark:bg-white text-neutral-900 dark:text-neutral-900 border-neutral-200",
-          // Add max-height and overflow-y-auto to the content container itself
-          "max-h-[90vh] overflow-y-auto",
-          // Animations
+           // Keep max-height and overflow here for the CONTENT part, form inside might scroll too
+          "max-h-[90vh] flex flex-col", // Added flex flex-col
           "data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95",
-          className // Allow overrides like specific max-w-* or w-*
+          className
         )}
         {...props}
       >
+        {/* Header and Footer are part of the flex layout now */}
         {children}
         <DialogPrimitive.Close className="ring-offset-background focus:ring-ring data-[state=open]:bg-accent data-[state=open]:text-muted-foreground absolute top-4 right-4 rounded-sm opacity-70 transition-opacity hover:opacity-100 focus:ring-2 focus:ring-offset-2 focus:outline-none disabled:pointer-events-none [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4 text-neutral-500 hover:text-neutral-900">
           <XIcon />
@@ -85,7 +83,8 @@ function DialogHeader({ className, ...props }: React.ComponentProps<"div">) {
   return (
     <div
       data-slot="dialog-header"
-      className={cn("flex flex-col gap-2 text-center sm:text-left pr-8", className)}
+      // Make header non-shrinking part of the flex layout
+      className={cn("flex flex-col gap-2 text-center sm:text-left pr-8 shrink-0", className)}
       {...props}
     />
   )
@@ -95,8 +94,9 @@ function DialogFooter({ className, ...props }: React.ComponentProps<"div">) {
   return (
     <div
       data-slot="dialog-footer"
+       // Make footer non-shrinking part of the flex layout, add top border
       className={cn(
-        "flex flex-col-reverse gap-2 sm:flex-row sm:justify-end",
+        "flex flex-col-reverse gap-2 sm:flex-row sm:justify-end mt-auto pt-4 border-t shrink-0", // Added mt-auto, pt-4, border-t
         className
       )}
       {...props}

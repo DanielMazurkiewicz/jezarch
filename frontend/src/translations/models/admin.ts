@@ -101,8 +101,6 @@ export type AdminTranslationKey =
   | 'noAdditionalData'
   | 'unitLoadFailedError'
   | 'selectedElementLoadFailedError'
-  | 'errorMessageTemplate' // Includes {message} - Moved to common
-  // Added missing keys from previous batch
   | 'userFetchFailedError'
   | 'tagLoadFailedError'
   | 'userFetchDetailsFailedError'

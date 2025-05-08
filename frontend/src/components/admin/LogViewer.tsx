@@ -233,10 +233,11 @@ const LogViewer: React.FC = () => {
                  {!isLoading && !error && logs.length > 0 && (
                     // Wrap table in div for border and overflow handling
                     <div className="border rounded-lg overflow-hidden">
-                        <div className='max-h-[60vh] overflow-y-auto relative'> {/* Add relative positioning */}
+                        {/* REMOVED max-h and overflow-y-auto */}
+                        <div className='relative'>
                              <Table>
-                                 {/* TableHeader forced white */}
-                                 <TableHeader className='sticky top-0 bg-white dark:bg-white z-10'>
+                                 {/* TableHeader forced white, sticky removed as parent scrolls */}
+                                 <TableHeader className='bg-white dark:bg-white z-10'>
                                     <TableRow>
                                         <TableHead className='w-[180px]'>{t('logsTimestampColumn', preferredLanguage)}</TableHead>
                                         <TableHead className='w-[100px]'>{t('logsLevelColumn', preferredLanguage)}</TableHead>

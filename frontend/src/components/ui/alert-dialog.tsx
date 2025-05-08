@@ -34,7 +34,8 @@ function AlertDialogOverlay({
     <AlertDialogPrimitive.Overlay
       data-slot="alert-dialog-overlay"
       className={cn(
-        "fixed inset-0 z-50 bg-black/50 backdrop-blur-sm data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
+        "fixed inset-0 z-50 bg-black/50 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0", // Use standard background dimming
+        // Removed backdrop-blur-sm
         className
       )}
       {...props}
@@ -133,9 +134,6 @@ function AlertDialogAction({
       data-slot="alert-dialog-action"
       className={cn(
         buttonVariants(),
-        // Ensure destructive variant has correct background/text on white
-        // Destructive button style relies on its variant definition which should be fine
-        // If needed, add specific overrides: bg-destructive text-destructive-foreground hover:bg-destructive/90
         className
       )}
       {...props}
@@ -151,7 +149,7 @@ function AlertDialogCancel({
     <AlertDialogPrimitive.Cancel
       data-slot="alert-dialog-cancel"
       className={cn(
-        buttonVariants({ variant: "outline" }), // Outline button should work on white bg
+        buttonVariants({ variant: "outline" }),
         "mt-2 sm:mt-0",
         className
       )}

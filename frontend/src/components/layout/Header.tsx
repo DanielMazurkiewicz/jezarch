@@ -1,7 +1,10 @@
 import React, { useState, useCallback } from 'react';
 import { useLocation, useNavigate, Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { LogOut, Menu, Settings, User as UserIcon, Languages } from 'lucide-react';
+import {
+    LogOut, Menu, Settings, User as UserIcon, Languages,
+    LayoutDashboard, StickyNote, Tag, PenTool, Archive as ArchiveIcon, ShieldAlert, FileSearch
+} from 'lucide-react'; // Added page icons
 import { useAuth } from '@/hooks/useAuth';
 import ChangePasswordDialog from '@/components/user/ChangePasswordDialog';
 import {
@@ -18,32 +21,66 @@ import {
   DropdownMenuRadioGroup,
   DropdownMenuRadioItem,
 } from "@/components/ui/dropdown-menu";
-// Updated imports: Get types and constants from new models file
-import { type SupportedLanguage, supportedLanguages as appSupportedLanguages, defaultLanguage as appDefaultLanguage } from '@/translations/models'; // Updated path
+import { type SupportedLanguage, supportedLanguages as appSupportedLanguages, defaultLanguage as appDefaultLanguage } from '@/translations/models';
 import api from '@/lib/api';
 import { toast } from "sonner";
-import { t } from '@/translations/utils'; // Import translation utility
+import { t } from '@/translations/utils';
+import { cn } from '@/lib/utils'; // Import cn
 
 interface HeaderProps {
-  toggleSidebar?: () => void; // For mobile sidebar toggle (optional)
+  toggleSidebar?: () => void;
 }
 
-// Function to get translated title from path
-const getTranslatedTitleFromPath = (pathname: string, lang: SupportedLanguage): string => {
+// Helper function to get title and icon from path
+const getPageInfoFromPath = (pathname: string, lang: SupportedLanguage, userRole?: string | null): { title: string, Icon: React.ComponentType<{ className?: string }> } => {
     const segments = pathname.split('/').filter(Boolean);
-    if (segments.length === 0) return t('dashboardTitle', lang);
-    // Attempt to map path segments to translation keys (this might need refinement)
-    const key = segments[0] as any; // Use 'any' carefully or create a mapping type
-    // Example: Use a mapping or convention if possible
-    // const titleKeyMap: Record<string, AppTranslationKey> = {
-    //     'archive': 'archiveTitle', 'signatures': 'signaturesTitle', 'tags': 'tagsTitle', etc.
-    // };
-    // if (titleKeyMap[key]) {
-    //    return t(titleKeyMap[key], lang);
-    // }
-    // Fallback to capitalizing the segment if no direct translation key found
-    const title = segments[0].replace(/-/g, ' ');
-    return title.charAt(0).toUpperCase() + title.slice(1);
+    let titleKey: string = 'dashboardTitle'; // Default to dashboard
+    let Icon: React.ComponentType<{ className?: string }> = LayoutDashboard; // Default icon
+
+    if (segments.length > 0) {
+        const baseSegment = segments[0];
+        switch (baseSegment) {
+            case 'archive':
+                titleKey = 'archiveTitle';
+                Icon = userRole === 'user' ? FileSearch : ArchiveIcon; // Match sidebar logic
+                break;
+            case 'signatures':
+                titleKey = 'signaturesTitle';
+                Icon = PenTool;
+                if (segments.length > 1) titleKey = 'elementsTitle'; // Basic override for sub-page
+                break;
+            case 'tags':
+                titleKey = 'tagsTitle';
+                Icon = Tag;
+                break;
+            case 'notes':
+                titleKey = 'notesTitle';
+                Icon = StickyNote;
+                break;
+            case 'admin':
+                titleKey = 'adminPanelTitle';
+                Icon = ShieldAlert;
+                break;
+            // Add cases for other base routes if needed
+            default:
+                 // Fallback for unknown top-level routes, keep dashboard
+                 titleKey = 'dashboardTitle';
+                 Icon = LayoutDashboard;
+        }
+    } else {
+        // Root path, default to dashboard
+        titleKey = 'dashboardTitle';
+        Icon = LayoutDashboard;
+    }
+
+    // Attempt to translate the key; fallback to a sensible default if key is invalid
+    let title = t(titleKey as any, lang); // Use 'any' carefully or refine key type
+    if (title === titleKey && title !== 'dashboardTitle') { // Fallback if translation missing
+         const segmentName = segments[0] || 'Dashboard';
+         title = segmentName.charAt(0).toUpperCase() + segmentName.slice(1).replace(/-/g, ' ');
+    }
+
+    return { title, Icon };
 };
 
 
@@ -52,8 +89,7 @@ const Header: React.FC<HeaderProps> = ({ toggleSidebar }) => {
     const { logout, user, updateContextUser, setContextPreferredLanguage, preferredLanguage, token } = useAuth();
     const location = useLocation();
     const navigate = useNavigate();
-    // Use translated title based on preferredLanguage from context
-    const currentPageTitle = getTranslatedTitleFromPath(location.pathname, preferredLanguage);
+    const { title: currentPageTitle, Icon: CurrentPageIcon } = getPageInfoFromPath(location.pathname, preferredLanguage, user?.role); // Get title and icon
     const [isChangePasswordOpen, setIsChangePasswordOpen] = useState(false);
 
     const handleLogout = async () => {
@@ -96,7 +132,11 @@ const Header: React.FC<HeaderProps> = ({ toggleSidebar }) => {
                 <Menu className="h-5 w-5" /> <span className="sr-only">Toggle Menu</span>
             </Button>
          )}
-         <h1 className="text-xl font-semibold flex-1">{currentPageTitle}</h1>
+          {/* Page Title with Icon */}
+         <div className="flex flex-1 items-center gap-2">
+             <CurrentPageIcon className={cn("h-5 w-5 text-muted-foreground")} />
+             <h1 className="text-xl font-semibold">{currentPageTitle}</h1>
+         </div>
 
          <div className="flex items-center gap-2">
              {/* User Dropdown Menu */}

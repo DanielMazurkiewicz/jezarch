@@ -7,9 +7,7 @@ import api from '@/lib/api';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-// --- FIX: Added DialogTrigger import ---
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose, DialogTrigger } from "@/components/ui/dialog";
-// --------------------------------------
 import ErrorDisplay from '@/components/shared/ErrorDisplay';
 import LoadingSpinner from '@/components/shared/LoadingSpinner';
 import { toast } from "sonner";
@@ -107,8 +105,8 @@ const UserCreateDialog: React.FC<UserCreateDialogProps> = ({
                             className={cn(errors.password && "border-destructive")}
                         />
                         {errors.password && <p className="text-xs text-destructive">{errors.password.message}</p>}
-                        {/* TODO: Translate password requirements hint */}
-                        <p className='text-xs text-muted-foreground'>Min 8 chars, 1 uppercase, 1 lowercase, 1 number.</p>
+                        {/* Use translated password requirements hint */}
+                        <p className='text-xs text-muted-foreground'>{t('passwordRequirementsHint', preferredLanguage)}</p>
                     </div>
 
                     <div className="grid gap-1.5">

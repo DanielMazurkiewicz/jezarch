@@ -29,8 +29,8 @@ export const archiveTranslationsPL: ArchiveTranslationSet = {
   archiveSaveFailed: 'Nie udało się zapisać pozycji: {message}',
   archiveDetailsLoadFailed: 'Nie udało się załadować szczegółów dokumentu: {message}',
   archiveFoundItems: 'Znaleziono {count, plural, one {# pozycję} few {# pozycje} many {# pozycji} other {# pozycji}}.', // Improved pluralization
-  archiveBatchActionWarning: 'Akcje wsadowe wpłyną na {count} pozycji pasujących do obecnych filtrów.',
-  archiveBatchActionNoFilterWarning: 'Akcje wsadowe wpłyną na wszystkie {count} pozycji w archiwum (brak aktywnych filtrów).',
+  archiveBatchActionWarning: 'Operacje dodawania/usuwania tagów wpłyną na wszystkie znalezione pozycje',
+  archiveBatchActionNoFilterWarning: 'Operacje dodawania/usuwania tagów wpłyną na wszystkie pozycje w archiwum (brak aktywnych filtrów).',
   archiveBatchActionLoading: 'Wykonywanie operacji wsadowej na tagach...',
   archiveBatchTagsAddTitle: 'Dodaj Tagi do Wyfiltrowanych Pozycji',
   archiveBatchTagsRemoveTitle: 'Usuń Tagi z Wyfiltrowanych Pozycji',

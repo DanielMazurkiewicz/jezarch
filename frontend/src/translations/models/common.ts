@@ -142,13 +142,13 @@ export type CommonTranslationKey =
   | 'insufficientPermissionsError'
   | 'notAvailableAbbr'
   | 'unknown'
-  | 'sidebarLoggedInAs' // Added Key
-  | 'tagSelectorSelectPlaceholder' // Added Key
-  | 'tagSelectorSearchPlaceholder' // Added Key
-  | 'tagSelectorLoading' // Added Key
-  | 'tagSelectorError' // Added Key
-  | 'tagSelectorNoTags' // Added Key
-  | 'signaturesTitle' // Added Key (used in Sidebar)
+  | 'sidebarLoggedInAs'
+  | 'tagSelectorSelectPlaceholder'
+  | 'tagSelectorSearchPlaceholder'
+  | 'tagSelectorLoading'
+  | 'tagSelectorError'
+  | 'tagSelectorNoTags'
+  | 'signaturesTitle'
   ;
 
 

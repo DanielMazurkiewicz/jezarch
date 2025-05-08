@@ -171,55 +171,60 @@ const ElementForm: React.FC<ElementFormProps> = ({ elementToEdit, currentCompone
     }
 
     return (
-        // Use handleSubmit here for validation, but not directly on the form tag
-        <div className="grid gap-4 py-4 max-h-[70vh] overflow-y-auto pr-2 relative">
-            {error && <ErrorDisplay message={error} className="mb-4"/>}
-            {isLoading && <div className='absolute inset-0 bg-background/50 flex items-center justify-center z-10 rounded-md'><LoadingSpinner/></div>}
+        // Use flex layout for main container to position footer
+        <div className="flex flex-col h-full">
+            {/* Error Display at the top */}
+             {error && <div className="px-1 pb-2"><ErrorDisplay message={error} /></div>}
+             {/* Scrollable Form Content */}
+             {/* Wrapped in relative positioning for the loader overlay */}
+             <div className="flex-grow overflow-y-auto pr-2 pl-1 relative">
+                 {isLoading && <div className='absolute inset-0 bg-background/50 flex items-center justify-center z-10 rounded-md'><LoadingSpinner/></div>}
 
-            {/* Display Current Component Info */}
-            <div className='text-sm p-2 bg-muted rounded border'> {t('elementListComponentHeader', preferredLanguage)}: <Badge variant="secondary">{currentComponent.name}</Badge> ({t('componentBadgeIndexType', preferredLanguage, { type: currentComponent.index_type })}) </div>
+                 {/* Actual form fields */}
+                 <div className="grid gap-4">
+                     {/* Display Current Component Info */}
+                     <div className='text-sm p-2 bg-muted rounded border'> {t('elementListComponentHeader', preferredLanguage)}: <Badge variant="secondary">{currentComponent.name}</Badge> ({t('componentBadgeIndexType', preferredLanguage, { type: currentComponent.index_type })}) </div>
 
-            {/* Form Fields */}
-            <div className="grid gap-1.5">
-                 {/* Use translated label */}
-                <Label htmlFor="elem-name">{t('elementNameLabel', preferredLanguage)} {t('requiredFieldIndicator', preferredLanguage)}</Label>
-                <Input id="elem-name" {...register('name')} aria-invalid={!!errors.name} className={cn(errors.name && "border-destructive")} />
-                {errors.name && <p className="text-xs text-destructive">{errors.name.message}</p>}
+                     {/* Form Fields */}
+                     <div className="grid gap-1.5">
+                         <Label htmlFor="elem-name">{t('elementNameLabel', preferredLanguage)} {t('requiredFieldIndicator', preferredLanguage)}</Label>
+                         <Input id="elem-name" {...register('name')} aria-invalid={!!errors.name} className={cn(errors.name && "border-destructive")} />
+                         {errors.name && <p className="text-xs text-destructive">{errors.name.message}</p>}
+                     </div>
+                     <div className="grid gap-1.5">
+                         <Label htmlFor="elem-description">{t('elementDescriptionLabel', preferredLanguage)} {t('optionalLabel', preferredLanguage)}</Label>
+                         <Textarea id="elem-description" {...register('description')} rows={3} aria-invalid={!!errors.description} className={cn(errors.description && "border-destructive")} />
+                         {errors.description && <p className="text-xs text-destructive">{errors.description.message}</p>}
+                     </div>
+                     <div className="grid gap-1.5">
+                         <Label htmlFor="elem-index">{t('elementIndexLabel', preferredLanguage)}</Label>
+                         <Input id="elem-index" {...register('index')} placeholder={t('elementIndexPlaceholder', preferredLanguage, { type: currentComponent.index_type })} aria-invalid={!!errors.index} className={cn(errors.index && "border-destructive")} />
+                         <p className='text-xs text-muted-foreground'>{t('elementIndexHint', preferredLanguage)}</p>
+                         {errors.index && <p className="text-xs text-destructive">{errors.index.message}</p>}
+                     </div>
+                     <div className="grid gap-1.5">
+                         <ElementSelector
+                             selectedElementIds={selectedParentIds}
+                             onChange={setSelectedParentIds}
+                             currentElementId={elementToEdit?.signatureElementId}
+                             currentComponentId={currentComponent?.signatureComponentId}
+                             label={t('elementParentElementsLabel', preferredLanguage)}
+                         />
+                         <input type="hidden" {...register('parentIds')} />
+                         {errors.parentIds && <p className="text-xs text-destructive">{typeof errors.parentIds.message === 'string' ? errors.parentIds.message : 'Invalid parent selection'}</p>}
+                     </div>
+                 </div>
             </div>
-            <div className="grid gap-1.5">
-                 {/* Use translated label */}
-                <Label htmlFor="elem-description">{t('elementDescriptionLabel', preferredLanguage)} {t('optionalLabel', preferredLanguage)}</Label>
-                <Textarea id="elem-description" {...register('description')} rows={3} aria-invalid={!!errors.description} className={cn(errors.description && "border-destructive")} />
-                {errors.description && <p className="text-xs text-destructive">{errors.description.message}</p>}
-            </div>
-            <div className="grid gap-1.5">
-                 {/* Use translated label and placeholder */}
-                <Label htmlFor="elem-index">{t('elementIndexLabel', preferredLanguage)}</Label>
-                <Input id="elem-index" {...register('index')} placeholder={t('elementIndexPlaceholder', preferredLanguage, { type: currentComponent.index_type })} aria-invalid={!!errors.index} className={cn(errors.index && "border-destructive")} />
-                <p className='text-xs text-muted-foreground'>{t('elementIndexHint', preferredLanguage)}</p>
-                {errors.index && <p className="text-xs text-destructive">{errors.index.message}</p>}
-            </div>
-            <div className="grid gap-1.5">
-                 {/* Pass translated label */}
-                <ElementSelector
-                    selectedElementIds={selectedParentIds}
-                    onChange={setSelectedParentIds}
-                    currentElementId={elementToEdit?.signatureElementId}
-                    currentComponentId={currentComponent?.signatureComponentId}
-                    label={t('elementParentElementsLabel', preferredLanguage)}
-                />
-                <input type="hidden" {...register('parentIds')} />
-                {errors.parentIds && <p className="text-xs text-destructive">{typeof errors.parentIds.message === 'string' ? errors.parentIds.message : 'Invalid parent selection'}</p>}
-            </div>
-            {/* Use translated button text */}
-            <Button
-                type="button"
-                onClick={handleSubmit(handleFormSubmit)}
-                disabled={isLoading || isFetchingDetails}
-                className="mt-2 justify-self-start"
-            >
-                {isLoading ? <LoadingSpinner size="sm" className='mr-2' /> : (elementToEdit ? t('editButton', preferredLanguage) : t('createButton', preferredLanguage))} {t('elementSingularLabel', preferredLanguage)} {/* TODO: Add elementSingularLabel */}
-            </Button>
+             {/* Fixed Footer Area */}
+             <div className="pt-4 pb-1 px-1 border-t flex justify-start shrink-0">
+                 <Button
+                     type="button"
+                     onClick={handleSubmit(handleFormSubmit)}
+                     disabled={isLoading || isFetchingDetails}
+                 >
+                     {isLoading ? <LoadingSpinner size="sm" className='mr-2' /> : (elementToEdit ? t('editButton', preferredLanguage) : t('createButton', preferredLanguage))} {t('elementSingularLabel', preferredLanguage)}
+                 </Button>
+             </div>
         </div>
     );
 };

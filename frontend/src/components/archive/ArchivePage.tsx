@@ -13,7 +13,7 @@ import api from '@/lib/api';
 import type { Tag } from '../../../../backend/src/functionalities/tag/models';
 import type { ArchiveDocument, ArchiveDocumentSearchResult, ArchiveDocumentType } from '../../../../backend/src/functionalities/archive/document/models';
 import type { SearchRequest, SearchResponse, SearchQueryElement } from '../../../../backend/src/utils/search';
-import { PlusCircle, ArrowLeft, Folder, FileText, Tags, MinusCircle } from 'lucide-react';
+import { PlusCircle, ArrowLeft, Folder, FileText, Tags, MinusCircle, Archive as ArchiveIcon, FileSearch } from 'lucide-react'; // Added ArchiveIcon, FileSearch
 import { Pagination } from '@/components/shared/Pagination';
 import { toast } from "sonner";
 import { Card, CardContent, CardHeader, CardDescription } from '@/components/ui/card';
@@ -59,6 +59,12 @@ const ArchivePage: React.FC = () => {
   const isUserRole = user?.role === 'user';
 
   const isSearchActive = useMemo(() => searchQuery.length > 0, [searchQuery]);
+
+  // --- Determine Icon based on role and context ---
+  const headerIcon = useMemo(() => {
+      if (parentUnitId) return Folder; // Always Folder icon when inside a unit
+      return isUserRole ? FileSearch : ArchiveIcon; // Match sidebar logic for root
+  }, [parentUnitId, isUserRole]);
 
   // --- Translate Dialog Title ---
   useEffect(() => {
@@ -279,8 +285,8 @@ const ArchivePage: React.FC = () => {
                 )}
                 <div>
                     <h1 className="text-2xl font-bold flex items-center gap-2">
-                       {parentUnit ? <><Folder className='h-5 w-5 text-blue-600'/> {t('archiveUnitLabel', preferredLanguage)}: <span className='text-primary'>{parentUnit.title}</span></>
-                                   : <><FileText className='h-5 w-5 text-gray-600'/> {t('archiveTitle', preferredLanguage)}</>}
+                       {parentUnit ? <>{t('archiveUnitLabel', preferredLanguage)}: <span className='text-primary'>{parentUnit.title}</span></>
+                                   : <>{t('archiveTitle', preferredLanguage)}</>}
                     </h1>
                     <p className='text-muted-foreground'>
                        {parentUnit ? t('archiveBrowsingUnit', preferredLanguage, { unitTitle: parentUnit.title })
@@ -320,19 +326,25 @@ const ArchivePage: React.FC = () => {
                              {parentUnitId ? t('archiveCreateDocumentButton', preferredLanguage) : t('createRootItemButton', preferredLanguage)}
                          </Button>
                          </DialogTrigger>
-                          {/* --- INCREASED DIALOG WIDTH EVEN MORE using w-[90vw] for larger screens --- */}
-                         <DialogContent className="w-[90vw] max-w-[1200px] h-[90vh]"> {/* Adjust max-w if needed */}
-                         {/* ----------------------------------------------------------------------------- */}
-                         <DialogHeader> <DialogTitle>{formDialogTitle}</DialogTitle> </DialogHeader>
-                         {isFormOpen && (
-                             <DocumentForm
-                                 docToEdit={editingDoc}
-                                 onSave={handleSaveSuccess}
-                                 forceType={formInitialType}
-                                 forcedParentId={formInitialParentId}
-                                 forcedParentTitle={formInitialParentTitle}
-                                 />
-                             )}
+                         <DialogContent className="w-[90vw] max-w-[1200px] h-[90vh] flex flex-col"> {/* Added flex flex-col */}
+                            {/* Header remains non-scrollable */}
+                            <DialogHeader> <DialogTitle>{formDialogTitle}</DialogTitle> </DialogHeader>
+                            {/* Form content becomes scrollable */}
+                            <div className="flex-grow overflow-y-auto pr-2 pl-1"> {/* Adjusted padding */}
+                                {isFormOpen && (
+                                    <DocumentForm
+                                        docToEdit={editingDoc}
+                                        onSave={handleSaveSuccess}
+                                        forceType={formInitialType}
+                                        forcedParentId={formInitialParentId}
+                                        forcedParentTitle={formInitialParentTitle}
+                                        />
+                                )}
+                            </div>
+                            {/* Footer is outside scrollable area if needed, but button is inside form */}
+                            {/* <DialogFooter className="shrink-0"> */}
+                                {/* Add any footer buttons if needed outside form submission */}
+                            {/* </DialogFooter> */}
                          </DialogContent>
                      </Dialog>
                  )}
