@@ -6,9 +6,9 @@
   "main": "src/frontend.tsx",
   "module": "src/frontend.tsx",
   "scripts": {
-    "dev": "bun --hot src/frontend.tsx",
-    "start": "bun run dist/index.html",
-    "build": "bun run build.ts"
+    "dev": "bun build.ts src/index.html   --no-minify --source-map linked",
+    "start": "bun build.ts src/index.html   --no-minify --source-map linked",
+    "build": "bun build.ts src/index.html --minify"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.0.1",
