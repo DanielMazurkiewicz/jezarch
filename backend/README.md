@@ -72,10 +72,16 @@ Endpoints supporting search (e.g., `/api/notes/search`, `/api/logs/search`, `/ap
     // ... more elements
   ],
   "page": 1,         // Requested page number (1-based)
-  "pageSize": 10     // Number of items per page
+  "pageSize": 10,    // Number of items per page
+  "sortField": "fieldName", // Optional: Field to sort by (must be in allowedFields for the endpoint)
+  "sortDirection": "ASC" // Optional: "ASC" or "DESC" (defaults to "DESC" if sortField is provided but this is not)
 }
 ```
 
+*   **Sorting:**
+    *   If `sortField` is provided, results will be ordered by this field. The field must be one of the direct, non-custom-handled fields allowed for the specific search endpoint.
+    *   `sortDirection` can be "ASC" (ascending) or "DESC" (descending). If `sortField` is provided and `sortDirection` is omitted or invalid, it defaults to "DESC".
+    *   If `sortField` is not provided, results are sorted by the primary key of the main table in descending order by default.
 *   **Conditions:**
     *   `EQ`: Equal to (`=` or `IS NULL`)
     *   `GT`: Greater than (`>`)
@@ -83,7 +89,7 @@ Endpoints supporting search (e.g., `/api/notes/search`, `/api/logs/search`, `/ap
     *   `LT`: Less than (`<`)
     *   `LTE`: Less than or equal to (`<=`)
     *   `ANY_OF`: Field value must be one of the values in the `value` array (`IN (...)`). Requires `value` to be an array. Handles `NOT IN` if `not: true`.
-    *   `FRAGMENT`: Field value contains the `value` string (case-sensitive `LIKE %...%`). Requires `value` to be a string. Handles `NOT LIKE` if `not: true`.
+    *   `FRAGMENT`: Field value contains the `value` string (case-insensitive `LIKE %...%` via `LOWER()`). Requires `value` to be a string. Handles `NOT LIKE` if `not: true`.
 *   **Response:** The search endpoints return a `SearchResponse<T>` object:
     ```json
     {
@@ -132,19 +138,23 @@ Endpoints to check the basic health and status of the API.
 Endpoints for user creation, authentication, and administration.
 
 *   **POST `/api/user/create`**
-    *   **Description:** Creates a new user with the `regular_user` role. *(Security Note: Currently requires no authentication. Consider restricting this endpoint).*
-    *   **Authentication:** None required.
+    *   **Description:** Creates a new user. This endpoint is restricted to administrators. The role of the new user is set to `null` by default (meaning the account is initially disabled and an admin must assign a role).
+    *   **Authentication:** Required (Role: `admin`).
     *   **Request Body:** (`userSchema`)
         ```json
         {
           "login": "newuser",
-          "password": "Password123", // Min 8 chars, 1 upper, 1 lower, 1 digit (enforced by schema)
-          "role": "regular_user" // Optional, ignored by controller (always 'regular_user')
+          "password": "Password123", // Password must be min 8 characters, include 1 uppercase, 1 lowercase, and 1 digit.
+          // "role" field is not used here; new users get role 'null' by default.
+          "preferredLanguage": "en" // Optional: "en" | "pl", defaults to "en" if not provided
         }
         ```
     *   **Responses:**
-        *   `201 Created`: `{"login": "newuser", "message": "User created successfully"}`
-        *   `400 Bad Request`: Invalid input data (doesn't match schema) or `Username already exists`.
+        *   `201 Created`: Returns the newly created user object (without password). Example: `{"userId": 2, "login": "newuser", "role": null, "preferredLanguage": "en", "assignedTags": []}`
+        *   `400 Bad Request`: Invalid input data (doesn't match schema, e.g., password complexity not met).
+        *   `401 Unauthorized`: Authentication token missing or invalid.
+        *   `403 Forbidden`: Authenticated user is not an admin.
+        *   `409 Conflict`: `Username already exists`.
         *   `500 Internal Server Error`: Failed to create user (e.g., DB error).
 
 *   **POST `/api/user/login`**
@@ -211,27 +221,46 @@ Endpoints for user creation, authentication, and administration.
         *   `500 Internal Server Error`
 
 *   **POST `/api/user/change-password`**
-    *   **Description:** Allows the authenticated user to change their own password. *(Note: Does not currently validate new password complexity)*.
+    *   **Description:** Allows the authenticated user to change their own password. New password must meet complexity requirements (min 8 chars, 1 upper, 1 lower, 1 digit).
     *   **Authentication:** Required (Role: `admin` or `regular_user`).
     *   **Request Body:**
         ```json
         {
           "oldPassword": "currentPassword", // Required
-          "password": "NewSecurePassword1" // Required (New password)
+          "password": "NewSecurePassword1" // Required (New password, must meet complexity rules)
         }
         ```
     *   **Responses:**
-        *   `200 OK`: `{"message": "User role updated successfully"}` *(Note: Success message is incorrect)*.
-        *   `400 Bad Request`: Missing fields in body. *(Note: New password complexity not validated here)*.
-        *   `401 Unauthorized`: `Invalid password` (if `oldPassword` is incorrect).
+        *   `204 No Content`: Password updated successfully.
+        *   `400 Bad Request`: Missing fields in body or new password does not meet complexity requirements.
+        *   `401 Unauthorized`: `Invalid current password`.
         *   `403 Forbidden` (Should not occur with current role check).
+        *   `500 Internal Server Error`
+
+*   **PATCH `/api/user/by-login/:login/set-password`**
+    *   **Description:** Allows an admin to set a password for any user. New password must meet complexity requirements (min 8 chars, 1 upper, 1 lower, 1 digit).
+    *   **Authentication:** Required (Role: `admin`).
+    *   **Path Parameters:**
+        *   `login`: The login name of the user whose password is to be set.
+    *   **Request Body:**
+        ```json
+        {
+          "password": "NewSecurePassword1" // Required (New password, must meet complexity rules)
+        }
+        ```
+    *   **Responses:**
+        *   `204 No Content`: Password set successfully.
+        *   `400 Bad Request`: New password does not meet complexity requirements or admin attempts to set own password.
+        *   `401 Unauthorized`: Authentication token missing or invalid.
+        *   `403 Forbidden`: Authenticated user is not an admin.
+        *   `404 Not Found`: Target user not found.
         *   `500 Internal Server Error`
 
 ### 3. Notes Management
 
 Endpoints for creating, reading, updating, deleting, and searching notes. Notes belong to users. Tags are managed via `tagIds`.
 
-*   **PUT `/api/note`** (Should likely be POST for creation)
+*   **POST `/api/note`**
     *   **Description:** Creates a new note for the authenticated user. Can optionally associate existing tags.
     *   **Authentication:** Required (Role: `admin` or `regular_user`).
     *   **Request Body:** (`NoteInput`, validated by `noteInputSchema` implicitly or explicitly later)
@@ -326,7 +355,7 @@ Endpoints for creating, reading, updating, deleting, and searching notes. Notes 
 
 Endpoints for managing tags (used by Notes and Archive Documents).
 
-*   **PUT `/api/tag`** (Should likely be POST for creation)
+*   **POST `/api/tag`**
     *   **Description:** Creates a new tag. Tag names must be unique (case-sensitive).
     *   **Authentication:** Required (Role: `admin` or `regular_user`).
     *   **Request Body:** (`tagSchema`)
@@ -488,7 +517,7 @@ Endpoints for accessing application logs.
 
 Manage signature components (categories for elements, define indexing).
 
-*   **PUT `/api/signature/component`** (Should likely be POST for creation)
+*   **POST `/api/signature/component`**
     *   **Description:** Creates a new signature component. Name must be unique. `index_count` starts at 0.
     *   **Authentication:** Required (Role: `admin`).
     *   **Request Body:** (`createSignatureComponentSchema`)
@@ -581,7 +610,7 @@ Manage signature components (categories for elements, define indexing).
 
 Manage signature elements within components, including their parent relationships and indices.
 
-*   **PUT `/api/signature/element`** (Should likely be POST for creation)
+*   **POST `/api/signature/element`**
     *   **Description:** Creates a new signature element. If `index` is not provided in the body, it's automatically generated based on the component's `index_count` (which is then incremented) and `index_type`. If `index` *is* provided, it's used directly, but the `index_count` is still incremented (to avoid collisions with next auto-generated index). Can link parent elements.
     *   **Authentication:** Required (Role: `admin` or `regular_user`).
     *   **Request Body:** (`createSignatureElementSchema`)
@@ -681,7 +710,7 @@ Manage signature elements within components, including their parent relationship
 
 Manage archive documents and units, including metadata, signatures, and tags. Uses soft delete (`active` flag).
 
-*   **PUT `/api/archive/document`** (Should likely be POST for creation)
+*   **POST `/api/archive/document`**
     *   **Description:** Creates a new archive document or unit. Associates tags if `tagIds` provided. Signatures are stored as arrays of element ID paths.
     *   **Authentication:** Required (Role: `admin` or `regular_user`).
     *   **Request Body:** (`createArchiveDocumentSchema`)

@@ -64,6 +64,8 @@ export interface SearchRequest {
     query: SearchQuery;
     page: number;
     pageSize: number;
+    sortField?: string;
+    sortDirection?: 'ASC' | 'DESC';
 }
 
 export interface SearchResponse<T> {
@@ -90,6 +92,7 @@ export async function buildSearchQueries<T extends Record<string, any>>(
     primaryKeyField: string = `${table.slice(0, -1)}Id`
 ): Promise<BuildSearchQueriesResult> {
     const mainTableAlias = `${table}_main`;
+    const { sortField, sortDirection } = searchRequest;
     const whereConditions: string[] = [];
     const allParams: any[] = [];
     const joinClauses = new Set<string>();
@@ -148,7 +151,7 @@ export async function buildSearchQueries<T extends Record<string, any>>(
                 break;
             case "FRAGMENT":
                  if (typeof element.value !== 'string') { await Log.warn(`FRAGMENT requires a string value`, 'system', 'search', { field, value: element.value, table }); needsHandling = false; break; }
-                 baseCondition = `${qualifiedField} LIKE ?`;
+                 baseCondition = `LOWER(${qualifiedField}) LIKE LOWER(?)`;
                  elementParams.push(`%${element.value}%`);
                  break;
             // STARTS_WITH and CONTAINS_SEQUENCE are expected to be handled by custom field handlers
@@ -173,7 +176,20 @@ export async function buildSearchQueries<T extends Record<string, any>>(
 
     const joins = Array.from(joinClauses).join('\n');
     const whereClause = whereConditions.length > 0 ? `WHERE ${whereConditions.join(' AND ')}` : '';
-    const orderBy = `ORDER BY ${mainTableAlias}.${primaryKeyField} DESC`; // Consider making ORDER BY configurable
+
+    let orderBy: string;
+    if (sortField) {
+        // Validate sortField against allowedFields (simple string comparison)
+        if (allowedFields.map(f => String(f)).includes(sortField)) {
+            const direction = sortDirection && ['ASC', 'DESC'].includes(sortDirection.toUpperCase()) ? sortDirection.toUpperCase() : 'DESC';
+            orderBy = `ORDER BY ${mainTableAlias}.${sortField} ${direction}`;
+        } else {
+            await Log.warn(`Invalid sortField: '${sortField}'. Not in allowedFields. Defaulting to primary key sort.`, 'system', 'search', { sortField, table });
+            orderBy = `ORDER BY ${mainTableAlias}.${primaryKeyField} DESC`;
+        }
+    } else {
+        orderBy = `ORDER BY ${mainTableAlias}.${primaryKeyField} DESC`;
+    }
 
     // Adjust SELECT columns based on potential JOINs (only ownerLogin handled explicitly for now)
     // createdBy/updatedBy are now direct fields, no JOIN needed for them.

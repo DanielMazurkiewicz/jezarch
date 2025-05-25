@@ -33,6 +33,14 @@ import { z } from 'zod'; // Import z
 
 export const createUserController = async (req: BunRequest) => {
     try {
+        const sessionAndUser = await getSessionAndUser(req);
+        if (!sessionAndUser) {
+            return new Response(JSON.stringify({ message: "Unauthorized" }), { status: 401, headers: { 'Content-Type': 'application/json' } });
+        }
+        if (!isAllowedRole(sessionAndUser, 'admin')) {
+            return new Response(JSON.stringify({ message: "Forbidden" }), { status: 403, headers: { 'Content-Type': 'application/json' } });
+        }
+
         const body = await req.json();
         // Validate against userSchema (which includes password complexity and optional preferredLanguage)
         const validatedData = userSchema.parse(body);
@@ -43,14 +51,16 @@ export const createUserController = async (req: BunRequest) => {
 
         // Backend decides default role (null). Pass preferredLanguage from validated data.
         await createUser(validatedData.login, validatedData.password, null, validatedData.preferredLanguage);
-        await Log.info(`User created: ${validatedData.login} with lang ${validatedData.preferredLanguage}`, 'system', 'user');
+        await Log.info(`User created: ${validatedData.login} with lang ${validatedData.preferredLanguage} by admin ${sessionAndUser.user.login}`, sessionAndUser.user.login, 'user');
 
         const newUser = await getUserByLoginSafe(validatedData.login); // Fetches user without password
 
         return new Response(JSON.stringify(newUser), { status: 201, headers: { 'Content-Type': 'application/json' } });
 
     } catch (error: any) {
-        await Log.error('Failed to create user', undefined, 'user', error);
+        // Extract login for logging if sessionAndUser is available
+        const actorLogin = (await getSessionAndUser(req))?.user?.login;
+        await Log.error('Failed to create user', actorLogin, 'user', error);
         if (error instanceof z.ZodError) {
             return new Response(JSON.stringify({ message: 'Validation failed', errors: error.format() }), { status: 400, headers: { 'Content-Type': 'application/json' } });
         }

@@ -8,7 +8,7 @@ import {
 
 export const tagRoutes = {
     '/api/tag': {
-        PUT: createTagController, // Create a new tag
+        POST: createTagController, // Create a new tag
     },
     '/api/tag/id/:tagId': {
         GET: getTagByIdController,    // Get a specific tag by ID

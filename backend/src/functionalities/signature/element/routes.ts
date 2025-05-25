@@ -10,7 +10,7 @@ import {
 export const signatureElementRoutes = {
     // Create element (implicitly linked to component via body)
     '/api/signature/element': {
-        PUT: createElementController,
+        POST: createElementController,
     },
 
     // Get/Update/Delete specific element

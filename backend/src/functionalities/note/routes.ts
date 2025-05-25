@@ -3,7 +3,7 @@ import { createNoteController, getAllNotesByLoginController, getNoteByIdControll
 export const noteRoutes = {
     // Create a new note
     '/api/note': {
-      PUT: createNoteController,
+      POST: createNoteController,
     },
     // Get, Update, Delete a specific note by its ID
     '/api/note/id/:noteId': {

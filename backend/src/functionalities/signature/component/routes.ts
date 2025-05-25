@@ -10,7 +10,7 @@ import {
 
 export const signatureComponentRoutes = {
     '/api/signature/component': {
-        PUT: createComponentController,  // Create new component (use POST for creation)
+        POST: createComponentController,  // Create new component
     },
     '/api/signature/component/:id': {
         GET: getComponentByIdController,    // Get component by ID

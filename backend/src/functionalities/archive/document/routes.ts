@@ -13,7 +13,7 @@ export const archiveDocumentRoutes = {
 
     // Create a new document/unit
     '/api/archive/document': {
-        PUT: createArchiveDocumentController,
+        POST: createArchiveDocumentController,
         // GET: getAllDocsController? // Maybe admin only? Add later if needed.
     },
 
