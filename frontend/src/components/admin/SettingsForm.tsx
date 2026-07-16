@@ -68,7 +68,6 @@ const SettingsForm: React.FC = () => {
 
 
     const fetchSettings = useCallback(async () => {
-        console.log("SettingsForm: fetchSettings triggered.");
         if (!token) return;
         setIsLoading(true); setLoadError(null);
 
@@ -92,7 +91,7 @@ const SettingsForm: React.FC = () => {
             const newFormValues: Partial<SettingsFormData> = {};
             results.forEach(result => {
                 const key = Object.keys(result)[0] as AppConfigKeys;
-                 if (result.error) {
+                 if ('error' in result && result.error) {
                      setLoadError(prev => prev ? `${prev}, ${key}` : `Failed to load ${key}`);
                      switch(key) {
                          case AppConfigKeys.HTTP_PORT: newFormValues[key] = 8080; break;
@@ -104,8 +103,6 @@ const SettingsForm: React.FC = () => {
                  }
 
                 const value = result[key];
-                console.log(`SettingsForm: Fetched ${key}:`, value, `(Type: ${typeof value})`);
-
                 switch (key) {
                     case AppConfigKeys.HTTP_PORT:
                         const httpPort = parseInt(String(value), 10);
@@ -124,24 +121,22 @@ const SettingsForm: React.FC = () => {
                          break;
                     case AppConfigKeys.HTTPS_KEY_PATH:
                         newFormValues[key] = value && typeof value === 'string' && !value.includes('SET (Path Hidden)') ? value : '';
-                        setOriginalKeyPath(value);
+                        setOriginalKeyPath(value as string | null);
                         break;
                     case AppConfigKeys.HTTPS_CERT_PATH:
                         newFormValues[key] = value && typeof value === 'string' && !value.includes('SET (Path Hidden)') ? value : '';
-                        setOriginalCertPath(value);
+                        setOriginalCertPath(value as string | null);
                         break;
                     case AppConfigKeys.HTTPS_CA_PATH:
                         newFormValues[key] = value && typeof value === 'string' && !value.includes('SET (Path Hidden)') ? value : '';
-                        setOriginalCaPath(value);
+                        setOriginalCaPath(value as string | null);
                         break;
                 }
             });
 
-            console.log("SettingsForm: Resetting form with values:", newFormValues);
             reset(newFormValues as SettingsFormData, { keepDirty: false, keepErrors: false });
 
         } catch (err: any) {
-             console.error("SettingsForm: Unexpected error during Promise.all:", err);
              const msg = err.message || 'Failed to load one or more settings';
              setLoadError(msg); toast.error(msg);
              reset(); setOriginalHttpPort(8080); setOriginalHttpsPort(8443);
@@ -156,7 +151,6 @@ const SettingsForm: React.FC = () => {
     }, [fetchSettings]);
 
     const onSubmit = async (data: SettingsFormData) => {
-        console.log("SettingsForm: onSubmit called with data:", data);
         if (!token) return;
 
         setSaveStatus('saving');
@@ -165,7 +159,7 @@ const SettingsForm: React.FC = () => {
         let restartRequiredBySave = false;
 
         const savePromises = (Object.keys(data) as Array<keyof SettingsFormData>).map(key => {
-            let valueToSave: string | null | number = data[key]; // Allow number for port types
+            let valueToSave: string | null | number | undefined = data[key]; // Allow number for port types
              if ([AppConfigKeys.HTTPS_KEY_PATH, AppConfigKeys.HTTPS_CERT_PATH, AppConfigKeys.HTTPS_CA_PATH].includes(key as AppConfigKeys) && valueToSave === '') {
                 valueToSave = null;
             }
@@ -198,15 +192,14 @@ const SettingsForm: React.FC = () => {
         try {
             const results = await Promise.all(savePromises);
 
-            results.forEach(result => {
+            results.forEach((result: any) => {
                  if (result.skipped) return;
                 if (!result.success) {
                     anyError = true;
                     const msg = result.error?.message || `Failed to save ${result.key}.`;
                     setSaveError(prev => (prev ? `${prev}\n${msg}` : msg));
                     toast.error(t('errorMessageTemplate', preferredLanguage, { message: `Failed to save ${result.key}: ${msg}` }));
-                    console.error(`${result.key} Save Error:`, result.error);
-                } else {
+                 } else {
                      if (result.message?.includes("Manual server restart required")) {
                          restartRequiredBySave = true;
                      } else if (result.message?.includes("HTTPS configuration reloaded") || result.message?.includes("HTTPS server stopped")) {
@@ -235,7 +228,6 @@ const SettingsForm: React.FC = () => {
             setSaveError(msg);
             toast.error(t('errorMessageTemplate', preferredLanguage, { message: msg }));
             setSaveStatus('error');
-            console.error("SettingsForm: Unexpected Save error:", err);
             await fetchSettings();
         }
     };
@@ -262,7 +254,7 @@ const SettingsForm: React.FC = () => {
     if (loadError && !isLoading) { return <ErrorDisplay message={`Error loading settings: ${loadError}`} />; }
 
     return (
-        <Card className="bg-white dark:bg-white text-neutral-900 dark:text-neutral-900">
+        <Card>
             <CardHeader>
                 <CardTitle>{t('appSettingsTitleAdmin', preferredLanguage)}</CardTitle>
                 <CardDescription>{t('appSettingsDescriptionAdmin', preferredLanguage)}</CardDescription>
@@ -290,7 +282,7 @@ const SettingsForm: React.FC = () => {
                                                 {supportedLanguages.map(lang => (
                                                     <SelectItem key={lang} value={lang}>
                                                         {/* Display language names more descriptively */}
-                                                        {lang === 'en' ? 'English (EN)' : lang === 'pl' ? 'Polski (PL)' : lang.toUpperCase()}
+                                                        {lang === 'en' ? 'English (EN)' : 'Polski (PL)'}
                                                     </SelectItem>
                                                 ))}
                                             </SelectContent>

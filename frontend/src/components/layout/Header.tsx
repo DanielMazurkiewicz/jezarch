@@ -21,7 +21,7 @@ import {
   DropdownMenuRadioGroup,
   DropdownMenuRadioItem,
 } from "@/components/ui/dropdown-menu";
-import { type SupportedLanguage, supportedLanguages as appSupportedLanguages, defaultLanguage as appDefaultLanguage } from '@/translations/models';
+import { type SupportedLanguage as AppSupportedLanguage, supportedLanguages as appSupportedLanguages, defaultLanguage as appDefaultLanguage } from '@/translations/models';
 import api from '@/lib/api';
 import { toast } from "sonner";
 import { t } from '@/translations/utils';
@@ -32,7 +32,7 @@ interface HeaderProps {
 }
 
 // Helper function to get title and icon from path
-const getPageInfoFromPath = (pathname: string, lang: SupportedLanguage, userRole?: string | null): { title: string, Icon: React.ComponentType<{ className?: string }> } => {
+const getPageInfoFromPath = (pathname: string, lang: AppSupportedLanguage, userRole?: string | null): { title: string, Icon: React.ComponentType<{ className?: string }> } => {
     const segments = pathname.split('/').filter(Boolean);
     let titleKey: string = 'dashboardTitle'; // Default to dashboard
     let Icon: React.ComponentType<{ className?: string }> = LayoutDashboard; // Default icon
@@ -105,20 +105,15 @@ const Header: React.FC<HeaderProps> = ({ toggleSidebar }) => {
 
         // 2. Optimistically update context & localStorage (which updates the UI)
         setContextPreferredLanguage(newLanguage);
-        console.log(`Header: Optimistically set language to ${newLanguage}`);
-
         try {
             // 3. API call to persist the change for the logged-in user
             await api.updateUserPreferredLanguage(user.login, newLanguage, token);
-            console.log(`Header: User language preference updated to ${newLanguage.toUpperCase()} via API.`);
             // 4. Show success toast in the *newly selected* language
-            toast.success(t('languageUpdatedSuccess', newLanguage, { login: user.login, language: newLanguage.toUpperCase() }));
+            toast.success(t('languageUpdatedSuccess', newLanguage, { login: user.login, language: newLanguage === 'en' ? 'EN' : 'PL' }));
             // No need to call updateContextUser again, setContextPreferredLanguage handles it
         } catch (error: any) {
-            console.error("Header: Failed to update user language preference via API:", error);
             // 5. Revert optimistic update if API call fails
             setContextPreferredLanguage(oldLanguage);
-            console.log(`Header: Reverted language back to ${oldLanguage}`);
             // 6. Show error in the *original* language
             toast.error(t('errorMessageTemplate', oldLanguage, { message: `Failed to save language preference: ${error.message}` }));
         }
@@ -157,7 +152,7 @@ const Header: React.FC<HeaderProps> = ({ toggleSidebar }) => {
                     <DropdownMenuSubTrigger>
                         <Languages className="mr-2 h-4 w-4" />
                         {/* Use translated label */}
-                        <span>{t('languageLabel', preferredLanguage)} ({preferredLanguage.toUpperCase()})</span>
+                        <span>{t('languageLabel', preferredLanguage)} ({preferredLanguage === 'en' ? 'EN' : 'PL'})</span>
                     </DropdownMenuSubTrigger>
                     <DropdownMenuPortal>
                         <DropdownMenuSubContent>
@@ -167,7 +162,7 @@ const Header: React.FC<HeaderProps> = ({ toggleSidebar }) => {
                             >
                                 {appSupportedLanguages.map(lang => (
                                     <DropdownMenuRadioItem key={lang} value={lang}>
-                                        {lang === 'en' ? 'English (EN)' : lang === 'pl' ? 'Polski (PL)' : lang.toUpperCase()}
+                                                {lang === 'en' ? 'English (EN)' : 'Polski (PL)'}
                                     </DropdownMenuRadioItem>
                                 ))}
                             </DropdownMenuRadioGroup>

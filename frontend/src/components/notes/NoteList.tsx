@@ -15,7 +15,7 @@ interface NoteListProps {
   onPreview: (note: NoteWithDetails) => void; // Added preview callback
 }
 
-const NoteList: React.FC<NoteListProps> = ({ notes, onEdit, onDelete, onPreview }) => {
+const NoteList: React.FC<NoteListProps> = React.memo(({ notes, onEdit, onDelete, onPreview }) => {
   const { user, preferredLanguage } = useAuth(); // Get current user and language
   const isAdmin = user?.role === 'admin'; // Check if user is admin
 
@@ -98,6 +98,8 @@ const NoteList: React.FC<NoteListProps> = ({ notes, onEdit, onDelete, onPreview 
         </TableBody>
     </Table>
   );
-};
+});
+
+NoteList.displayName = 'NoteList';
 
 export default NoteList;

@@ -1,4 +1,5 @@
 import { db } from '../../../initialization/db';
+import { buildUpdateFields } from '../../../utils/sql';
 import type { SignatureComponent, SignatureComponentIndexType } from './models'; // Import type
 import { Log } from '../../log/db';
 import { sqliteNow } from '../../../utils/sqlite';
@@ -78,42 +79,23 @@ export async function getAllComponents(): Promise<SignatureComponent[]> {
     return results.map(dbToComponent).filter(c => c !== undefined) as SignatureComponent[];
 }
 
-// Updated updateComponent to handle index_type
 export async function updateComponent(
     id: number,
-    data: Partial<{ name: string; description: string | null; index_type: SignatureComponentIndexType /*; active: boolean*/ }>
+    data: Partial<{ name: string; description: string | null; index_type: SignatureComponentIndexType }>
 ): Promise<SignatureComponent | undefined> {
-    const fieldsToUpdate: string[] = [];
-    const params: any[] = [];
+    const { sets, params } = buildUpdateFields({
+        name: data.name,
+        description: data.description,
+        index_type: data.index_type,
+    });
 
-    if (data.name !== undefined) {
-        fieldsToUpdate.push('name = ?');
-        params.push(data.name);
-    }
-    if (data.description !== undefined) { // Check explicitly for undefined to allow setting to null
-        fieldsToUpdate.push('description = ?');
-        params.push(data.description); // Pass null directly if intended
-    }
-    if (data.index_type !== undefined) { // Allow updating index_type
-        fieldsToUpdate.push('index_type = ?');
-        params.push(data.index_type);
-    }
-    // NOTE: index_count is NOT updated here, it's managed internally
+    if (sets.length === 0) return getComponentById(id);
 
-    // if (data.active !== undefined) {
-    //     fieldsToUpdate.push('active = ?');
-    //     params.push(data.active ? 1 : 0);
-    // }
-
-    if (fieldsToUpdate.length === 0) {
-        return getComponentById(id); // No changes, return current state
-    }
-
-    fieldsToUpdate.push('modifiedOn = ?');
+    sets.push('modifiedOn = ?');
     params.push(sqliteNow());
-
-    const query = `UPDATE signature_components SET ${fieldsToUpdate.join(', ')} WHERE signatureComponentId = ? RETURNING *`;
     params.push(id);
+
+    const query = `UPDATE signature_components SET ${sets.join(', ')} WHERE signatureComponentId = ? RETURNING *`;
 
     try {
         const statement = db.prepare(query);
@@ -124,10 +106,10 @@ export async function updateComponent(
          if (error.message?.includes('UNIQUE constraint failed: signature_components.name')) {
              throw new Error(`Component name '${data.name}' already exists.`);
         }
-         if (error.message?.includes('CHECK constraint failed')) { // Catch index_type constraint violation
+         if (error.message?.includes('CHECK constraint failed')) {
              throw new Error(`Invalid index_type provided: ${data.index_type}`);
          }
-        throw error; // Re-throw
+        throw error;
     }
 }
 

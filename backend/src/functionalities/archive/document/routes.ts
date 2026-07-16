@@ -3,6 +3,7 @@ import {
     getArchiveDocumentByIdController,
     updateArchiveDocumentController,
     disableArchiveDocumentController,
+    enableArchiveDocumentController,
     searchArchiveDocumentsController,
     // --- NEW: Import batch tagging controller ---
     batchTagArchiveDocumentsController,
@@ -22,6 +23,10 @@ export const archiveDocumentRoutes = {
         GET: getArchiveDocumentByIdController,    // Get by ID
         PATCH: updateArchiveDocumentController,   // Update (partial)
         DELETE: disableArchiveDocumentController, // Disable (soft delete)
+    },
+    // Restore (enable) a disabled document/unit
+    '/api/archive/document/id/:id/restore': {
+        POST: enableArchiveDocumentController,
     },
     // Potential future routes:
     // '/api/archive/units/:id/children': { GET: getChildDocumentsController },

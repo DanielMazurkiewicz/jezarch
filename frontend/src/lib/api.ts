@@ -81,6 +81,10 @@ async function fetchApi<T>(
     }
 
     if (!response.ok) {
+        if (response.status === 401 && token) {
+            console.warn(`fetchApi: Received 401 for ${url}. Dispatching auth:unauthorized.`);
+            window.dispatchEvent(new CustomEvent('auth:unauthorized', { detail: { url } }));
+        }
         let errorData: any = { message: `API request failed: ${response.status} ${response.statusText}` };
         let errorText = '(Failed to read error body)';
         try {
@@ -161,6 +165,13 @@ interface DefaultLanguageResponse {
     defaultLanguage: SupportedLanguage;
 }
 
+interface ValidateSessionResponse {
+    login: string;
+    role: UserRole | null;
+    userId: number;
+    preferredLanguage: SupportedLanguage;
+}
+
 
 // --- API Function Exports ---
 const getApiStatus = () => fetchApi<{ message: string }>("/api/status");
@@ -181,6 +192,7 @@ const assignTagsToUser = (login: string, tagIds: number[], token: string) => fet
 const getConfig = <K extends AppConfigKeys>(key: K, token: string) => fetchApi<GetConfigResponse<K>>(`/configs/${key}`, "GET", null, token);
 const setConfig = (key: AppConfigKeys, value: string | null, token: string) => fetchApi<{ message: string }>(`/configs/${key}`, "PUT", { value }, token);
 const getDefaultLanguage = () => fetchApi<DefaultLanguageResponse>("/config/default-language", "GET", null, null);
+const validateSession = (token: string) => fetchApi<ValidateSessionResponse>("/session/validate", "GET", null, token);
 const clearHttpsConfig = (token: string) => fetchApi<{ message: string }>("/config/https", "DELETE", null, token);
 const searchLogs = (searchRequest: SearchRequest, token: string) => fetchApi<SearchResponse<LogEntry>>("/logs/search", "POST", searchRequest, token);
 const purgeLogs = (days: number, token: string) => fetchApi<PurgeLogsResponse>(`/logs/purge?days=${days}`, "DELETE", null, token);
@@ -212,6 +224,7 @@ const createArchiveDocument = (data: CreateArchiveDocumentInput, token: string) 
 const getArchiveDocumentById = (id: number, token: string) => fetchApi<ArchiveDocument>(`/archive/document/id/${id}`, 'GET', null, token);
 const updateArchiveDocument = (id: number, data: UpdateArchiveDocumentInput, token: string) => fetchApi<ArchiveDocument>(`/archive/document/id/${id}`, 'PATCH', data, token);
 const disableArchiveDocument = (id: number, token: string) => fetchApi<{ success: boolean }>(`/archive/document/id/${id}`, 'DELETE', null, token);
+const enableArchiveDocument = (id: number, token: string) => fetchApi<{ success: boolean }>(`/archive/document/id/${id}/restore`, 'POST', null, token);
 const searchArchiveDocuments = (searchRequest: SearchRequest, token: string) => fetchApi<SearchResponse<ArchiveDocumentSearchResult>>("/archive/documents/search", "POST", searchRequest, token);
 const batchTagArchiveDocuments = (data: BatchTagDocumentsInput, token: string) => fetchApi<{ message: string; count: number }>("/archive/documents/batch-tag", "POST", data, token);
 const backupDatabase = (token: string) => fetchApi<Blob>("/admin/db/backup", "GET", null, token, { expectBlob: true });
@@ -220,7 +233,7 @@ export default {
     getApiStatus, pingApi, login, logout, register, getAllUsers, getUserByLogin,
     updateUserRole, changePassword, adminSetUserPassword,
     getAssignedTagsForUser, assignTagsToUser, updateUserPreferredLanguage,
-    getConfig, setConfig, getDefaultLanguage,
+    getConfig, setConfig, getDefaultLanguage, validateSession,
     clearHttpsConfig,
     searchLogs, purgeLogs,
     createTag, getAllTags, getTagById, updateTag, deleteTag,
@@ -230,6 +243,6 @@ export default {
     createSignatureElement, getSignatureElementById, updateSignatureElement,
     deleteSignatureElement, getElementsByComponent, searchSignatureElements,
     createArchiveDocument, getArchiveDocumentById, updateArchiveDocument,
-    disableArchiveDocument, searchArchiveDocuments,
+    disableArchiveDocument, enableArchiveDocument, searchArchiveDocuments,
     batchTagArchiveDocuments, backupDatabase,
 };

@@ -1,11 +1,11 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from '@/components/ui/badge';
 import type { VariantProps } from 'class-variance-authority'; // Import directly from cva
 import LoadingSpinner from '@/components/shared/LoadingSpinner';
 import ErrorDisplay from '@/components/shared/ErrorDisplay';
 import SearchBar from '@/components/shared/SearchBar';
-import { Pagination } from '@/components/shared/Pagination';
+import Pagination from '@/components/shared/Pagination';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"; // Import Card components
 import { useAuth } from '@/hooks/useAuth';
 import api from '@/lib/api';
@@ -38,6 +38,10 @@ const LogViewer: React.FC = () => {
     const [pageSize, setPageSize] = useState(20); // Show more logs per page
     const [totalLogs, setTotalLogs] = useState(0);
     const [totalPages, setTotalPages] = useState(1);
+    const currentPageRef = useRef(currentPage);
+    const searchQueryRef = useRef(searchQuery);
+    useEffect(() => { currentPageRef.current = currentPage; }, [currentPage]);
+    useEffect(() => { searchQueryRef.current = searchQuery; }, [searchQuery]);
 
     // --- NEW: State for Purge ---
     const [purgeDays, setPurgeDays] = useState<number>(7);
@@ -52,7 +56,7 @@ const LogViewer: React.FC = () => {
     // -------------------------------
 
     // Fetch/Search Logs function
-    const fetchLogs = useCallback(async (page = currentPage, query = searchQuery) => {
+    const fetchLogs = useCallback(async (page = currentPageRef.current, query = searchQueryRef.current) => {
         if (!token) return;
         setIsLoading(true);
         setError(null);
@@ -75,7 +79,7 @@ const LogViewer: React.FC = () => {
         } finally {
             setIsLoading(false);
         }
-    }, [token, pageSize, currentPage, searchQuery]); // Ensure dependencies are correct
+    }, [token, pageSize]); // Ensure dependencies are correct
 
     // Fetch logs on mount and when dependencies change
     useEffect(() => {
@@ -184,7 +188,7 @@ const LogViewer: React.FC = () => {
                   <div className="flex flex-wrap items-center justify-end gap-2 p-2 border rounded-lg bg-neutral-50"> {/* Changed bg-muted to bg-neutral-50 */}
                      {purgeError && <ErrorDisplay message={purgeError} className="mr-auto"/>}
                      <div className="flex items-center gap-2 ml-auto">
-                         <span className="text-sm text-neutral-600">{t('purgeLogsOlderThanLabel', preferredLanguage)}</span> {/* Adjusted text color */}
+                         <span className="text-sm text-muted-foreground">{t('purgeLogsOlderThanLabel', preferredLanguage)}</span>
                          <Input
                              type="number"
                              value={purgeDays}
@@ -194,7 +198,7 @@ const LogViewer: React.FC = () => {
                              disabled={isPurging}
                              aria-label={t('daysLabel', preferredLanguage)} // Add aria-label
                          />
-                         <span className="text-sm text-neutral-600">{t('daysLabel', preferredLanguage)}</span> {/* Adjusted text color */}
+                         <span className="text-sm text-muted-foreground">{t('daysLabel', preferredLanguage)}</span>
                           <AlertDialog open={isPurgeConfirmOpen} onOpenChange={setIsPurgeConfirmOpen}>
                              <AlertDialogTrigger asChild>
                                  <Button variant="destructive" size="sm" disabled={isPurging || purgeDays <= 0}>
@@ -237,7 +241,7 @@ const LogViewer: React.FC = () => {
                         <div className='relative'>
                              <Table>
                                  {/* TableHeader forced white, sticky removed as parent scrolls */}
-                                 <TableHeader className='bg-white dark:bg-white z-10'>
+                                 <TableHeader className='z-10'>
                                     <TableRow>
                                         <TableHead className='w-[180px]'>{t('logsTimestampColumn', preferredLanguage)}</TableHead>
                                         <TableHead className='w-[100px]'>{t('logsLevelColumn', preferredLanguage)}</TableHead>
@@ -256,8 +260,8 @@ const LogViewer: React.FC = () => {
                                                 <TableCell>
                                                     <Badge variant={getBadgeVariant(log.level)} className='capitalize'>{getLogLevelText(log.level)}</Badge>
                                                 </TableCell>
-                                                 <TableCell className='text-xs'>{log.userId || <i className='text-neutral-500 not-italic'>{t('logUserSystem', preferredLanguage)}</i>}</TableCell> {/* Adjusted muted color */}
-                                                 <TableCell className='text-xs'>{log.category || <i className='text-neutral-500 not-italic'>{t('logCategoryGeneral', preferredLanguage)}</i>}</TableCell> {/* Adjusted muted color */}
+                <TableCell className='text-xs'>{log.userId || <i className='text-muted-foreground not-italic'>{t('logUserSystem', preferredLanguage)}</i>}</TableCell>
+                <TableCell className='text-xs'>{log.category || <i className='text-muted-foreground not-italic'>{t('logCategoryGeneral', preferredLanguage)}</i>}</TableCell>
                                                 <TableCell className='text-sm'>{log.message}</TableCell>
                                                 {/* Data Icon Cell */}
                                                 <TableCell className='text-center'>
@@ -280,7 +284,7 @@ const LogViewer: React.FC = () => {
                  {/* Empty State */}
                  {!isLoading && !error && logs.length === 0 && (
                     // Moved comment outside the JSX element
-                    <p className='text-neutral-500 text-center py-6'>{t('noLogsFound', preferredLanguage)}</p> /* Adjusted muted color */
+                    <p className='text-muted-foreground text-center py-6'>{t('noLogsFound', preferredLanguage)}</p>
                  )}
 
                  {/* Pagination */}

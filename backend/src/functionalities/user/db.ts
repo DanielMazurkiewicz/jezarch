@@ -95,33 +95,25 @@ async function getAssignedTagsForUserIds(userIds: number[]): Promise<Map<number,
 }
 
 
-// Base function to map DB row to User object (excluding password and tags)
-const mapDbRowToUserBase = (row: any): Omit<User, 'password' | 'assignedTags'> | undefined => {
+// Map DB row to User object, optionally including password
+const mapDbRowToUser = (row: any, includePassword = false): (User | Omit<User, 'password' | 'assignedTags'>) | undefined => {
     if (!row) return undefined;
-    return {
+    const base = {
         userId: row.userId,
         login: row.login,
         role: row.role as UserRole | null,
-        preferredLanguage: row.preferredLanguage as SupportedLanguage || defaultLanguage, // Fallback to default if null/missing
+        preferredLanguage: row.preferredLanguage as SupportedLanguage || defaultLanguage,
     };
-}
-
-// Function to map DB row to User object including password (for verification)
-const mapDbRowToUserWithPassword = (row: any): User | undefined => {
-    if (!row) return undefined;
-    return {
-        userId: row.userId,
-        login: row.login,
-        password: row.password, // Include password
-        role: row.role as UserRole | null,
-        preferredLanguage: row.preferredLanguage as SupportedLanguage || defaultLanguage, // Fallback to default
-    };
+    if (includePassword) {
+        return { ...base, password: row.password } as User;
+    }
+    return base;
 }
 
 export async function getUserByUserId(userId: number): Promise<User | undefined> {
     const statement = db.prepare(`SELECT userId, login, role, preferredLanguage FROM users WHERE userId = ?`);
     const row = statement.get(userId);
-    const userBase = mapDbRowToUserBase(row);
+    const userBase = mapDbRowToUser(row);
     if (!userBase) return undefined;
 
     // Fetch tags if user role is 'user'
@@ -136,7 +128,7 @@ export async function getUserByLogin(login: string): Promise<User | undefined> {
     // Fetches password hash, needed for verification
     const statement = db.prepare(`SELECT * FROM users WHERE login = ?`);
     const row = statement.get(login);
-    const userWithPassword = mapDbRowToUserWithPassword(row);
+    const userWithPassword = mapDbRowToUser(row, true) as User | undefined;
     if (!userWithPassword) return undefined;
 
     // Fetch tags if user role is 'user'
@@ -151,7 +143,7 @@ export async function getUserByLogin(login: string): Promise<User | undefined> {
 export async function getUserByLoginSafe(login: string): Promise<Omit<User, 'password'> | undefined> {
     const statement = db.prepare(`SELECT userId, login, role, preferredLanguage FROM users WHERE login = ?`);
     const row = statement.get(login);
-    const userBase = mapDbRowToUserBase(row);
+    const userBase = mapDbRowToUser(row);
     if (!userBase) return undefined;
 
     // Fetch tags if user role is 'user'
@@ -186,14 +178,11 @@ export async function updateUserPreferredLanguage(login: string, language: Suppo
     // Ensure language update actually modifies the record
     const statement = db.prepare(`UPDATE users SET preferredLanguage = ? WHERE login = ?`);
     try {
-        console.log(`DB: Updating language for ${login} to ${language}`);
         const result = statement.run(language, login);
-        console.log(`DB: Update result for ${login}: changes=${result.changes}`);
         if (result.changes === 0) {
                 // Check if user exists but language was already set
-                const userExists = db.query<{ count: number }>(`SELECT COUNT(*) as count FROM users WHERE login = ?`).get(login);
+                const userExists = db.query<{ count: number }, any[]>(`SELECT COUNT(*) as count FROM users WHERE login = ?`).get(login);
                 if (userExists && userExists.count > 0) {
-                    console.log(`DB: Language for ${login} was already ${language}. No changes made.`);
                     // Don't throw error if user exists but language is the same
                 } else {
                     throw new Error(`User '${login}' not found for preferred language update.`);
@@ -239,7 +228,7 @@ export async function getAllUsers(): Promise<Omit<User, 'password'>[]> {
     const statement = db.prepare(`SELECT userId, login, role, preferredLanguage FROM users`);
     const rows = statement.all();
 
-    const userBases = rows.map(mapDbRowToUserBase).filter((u): u is Omit<User, 'password' | 'assignedTags'> => u !== undefined);
+    const userBases = rows.map((row: any) => mapDbRowToUser(row)).filter((u): u is Omit<User, 'password' | 'assignedTags'> => u !== undefined);
     const userRoleUserIds = userBases.filter(u => u.role === 'user').map(u => u.userId);
 
     // Fetch tags only for users with the 'user' role

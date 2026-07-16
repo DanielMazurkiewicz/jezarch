@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react'; // Added useRef
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
-import { X, Plus, Search as SearchIcon, ChevronsUpDown, ArrowRight, Network, Ban, PlusCircle } from 'lucide-react';
+import { Plus, ArrowRight, Network, Ban, PlusCircle, ArrowLeft } from 'lucide-react';
+
 import { Badge } from '@/components/ui/badge';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -81,7 +82,7 @@ const ElementBrowserDialogContent: React.FC<ElementBrowserDialogContentProps> = 
                     const element = await api.getSignatureElementById(elementId, [], token);
                     if (element) resolvedElements.push(element);
                     else {
-                        toast.warn(t('signaturePathResolveError', preferredLanguage, { elementId }));
+                        toast.warning(t('signaturePathResolveError', preferredLanguage, { elementId }));
                         setCurrentSignatureElements([]);
                         setIsLoadingElements(false);
                         return;
@@ -228,8 +229,8 @@ const ElementBrowserDialogContent: React.FC<ElementBrowserDialogContentProps> = 
         }
     }, [preferredLanguage]); // Add preferredLanguage
 
-    const handleModeChange = useCallback((value: SelectionMode | null) => {
-        if (value) {
+    const handleModeChange = useCallback((value: string) => {
+        if (value === 'hierarchical' || value === 'free') {
             setMode(value);
             setCurrentSignatureElements([]);
             setSelectedComponentId('');
@@ -286,17 +287,29 @@ const ElementBrowserDialogContent: React.FC<ElementBrowserDialogContentProps> = 
                         </React.Fragment>
                     ))}
                     {currentSignatureElements.length === 0 && <span className="text-xs text-muted-foreground italic">{t('elementBrowserBuildPathHint', preferredLanguage)}</span>}
+                    <div className="ml-auto">
+                        <Button type="button" variant="ghost" size="icon" className="h-5 w-5" onClick={handleRemoveLastElement} disabled={currentSignatureElements.length === 0} title={t('elementBrowserPopoverRemoveLastButton', preferredLanguage)}>
+                            <ArrowLeft className="h-3 w-3" />
+                        </Button>
+                    </div>
                 </div>
 
                 {(currentSignatureElements.length === 0 || mode === 'free') && (
-                    <Select value={selectedComponentId} onValueChange={setSelectedComponentId} disabled={isLoadingComponents || (mode === 'hierarchical' && currentSignatureElements.length > 0)}>
-                        <SelectTrigger className='w-full text-sm h-9'><SelectValue placeholder={t('elementBrowserPopoverSelectComponentPlaceholder', preferredLanguage)} /></SelectTrigger>
-                        <SelectContent>
-                            {isLoadingComponents && <SelectItem value="loading" disabled><div className='flex items-center'><LoadingSpinner size='sm' className='mr-2'/>{t('elementBrowserPopoverLoadingComponents', preferredLanguage)}</div></SelectItem>}
-                            {components.map(comp => (<SelectItem key={comp.signatureComponentId} value={String(comp.signatureComponentId)}>{comp.name}</SelectItem>))}
-                            {!isLoadingComponents && components.length === 0 && <SelectItem value="no-comps" disabled>{t('elementBrowserPopoverNoComponentsFound', preferredLanguage)}</SelectItem>}
-                        </SelectContent>
-                    </Select>
+                    <div className="flex gap-2 items-center">
+                        <Select value={selectedComponentId} onValueChange={setSelectedComponentId} disabled={isLoadingComponents || (mode === 'hierarchical' && currentSignatureElements.length > 0)}>
+                            <SelectTrigger className='flex-1 text-sm h-9'><SelectValue placeholder={t('elementBrowserPopoverSelectComponentPlaceholder', preferredLanguage)} /></SelectTrigger>
+                            <SelectContent>
+                                {isLoadingComponents && <SelectItem value="loading" disabled><div className='flex items-center'><LoadingSpinner size='sm' className='mr-2'/>{t('elementBrowserPopoverLoadingComponents', preferredLanguage)}</div></SelectItem>}
+                                {components.map(comp => (<SelectItem key={comp.signatureComponentId} value={String(comp.signatureComponentId)}>{comp.name}</SelectItem>))}
+                                {!isLoadingComponents && components.length === 0 && <SelectItem value="no-comps" disabled>{t('elementBrowserPopoverNoComponentsFound', preferredLanguage)}</SelectItem>}
+                            </SelectContent>
+                        </Select>
+                        {canTriggerCreateElement && (
+                            <Button type="button" variant="outline" size="icon" className="h-9 w-9 shrink-0" onClick={handleOpenCreateElementDialog} title={t('elementBrowserCreateElementButtonHint', preferredLanguage, { componentName: selectedComponentName || '...' })}>
+                                <Plus className="h-4 w-4" />
+                            </Button>
+                        )}
+                    </div>
                 )}
             </div>
 
@@ -329,33 +342,25 @@ const ElementBrowserDialogContent: React.FC<ElementBrowserDialogContentProps> = 
                                      {elements.map((el) => (
                                         <CommandItem key={el.signatureElementId} value={`${el.index || ''} ${el.name}`} onSelect={() => handleSelectElement(el)} className="cursor-pointer flex justify-between items-center text-sm">
                                             <div className='flex items-center'><span className='font-mono text-xs w-10 mr-2 text-right inline-block text-muted-foreground'>{el.index || '-'}</span><span>{el.name}</span></div>
-                                            <Plus className='h-4 w-4 text-muted-foreground'/>
+                                            <span title={t('elementBrowserAddToPathTooltip', preferredLanguage)}><Plus className='h-4 w-4 text-muted-foreground'/></span>
                                          </CommandItem>
                                      ))}
                                  </CommandGroup>
                              )}
                              {elements.length >= MAX_SEARCH_RESULTS && !isLoadingElements && (<div className='text-xs text-muted-foreground text-center p-1 italic'>{t('elementBrowserTooManyResultsHint', preferredLanguage)}</div>)} {/* TODO: Add elementBrowserTooManyResultsHint */}
                         </CommandList>
-                         {canTriggerCreateElement && (
-                             <div className='p-2 border-t shrink-0'> {/* shrink-0 */}
-                                <Button type="button" variant="outline" size="sm" className='w-full justify-start text-muted-foreground' onClick={handleOpenCreateElementDialog}>
-                                    <PlusCircle className='mr-2 h-4 w-4'/> {t('elementBrowserCreateElementButtonHint', preferredLanguage, { componentName: selectedComponentName || '...' })}
-                                </Button>
-                             </div>
-                         )}
-                     </Command>
+                      </Command>
                  </div>
             )}
              {/* --- End Scrollable Area --- */}
 
-             {/* --- Dialog Footer --- */}
-            <div className="flex justify-between items-center mt-auto pt-3 border-t shrink-0">
-                <div className='flex gap-2'>
-                     <Button type="button" variant="outline" size="sm" onClick={handleRemoveLastElement} disabled={currentSignatureElements.length === 0}><X className="mr-1 h-3 w-3" /> {t('elementBrowserPopoverRemoveLastButton', preferredLanguage)}</Button>
-                     <Button type="button" variant="ghost" size="sm" onClick={onCloseDialog}><Ban className='mr-1 h-3 w-3'/> {t('cancelButton', preferredLanguage)}</Button>
-                </div>
-                 <Button type="button" size="sm" onClick={handleConfirmSignature} disabled={currentSignatureElements.length === 0}>{t('elementBrowserPopoverAddPathButton', preferredLanguage)}</Button>
-             </div>
+              {/* --- Dialog Footer --- */}
+             <div className="flex justify-between items-center mt-auto pt-3 border-t shrink-0">
+                 <div className='flex gap-2'>
+                      <Button type="button" variant="ghost" size="sm" onClick={onCloseDialog}><Ban className='mr-1 h-3 w-3'/> {t('cancelButton', preferredLanguage)}</Button>
+                 </div>
+                  <Button type="button" size="sm" onClick={handleConfirmSignature} disabled={currentSignatureElements.length === 0}>{t('elementBrowserPopoverAddPathButton', preferredLanguage)}</Button>
+              </div>
              {/* --- End Dialog Footer --- */}
 
              {/* --- Internal Create Element Dialog --- */}

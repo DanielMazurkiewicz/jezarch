@@ -31,6 +31,17 @@ export async function getSessionAndUser(req: BunRequest): Promise<undefined | Se
 }
 
 
+export const validateSessionController = async (req: BunRequest) => {
+    const sessionAndUser = await getSessionAndUser(req);
+    if (!sessionAndUser) return new Response("Unauthorized", { status: 401 });
+    return new Response(JSON.stringify({
+        login: sessionAndUser.user.login,
+        role: sessionAndUser.user.role,
+        userId: sessionAndUser.user.userId,
+        preferredLanguage: sessionAndUser.user.preferredLanguage,
+    }), { status: 200, headers: { "Content-Type": "application/json" } });
+};
+
 export function isAllowedRole(sessionAndUser: SessionAndUser, ...roles: UserRole[]) {
     if (!roles.length) return true; // If no specific roles required, allow access
     // User role can technically be null here if the check in getSessionAndUser is removed/modified

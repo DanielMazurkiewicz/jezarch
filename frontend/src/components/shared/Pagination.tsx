@@ -16,7 +16,7 @@ interface PaginationProps {
   maxVisiblePages?: number; // Max page numbers to show directly
 }
 
-export const Pagination: React.FC<PaginationProps> = ({
+const Pagination: React.FC<PaginationProps> = ({
   currentPage,
   totalPages,
   onPageChange,
@@ -139,3 +139,5 @@ export const Pagination: React.FC<PaginationProps> = ({
     </ShadPagination>
   );
 };
+
+export default Pagination;

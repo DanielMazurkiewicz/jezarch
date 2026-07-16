@@ -209,7 +209,7 @@ const NoteEditor: React.FC<NoteEditorProps> = ({ noteToEdit, onSave }) => {
          {errors.shared && <p className="text-xs text-destructive">{errors.shared.message}</p>}
 
       <Button type="submit" disabled={isLoading || isFetchingDetails} className="mt-4 justify-self-start"> {/* Align button left */}
-        {isLoading ? <LoadingSpinner size="sm" className='mr-2' /> : (noteToEdit ? t('editButton', preferredLanguage) : t('createButton', preferredLanguage))} {t('notesTitleSingular', preferredLanguage)} {/* TODO: Add notesTitleSingular */}
+        {isLoading ? <LoadingSpinner size="sm" className='mr-2' /> : (noteToEdit ? t('saveButton', preferredLanguage) : <>{t('createButton', preferredLanguage)} {t('notesTitleSingular', preferredLanguage)}</>)}
       </Button>
     </form>
   );

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useSearchParams, useNavigate, Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
@@ -14,9 +14,11 @@ import type { Tag } from '../../../../backend/src/functionalities/tag/models';
 import type { ArchiveDocument, ArchiveDocumentSearchResult, ArchiveDocumentType } from '../../../../backend/src/functionalities/archive/document/models';
 import type { SearchRequest, SearchResponse, SearchQueryElement } from '../../../../backend/src/utils/search';
 import { PlusCircle, ArrowLeft, Folder, FileText, Tags, MinusCircle, Archive as ArchiveIcon, FileSearch } from 'lucide-react';
-import { Pagination } from '@/components/shared/Pagination';
+import Pagination from '@/components/shared/Pagination';
 import { toast } from "sonner";
 import { Card, CardContent, CardHeader, CardDescription } from '@/components/ui/card';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Info } from 'lucide-react';
 import DocumentPreviewDialog from './DocumentPreviewDialog';
 import { cn } from '@/lib/utils';
 import { t } from '@/translations/utils'; // Import translation utility
@@ -44,11 +46,14 @@ const ArchivePage: React.FC = () => {
   const [previewingDoc, setPreviewingDoc] = useState<ArchiveDocument | null>(null);
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
 
-  const [searchQuery, setSearchQuery] = useState<SearchRequest['query']>([]);
+  const defaultActiveFilter: SearchRequest['query'] = [{ field: 'active', condition: 'EQ', value: true, not: false }];
+  const [searchQuery, setSearchQuery] = useState<SearchRequest['query']>(defaultActiveFilter);
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(ARCHIVE_PAGE_SIZE);
   const [totalDocs, setTotalDocs] = useState(0);
   const [totalPages, setTotalPages] = useState(1);
+  const [sortBy, setSortBy] = useState<string | undefined>(undefined);
+  const [sortOrder, setSortOrder] = useState<'ASC' | 'DESC'>('DESC');
 
   const [isBatchTagDialogOpen, setIsBatchTagDialogOpen] = useState(false);
   const [batchTagAction, setBatchTagAction] = useState<'add' | 'remove'>('add');
@@ -57,6 +62,16 @@ const ArchivePage: React.FC = () => {
   const isAdmin = user?.role === 'admin';
   const isEmployee = user?.role === 'employee';
   const isUserRole = user?.role === 'user';
+  const canFilterActive = isAdmin || isEmployee;
+
+  const currentPageRef = useRef(currentPage);
+  const searchQueryRef = useRef(searchQuery);
+  const sortByRef = useRef(sortBy);
+  const sortOrderRef = useRef(sortOrder);
+  useEffect(() => { currentPageRef.current = currentPage; }, [currentPage]);
+  useEffect(() => { searchQueryRef.current = searchQuery; }, [searchQuery]);
+  useEffect(() => { sortByRef.current = sortBy; }, [sortBy]);
+  useEffect(() => { sortOrderRef.current = sortOrder; }, [sortOrder]);
 
   const isSearchActive = useMemo(() => searchQuery.length > 0, [searchQuery]);
 
@@ -105,7 +120,7 @@ const ArchivePage: React.FC = () => {
     fetchTags();
   }, [token, isAdmin, isEmployee]);
 
-   const fetchDocuments = useCallback(async (page = currentPage, query = searchQuery) => {
+   const fetchDocuments = useCallback(async (page = currentPageRef.current, query = searchQueryRef.current, currentSortBy = sortByRef.current, currentSortOrder = sortOrderRef.current) => {
        if (!token) return;
        setIsLoading(true); setError(null);
        try {
@@ -114,7 +129,7 @@ const ArchivePage: React.FC = () => {
                finalQuery = finalQuery.filter(q => q.field !== 'parentUnitArchiveDocumentId');
                finalQuery.push({ field: 'parentUnitArchiveDocumentId', condition: 'EQ', value: parentUnitId, not: false });
            }
-           const searchRequest: SearchRequest = { query: finalQuery, page: page, pageSize: pageSize };
+           const searchRequest: SearchRequest = { query: finalQuery, page: page, pageSize: pageSize, sortBy: currentSortBy, sortOrder: currentSortOrder };
            const response = await api.searchArchiveDocuments(searchRequest, token);
            setDocuments(response.data);
            setTotalDocs(response.totalSize);
@@ -127,7 +142,7 @@ const ArchivePage: React.FC = () => {
            console.error("Fetch Error:", err);
            setDocuments([]); setTotalDocs(0); setTotalPages(1);
        } finally { setIsLoading(false); }
-   }, [token, pageSize, currentPage, searchQuery, parentUnitId, preferredLanguage]);
+   }, [token, pageSize, parentUnitId, preferredLanguage]);
 
    useEffect(() => {
        if (parentUnitId && !parentUnit) {
@@ -182,6 +197,31 @@ const ArchivePage: React.FC = () => {
         } finally { setIsLoading(false); }
     };
 
+    const handleEnable = async (docId: number) => {
+        if (!isAdmin && !isEmployee) { toast.error(t('archivePermissionErrorEnable', preferredLanguage)); return; }
+        if (!token || !docId) return;
+        const docToEnable = documents.find(d => d.archiveDocumentId === docId) ?? previewingDoc;
+        if (!docToEnable) return;
+        const itemTypeLabel = t(docToEnable.type === 'unit' ? 'archiveUnitLabel' : 'archiveDocumentLabel', preferredLanguage);
+        if (!window.confirm(t('archiveEnableConfirm', preferredLanguage, { itemType: itemTypeLabel }))) return;
+
+        setError(null); setIsLoading(true);
+        try {
+            await api.enableArchiveDocument(docId, token);
+            toast.success(t('archiveEnableSuccess', preferredLanguage));
+            const newTotalPages = Math.ceil((totalDocs - 1) / pageSize);
+            const newCurrentPage = (currentPage > newTotalPages) ? Math.max(1, newTotalPages) : currentPage;
+            await fetchDocuments(newCurrentPage, searchQuery);
+            if (currentPage !== newCurrentPage) setCurrentPage(newCurrentPage);
+            if (previewingDoc?.archiveDocumentId === docId) setIsPreviewOpen(false);
+        } catch (err: any) {
+             const msg = err.message || 'Failed';
+             setError(t('archiveEnableFailed', preferredLanguage, { message: msg }));
+             toast.error(t('errorMessageTemplate', preferredLanguage, { message: t('archiveEnableFailed', preferredLanguage, { message: msg }) }));
+             console.error("Enable Error:", err);
+        } finally { setIsLoading(false); }
+    };
+
     const handleSaveSuccess = async () => {
         setIsFormOpen(false); setEditingDoc(null);
         const actionText = editingDoc ? t('updated', preferredLanguage) : t('created', preferredLanguage);
@@ -191,6 +231,14 @@ const ArchivePage: React.FC = () => {
 
    const handleSearch = (newQuery: SearchRequest['query']) => { setSearchQuery(newQuery); setCurrentPage(1); };
    const handlePageChange = (newPage: number) => { setCurrentPage(newPage); };
+   const handleSort = useCallback((field: string) => {
+       const currentSortBy = sortByRef.current;
+       const currentSortOrder = sortOrderRef.current;
+       const newSortOrder = (currentSortBy === field && currentSortOrder === 'DESC') ? 'ASC' : 'DESC';
+       setSortBy(field);
+       setSortOrder(newSortOrder);
+       fetchDocuments(currentPageRef.current, searchQueryRef.current, field, newSortOrder);
+   }, [fetchDocuments]);
 
     const handlePreview = useCallback(async (doc: ArchiveDocumentSearchResult) => {
         if (!token) return;
@@ -269,9 +317,9 @@ const ArchivePage: React.FC = () => {
                // ----------------------------------------------
            );
        }
-       if (isAdmin) {
-            baseFields.push({ value: 'active', label: t('archiveIsActiveLabel', preferredLanguage), type: 'boolean' });
-       }
+        if (isAdmin || isEmployee) {
+             baseFields.push({ value: 'active', label: t('archiveIsActiveLabel', preferredLanguage), type: 'boolean' });
+        }
        return baseFields;
    }, [isAdmin, isEmployee, availableTags, parentUnitId, preferredLanguage]);
 
@@ -347,12 +395,26 @@ const ArchivePage: React.FC = () => {
             </div>
        </div>
 
-       {/* --- SearchBar uses the updated searchFields --- */}
-       <SearchBar
-           fields={searchFields}
-           onSearch={handleSearch}
-           isLoading={isLoading || isBatchTagLoading}
-       />
+        {/* Help Panel - only show at root level */}
+        {!parentUnitId && (
+            <Alert>
+                <Info className="h-4 w-4" />
+                <AlertTitle>{t('archiveHelpTitle', preferredLanguage)}</AlertTitle>
+                <AlertDescription className="mt-2 space-y-1 text-sm">
+                    <p><strong>{t('archiveUnitLabel', preferredLanguage)}:</strong> {t('archiveHelpUnits', preferredLanguage)}</p>
+                    <p><strong>{t('archiveDocumentLabel', preferredLanguage)}:</strong> {t('archiveHelpDocuments', preferredLanguage)}</p>
+                    <p><strong>{t('archiveDescSigLabel', preferredLanguage)}:</strong> {t('archiveHelpSignatures', preferredLanguage)}</p>
+                </AlertDescription>
+            </Alert>
+        )}
+
+        {/* --- SearchBar uses the updated searchFields --- */}
+        <SearchBar
+            fields={searchFields}
+            onSearch={handleSearch}
+            isLoading={isLoading || isBatchTagLoading}
+            defaultQuery={canFilterActive ? defaultActiveFilter : undefined}
+        />
        {/* --------------------------------------------- */}
 
         <Card>
@@ -379,13 +441,17 @@ const ArchivePage: React.FC = () => {
                  {(isLoading || isBatchTagLoading) && <div className='flex justify-center py-10'><LoadingSpinner /></div>}
                  {!isLoading && !isBatchTagLoading && !error && (
                    <>
-                     <DocumentList
-                        documents={documents}
-                        onEdit={handleEdit}
-                        onDisable={handleDisable}
-                        onPreview={handlePreview}
-                        onOpenUnit={handleOpenUnit}
-                    />
+                      <DocumentList
+                         documents={documents}
+                         onEdit={handleEdit}
+                         onDisable={handleDisable}
+                         onEnable={handleEnable}
+                         onPreview={handlePreview}
+                         onOpenUnit={handleOpenUnit}
+                        sortBy={sortBy}
+                        sortOrder={sortOrder}
+                        onSort={handleSort}
+                     />
                       {totalPages > 1 && (
                            <div className="mt-6 flex justify-center">
                                <Pagination currentPage={currentPage} totalPages={totalPages} onPageChange={handlePageChange} />
@@ -405,13 +471,14 @@ const ArchivePage: React.FC = () => {
             </CardContent>
         </Card>
 
-         <DocumentPreviewDialog
-            isOpen={isPreviewOpen}
-            onOpenChange={setIsPreviewOpen}
-            document={previewingDoc}
-            onEdit={handleEdit}
-            onDisable={handleDisable}
-            parentUnitTitle={parentUnit?.archiveDocumentId === previewingDoc?.parentUnitArchiveDocumentId ? parentUnit?.title : undefined}
+          <DocumentPreviewDialog
+             isOpen={isPreviewOpen}
+             onOpenChange={setIsPreviewOpen}
+             document={previewingDoc}
+             onEdit={handleEdit}
+             onDisable={handleDisable}
+             onEnable={handleEnable}
+             parentUnitTitle={parentUnit?.archiveDocumentId === previewingDoc?.parentUnitArchiveDocumentId ? parentUnit?.title : undefined}
          />
 
          <BatchTagDialog

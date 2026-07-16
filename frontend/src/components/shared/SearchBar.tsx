@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useMemo, useEffect } from 'react';
+import React, { useState, useCallback, useMemo, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -13,7 +13,7 @@ import SingleSignaturePathPicker from './SingleSignaturePathPicker'; // Still us
 import type { Tag } from '../../../../backend/src/functionalities/tag/models';
 import { useAuth } from '@/hooks/useAuth'; // Import useAuth
 import { t } from '@/translations/utils'; // Import translation utility
-import type { AppTranslationKey } from '@/translations/models'; // Import key type
+import type { AppTranslationKey, SupportedLanguage } from '@/translations/models'; // Import key type
 
 export type FieldType = 'text' | 'number' | 'boolean' | 'select' | 'date' | 'tags' | 'signaturePath'; // Added 'signaturePath'
 
@@ -29,10 +29,11 @@ interface SearchBarProps {
   onSearch: (query: SearchQuery) => void;
   isLoading?: boolean;
   showResetButton?: boolean;
+  defaultQuery?: SearchQuery;
 }
 
 // Translate condition labels
-const getConditionLabel = (condition: SearchQueryElement['condition'], lang: string): string => {
+const getConditionLabel = (condition: SearchQueryElement['condition'], lang: SupportedLanguage): string => {
     const keyMap: Partial<Record<SearchQueryElement['condition'], AppTranslationKey>> = {
         'EQ': 'conditionEquals',
         'GT': 'conditionGt',
@@ -83,21 +84,39 @@ const useInitialCriterion = (fields: SearchFieldOption[]) => {
     }, [fields]);
 };
 
+const queryElementToCriterion = (el: SearchQueryElement): SearchCriterionState => ({
+    field: el.field,
+    condition: el.condition,
+    value: el.value,
+    not: el.not,
+    _key: Math.random().toString(36).substring(2, 9),
+});
+
 const SearchBar: React.FC<SearchBarProps> = ({
     fields,
     onSearch,
     isLoading = false,
-    showResetButton = true
+    showResetButton = true,
+    defaultQuery
 }) => {
-    const { preferredLanguage } = useAuth(); // Get preferredLanguage
+    const { preferredLanguage } = useAuth();
     const getInitialCriterion = useInitialCriterion(fields);
-    const [criteria, setCriteria] = useState<SearchCriterionState[]>(() => fields.length > 0 ? [getInitialCriterion()] : []);
+    const defaultQuerySnapshot = useRef(defaultQuery);
+    const defaultAppliedRef = useRef(false);
+    const [criteria, setCriteria] = useState<SearchCriterionState[]>([]);
 
     useEffect(() => {
         if (fields.length === 0 && criteria.length > 0) {
             setCriteria([]);
-        } else if (fields.length > 0 && criteria.length === 0) {
-            setCriteria([getInitialCriterion()]);
+        } else if (fields.length > 0 && criteria.length === 0 && !defaultAppliedRef.current) {
+            const snap = defaultQuerySnapshot.current;
+            if (snap && snap.length > 0) {
+                setCriteria(snap.map(queryElementToCriterion));
+                defaultAppliedRef.current = true;
+            } else {
+                setCriteria([getInitialCriterion()]);
+                defaultAppliedRef.current = true;
+            }
         } else {
              setCriteria(prev => prev.map(crit => {
                  if (crit.field && !fields.some(f => f.value === crit.field)) {
@@ -115,8 +134,7 @@ const SearchBar: React.FC<SearchBarProps> = ({
 
     const handleRemoveCriterion = (keyToRemove: string) => {
         if (fields.length === 0) return;
-        if (criteria.length > 1) setCriteria(criteria.filter((c) => c._key !== keyToRemove));
-        else setCriteria([getInitialCriterion()]);
+        setCriteria(criteria.filter((c) => c._key !== keyToRemove));
     };
 
     const handleCriterionChange = useCallback((key: string, changedProperty: keyof SearchCriterionState, newValue: any) => {
@@ -213,18 +231,33 @@ const SearchBar: React.FC<SearchBarProps> = ({
     }, [criteria, fields]);
 
     const handleSearchClick = () => { const finalQuery = buildQuery(); onSearch(finalQuery); };
-    const handleResetClick = () => { setCriteria(fields.length > 0 ? [getInitialCriterion()] : []); onSearch([]); };
+    const handleResetClick = () => {
+        const snap = defaultQuerySnapshot.current;
+        if (snap && snap.length > 0) {
+            setCriteria(snap.map(queryElementToCriterion));
+            onSearch(snap);
+        } else {
+            setCriteria(fields.length > 0 ? [getInitialCriterion()] : []);
+            onSearch([]);
+        }
+    };
     const getFieldType = (fieldName: string | undefined): FieldType => fields.find(f => f.value === fieldName)?.type || 'text';
     const getFieldOptions = (fieldName: string | undefined): SearchFieldOption['options'] => fields.find(f => f.value === fieldName)?.options;
     const getTagsFromOptions = (options: SearchFieldOption['options']): Tag[] => { if (!options) return []; return options.map(opt => ({ tagId: typeof opt.value === 'number' ? opt.value : parseInt(String(opt.value), 10), name: opt.label })).filter(tag => !isNaN(tag.tagId)); }
 
     const isCriteriaDirty = useMemo(() => {
-        if (criteria.length > 1) return true;
-        if (criteria.length === 0 || fields.length === 0) return false;
-        const defaultCrit = getInitialCriterion();
-        const currentCrit = criteria[0];
-        if (!currentCrit) return false;
-        return ( currentCrit.field !== defaultCrit.field || currentCrit.condition !== defaultCrit.condition || JSON.stringify(currentCrit.value) !== JSON.stringify(defaultCrit.value) || currentCrit.not !== defaultCrit.not );
+        const snap = defaultQuerySnapshot.current;
+        let defaultCriteria: SearchCriterionState[];
+        if (snap && snap.length > 0) {
+            defaultCriteria = snap.map(queryElementToCriterion);
+        } else {
+            defaultCriteria = fields.length > 0 ? [getInitialCriterion()] : [];
+        }
+        if (criteria.length !== defaultCriteria.length) return true;
+        return criteria.some((c, i) => {
+            const d = defaultCriteria[i];
+            return c.field !== d.field || c.condition !== d.condition || JSON.stringify(c.value) !== JSON.stringify(d.value) || c.not !== d.not;
+        });
     }, [criteria, fields, getInitialCriterion]);
 
       // Use translated empty state
@@ -291,7 +324,7 @@ const SearchBar: React.FC<SearchBarProps> = ({
                             )}
                         </div>
                     )}
-                    <Button variant="ghost" size="icon" onClick={() => handleRemoveCriterion(criterion._key!)} className='self-end text-neutral-500 hover:text-destructive h-9 w-9' title={t('removeFilterButton', preferredLanguage)} disabled={criteria.length <= 1 || fields.length === 0} >
+                    <Button variant="ghost" size="icon" onClick={() => handleRemoveCriterion(criterion._key!)} className='self-end text-neutral-500 hover:text-destructive h-9 w-9' title={t('removeFilterButton', preferredLanguage)} disabled={fields.length === 0} >
                         <Trash2 className="h-4 w-4" />
                     </Button>
                 </div>

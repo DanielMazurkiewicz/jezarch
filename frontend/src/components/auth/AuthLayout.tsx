@@ -70,22 +70,14 @@ const AuthLayout: React.FC<AuthLayoutProps> = ({ children }) => {
             {appSupportedLanguages.map(lang => (
               <SelectItem key={lang} value={lang}>
                 {/* Display language names more descriptively if needed */}
-                {lang === 'en' ? 'English (EN)' : lang === 'pl' ? 'Polski (PL)' : lang.toUpperCase()}
+                {lang === 'en' ? 'English (EN)' : 'Polski (PL)'}
               </SelectItem>
             ))}
           </SelectContent>
         </Select>
       </div>
 
-      {/* Main Auth Content (Login/Register Form) */}
-      {/* Pass current display language to child forms */}
-      {React.Children.map(children, child => {
-        if (React.isValidElement(child)) {
-          // @ts-ignore // TypeScript might complain about adding props to React.ReactNode
-          return React.cloneElement(child, { currentLanguage: displayLanguage });
-        }
-        return child;
-      })}
+      {children}
     </div>
   );
 };

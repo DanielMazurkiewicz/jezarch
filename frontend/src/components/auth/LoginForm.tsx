@@ -11,17 +11,14 @@ import ErrorDisplay from '@/components/shared/ErrorDisplay';
 import LoadingSpinner from '@/components/shared/LoadingSpinner';
 import { cn } from '@/lib/utils';
 // Updated imports: Get types and function from new locations
-import { type SupportedLanguage } from '@/translations/models'; // Use frontend model type
 import { t } from '@/translations/utils';
 
 interface LoginFormProps {
     onSwitchToRegister: () => void;
-    currentLanguage: SupportedLanguage; // Prop remains the same
 }
 
-const LoginForm: React.FC<LoginFormProps> = ({ onSwitchToRegister, currentLanguage }) => {
-  // Get isLoading directly from useAuth, which reflects initial lang fetch too
-  const { login, isLoading, error, clearError } = useAuth();
+const LoginForm: React.FC<LoginFormProps> = ({ onSwitchToRegister }) => {
+  const { login, isLoading, error, clearError, preferredLanguage } = useAuth();
   const { register, handleSubmit, formState: { errors } } = useForm<LoginFormData>({
     resolver: zodResolver(loginSchema),
     defaultValues: { login: '', password: '' }
@@ -37,21 +34,21 @@ const LoginForm: React.FC<LoginFormProps> = ({ onSwitchToRegister, currentLangua
   };
 
   return (
-    <Card className="w-full max-w-sm shadow-lg border bg-white dark:bg-white text-neutral-900 dark:text-neutral-900">
-      {/* Use t() function with currentLanguage */}
+    <Card className="w-full max-w-sm shadow-lg border">
+      {/* Use t() function with preferredLanguage */}
       <CardHeader className="text-center pt-8">
-        <CardTitle className="text-2xl">{t('loginTitle', currentLanguage)}</CardTitle>
-        <CardDescription>{t('loginDescription', currentLanguage)}</CardDescription>
+        <CardTitle className="text-2xl">{t('loginTitle', preferredLanguage)}</CardTitle>
+        <CardDescription>{t('loginDescription', preferredLanguage)}</CardDescription>
       </CardHeader>
       <form onSubmit={handleSubmit(onSubmit)}>
         <CardContent className="space-y-4 px-6 pb-4">
           {error && <ErrorDisplay message={error} />}
 
           <div className="grid gap-1.5">
-            <Label htmlFor="login">{t('loginLabel', currentLanguage)}</Label>
+            <Label htmlFor="login">{t('loginLabel', preferredLanguage)}</Label>
             <Input
                 id="login"
-                placeholder={t('loginPlaceholder', currentLanguage)}
+                placeholder={t('loginPlaceholder', preferredLanguage)}
                 {...register("login")}
                 aria-invalid={errors.login ? "true" : "false"}
                 className={cn(errors.login && "border-destructive focus-visible:ring-destructive")}
@@ -62,11 +59,11 @@ const LoginForm: React.FC<LoginFormProps> = ({ onSwitchToRegister, currentLangua
           </div>
 
           <div className="grid gap-1.5">
-            <Label htmlFor="password">{t('passwordLabel', currentLanguage)}</Label>
+            <Label htmlFor="password">{t('passwordLabel', preferredLanguage)}</Label>
             <Input
                 id="password"
                 type="password"
-                placeholder={t('passwordPlaceholder', currentLanguage)}
+                placeholder={t('passwordPlaceholder', preferredLanguage)}
                 {...register("password")}
                 aria-invalid={errors.password ? "true" : "false"}
                 className={cn(errors.password && "border-destructive focus-visible:ring-destructive")}
@@ -79,10 +76,10 @@ const LoginForm: React.FC<LoginFormProps> = ({ onSwitchToRegister, currentLangua
         <CardFooter className="flex flex-col gap-4 px-6 pb-6 pt-4">
            {/* Disable button while auth context is loading */}
           <Button type="submit" className="w-full" disabled={isLoading}>
-             {isLoading ? <LoadingSpinner size="sm" className="mr-2" /> : t('signInButton', currentLanguage)}
+             {isLoading ? <LoadingSpinner size="sm" className="mr-2" /> : t('signInButton', preferredLanguage)}
           </Button>
            <p className="text-center text-sm text-muted-foreground">
-                {t('noAccountPrompt', currentLanguage)}{" "}
+                {t('noAccountPrompt', preferredLanguage)}{" "}
                 <Button
                     variant="link"
                     type="button"
@@ -91,7 +88,7 @@ const LoginForm: React.FC<LoginFormProps> = ({ onSwitchToRegister, currentLangua
                     // Disable button while auth context is loading
                     disabled={isLoading}
                 >
-                    {t('registerLink', currentLanguage)}
+                    {t('registerLink', preferredLanguage)}
                 </Button>
            </p>
         </CardFooter>

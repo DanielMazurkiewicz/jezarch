@@ -20,7 +20,8 @@ export type AuthTranslationKey =
   | 'createAccountButton'
   | 'hasAccountPrompt'
   | 'loginLink'
-  | 'languagePickerLabel';
+  | 'languagePickerLabel'
+  | 'logoutFailedError';
 
 
 export type AuthTranslationSet = TranslationSet<AuthTranslationKey> 

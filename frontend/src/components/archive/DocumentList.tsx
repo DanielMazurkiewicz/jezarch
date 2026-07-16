@@ -2,7 +2,7 @@ import React from 'react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Edit, Trash2, FileText, Folder, Eye } from 'lucide-react'; // Icons
+import { Edit, Trash2, RefreshCcw, FileText, Folder, Eye, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react'; // Icons
 import type { ArchiveDocument, ArchiveDocumentSearchResult } from '../../../../backend/src/functionalities/archive/document/models';
 import { useAuth } from '@/hooks/useAuth';
 import { cn } from '@/lib/utils';
@@ -12,8 +12,12 @@ interface DocumentListProps {
   documents: ArchiveDocumentSearchResult[]; // Use search result which includes resolved signatures
   onEdit: (doc: ArchiveDocument) => void; // Pass base type for editing simplicity
   onDisable: (docId: number) => void;
+  onEnable: (docId: number) => void;
   onPreview: (doc: ArchiveDocumentSearchResult) => void;
   onOpenUnit: (doc: ArchiveDocumentSearchResult) => void;
+  sortBy?: string;
+  sortOrder?: 'ASC' | 'DESC';
+  onSort: (field: string) => void;
 }
 
 // Temporary type assertion if backend type is missing resolved signatures
@@ -22,13 +26,31 @@ type ArchiveDocumentSearchResultWithResolved = ArchiveDocumentSearchResult & {
 };
 
 
-const DocumentList: React.FC<DocumentListProps> = ({ documents, onEdit, onDisable, onPreview, onOpenUnit }) => {
+const DocumentList: React.FC<DocumentListProps> = React.memo(({ documents, onEdit, onDisable, onEnable, onPreview, onOpenUnit, sortBy, sortOrder, onSort }) => {
   const { user, preferredLanguage } = useAuth(); // Get preferredLanguage
 
   const canModify = () => {
       // Only admin and employee can modify archive items
       return user?.role === 'admin' || user?.role === 'employee';
   };
+
+  const renderSortIcon = (field: string) => {
+      if (sortBy !== field) return <ArrowUpDown className="h-3 w-3 ml-1 opacity-50" />;
+      return sortOrder === 'ASC' ? <ArrowUp className="h-3 w-3 ml-1" /> : <ArrowDown className="h-3 w-3 ml-1" />;
+  };
+
+  const SortableHeader = ({ field, children, className }: { field: string; children: React.ReactNode; className?: string }) => (
+      <TableHead className={className}>
+          <button
+              type="button"
+              className="inline-flex items-center hover:text-foreground transition-colors cursor-pointer"
+              onClick={() => onSort(field)}
+          >
+              {children}
+              {renderSortIcon(field)}
+          </button>
+      </TableHead>
+  );
 
   // Handle click action based on item type
   const handleClick = (doc: ArchiveDocumentSearchResult) => {
@@ -48,11 +70,11 @@ const DocumentList: React.FC<DocumentListProps> = ({ documents, onEdit, onDisabl
         <Table>
             <TableHeader>
                 <TableRow>
-                    <TableHead className='w-[50px]'>{t('typeLabel', preferredLanguage)}</TableHead>
+                    <SortableHeader field="type" className='w-[50px]'>{t('typeLabel', preferredLanguage)}</SortableHeader>
                     {/* Adjusted Title Header to allow more space and potentially guide wrapping */}
-                    <TableHead className='max-w-sm md:max-w-md'>{t('titleLabel', preferredLanguage)}</TableHead>
+                    <SortableHeader field="title" className='max-w-sm md:max-w-md'>{t('titleLabel', preferredLanguage)}</SortableHeader>
                     {/* REMOVED CreatedBy/UpdatedBy Headers */}
-                    <TableHead className='max-w-[200px]'>{t('archiveTopoSigLabel', preferredLanguage)}</TableHead>
+                    <SortableHeader field="topographicSignature" className='max-w-[200px]'>{t('archiveTopoSigLabel', preferredLanguage)}</SortableHeader>
                     <TableHead className='max-w-[200px]'>{t('archiveDescSigLabel', preferredLanguage)}</TableHead>
                     <TableHead className="text-right w-[130px]">{t('actionsLabel', preferredLanguage)}</TableHead>
                 </TableRow>
@@ -106,10 +128,15 @@ const DocumentList: React.FC<DocumentListProps> = ({ documents, onEdit, onDisabl
                                         <Edit className="h-4 w-4" />
                                     </Button>
                                 )}
-                                {/* Disable Button (always available if permissions allow) */}
-                                {canUserModify && (
+                                {/* Disable / Restore Button */}
+                                {canUserModify && (doc.active || doc.active === undefined) && (
                                     <Button variant="ghost" size="icon" onClick={(e) => { e.stopPropagation(); onDisable(doc.archiveDocumentId!); }} title={t('disableButton', preferredLanguage)}>
                                         <Trash2 className="h-4 w-4 text-destructive" />
+                                    </Button>
+                                )}
+                                {canUserModify && !doc.active && doc.active !== undefined && (
+                                    <Button variant="ghost" size="icon" onClick={(e) => { e.stopPropagation(); onEnable(doc.archiveDocumentId!); }} title={t('enableButton', preferredLanguage)}>
+                                        <RefreshCcw className="h-4 w-4 text-green-600" />
                                     </Button>
                                 )}
                                 {!canUserModify && (
@@ -123,6 +150,8 @@ const DocumentList: React.FC<DocumentListProps> = ({ documents, onEdit, onDisabl
         </Table>
     </div>
   );
-};
+});
+
+DocumentList.displayName = 'DocumentList';
 
 export default DocumentList;

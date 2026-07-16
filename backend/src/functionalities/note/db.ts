@@ -1,8 +1,9 @@
 import { db } from '../../initialization/db';
 import type { Note, NoteWithDetails } from './models'; // Use NoteWithDetails
 import { getTagsForNote } from './tag/db'; // Import getTagsForNote
-import { sqliteNow } from '../../utils/sqlite'; // Import sqliteNow
-import { Log } from '../log/db'; // Import Log
+import { buildUpdateFields } from '../../utils/sql';
+import { sqliteNow } from '../../utils/sqlite';
+import { Log } from '../log/db';
 
 // initialization function (remains the same)
 export async function initializeNoteTable() {
@@ -146,48 +147,31 @@ export async function getNotesForUser(userId: number): Promise<(Note & { ownerLo
 }
 
 
-// Update function - simplified, tags are handled separately
-// Adjusted content type to accept string | null | undefined
 export async function updateNote(
     noteId: number,
     title?: string,
-    content?: string | null | undefined, // Allow null/undefined here
+    content?: string | null | undefined,
     shared?: boolean
 ) {
-    const fieldsToUpdate: string[] = [];
-    const params: any[] = [];
-    const now = sqliteNow();
+    const { sets, params } = buildUpdateFields({
+        title,
+        content: content !== undefined ? content : undefined,
+        shared: shared !== undefined ? (shared ? 1 : 0) : undefined,
+    });
 
-    if (title !== undefined) {
-        fieldsToUpdate.push('title = ?');
-        params.push(title);
-    }
-    if (content !== undefined) { // Check for undefined only
-        fieldsToUpdate.push('content = ?');
-        params.push(content); // Pass null or string directly to DB
-    }
-    if (shared !== undefined) {
-        fieldsToUpdate.push('shared = ?');
-        params.push(shared ? 1 : 0);
-    }
+    if (sets.length === 0) return;
 
-    if (fieldsToUpdate.length === 0) {
-        // If only tags were potentially changed, don't update modifiedOn here
-        // The controller handles tags separately
-        return; // No core fields to update
-    }
+    sets.push('modifiedOn = ?');
+    params.push(sqliteNow());
 
-    fieldsToUpdate.push('modifiedOn = ?');
-    params.push(now);
-
-    const query = `UPDATE notes SET ${fieldsToUpdate.join(', ')} WHERE noteId = ?`;
+    const query = `UPDATE notes SET ${sets.join(', ')} WHERE noteId = ?`;
     params.push(noteId);
 
     try {
         const statement = db.prepare(query);
         statement.run(...params);
     } catch (error) {
-        await Log.error(`Failed to update note ${noteId}`, 'system', 'database', { error, fieldsToUpdate });
+        await Log.error(`Failed to update note ${noteId}`, 'system', 'database', { error, sets });
         throw error;
     }
 }

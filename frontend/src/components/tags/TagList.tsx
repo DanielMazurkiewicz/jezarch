@@ -12,7 +12,7 @@ interface TagListProps {
   onDelete: (tagId: number) => void;
 }
 
-const TagList: React.FC<TagListProps> = ({ tags, onEdit, onDelete }) => {
+const TagList: React.FC<TagListProps> = React.memo(({ tags, onEdit, onDelete }) => {
    const { user, preferredLanguage } = useAuth(); // Get preferredLanguage
    const isAdmin = user?.role === 'admin'; // Assuming only admin can edit/delete tags
 
@@ -54,6 +54,8 @@ const TagList: React.FC<TagListProps> = ({ tags, onEdit, onDelete }) => {
     </Table>
     // </div>
   );
-};
+});
+
+TagList.displayName = 'TagList';
 
 export default TagList;

@@ -308,7 +308,8 @@ const DocumentForm: React.FC<DocumentFormProps> = ({
                         </GridItem>
                     </CardContent>
                 </Card>
-                {/* --- Physical Description --- */}
+                {/* --- Physical Description (only for units) --- */}
+                {watchedType === 'unit' && (
                 <Card className="lg:col-span-1">
                     <CardHeader><CardTitle className='text-lg'>{t('archiveFormPhysicalDescTitle', preferredLanguage)}</CardTitle></CardHeader>
                     <CardContent className="grid grid-cols-1 gap-x-6 gap-y-4">
@@ -319,6 +320,7 @@ const DocumentForm: React.FC<DocumentFormProps> = ({
                         <GridItem><Label htmlFor="doc-condition">{t('archiveFormConditionLabel', preferredLanguage)}</Label><Input id="doc-condition" {...register('condition')} placeholder={t('archiveFormConditionPlaceholder', preferredLanguage)} /></GridItem>
                     </CardContent>
                 </Card>
+                )}
                 {/* --- Content & Context --- */}
                 <Card className="lg:col-span-1">
                     <CardHeader><CardTitle className='text-lg'>{t('archiveFormContentContextTitle', preferredLanguage)}</CardTitle></CardHeader>

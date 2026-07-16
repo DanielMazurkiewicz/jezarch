@@ -163,12 +163,7 @@ export async function createArchiveDocument(
 
 // Removed JOIN with users
 export async function getArchiveDocumentById(id: number): Promise<ArchiveDocument | undefined> {
-     const statement = db.prepare(`
-        SELECT * FROM archive_documents
-        WHERE archiveDocumentId = ? AND active = TRUE
-    `);
-    const row = statement.get(id);
-    return await dbToArchiveDocument(row);
+     return getArchiveDocumentByIdInternal(id);
 }
 
 // Removed JOIN with users
@@ -256,6 +251,23 @@ export async function disableArchiveDocument(id: number): Promise<boolean> {
         return disabled;
     } catch (error) {
         await Log.error('Failed to disable archive document', 'system', 'database', { id, error });
+        throw error;
+    }
+}
+
+export async function enableArchiveDocument(id: number): Promise<boolean> {
+    try {
+        const statement = db.prepare(`UPDATE archive_documents SET active = TRUE, modifiedOn = ? WHERE archiveDocumentId = ? AND active = FALSE`);
+        const result = statement.run(sqliteNow() ?? null, id);
+        const enabled = result.changes > 0;
+        if (!enabled) {
+            const exists = await getArchiveDocumentByIdInternal(id);
+            if (exists) await Log.info(`Attempted to enable already active document: ${id}`, 'system', 'database');
+            else await Log.info(`Attempted to enable non-existent document: ${id}`, 'system', 'database');
+        }
+        return enabled;
+    } catch (error) {
+        await Log.error('Failed to enable archive document', 'system', 'database', { id, error });
         throw error;
     }
 }

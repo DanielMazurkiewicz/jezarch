@@ -33,7 +33,7 @@ export const t = (
   const langTranslations = allTranslations[lang] || allTranslations[frontendDefaultLanguage];
   const defaultLangTranslations = allTranslations[frontendDefaultLanguage];
 
-  let rawTranslation = key; // Default to the key itself
+  let rawTranslation: string = key; // Default to the key itself
 
   // Determine the final raw translation string
   if (langTranslations && langTranslations[key] !== undefined) {

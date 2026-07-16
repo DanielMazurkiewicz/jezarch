@@ -19,4 +19,5 @@ export const authTranslationsPL: AuthTranslationSet = {
   hasAccountPrompt: 'Masz już konto?',
   loginLink: 'Zaloguj się',
   languagePickerLabel: 'Język',
+  logoutFailedError: 'Wylogowanie nie powiodło się: {message}',
 };

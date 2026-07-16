@@ -64,6 +64,8 @@ export interface SearchRequest {
     query: SearchQuery;
     page: number;
     pageSize: number;
+    sortBy?: string;
+    sortOrder?: 'ASC' | 'DESC';
 }
 
 export interface SearchResponse<T> {
@@ -173,7 +175,12 @@ export async function buildSearchQueries<T extends Record<string, any>>(
 
     const joins = Array.from(joinClauses).join('\n');
     const whereClause = whereConditions.length > 0 ? `WHERE ${whereConditions.join(' AND ')}` : '';
-    const orderBy = `ORDER BY ${mainTableAlias}.${primaryKeyField} DESC`; // Consider making ORDER BY configurable
+    // Support configurable ORDER BY with defaults
+    const sortField = searchRequest.sortBy && allowedFields.includes(searchRequest.sortBy)
+        ? `${mainTableAlias}.${searchRequest.sortBy}`
+        : `${mainTableAlias}.${primaryKeyField}`;
+    const sortDirection = searchRequest.sortOrder === 'ASC' ? 'ASC' : 'DESC';
+    const orderBy = `ORDER BY ${sortField} ${sortDirection}`;
 
     // Adjust SELECT columns based on potential JOINs (only ownerLogin handled explicitly for now)
     // createdBy/updatedBy are now direct fields, no JOIN needed for them.

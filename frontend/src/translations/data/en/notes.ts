@@ -31,4 +31,6 @@ export const notesTranslationsEN: NotesTranslationSet = {
   notesPreviewBy: 'By',
   notesPreviewOn: 'on',
   notesNoContentPlaceholder: 'No content.', // Added Key
+  notesSharedBadge: 'Shared', // Added Key
+  notesPrivateBadge: 'Private', // Added Key
 };

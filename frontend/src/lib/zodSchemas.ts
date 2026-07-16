@@ -131,7 +131,7 @@ export const createArchiveDocumentFormSchema = z.object({
     condition: z.string().max(255).optional().nullable(),
     documentLanguage: z.string().max(50).optional().nullable(),
     contentDescription: z.string().max(2000).optional().nullable(),
-    remarks: z.string().max(1000).optional().nullable(),
+    remarks: z.string().optional().nullable(),
     accessLevel: z.string().max(50).optional().nullable(),
     accessConditions: z.string().max(255).optional().nullable(),
     additionalInformation: z.string().max(1000).optional().nullable(),
@@ -145,6 +145,19 @@ export const createArchiveDocumentFormSchema = z.object({
 }).refine(data => data.isDigitized || !data.digitizedVersionLink, {
     message: "Digitized link requires 'Is Digitized' to be checked",
     path: ["digitizedVersionLink"],
+}).transform(data => {
+    if (data.type === 'document') {
+        return {
+            ...data,
+            numberOfPages: null,
+            documentType: null,
+            dimensions: null,
+            binding: null,
+            condition: null,
+            documentLanguage: null,
+        };
+    }
+    return data;
 });
 export type CreateArchiveDocumentFormData = z.infer<typeof createArchiveDocumentFormSchema>;
 

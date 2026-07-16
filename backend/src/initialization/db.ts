@@ -36,7 +36,7 @@ export async function initializeDatabase() {
     try {
         db.exec('PRAGMA foreign_keys = ON;');
         // Verify and store status
-        const fkResult = db.query<{ 'foreign_keys': number }>('PRAGMA foreign_keys;').get();
+        const fkResult = db.query<{ 'foreign_keys': number }, any[]>('PRAGMA foreign_keys;').get();
         dbForeignKeysEnabled = fkResult?.foreign_keys === 1;
         console.log(`  - PRAGMA foreign_keys = ON; set status: ${dbForeignKeysEnabled}`);
     } catch (error) {
@@ -50,7 +50,7 @@ export async function initializeDatabase() {
     try {
         db.exec('PRAGMA journal_mode = WAL;');
         // Verify and store status
-        const jmResult = db.query<{ 'journal_mode': string }>('PRAGMA journal_mode;').get();
+              const jmResult = db.query<{ 'journal_mode': string }, any[]>('PRAGMA journal_mode;').get();
         dbJournalMode = jmResult?.journal_mode ?? null;
         console.log(`  - PRAGMA journal_mode = WAL; set status: ${dbJournalMode}`);
     } catch (error) {
@@ -58,7 +58,7 @@ export async function initializeDatabase() {
          console.warn(error);
          // Attempt to read the current mode anyway
           try {
-              const jmResult = db.query<{ 'journal_mode': string }>('PRAGMA journal_mode;').get();
+        const jmResult = db.query<{ 'journal_mode': string }, any[]>('PRAGMA journal_mode;').get();
               dbJournalMode = jmResult?.journal_mode ?? null;
           } catch {
               dbJournalMode = null; // Failed to read mode

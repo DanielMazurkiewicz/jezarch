@@ -5,6 +5,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { PlusCircle } from 'lucide-react';
 import ComponentList from './ComponentList';
 import ComponentForm from './ComponentForm';
+import ComponentPreviewDialog from './ComponentPreviewDialog';
 import LoadingSpinner from '@/components/shared/LoadingSpinner';
 import ErrorDisplay from '@/components/shared/ErrorDisplay';
 import { useAuth } from '@/hooks/useAuth';
@@ -12,6 +13,8 @@ import api from '@/lib/api';
 import type { SignatureComponent } from '../../../../backend/src/functionalities/signature/component/models';
 import { toast } from "sonner";
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/components/ui/card';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Info } from 'lucide-react';
 import { t } from '@/translations/utils'; // Import translation utility
 
 // Renamed from SignaturesPage to ComponentsPage
@@ -19,6 +22,7 @@ const ComponentsPage: React.FC = () => {
     const { token, user, preferredLanguage } = useAuth(); // Get preferredLanguage
     const navigate = useNavigate(); // Hook for navigation
     const isAdmin = user?.role === 'admin';
+    const canModify = isAdmin || user?.role === 'employee';
 
     // --- Component State ---
     const [components, setComponents] = useState<SignatureComponent[]>([]);
@@ -26,6 +30,8 @@ const ComponentsPage: React.FC = () => {
     const [componentsError, setComponentsError] = useState<string | null>(null);
     const [editingComponent, setEditingComponent] = useState<SignatureComponent | null>(null);
     const [isComponentFormOpen, setIsComponentFormOpen] = useState(false);
+    const [previewingComponent, setPreviewingComponent] = useState<SignatureComponent | null>(null);
+    const [isPreviewOpen, setIsPreviewOpen] = useState(false);
 
     // --- Component Logic ---
 
@@ -60,10 +66,15 @@ const ComponentsPage: React.FC = () => {
 
     // Component Callbacks
     const handleEditComponent = useCallback((component: SignatureComponent) => {
-        if (!isAdmin) { toast.error(t('componentAdminRequiredError', preferredLanguage)); return; }
+        if (!canModify) { toast.error(t('insufficientPermissionsError', preferredLanguage)); return; }
         setEditingComponent(component);
         setIsComponentFormOpen(true);
-    }, [isAdmin, preferredLanguage]); // Add preferredLanguage
+    }, [canModify, preferredLanguage]);
+
+    const handlePreviewComponent = useCallback((component: SignatureComponent) => {
+        setPreviewingComponent(component);
+        setIsPreviewOpen(true);
+    }, []);
 
     const handleCreateComponent = useCallback(() => {
         setEditingComponent(null);
@@ -133,6 +144,17 @@ const ComponentsPage: React.FC = () => {
                 <p className='text-muted-foreground'>{t('signaturesDescription', preferredLanguage)}</p>
             </div>
 
+            {/* Help Panel */}
+            <Alert>
+                <Info className="h-4 w-4" />
+                <AlertTitle>{t('signaturesHelpTitle', preferredLanguage)}</AlertTitle>
+                <AlertDescription className="mt-2 space-y-1 text-sm">
+                    <p><strong>{t('componentsTitle', preferredLanguage)}:</strong> {t('signaturesHelpComponents', preferredLanguage)}</p>
+                    <p><strong>{t('elementsTitle', preferredLanguage)}:</strong> {t('signaturesHelpElements', preferredLanguage)}</p>
+                    <p><strong>{t('archiveTitle', preferredLanguage)}:</strong> {t('signaturesHelpRelationship', preferredLanguage)}</p>
+                </AlertDescription>
+            </Alert>
+
             {/* Components Section */}
             <Card>
                 <CardHeader>
@@ -142,25 +164,25 @@ const ComponentsPage: React.FC = () => {
                              <CardTitle>{t('componentsTitle', preferredLanguage)}</CardTitle>
                              <CardDescription>{t('clickComponentToViewElements', preferredLanguage)}</CardDescription>
                          </div>
-                         {isAdmin ? (
-                             <Dialog open={isComponentFormOpen} onOpenChange={setIsComponentFormOpen}>
-                                 <DialogTrigger asChild>
-                                     {/* Use translated button text */}
-                                     <Button onClick={handleCreateComponent} size="sm" className='shrink-0'>
-                                         <PlusCircle className="mr-2 h-4 w-4" /> {t('newComponentButton', preferredLanguage)}
-                                     </Button>
-                                 </DialogTrigger>
-                                 <DialogContent className="sm:max-w-[500px]">
-                                      {/* Use translated dialog title */}
-                                     <DialogHeader><DialogTitle>{editingComponent ? t('editComponentDialogTitle', preferredLanguage) : t('createComponentDialogTitle', preferredLanguage)}</DialogTitle></DialogHeader>
-                                     <ComponentForm componentToEdit={editingComponent} onSave={handleComponentSaveSuccess} />
-                                 </DialogContent>
-                             </Dialog>
-                         ) : (
-                             <Button size="sm" className='shrink-0' disabled title={t('componentAdminRequiredError', preferredLanguage)}>
-                                <PlusCircle className="mr-2 h-4 w-4" /> {t('newComponentButton', preferredLanguage)}
-                             </Button>
-                         )}
+                          {canModify ? (
+                              <Dialog open={isComponentFormOpen} onOpenChange={setIsComponentFormOpen}>
+                                  <DialogTrigger asChild>
+                                      {/* Use translated button text */}
+                                      <Button onClick={handleCreateComponent} size="sm" className='shrink-0'>
+                                          <PlusCircle className="mr-2 h-4 w-4" /> {t('newComponentButton', preferredLanguage)}
+                                      </Button>
+                                  </DialogTrigger>
+                                  <DialogContent className="sm:max-w-[500px]">
+                                       {/* Use translated dialog title */}
+                                      <DialogHeader><DialogTitle>{editingComponent ? t('editComponentDialogTitle', preferredLanguage) : t('createComponentDialogTitle', preferredLanguage)}</DialogTitle></DialogHeader>
+                                      <ComponentForm componentToEdit={editingComponent} onSave={handleComponentSaveSuccess} />
+                                  </DialogContent>
+                              </Dialog>
+                          ) : (
+                              <Button size="sm" className='shrink-0' disabled title={t('insufficientPermissionsError', preferredLanguage)}>
+                                 <PlusCircle className="mr-2 h-4 w-4" /> {t('newComponentButton', preferredLanguage)}
+                              </Button>
+                          )}
                      </div>
                 </CardHeader>
                 <CardContent>
@@ -172,6 +194,7 @@ const ComponentsPage: React.FC = () => {
                             components={components}
                             onEdit={handleEditComponent}
                             onDelete={handleDeleteComponent}
+                            onPreview={handlePreviewComponent}
                             onOpen={handleOpenComponent} // Changed prop name
                             onReindex={handleReindexComponent}
                          />
@@ -184,6 +207,14 @@ const ComponentsPage: React.FC = () => {
             </Card>
 
             {/* Element section is removed from this page */}
+
+            <ComponentPreviewDialog
+                isOpen={isPreviewOpen}
+                onOpenChange={setIsPreviewOpen}
+                component={previewingComponent}
+                onEdit={handleEditComponent}
+                onDelete={handleDeleteComponent}
+            />
 
         </div>
     );

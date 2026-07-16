@@ -30,8 +30,10 @@ JezArch is a full-stack web application designed for managing archival documents
 
 For insights into the technology stack, configuration precedence, and a high-level overview, see [Technical Details](doc/TECHNICAL_DETAILS.md).
 
+## ❓ FAQ
+
+For answers to common questions about components, elements, signatures, and the relationship between Archive and Signatures, see [ANSWERS.md](ANSWERS.md).
+
 ## 📜 License
 
-(Specify your license here, e.g., MIT License, or state if it's proprietary)
-
----
+MIT License — see [LICENSE](LICENSE) for details.

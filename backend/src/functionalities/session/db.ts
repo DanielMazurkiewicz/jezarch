@@ -3,6 +3,8 @@ import { sqliteDate } from '../../utils/sqlite';
 import type { Session } from './models';
 import * as crypto from 'node:crypto'; // Import Bun's crypto module
 
+const SESSION_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours
+
 // initialization function
 export async function initializeSessionTable() {
     await db.exec(`
@@ -15,6 +17,7 @@ export async function initializeSessionTable() {
             FOREIGN KEY (userId) REFERENCES users(userId)
         )
     `);
+    await db.exec(`CREATE INDEX IF NOT EXISTS idx_sessions_token ON sessions (token);`);
 }
 
 const dbToSession = (data: any) => {
@@ -32,7 +35,7 @@ const dbToSession = (data: any) => {
 export async function createSession(userId: number) {
     const token = crypto.randomUUID(); // Generate a unique session token
     const timestampNow = Date.now(); // Milliseconds since epoch
-    const timestampExpiresOn = timestampNow + 24 * 60 * 60 * 1000; // Session expires in 24 hours
+    const timestampExpiresOn = timestampNow + SESSION_TTL_MS; // Session expires in 24 hours
 
     const statement = db.prepare(`INSERT INTO sessions (userId, token, expiresOn) VALUES (?, ?, ?)`);
     statement.run(userId, token, sqliteDate(timestampExpiresOn) as string);

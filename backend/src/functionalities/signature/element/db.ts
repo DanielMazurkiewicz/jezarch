@@ -2,6 +2,7 @@ import { db } from '../../../initialization/db';
 import type { SignatureElement, SignatureElementSearchResult } from './models';
 import type { SignatureComponent } from '../component/models';
 import { Log } from '../../log/db';
+import { buildUpdateFields } from '../../../utils/sql';
 import { sqliteNow } from '../../../utils/sqlite';
 import { SearchOnCustomFieldHandlerResult, SearchQueryElement } from '../../../utils/search';
 import { dbToComponent } from '../component/db';
@@ -125,38 +126,21 @@ async function getComponentForElement(componentId: number): Promise<SignatureCom
 
 export async function updateElement(
     id: number,
-    data: Partial<{ name: string; description: string | null; index: string | null /*; active: boolean*/ }>
+    data: Partial<{ name: string; description: string | null; index: string | null }>
 ): Promise<SignatureElement | undefined> {
-    const fieldsToUpdate: string[] = [];
-    const params: any[] = [];
+    const { sets, params } = buildUpdateFields({
+        name: data.name,
+        description: data.description,
+        '"index"': data.index, // Quoted column name for reserved word
+    });
 
-    if (data.name !== undefined) {
-        fieldsToUpdate.push('name = ?');
-        params.push(data.name);
-    }
-     if (data.description !== undefined) { // Check explicitly to allow null
-        fieldsToUpdate.push('description = ?');
-        params.push(data.description);
-    }
-    // Allow explicit update of index via PATCH, but counter is not affected here
-    if (data.index !== undefined) {
-        fieldsToUpdate.push('"index" = ?'); // <<< FIXED: Quoted column name
-        params.push(data.index);
-    }
-    // if (data.active !== undefined) {
-    //     fieldsToUpdate.push('active = ?');
-    //     params.push(data.active ? 1 : 0);
-    // }
+    if (sets.length === 0) return getElementById(id);
 
-    if (fieldsToUpdate.length === 0) {
-        return getElementById(id); // No changes
-    }
-
-    fieldsToUpdate.push('modifiedOn = ?');
+    sets.push('modifiedOn = ?');
     params.push(sqliteNow());
-
-    const query = `UPDATE signature_elements SET ${fieldsToUpdate.join(', ')} WHERE signatureElementId = ? RETURNING *`;
     params.push(id);
+
+    const query = `UPDATE signature_elements SET ${sets.join(', ')} WHERE signatureElementId = ? RETURNING *`;
 
     try {
         const statement = db.prepare(query);

@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 // Removed unused Input and Label
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";

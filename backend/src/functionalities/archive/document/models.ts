@@ -74,7 +74,7 @@ const archiveDocumentBaseSchema = z.object({
     condition: z.string().max(255).optional().nullable(),
     documentLanguage: z.string().max(50).optional().nullable(),
     contentDescription: z.string().max(2000).optional().nullable(),
-    remarks: z.string().max(1000).optional().nullable(),
+    remarks: z.string().optional().nullable(),
     accessLevel: z.string().max(50).optional().nullable(),
     accessConditions: z.string().max(255).optional().nullable(),
     additionalInformation: z.string().max(1000).optional().nullable(),

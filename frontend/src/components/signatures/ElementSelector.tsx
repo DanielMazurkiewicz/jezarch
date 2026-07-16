@@ -12,6 +12,7 @@ import { cn } from '@/lib/utils';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"; // For Component selection
 import { Label } from '@/components/ui/label'; // Import Label
 import LoadingSpinner from '@/components/shared/LoadingSpinner'; // Import Spinner
+import { t } from '@/translations/utils'; // Import translation utility
 
 interface ElementSelectorProps {
     selectedElementIds: number[]; // IDs of the selected parent elements
@@ -30,7 +31,7 @@ const ElementSelector: React.FC<ElementSelectorProps> = ({
     label = "Select Parent Elements",
     className
 }) => {
-    const { token } = useAuth();
+    const { token, preferredLanguage } = useAuth();
     const [availableComponents, setAvailableComponents] = useState<SignatureComponent[]>([]);
     const [searchComponentId, setSearchComponentId] = useState<string>(""); // Component ID to search within
     const [availableElements, setAvailableElements] = useState<SignatureElement[]>([]); // Elements in the selected component
@@ -52,13 +53,13 @@ const ElementSelector: React.FC<ElementSelectorProps> = ({
                 const comps = await api.getAllSignatureComponents(token);
                 setAvailableComponents(comps.sort((a,b) => a.name.localeCompare(b.name))); // Sort components
             } catch (err: any) {
-                setError(err.message || "Failed to load components");
+                setError(err.message || t('componentLoadFailedError', preferredLanguage));
             } finally {
                 setIsLoadingComponents(false);
             }
         };
         fetchComps();
-    }, [token]);
+    }, [token, preferredLanguage]);
 
     // Fetch Elements when searchComponentId changes
     useEffect(() => {
@@ -78,14 +79,14 @@ const ElementSelector: React.FC<ElementSelectorProps> = ({
                         .sort((a,b) => (a.index ?? a.name).localeCompare(b.index ?? b.name)) // Sort elements
                  );
             } catch (err: any) {
-                setError(err.message || "Failed to load elements");
+                setError(err.message || t('elementLoadFailedError', preferredLanguage));
                 setAvailableElements([]);
             } finally {
                 setIsLoadingElements(false);
             }
         };
         fetchElems();
-    }, [token, searchComponentId, currentElementId]); // Add currentElementId dependency
+    }, [token, searchComponentId, currentElementId, preferredLanguage]); // Add currentElementId dependency
 
 
     // Fetch details for selected elements (for badges) when selected IDs change
@@ -106,13 +107,14 @@ const ElementSelector: React.FC<ElementSelectorProps> = ({
                                             .sort((a,b) => a.name.localeCompare(b.name))); // Filter out nulls and sort
             } catch (err) {
                  console.error("Failed to fetch selected element details:", err);
+                 setError(t('selectedElementLoadFailedError', preferredLanguage));
                  setSelectedElementObjects([]); // Clear on error
             } finally {
                  setIsLoadingSelectedDetails(false);
             }
         };
         fetchSelectedDetails();
-    }, [token, selectedElementIds]);
+    }, [token, selectedElementIds, preferredLanguage]);
 
 
     const handleSelectElement = (elementId: number) => {
@@ -139,16 +141,16 @@ const ElementSelector: React.FC<ElementSelectorProps> = ({
             {/* Component Selector */}
             <Select value={searchComponentId} onValueChange={setSearchComponentId} disabled={isLoadingComponents}>
                 <SelectTrigger className='h-9 text-sm'>
-                    <SelectValue placeholder="Select Component to find parents..." />
+                    <SelectValue placeholder={t('elementBrowserPopoverSelectComponentPlaceholder', preferredLanguage)} />
                 </SelectTrigger>
                 <SelectContent>
-                    {isLoadingComponents && <SelectItem value="loading" disabled><div className='flex items-center'><LoadingSpinner size='sm' className='mr-2'/>Loading...</div></SelectItem>}
+                    {isLoadingComponents && <SelectItem value="loading" disabled><div className='flex items-center'><LoadingSpinner size='sm' className='mr-2'/>{t('loadingText', preferredLanguage)}...</div></SelectItem>}
                     {availableComponents.map(comp => (
                         <SelectItem key={comp.signatureComponentId} value={String(comp.signatureComponentId)}>
                             {comp.name}
                         </SelectItem>
                     ))}
-                     {!isLoadingComponents && availableComponents.length === 0 && <SelectItem value="no-comps" disabled>No components found</SelectItem>}
+                     {!isLoadingComponents && availableComponents.length === 0 && <SelectItem value="no-comps" disabled>{t('componentNoComponentsFound', preferredLanguage)}</SelectItem>}
                 </SelectContent>
             </Select>
 
@@ -163,10 +165,10 @@ const ElementSelector: React.FC<ElementSelectorProps> = ({
                         disabled={isLoadingElements || !searchComponentId || !!error}
                     >
                         <span className='truncate'>
-                            {isLoadingElements ? 'Loading elements...' :
-                             !searchComponentId ? 'Select component first' :
-                             error ? 'Error loading elements' :
-                             'Select elements...'}
+                            {isLoadingElements ? t('elementBrowserPopoverLoadingElements', preferredLanguage) :
+                             !searchComponentId ? t('elementBrowserSelectComponentFirst', preferredLanguage) :
+                             error ? t('errorText', preferredLanguage) :
+                             t('elementBrowserPopoverSelectElementPlaceholder', preferredLanguage)}
                         </span>
                         {isLoadingElements ? <LoadingSpinner size='sm' className='ml-2'/> : <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />}
                     </Button>
@@ -174,13 +176,13 @@ const ElementSelector: React.FC<ElementSelectorProps> = ({
                 <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
                     <Command shouldFilter={false}> {/* Manual filtering */}
                         <CommandInput
-                            placeholder="Search elements..."
+                            placeholder={t('elementBrowserSearchPlaceholder', preferredLanguage)}
                             value={searchTerm}
                             onValueChange={setSearchTerm}
                         />
                         <CommandList>
                              {isLoadingElements && <div className='text-center p-2 text-sm text-muted-foreground'><LoadingSpinner size='sm'/></div>}
-                             <CommandEmpty>{!isLoadingElements && 'No elements found.'}</CommandEmpty>
+                             <CommandEmpty>{!isLoadingElements && t('elementBrowserPopoverNoElementsFound', preferredLanguage)}</CommandEmpty>
                              {!isLoadingElements && filteredDropdownElements.length > 0 && (
                                  <CommandGroup>
                                     {filteredDropdownElements.map((el) => (
@@ -220,7 +222,7 @@ const ElementSelector: React.FC<ElementSelectorProps> = ({
                                  type="button"
                                  className="ml-1 p-0.5 rounded-full text-muted-foreground hover:text-foreground hover:bg-background/50 focus:outline-none focus:ring-1 focus:ring-ring focus:ring-offset-1"
                                  onClick={() => handleSelectElement(el.signatureElementId!)}
-                                 aria-label={`Remove ${el.name}`}
+                                 aria-label={`${t('removeButton', preferredLanguage)} ${el.name}`}
                              >
                                 <X className="h-3 w-3"/>
                              </button>
@@ -228,7 +230,7 @@ const ElementSelector: React.FC<ElementSelectorProps> = ({
                     ))
                  )}
                  {!isLoadingSelectedDetails && selectedElementIds.length === 0 && (
-                     <span className='text-xs text-muted-foreground italic'>No parents selected</span>
+                     <span className='text-xs text-muted-foreground italic'>{t('elementSelectorNoParentsSelected', preferredLanguage)}</span>
                  )}
             </div>
 

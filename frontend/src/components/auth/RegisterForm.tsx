@@ -13,17 +13,14 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { CheckCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 // Updated imports: Get types and function from new locations
-import { type SupportedLanguage } from '@/translations/models'; // Use frontend model type
 import { t } from '@/translations/utils';
 
 interface RegisterFormProps {
     onSwitchToLogin: () => void;
-    currentLanguage: SupportedLanguage; // Prop remains the same
 }
 
-const RegisterForm: React.FC<RegisterFormProps> = ({ onSwitchToLogin, currentLanguage }) => {
-  // Get isLoading directly from useAuth
-  const { register: registerUser, isLoading, error, clearError } = useAuth();
+const RegisterForm: React.FC<RegisterFormProps> = ({ onSwitchToLogin }) => {
+  const { register: registerUser, isLoading, error, clearError, preferredLanguage } = useAuth();
   const [isSuccess, setIsSuccess] = useState(false);
   const { register, handleSubmit, formState: { errors } } = useForm<RegisterFormData>({
     resolver: zodResolver(registerSchema),
@@ -34,8 +31,8 @@ const RegisterForm: React.FC<RegisterFormProps> = ({ onSwitchToLogin, currentLan
     clearError();
     setIsSuccess(false);
     const { confirmPassword, ...apiData } = data;
-    // Pass currentLanguage (selected in AuthLayout) to the register function
-    const success = await registerUser(apiData, currentLanguage);
+    // Pass preferredLanguage (selected in AuthLayout) to the register function
+    const success = await registerUser(apiData, preferredLanguage);
     if (success) {
         setIsSuccess(true);
     } else {
@@ -44,11 +41,11 @@ const RegisterForm: React.FC<RegisterFormProps> = ({ onSwitchToLogin, currentLan
   };
 
   return (
-    <Card className="w-full max-w-sm shadow-lg border bg-white dark:bg-white text-neutral-900 dark:text-neutral-900">
-      {/* Use t() function with currentLanguage */}
+    <Card className="w-full max-w-sm shadow-lg border">
+      {/* Use t() function with preferredLanguage */}
       <CardHeader className="text-center pt-8">
-        <CardTitle className="text-2xl">{t('registerTitle', currentLanguage)}</CardTitle>
-        <CardDescription>{t('registerDescription', currentLanguage)}</CardDescription>
+        <CardTitle className="text-2xl">{t('registerTitle', preferredLanguage)}</CardTitle>
+        <CardDescription>{t('registerDescription', preferredLanguage)}</CardDescription>
       </CardHeader>
       {isSuccess ? (
          <CardContent className="space-y-4 px-6 pb-6">
@@ -69,10 +66,10 @@ const RegisterForm: React.FC<RegisterFormProps> = ({ onSwitchToLogin, currentLan
                 {error && <ErrorDisplay message={error} />}
 
                 <div className="grid gap-1.5">
-                    <Label htmlFor="reg-login">{t('loginLabel', currentLanguage)}</Label>
+                    <Label htmlFor="reg-login">{t('loginLabel', preferredLanguage)}</Label>
                     <Input
                         id="reg-login"
-                        placeholder={t('loginPlaceholder', currentLanguage)}
+                        placeholder={t('loginPlaceholder', preferredLanguage)}
                         {...register("login")}
                         aria-invalid={errors.login ? "true" : "false"}
                         className={cn(errors.login && "border-destructive focus-visible:ring-destructive")}
@@ -83,11 +80,11 @@ const RegisterForm: React.FC<RegisterFormProps> = ({ onSwitchToLogin, currentLan
                 </div>
 
                 <div className="grid gap-1.5">
-                    <Label htmlFor="reg-password">{t('passwordLabel', currentLanguage)}</Label>
+                    <Label htmlFor="reg-password">{t('passwordLabel', preferredLanguage)}</Label>
                     <Input
                         id="reg-password"
                         type="password"
-                        placeholder={t('passwordPlaceholder', currentLanguage)}
+                        placeholder={t('passwordPlaceholder', preferredLanguage)}
                         {...register("password")}
                         aria-invalid={errors.password ? "true" : "false"}
                         className={cn(errors.password && "border-destructive focus-visible:ring-destructive")}
@@ -98,11 +95,11 @@ const RegisterForm: React.FC<RegisterFormProps> = ({ onSwitchToLogin, currentLan
                 </div>
 
                 <div className="grid gap-1.5">
-                    <Label htmlFor="confirmPassword">{t('confirmPasswordLabel', currentLanguage)}</Label>
+                    <Label htmlFor="confirmPassword">{t('confirmPasswordLabel', preferredLanguage)}</Label>
                     <Input
                         id="confirmPassword"
                         type="password"
-                        placeholder={t('confirmPasswordPlaceholder', currentLanguage)}
+                        placeholder={t('confirmPasswordPlaceholder', preferredLanguage)}
                         {...register("confirmPassword")}
                         aria-invalid={errors.confirmPassword ? "true" : "false"}
                         className={cn(errors.confirmPassword && "border-destructive focus-visible:ring-destructive")}
@@ -115,10 +112,10 @@ const RegisterForm: React.FC<RegisterFormProps> = ({ onSwitchToLogin, currentLan
             <CardFooter className="flex flex-col gap-4 px-6 pb-6 pt-4">
                  {/* Disable button while auth context is loading */}
                 <Button type="submit" className="w-full" disabled={isLoading}>
-                    {isLoading ? <LoadingSpinner size="sm" className="mr-2" /> : t('createAccountButton', currentLanguage)}
+                    {isLoading ? <LoadingSpinner size="sm" className="mr-2" /> : t('createAccountButton', preferredLanguage)}
                 </Button>
                 <p className="text-center text-sm text-muted-foreground">
-                    {t('hasAccountPrompt', currentLanguage)}{" "}
+                    {t('hasAccountPrompt', preferredLanguage)}{" "}
                     <Button
                         variant="link"
                         type="button"
@@ -127,7 +124,7 @@ const RegisterForm: React.FC<RegisterFormProps> = ({ onSwitchToLogin, currentLan
                         // Disable button while auth context is loading
                         disabled={isLoading}
                     >
-                        {t('loginLink', currentLanguage)}
+                        {t('loginLink', preferredLanguage)}
                     </Button>
                 </p>
             </CardFooter>

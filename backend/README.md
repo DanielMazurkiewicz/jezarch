@@ -1,771 +1,796 @@
-# backend
+# JezArch Backend
 
-To install dependencies:
+## Quick Start
 
 ```bash
+# Install dependencies
 bun install
-```
 
-To run development server:
-
-```bash
+# Run development server (watches for changes)
 bun run dev
-# or explicitly: bun run src/main.ts
-```
 
-To run the bundled version (after `bun run build` using Bunfile.js):
-
-```bash
+# Build and run production bundle
+bun run build
 bun run ./dist/server.js
 ```
-
 
 ---
 
 # JezArch Backend API Documentation
 
-This document outlines the available API endpoints for the JezArch backend application.
+This document describes the available API endpoints for the JezArch backend.
 
-**Base URL:** The base URL depends on your server configuration (host, port, protocol - HTTP/HTTPS). Examples assume `http://localhost:8080`.
+**Base URL:** Depends on your server configuration (host, port, protocol). Examples use `http://localhost:8080`.
 
-**Authentication:**
+## Table of Contents
 
-*   Most endpoints require authentication via a session token (UUID).
-*   Include the token in the `Authorization` header of your request:
-    ```
-    Authorization: <your_session_token>
-    ```
-*   Tokens are obtained via the `/api/user/login` endpoint and expire after 24 hours (defined in `session/db.ts`).
-*   Different endpoints may require specific user roles (`admin` or `regular_user`). These requirements are noted for each endpoint.
+- [Authentication](#authentication)
+- [Roles](#roles)
+- [Common Responses](#common-responses)
+- [Search API](#search-api)
+- [Endpoints](#endpoints)
+  - [1. API Status](#1-api-status)
+  - [2. User Management](#2-user-management)
+  - [3. Notes Management](#3-notes-management)
+  - [4. Tag Management](#4-tag-management)
+  - [5. Configuration Management](#5-configuration-management)
+  - [6. Log Management](#6-log-management)
+  - [7. Signature Component Management](#7-signature-component-management)
+  - [8. Signature Element Management](#8-signature-element-management)
+  - [9. Archive Document Management](#9-archive-document-management)
+  - [10. Database Administration](#10-database-administration)
 
-**Roles:**
+---
 
-*   `admin`: Full access, including user management, configuration, deleting any resource, re-indexing signatures, managing archive documents, and viewing all logs.
-*   `regular_user`: Standard user, can manage their own notes, view/create tags, view/search signature components/elements, create/manage their own archive documents, change their own password, and view some general information (e.g., `default_language` config).
+## Authentication
 
-**Common Responses:**
+Most endpoints require authentication via a session token (UUID). Include the token in the `Authorization` header:
 
-*   `200 OK`: Request successful. Response body contains data or a success message.
-*   `201 Created`: Resource created successfully. Response body usually contains the created resource or a success message.
-*   `204 No Content`: Request successful, typically after deletion where no data is returned (used by Signature Component/Element and Archive Document disable/delete).
-*   `400 Bad Request`: The request was malformed (e.g., missing required fields, invalid JSON, invalid data types, failed schema validation, invalid ID format). Response body often contains an error message, sometimes with validation details.
-*   `401 Unauthorized`: Authentication failed or is required but was not provided (missing or invalid `Authorization` header/token, or expired token).
-*   `403 Forbidden`: Authentication succeeded, but the user does not have the necessary permissions (role or ownership) to access the resource or perform the action.
-*   `404 Not Found`: The requested resource (e.g., user, note, tag, component, element, archive document) could not be found or (in some cases) is not active.
-*   `409 Conflict`: The request could not be completed due to a conflict with the current state of the resource (e.g., trying to create a user, tag, or component with a name that already exists).
-*   `500 Internal Server Error`: An unexpected error occurred on the server. The response body may contain an error message (often generic for security). Check server logs for details.
+```
+Authorization: <your_session_token>
+```
 
-**Search API Structure:**
+Tokens are obtained via `POST /api/user/login` and expire after 24 hours.
 
-Endpoints supporting search (e.g., `/api/notes/search`, `/api/logs/search`, `/api/signature/elements/search`, `/api/archive/documents/search`) use a `POST` request with the following JSON body structure:
+## Roles
+
+| Role | Description |
+|------|-------------|
+| `admin` | Full access: user management, configuration, deleting any resource, re-indexing signatures, viewing all logs, managing archive documents. |
+| `employee` | Can manage archive documents, signature components/elements, tags, and notes. Cannot delete components or re-index. |
+| `user` | Restricted: can only view/search archive documents filtered by tags assigned by an administrator. |
+
+Users with `null` role cannot log in (account disabled).
+
+## Common Responses
+
+| Status | Meaning |
+|--------|---------|
+| `200 OK` | Request successful. Response body contains data or success message. |
+| `201 Created` | Resource created. Response body contains the created resource. |
+| `204 No Content` | Successful action with no response body (used by delete/disable endpoints). |
+| `400 Bad Request` | Malformed request: missing fields, invalid JSON, failed validation, invalid ID format. |
+| `401 Unauthorized` | Missing or invalid `Authorization` header, or expired token. |
+| `403 Forbidden` | Authenticated but insufficient permissions (wrong role or not owner). |
+| `404 Not Found` | Resource not found or not active. |
+| `409 Conflict` | Name already exists (duplicate user, tag, or component). |
+| `500 Internal Server Error` | Unexpected server error. Check server logs for details. |
+
+---
+
+## Search API
+
+Endpoints supporting search (`POST /api/notes/search`, `POST /api/logs/search`, `POST /api/signature/elements/search`, `POST /api/archive/documents/search`) accept this request body:
 
 ```json
 {
   "query": [
-    // Array of query elements combined with AND
     {
-      "field": "fieldName", // Name of the field to filter on
-      "not": false,        // Optional: Negate the condition (default: false)
-      "condition": "EQ" | "GT" | "GTE" | "LT" | "LTE" | "ANY_OF" | "FRAGMENT",
-      "value": "..."     // string, number, boolean, null, or array for ANY_OF
+      "field": "fieldName",
+      "not": false,
+      "condition": "EQ",
+      "value": "..."
     }
-    // ... more elements
   ],
-  "page": 1,         // Requested page number (1-based)
-  "pageSize": 10     // Number of items per page
+  "page": 1,
+  "pageSize": 10
 }
 ```
 
-*   **Conditions:**
-    *   `EQ`: Equal to (`=` or `IS NULL`)
-    *   `GT`: Greater than (`>`)
-    *   `GTE`: Greater than or equal to (`>=`)
-    *   `LT`: Less than (`<`)
-    *   `LTE`: Less than or equal to (`<=`)
-    *   `ANY_OF`: Field value must be one of the values in the `value` array (`IN (...)`). Requires `value` to be an array. Handles `NOT IN` if `not: true`.
-    *   `FRAGMENT`: Field value contains the `value` string (case-sensitive `LIKE %...%`). Requires `value` to be a string. Handles `NOT LIKE` if `not: true`.
-*   **Response:** The search endpoints return a `SearchResponse<T>` object:
-    ```json
-    {
-      "data": [ /* Array of results (e.g., Note, LogEntry, SignatureElementSearchResult, ArchiveDocumentSearchResult) */ ],
-      "page": 1,
-      "pageSize": 10,
-      "totalSize": 55, // Total number of matching items across all pages
-      "totalPages": 6  // Total number of pages
-    }
-    ```
-*   **Custom Search Fields/Handlers:** Some search endpoints support special fields handled by custom logic:
-    *   `/api/notes/search`: `tags` (field) with `ANY_OF` (condition) expects an array of `tagId` numbers in `value`.
-    *   `/api/signature/elements/search`:
-        *   `parentIds` (field) with `ANY_OF` (condition) expects an array of parent `signatureElementId` numbers in `value`.
-        *   `hasParents` (field) with `EQ` (condition) expects a boolean `value` (true/false) to find elements that have/don't have any parents.
-        *   `componentName` (field) with `FRAGMENT` (condition) expects a string `value` to search fragment by the name of the associated component (JOINs `signature_components`).
-        *   `componentName` (field) with `EQ` (condition) expects a string `value` to search exact match by the name of the associated component (JOINs `signature_components`).
-    *   `/api/archive/documents/search`:
-        *   `tags` (field) with `ANY_OF` (condition) expects an array of `tagId` numbers in `value`.
-        *   `topographicSignaturePrefix` (field) with `ANY_OF` (condition) expects an array of arrays of element IDs (`number[][]`) in `value`. Matches documents where *any* topographic signature starts with *any* of the provided prefixes.
-        *   `descriptiveSignaturePrefix` (field) with `ANY_OF` (condition) expects an array of arrays of element IDs (`number[][]`) in `value`. Matches documents where *any* descriptive signature starts with *any* of the provided prefixes.
-        *   `active` (field): By default, searches only return `active: true` documents. Admins can override this by including `{ "field": "active", "condition": "EQ", "value": false/true }` in the query. Non-admins attempting to search by `active` will have this filter ignored.
+### Conditions
+
+| Condition | Description | Value Type |
+|-----------|-------------|------------|
+| `EQ` | Equal to (`=`) or `IS NULL` when value is `null` | `string`, `number`, `boolean`, `null` |
+| `GT` | Greater than (`>`) | `number` |
+| `GTE` | Greater than or equal to (`>=`) | `number` |
+| `LT` | Less than (`<`) | `number` |
+| `LTE` | Less than or equal to (`<=`) | `number` |
+| `ANY_OF` | Value must be one of the items in the array (`IN (...)`) | `array` |
+| `FRAGMENT` | Case-sensitive substring match (`LIKE %...%`) | `string` |
+| `STARTS_WITH` | Signature path starts with given element ID sequence | `number[]` |
+| `CONTAINS_SEQUENCE` | Signature path contains given element ID sequence | `number[]` |
+
+Set `"not": true` to negate any condition (e.g., `NOT IN`, `NOT LIKE`).
+
+### Response Format
+
+All search endpoints return:
+
+```json
+{
+  "data": [],
+  "page": 1,
+  "pageSize": 10,
+  "totalSize": 55,
+  "totalPages": 6
+}
+```
+
+### Custom Search Fields
+
+Some endpoints support special fields handled by custom logic. See individual endpoint documentation below.
 
 ---
 
-## API Endpoints
+## Endpoints
 
 ### 1. API Status
 
-Endpoints to check the basic health and status of the API.
+Health check endpoints.
 
-*   **GET `/api/api/status`**
-    *   **Description:** Checks if the API is running.
-    *   **Authentication:** None required.
-    *   **Responses:**
-        *   `200 OK`: `{"message": "API is working"}`
+**`GET /api/api/status`** — No authentication required.
 
-*   **GET `/api/api/ping`**
-    *   **Description:** Simple ping endpoint.
-    *   **Authentication:** None required.
-    *   **Responses:**
-        *   `200 OK`: Plain text `PONG`
+Response `200 OK`:
+```json
+{ "message": "API is working" }
+```
+
+**`GET /api/api/ping`** — No authentication required.
+
+Response `200 OK`: Plain text `PONG`
+
+---
 
 ### 2. User Management
 
-Endpoints for user creation, authentication, and administration.
+**`POST /api/user/create`** — Register a new user. No authentication required.
 
-*   **POST `/api/user/create`**
-    *   **Description:** Creates a new user with the `regular_user` role. *(Security Note: Currently requires no authentication. Consider restricting this endpoint).*
-    *   **Authentication:** None required.
-    *   **Request Body:** (`userSchema`)
-        ```json
-        {
-          "login": "newuser",
-          "password": "Password123", // Min 8 chars, 1 upper, 1 lower, 1 digit (enforced by schema)
-          "role": "regular_user" // Optional, ignored by controller (always 'regular_user')
-        }
-        ```
-    *   **Responses:**
-        *   `201 Created`: `{"login": "newuser", "message": "User created successfully"}`
-        *   `400 Bad Request`: Invalid input data (doesn't match schema) or `Username already exists`.
-        *   `500 Internal Server Error`: Failed to create user (e.g., DB error).
+Request body:
+```json
+{
+  "login": "newuser",
+  "password": "Password123",
+  "preferredLanguage": "en"
+}
+```
 
-*   **POST `/api/user/login`**
-    *   **Description:** Authenticates a user and returns a session token (UUID) valid for 24 hours.
-    *   **Authentication:** None required.
-    *   **Request Body:** (`UserCredentials`)
-        ```json
-        {
-          "login": "username",
-          "password": "password"
-        }
-        ```
-    *   **Responses:**
-        *   `200 OK`: `{"token": "uuid-session-token", "role": "admin" | "regular_user", "login": "username"}`
-        *   `401 Unauthorized`: `Invalid credentials` (login/password mismatch).
-        *   `500 Internal Server Error`: `Login doesn't exist` (rare) or other DB/login error.
+- `login`: 3–50 characters, required.
+- `password`: Min 8 chars, 1 uppercase, 1 lowercase, 1 digit. Required.
+- `preferredLanguage`: `"en"` or `"pl"`. Optional, defaults to `"en"`.
 
-*   **POST `/api/user/logout`**
-    *   **Description:** Invalidates the user's current session token provided in the `Authorization` header.
-    *   **Authentication:** Required (Any authenticated user).
-    *   **Responses:**
-        *   `200 OK`: Plain text `Logged out`
-        *   `400 Bad Request`: Missing `Authorization` header.
-        *   `500 Internal Server Error`: Failed to delete session.
+Response `201 Created`:
+```json
+{
+  "userId": 2,
+  "login": "newuser",
+  "role": null,
+  "preferredLanguage": "en"
+}
+```
 
-*   **GET `/api/users/all`**
-    *   **Description:** Retrieves a list of all users (passwords omitted).
-    *   **Authentication:** Required (Role: `admin` or `regular_user`).
-    *   **Responses:**
-        *   `200 OK`: `[{"userId": 1, "login": "admin", "role": "admin", "password": ""}, ...]`
-        *   `401 Unauthorized`
-        *   `403 Forbidden`
-        *   `500 Internal Server Error`
+New users have `role: null` and cannot log in until an admin assigns a role.
 
-*   **GET `/api/user/by-login/:login`**
-    *   **Description:** Retrieves a specific user by their login name (password omitted).
-    *   **Authentication:** Required (Role: `admin`).
-    *   **Path Parameters:**
-        *   `login`: The login name of the user to retrieve.
-    *   **Responses:**
-        *   `200 OK`: `{"userId": 1, "login": "admin", "role": "admin", "password": ""}`
-        *   `401 Unauthorized`
-        *   `403 Forbidden`
-        *   `404 Not Found`: `{"message": "User not found"}`
-        *   `500 Internal Server Error`
+---
 
-*   **PATCH `/api/user/by-login/:login`**
-    *   **Description:** Updates the role of a specific user.
-    *   **Authentication:** Required (Role: `admin`).
-    *   **Path Parameters:**
-        *   `login`: The login name of the user to update.
-    *   **Request Body:**
-        ```json
-        {
-          "role": "admin" | "regular_user" // Required
-        }
-        ```
-    *   **Responses:**
-        *   `200 OK`: `{"message": "User role updated successfully"}`
-        *   `400 Bad Request`: Invalid/missing `role` in body.
-        *   `401 Unauthorized`
-        *   `403 Forbidden`
-        *   `404 Not Found`: User not found (DB update affects 0 rows, returns 200).
-        *   `500 Internal Server Error`
+**`POST /api/user/login`** — Authenticate and get a session token. No authentication required.
 
-*   **POST `/api/user/change-password`**
-    *   **Description:** Allows the authenticated user to change their own password. *(Note: Does not currently validate new password complexity)*.
-    *   **Authentication:** Required (Role: `admin` or `regular_user`).
-    *   **Request Body:**
-        ```json
-        {
-          "oldPassword": "currentPassword", // Required
-          "password": "NewSecurePassword1" // Required (New password)
-        }
-        ```
-    *   **Responses:**
-        *   `200 OK`: `{"message": "User role updated successfully"}` *(Note: Success message is incorrect)*.
-        *   `400 Bad Request`: Missing fields in body. *(Note: New password complexity not validated here)*.
-        *   `401 Unauthorized`: `Invalid password` (if `oldPassword` is incorrect).
-        *   `403 Forbidden` (Should not occur with current role check).
-        *   `500 Internal Server Error`
+Request body:
+```json
+{
+  "login": "username",
+  "password": "password"
+}
+```
+
+Response `200 OK`:
+```json
+{
+  "token": "uuid-session-token",
+  "userId": 1,
+  "login": "username",
+  "role": "admin",
+  "preferredLanguage": "en",
+  "assignedTags": []
+}
+```
+
+- `role`: `"admin"`, `"employee"`, `"user"`, or `null` (disabled).
+- `assignedTags`: Array of tag objects (relevant for `user` role).
+
+---
+
+**`POST /api/user/logout`** — Invalidate current session. Requires authentication.
+
+Response `204 No Content`
+
+---
+
+**`GET /api/users/all`** — List all users. Requires authentication (any role).
+
+Response `200 OK`:
+```json
+[
+  {
+    "userId": 1,
+    "login": "admin",
+    "role": "admin",
+    "preferredLanguage": "en",
+    "assignedTags": []
+  }
+]
+```
+
+---
+
+**`GET /api/user/by-login/:login`** — Get a specific user by login. Requires authentication (admin, or self).
+
+Response `200 OK`:
+```json
+{
+  "userId": 1,
+  "login": "admin",
+  "role": "admin",
+  "preferredLanguage": "en",
+  "assignedTags": []
+}
+```
+
+---
+
+**`PATCH /api/user/by-login/:login`** — Update a user's role. Requires authentication (admin only). Cannot change your own role.
+
+Request body:
+```json
+{
+  "role": "employee"
+}
+```
+
+`role` must be `"admin"`, `"employee"`, `"user"`, or `null`. Changing away from `"user"` automatically clears assigned tags.
+
+Response `200 OK`:
+```json
+{ "message": "User role updated successfully" }
+```
+
+---
+
+**`POST /api/user/change-password`** — Change your own password. Requires authentication (any role).
+
+Request body:
+```json
+{
+  "oldPassword": "currentPassword",
+  "password": "NewSecurePassword1"
+}
+```
+
+Response `204 No Content`
+
+---
+
+**`PATCH /api/user/by-login/:login/set-password`** — Admin sets another user's password. Requires authentication (admin only). Cannot set your own password.
+
+Request body:
+```json
+{
+  "password": "NewSecurePassword1"
+}
+```
+
+Response `204 No Content`
+
+---
+
+**`PATCH /api/user/by-login/:login/language`** — Update a user's preferred language. Requires authentication (admin, or self).
+
+Request body:
+```json
+{
+  "preferredLanguage": "pl"
+}
+```
+
+`preferredLanguage` must be `"en"` or `"pl"`.
+
+Response `200 OK`: Returns the updated user object.
+
+---
+
+**`GET /api/user/by-login/:login/tags`** — Get tags assigned to a user. Requires authentication (admin only). Returns empty array if user's role is not `"user"`.
+
+Response `200 OK`:
+```json
+[
+  { "tagId": 1, "name": "Historical", "description": "..." }
+]
+```
+
+---
+
+**`PUT /api/user/by-login/:login/tags`** — Assign tags to a `user`-role account. Requires authentication (admin only). Replaces existing tags.
+
+Request body:
+```json
+{
+  "tagIds": [1, 3, 5]
+}
+```
+
+Response `200 OK`: Returns the updated tag list.
+
+---
 
 ### 3. Notes Management
 
-Endpoints for creating, reading, updating, deleting, and searching notes. Notes belong to users. Tags are managed via `tagIds`.
+**`PUT /api/note`** — Create a new note. Requires authentication (admin or employee).
 
-*   **PUT `/api/note`** (Should likely be POST for creation)
-    *   **Description:** Creates a new note for the authenticated user. Can optionally associate existing tags.
-    *   **Authentication:** Required (Role: `admin` or `regular_user`).
-    *   **Request Body:** (`NoteInput`, validated by `noteInputSchema` implicitly or explicitly later)
-        ```json
-        {
-          "title": "My Note Title", // Required, non-empty
-          "content": "Note content here.", // Required
-          "shared": false,      // Optional, defaults to false
-          "tagIds": [1, 5, 10]  // Optional: Array of existing Tag IDs to associate
-        }
-        ```
-    *   **Responses:**
-        *   `201 Created`: `{"message": "Note created successfully"}`
-        *   `400 Bad Request`: Invalid input (e.g., missing title/content, non-integer `tagIds`).
-        *   `401 Unauthorized`
-        *   `403 Forbidden`
-        *   `500 Internal Server Error` (e.g., DB error).
+Request body:
+```json
+{
+  "title": "My Note Title",
+  "content": "Note content here.",
+  "shared": false,
+  "tagIds": [1, 5, 10]
+}
+```
 
-*   **GET `/api/note/id/:noteId`**
-    *   **Description:** Retrieves a specific note by its ID. Only the owner or an admin can retrieve a note. *(Note: Tags are **not** populated in the response currently)*.
-    *   **Authentication:** Required (Role: `admin` or `regular_user`). User must be the owner or an admin.
-    *   **Path Parameters:**
-        *   `noteId`: The integer ID of the note.
-    *   **Responses:**
-        *   `200 OK`: `{ "noteId": 1, "title": "...", "content": "...", "shared": false, "ownerUserId": 5, "createdOn": "...", "modifiedOn": "...", "tags": null | [] }` *(Code returns DB result directly, tags field likely missing or null unless populated)*
-        *   `400 Bad Request`: Invalid `noteId`.
-        *   `401 Unauthorized`
-        *   `403 Forbidden`: Authenticated user is not the owner and not an admin.
-        *   `404 Not Found`: `{"message": "Note not found"}`
-        *   `500 Internal Server Error`
+- `title`: Required, non-empty.
+- `content`: Required.
+- `shared`: Optional, defaults to `false`.
+- `tagIds`: Optional array of existing tag IDs.
 
-*   **PATCH `/api/note/id/:noteId`**
-    *   **Description:** Updates a specific note. Only the owner or an admin can update. Fields are optional. `tagIds` replaces existing tags if provided.
-    *   **Authentication:** Required (Role: `admin` or `regular_user`). User must be the owner or an admin.
-    *   **Path Parameters:**
-        *   `noteId`: The integer ID of the note.
-    *   **Request Body:** (Partial `NoteInput`)
-        ```json
-        {
-          "title": "Updated Title", // Optional
-          "content": "Updated content.", // Optional
-          "shared": true,           // Optional
-          "tagIds": [2, 8]          // Optional: Replaces existing tags
-        }
-        ```
-    *   **Responses:**
-        *   `200 OK`: `{"message": "Note updated successfully"}`
-        *   `400 Bad Request`: Invalid `noteId` or input body.
-        *   `401 Unauthorized`
-        *   `403 Forbidden`: Authenticated user is not the owner and not an admin.
-        *   `404 Not Found`: `{"message": "Note not found"}` (Checked before update).
-        *   `500 Internal Server Error`
+Response `201 Created`: `{"message": "Note created successfully"}`
 
-*   **DELETE `/api/note/id/:noteId`**
-    *   **Description:** Deletes a specific note. Associated tags are removed via DB cascade (`note_tags`).
-    *   **Authentication:** Required (Role: `admin`).
-    *   **Path Parameters:**
-        *   `noteId`: The integer ID of the note.
-    *   **Responses:**
-        *   `200 OK`: `{"message": "Note deleted successfully"}`
-        *   `400 Bad Request`: Invalid `noteId`.
-        *   `401 Unauthorized`
-        *   `403 Forbidden`
-        *   `404 Not Found`: Note not found (DB delete affects 0 rows, returns 200).
-        *   `500 Internal Server Error`
+---
 
-*   **GET `/api/notes/by-login/:login`**
-    *   **Description:** Retrieves all notes owned by the user specified by login. *(Security Note: Any logged-in user can view any other user's notes list currently)*.
-    *   **Authentication:** Required (Role: `admin` or `regular_user`).
-    *   **Path Parameters:**
-        *   `login`: The login name of the user.
-    *   **Responses:**
-        *   `200 OK`: `[ { "noteId": 1, "title": "...", ... }, ... ]`
-        *   `401 Unauthorized`
-        *   `403 Forbidden`
-        *   `500 Internal Server Error`: `{"message": "Internal server issue"}` (if user login doesn't exist) or DB error.
+**`GET /api/note/id/:noteId`** — Get a specific note. Requires authentication (admin or employee). Must be owner or admin.
 
-*   **POST `/api/notes/search`**
-    *   **Description:** Searches notes based on criteria. *(Note: Searches all notes, access control based on results isn't implemented)*.
-    *   **Authentication:** Required (Role: `admin` or `regular_user`).
-    *   **Request Body:** See [Search API Structure](#search-api-structure).
-        *   Allowed direct fields: `title`, `content`, `shared`, `ownerUserId`.
-        *   Custom handler: `tags` (`condition: "ANY_OF"`, `value`: `tagId[]`).
-    *   **Responses:**
-        *   `200 OK`: `SearchResponse<Note>`
-        *   `400 Bad Request`: Invalid search query.
-        *   `401 Unauthorized`
-        *   `403 Forbidden`
-        *   `500 Internal Server Error`
+Response `200 OK`:
+```json
+{
+  "noteId": 1,
+  "title": "...",
+  "content": "...",
+  "shared": false,
+  "ownerUserId": 5,
+  "createdOn": "...",
+  "modifiedOn": "..."
+}
+```
+
+---
+
+**`PATCH /api/note/id/:noteId`** — Update a note. Requires authentication (admin or employee). Must be owner or admin. Fields are optional; `tagIds` replaces existing tags.
+
+Request body:
+```json
+{
+  "title": "Updated Title",
+  "content": "Updated content.",
+  "shared": true,
+  "tagIds": [2, 8]
+}
+```
+
+Response `200 OK`: `{"message": "Note updated successfully"}`
+
+---
+
+**`DELETE /api/note/id/:noteId`** — Delete a note. Requires authentication (admin only). Associated tag links removed via cascade.
+
+Response `200 OK`: `{"message": "Note deleted successfully"}`
+
+---
+
+**`GET /api/notes/by-login/:login`** — Get all notes owned by a user. Requires authentication (admin or employee).
+
+Response `200 OK`: Array of note objects.
+
+---
+
+**`POST /api/notes/search`** — Search notes. Requires authentication (admin or employee).
+
+Allowed fields: `title`, `content`, `shared`, `ownerUserId`, `createdOn`, `modifiedOn`.
+
+Custom handler: `tags` with `ANY_OF` condition — `value` is an array of `tagId` numbers.
+
+Response `200 OK`: `SearchResponse<Note>`
+
+---
 
 ### 4. Tag Management
 
-Endpoints for managing tags (used by Notes and Archive Documents).
+**`PUT /api/tag`** — Create a new tag. Requires authentication (admin or employee). Tag names must be unique.
 
-*   **PUT `/api/tag`** (Should likely be POST for creation)
-    *   **Description:** Creates a new tag. Tag names must be unique (case-sensitive).
-    *   **Authentication:** Required (Role: `admin` or `regular_user`).
-    *   **Request Body:** (`tagSchema`)
-        ```json
-        {
-          "name": "Important", // Required, Max 50 chars, non-empty, unique
-          "description": "Tag for important items" // Optional, Max 255 chars
-        }
-        ```
-    *   **Responses:**
-        *   `201 Created`: `{ "tagId": 1, "name": "Important", "description": "..." }` (Returns created tag).
-        *   `400 Bad Request`: `{"message": "Tag name is required"}` or schema validation fail.
-        *   `401 Unauthorized`
-        *   `403 Forbidden`
-        *   `409 Conflict`: `{"message": "Tag name '...' already exists."}` (DB constraint).
-        *   `500 Internal Server Error`: `{"message": "Failed to create tag"}`.
+Request body:
+```json
+{
+  "name": "Important",
+  "description": "Tag for important items"
+}
+```
 
-*   **GET `/api/tags`**
-    *   **Description:** Retrieves a list of all tags, ordered by name.
-    *   **Authentication:** Required (Role: `admin` or `regular_user`).
-    *   **Responses:**
-        *   `200 OK`: `[{"tagId": 1, "name": "...", "description": "..."}, ...]`
-        *   `401 Unauthorized`
-        *   `403 Forbidden`
-        *   `500 Internal Server Error`
+Response `201 Created`:
+```json
+{ "tagId": 1, "name": "Important", "description": "Tag for important items" }
+```
 
-*   **GET `/api/tag/id/:tagId`**
-    *   **Description:** Retrieves a specific tag by its ID.
-    *   **Authentication:** Required (Role: `admin` or `regular_user`).
-    *   **Path Parameters:**
-        *   `tagId`: The integer ID of the tag.
-    *   **Responses:**
-        *   `200 OK`: `{"tagId": 1, "name": "...", "description": "..."}`
-        *   `400 Bad Request`: `{"message": "Invalid tag ID"}`.
-        *   `401 Unauthorized`
-        *   `403 Forbidden`
-        *   `404 Not Found`: `{"message": "Tag not found"}`.
-        *   `500 Internal Server Error`
+---
 
-*   **PATCH `/api/tag/id/:tagId`**
-    *   **Description:** Updates a specific tag's name and/or description. Name must remain unique.
-    *   **Authentication:** Required (Role: `admin`).
-    *   **Path Parameters:**
-        *   `tagId`: The integer ID of the tag.
-    *   **Request Body:** (Partial Tag, `tagSchema` constraints apply)
-        ```json
-        {
-          "name": "Updated Tag Name", // Optional, Max 50, unique
-          "description": ""          // Optional, Max 255. Can be empty/null.
-        }
-        ```
-    *   **Responses:**
-        *   `200 OK`: `{ "tagId": 1, "name": "...", "description": "..." }` (Returns updated tag).
-        *   `400 Bad Request`: `{"message": "Invalid tag ID"}` or `{"message": "Tag name cannot be empty"}`.
-        *   `401 Unauthorized`
-        *   `403 Forbidden`
-        *   `404 Not Found`: `{"message": "Tag not found"}` (Checked before update).
-        *   `409 Conflict`: `{"message": "Tag name '...' already exists."}`.
-        *   `500 Internal Server Error`
+**`GET /api/tags`** — List all tags, ordered by name. Requires authentication (admin or employee).
 
-*   **DELETE `/api/tag/id/:tagId`**
-    *   **Description:** Deletes a specific tag. Associations in `note_tags` and `archive_document_tags` are removed via DB cascade.
-    *   **Authentication:** Required (Role: `admin`).
-    *   **Path Parameters:**
-        *   `tagId`: The integer ID of the tag.
-    *   **Responses:**
-        *   `200 OK`: `{"message": "Tag deleted successfully"}`
-        *   `400 Bad Request`: `{"message": "Invalid tag ID"}`.
-        *   `401 Unauthorized`
-        *   `403 Forbidden`
-        *   `404 Not Found`: `{"message": "Tag not found"}` (Checked before delete).
-        *   `500 Internal Server Error`
+Response `200 OK`:
+```json
+[
+  { "tagId": 1, "name": "Important", "description": "..." }
+]
+```
+
+---
+
+**`GET /api/tag/id/:tagId`** — Get a specific tag. Requires authentication (admin or employee).
+
+Response `200 OK`: Tag object.
+
+---
+
+**`PATCH /api/tag/id/:tagId`** — Update a tag. Requires authentication (admin only). Name must remain unique.
+
+Request body:
+```json
+{
+  "name": "Updated Name",
+  "description": "New description"
+}
+```
+
+Response `200 OK`: Updated tag object.
+
+---
+
+**`DELETE /api/tag/id/:tagId`** — Delete a tag. Requires authentication (admin only). Association links removed via cascade.
+
+Response `200 OK`: `{"message": "Tag deleted successfully"}`
+
+---
 
 ### 5. Configuration Management
 
-Endpoints for managing application configuration.
+**`GET /api/config/default-language`** — Get the default language. No authentication required.
 
-*   **GET `/api/configs/:key`**
-    *   **Description:** Retrieves a specific configuration value.
-    *   **Authentication:** Required. Role `admin` required for `port`, `ssl_key`, `ssl_cert`. `admin` or `regular_user` allowed for `default_language`.
-    *   **Path Parameters:**
-        *   `key`: The config key (`AppConfigKeys`: `default_language`, `port`, `ssl_key`, `ssl_cert`).
-    *   **Responses:**
-        *   `200 OK`: `{"key_name": "value"}` or `{"key_name": null}` if not set.
-        *   `401 Unauthorized`
-        *   `403 Forbidden`
-        *   `404 Not Found` (Key itself invalid - returns 500 as `getConfig` likely fails).
-        *   `500 Internal Server Error`
+Response `200 OK`:
+```json
+{ "defaultLanguage": "en" }
+```
 
-*   **PUT `/api/configs/:key`**
-    *   **Description:** Sets or updates a configuration value. ***Note: The `:key` in the path is ignored. Key/Value must be in the body.***
-    *   **Authentication:** Required (Role: `admin`).
-    *   **Request Body:** (`Config`)
-        ```json
-        {
-          "key": "port", // Key from AppConfigKeys enum
-          "value": "8080" // Value as string
-        }
-        ```
-    *   **Responses:**
-        *   `200 OK`: `{"message": "Config updated successfully"}`
-        *   `400 Bad Request`: Invalid/missing `key` or `value`.
-        *   `401 Unauthorized`
-        *   `403 Forbidden`
-        *   `500 Internal Server Error`
+---
 
-*   **PUT `/api/config/ssl/upload`**
-    *   **Description:** Uploads SSL key and certificate strings.
-    *   **Authentication:** Required (Role: `admin`).
-    *   **Request Body:** (`SslConfig`)
-        ```json
-        {
-          "key": "-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----\n", // Required PEM string
-          "cert": "-----BEGIN CERTIFICATE-----\n...\n-----END CERTIFICATE-----\n" // Required PEM string
-        }
-        ```
-    *   **Responses:**
-        *   `200 OK`: `{"message": "SSL configuration updated successfully"}`
-        *   `400 Bad Request`: `{"message": "Key and certificate are required"}`.
-        *   `401 Unauthorized`
-        *   `403 Forbidden`
-        *   `500 Internal Server Error`
+**`GET /api/configs/:key`** — Get a configuration value. Requires authentication.
 
-*   **POST `/api/config/ssl/generate`**
-    *   **Description:** Generates and saves a self-signed SSL certificate/key. *(Note: Implementation in `generateSelfSignedCert` is likely a placeholder)*.
-    *   **Authentication:** Required (Role: `admin`).
-    *   **Responses:**
-        *   `201 Created`: `{"message": "Self-signed SSL certificate generated and saved"}`
-        *   `401 Unauthorized`
-        *   `403 Forbidden`
-        *   `500 Internal Server Error`
+- `admin` can read all keys.
+- `employee` can read: `default_language`, `http_port`, `https_port`.
+
+Sensitive paths (`https_key_path`, `https_cert_path`, `https_ca_path`) return `"*** SET (Path Hidden) ***"` for non-admins.
+
+Response `200 OK`:
+```json
+{ "key_name": "value" }
+```
+
+---
+
+**`PUT /api/configs/:key`** — Set a configuration value. Requires authentication (admin only). The `:key` in the URL is informational; the key must also be in the body.
+
+Request body:
+```json
+{
+  "key": "http_port",
+  "value": "9000"
+}
+```
+
+Valid keys: `default_language`, `http_port`, `https_port`, `https_key_path`, `https_cert_path`, `https_ca_path`.
+
+Response `200 OK`:
+```json
+{ "message": "Config 'http_port' updated successfully. Manual server restart required for changes to take effect." }
+```
+
+Port changes require manual server restart. HTTPS path changes trigger automatic TLS reload.
+
+---
+
+**`DELETE /api/config/https`** — Clear all HTTPS settings and stop the HTTPS server. Requires authentication (admin only).
+
+Response `200 OK`:
+```json
+{ "message": "HTTPS configuration cleared successfully. HTTPS server stopped." }
+```
+
+---
 
 ### 6. Log Management
 
-Endpoints for accessing application logs.
+**`POST /api/logs/search`** — Search log entries. Requires authentication (admin only).
 
-*   **GET `/api/logs/all`**
-    *   **Description:** Retrieves all log entries, ordered most recent first.
-    *   **Authentication:** Required (Role: `admin`).
-    *   **Responses:**
-        *   `200 OK`: `[ { "id": 1, "level": "info", "createdOn": "...", "userId": "admin", ... "data": "{\"details\":\"...\"}" }, ... ]`
-        *   `401 Unauthorized`
-        *   `403 Forbidden`
-        *   `500 Internal Server Error`
+Allowed fields: `level`, `createdOn`, `userId`, `category`, `message`.
 
-*   **POST `/api/logs/search`**
-    *   **Description:** Searches log entries.
-    *   **Authentication:** Required (Role: `admin`).
-    *   **Request Body:** See [Search API Structure](#search-api-structure).
-        *   Allowed fields: `level`, `createdOn`, `userId`, `category`, `message`.
-    *   **Responses:**
-        *   `200 OK`: `SearchResponse<LogEntry>`
-        *   `400 Bad Request`: Invalid search query.
-        *   `401 Unauthorized`
-        *   `403 Forbidden`
-        *   `500 Internal Server Error`
+Response `200 OK`: `SearchResponse<LogEntry>`
+
+---
+
+**`DELETE /api/logs/purge`** — Purge old log entries. Requires authentication (admin only).
+
+Query parameter: `days` (number of days to keep, defaults to 7).
+
+Example: `DELETE /api/logs/purge?days=30`
+
+Response `200 OK`:
+```json
+{
+  "message": "Successfully purged 150 log entries older than 30 days.",
+  "deletedCount": 150
+}
+```
+
+---
 
 ### 7. Signature Component Management
 
-Manage signature components (categories for elements, define indexing).
+**`PUT /api/signature/component`** — Create a new component. Requires authentication (admin only).
 
-*   **PUT `/api/signature/component`** (Should likely be POST for creation)
-    *   **Description:** Creates a new signature component. Name must be unique. `index_count` starts at 0.
-    *   **Authentication:** Required (Role: `admin`).
-    *   **Request Body:** (`createSignatureComponentSchema`)
-        ```json
-        {
-          "name": "Component Name", // Required, unique, 1-100 chars
-          "description": "Optional description", // Optional, max 500 chars
-          "index_type": "dec" // Optional: "dec" | "roman" | "small_char" | "capital_char". Default: "dec"
-        }
-        ```
-    *   **Responses:**
-        *   `201 Created`: `{ "signatureComponentId": 1, "name": "...", "description": "...", "index_count": 0, "index_type": "dec", "createdOn": "...", "modifiedOn": "..." }` (Returns created component).
-        *   `400 Bad Request`: `{"message": "Invalid input", "errors": {...}}` or `{"message": "Invalid index_type..."}`.
-        *   `401 Unauthorized`
-        *   `403 Forbidden`
-        *   `409 Conflict`: `{"message": "Component name '...' already exists."}`.
-        *   `500 Internal Server Error`
+Request body:
+```json
+{
+  "name": "Series",
+  "description": "A group of related records",
+  "index_type": "dec"
+}
+```
 
-*   **GET `/api/signature/components`**
-    *   **Description:** Retrieves all signature components, ordered by name.
-    *   **Authentication:** Required (Role: `admin` or `regular_user`).
-    *   **Responses:**
-        *   `200 OK`: `[{"signatureComponentId": 1, "name": "...", "index_count": 5, ...}, ...]`
-        *   `401 Unauthorized`
-        *   `403 Forbidden`
-        *   `500 Internal Server Error`
+- `name`: Required, 1–100 chars, unique.
+- `description`: Optional, max 500 chars.
+- `index_type`: `"dec"` (decimal), `"roman"`, `"small_char"`, or `"capital_char"`. Defaults to `"dec"`.
 
-*   **GET `/api/signature/component/:id`**
-    *   **Description:** Retrieves a specific signature component by ID.
-    *   **Authentication:** Required (Role: `admin` or `regular_user`).
-    *   **Path Parameters:**
-        *   `id`: The integer ID of the component.
-    *   **Responses:**
-        *   `200 OK`: `{ "signatureComponentId": 1, "name": "...", ... }`
-        *   `400 Bad Request`: `{"message": "Invalid component ID"}`.
-        *   `401 Unauthorized`
-        *   `403 Forbidden`
-        *   `404 Not Found`: `{"message": "Component not found"}`.
-        *   `500 Internal Server Error`
+Response `201 Created`: Created component object with `index_count: 0`.
 
-*   **PATCH `/api/signature/component/:id`**
-    *   **Description:** Updates a component's name, description, or index type. Name must remain unique. `index_count` is not updated here.
-    *   **Authentication:** Required (Role: `admin`).
-    *   **Path Parameters:**
-        *   `id`: The integer ID of the component.
-    *   **Request Body:** (Partial component, `updateSignatureComponentSchema`)
-        ```json
-        {
-          "name": "Updated Name",      // Optional, unique, 1-100 chars
-          "description": "New desc",   // Optional, max 500, nullable
-          "index_type": "roman"        // Optional: "dec" | "roman" | "small_char" | "capital_char"
-        }
-        ```
-    *   **Responses:**
-        *   `200 OK`: `{ "signatureComponentId": 1, "name": "...", ... }` (Returns updated component).
-        *   `400 Bad Request`: `{"message": "Invalid component ID"}` or `{"message": "Invalid input", "errors": {...}}` or `{"message": "Invalid index_type..."}`.
-        *   `401 Unauthorized`
-        *   `403 Forbidden`
-        *   `404 Not Found`: `{"message": "Component not found"}` (Checked before update).
-        *   `409 Conflict`: `{"message": "Component name '...' already exists."}`.
-        *   `500 Internal Server Error`
+---
 
-*   **DELETE `/api/signature/component/:id`**
-    *   **Description:** Deletes a component and all its associated elements (DB cascade).
-    *   **Authentication:** Required (Role: `admin`).
-    *   **Path Parameters:**
-        *   `id`: The integer ID of the component.
-    *   **Responses:**
-        *   `204 No Content`: Successful deletion.
-        *   `400 Bad Request`: `{"message": "Invalid component ID"}`.
-        *   `401 Unauthorized`
-        *   `403 Forbidden`
-        *   `404 Not Found`: `{"message": "Component not found"}` (Checked before delete).
-        *   `500 Internal Server Error`
+**`GET /api/signature/components`** — List all components. Requires authentication (admin or employee).
 
-*   **POST `/api/signature/components/id/:id/reindex`**
-    *   **Description:** Re-calculates and updates the `index` field for all elements within the specified component, based on their alphabetical order and the component's `index_type`. Resets the component's `index_count`.
-    *   **Authentication:** Required (Role: `admin`).
-    *   **Path Parameters:**
-        *   `id`: The integer ID of the component to re-index.
-    *   **Responses:**
-        *   `200 OK`: `{"message": "Successfully re-indexed 15 elements.", "finalCount": 15}`
-        *   `400 Bad Request`: `{"message": "Invalid component ID"}`.
-        *   `401 Unauthorized`
-        *   `403 Forbidden`
-        *   `404 Not Found`: `{"message": "Component with ID ... not found"}`.
-        *   `500 Internal Server Error`: `{"message": "Failed to re-index elements", "error": "..."}` or `{"message": "Re-indexing failed during element update", "error": "..."}`.
+Response `200 OK`: Array of component objects.
+
+---
+
+**`GET /api/signature/component/:id`** — Get a specific component. Requires authentication (admin or employee).
+
+Response `200 OK`: Component object.
+
+---
+
+**`PATCH /api/signature/component/:id`** — Update a component. Requires authentication (admin only). Name must remain unique.
+
+Request body:
+```json
+{
+  "name": "Updated Name",
+  "description": "New description",
+  "index_type": "roman"
+}
+```
+
+Response `200 OK`: Updated component object.
+
+---
+
+**`DELETE /api/signature/component/:id`** — Delete a component and all its elements (cascade). Requires authentication (admin only).
+
+Response `204 No Content`
+
+---
+
+**`POST /api/signature/components/id/:id/reindex`** — Recalculate all element indices within a component. Requires authentication (admin only). Sorts elements alphabetically and assigns indices based on the component's `index_type`.
+
+Response `200 OK`:
+```json
+{
+  "message": "Successfully re-indexed 15 elements.",
+  "finalCount": 15
+}
+```
+
+---
 
 ### 8. Signature Element Management
 
-Manage signature elements within components, including their parent relationships and indices.
+**`PUT /api/signature/element`** — Create a new element. Requires authentication (admin or employee).
 
-*   **PUT `/api/signature/element`** (Should likely be POST for creation)
-    *   **Description:** Creates a new signature element. If `index` is not provided in the body, it's automatically generated based on the component's `index_count` (which is then incremented) and `index_type`. If `index` *is* provided, it's used directly, but the `index_count` is still incremented (to avoid collisions with next auto-generated index). Can link parent elements.
-    *   **Authentication:** Required (Role: `admin` or `regular_user`).
-    *   **Request Body:** (`createSignatureElementSchema`)
-        ```json
-        {
-          "signatureComponentId": 1,   // Required, Existing component ID
-          "name": "Element Name",      // Required, 1-100 chars
-          "description": "Details...", // Optional, max 500 chars
-          "index": "UserDefinedIndex", // Optional: Explicit index string. If omitted, auto-generated. Max 255 chars.
-          "parentIds": [2, 5]          // Optional: Array of existing SignatureElement IDs
-        }
-        ```
-    *   **Responses:**
-        *   `201 Created`: `{ "signatureElementId": 10, "signatureComponentId": 1, "name": "...", "index": "...", "component": {...}, "parentElements": [...] }` (Returns created element, populated with component and parents).
-        *   `400 Bad Request`: `{"message": "Invalid input", "errors": {...}}` or `{"message": "Component with ID ... not found"}`.
-        *   `401 Unauthorized`
-        *   `403 Forbidden`
-        *   `500 Internal Server Error`: `{"message": "Failed to create element", "error": "..."}`.
+Request body:
+```json
+{
+  "signatureComponentId": 1,
+  "name": "Series A",
+  "description": "Details...",
+  "index": "1a",
+  "parentIds": [2, 5]
+}
+```
 
-*   **GET `/api/signature/components/id/:componentId/elements/all`**
-    *   **Description:** Retrieves all elements for a specific component, ordered by name (case-insensitive).
-    *   **Authentication:** Required (Role: `admin` or `regular_user`).
-    *   **Path Parameters:**
-        *   `componentId`: The integer ID of the parent component.
-    *   **Responses:**
-        *   `200 OK`: `[{"signatureElementId": 10, "name": "...", "index": "...", ...}, ...]`
-        *   `400 Bad Request`: `{"message": "Invalid component ID"}`.
-        *   `401 Unauthorized`
-        *   `403 Forbidden`
-        *   `404 Not Found`: `{"message": "Component not found"}` (Checked before fetch).
-        *   `500 Internal Server Error`
+- `signatureComponentId`: Required, must reference an existing component.
+- `name`: Required, 1–100 chars.
+- `description`: Optional, max 500 chars.
+- `index`: Optional. If omitted, auto-generated from component's counter and `index_type`. If provided, used directly (but counter still increments).
+- `parentIds`: Optional array of existing element IDs to set as parents.
 
-*   **GET `/api/signature/element/:id`**
-    *   **Description:** Retrieves a specific element. Can populate related data via query params.
-    *   **Authentication:** Required (Role: `admin` or `regular_user`).
-    *   **Path Parameters:**
-        *   `id`: The integer ID of the element.
-    *   **Query Parameters (Optional):**
-        *   `populate`: Comma-separated: `component`, `parents`. (e.g., `?populate=component,parents`)
-    *   **Responses:**
-        *   `200 OK`: `{ "signatureElementId": 10, ..., "component": {...}?, "parentElements": [...]? }`
-        *   `400 Bad Request`: `{"message": "Invalid element ID"}`.
-        *   `401 Unauthorized`
-        *   `403 Forbidden`
-        *   `404 Not Found`: `{"message": "Element not found"}`.
-        *   `500 Internal Server Error`
+Response `201 Created`: Created element with populated `component` and `parentElements`.
 
-*   **PATCH `/api/signature/element/:id`**
-    *   **Description:** Updates element details (name, description, index) and/or replaces parent relationships. Updating `index` here does *not* affect the component's `index_count`.
-    *   **Authentication:** Required (Role: `admin` or `regular_user`).
-    *   **Path Parameters:**
-        *   `id`: The integer ID of the element.
-    *   **Request Body:** (Partial element, `updateSignatureElementSchema`)
-        ```json
-        {
-          "name": "Updated Name",   // Optional, 1-100 chars
-          "description": null,      // Optional, max 500, nullable
-          "index": "NewIndex",      // Optional, max 255, nullable
-          "parentIds": [3]          // Optional: Replaces parents (empty array removes all)
-        }
-        ```
-    *   **Responses:**
-        *   `200 OK`: `{ "signatureElementId": 10, ..., "component": {...}, "parentElements": [...] }` (Returns updated element, populated with component and parents).
-        *   `400 Bad Request`: `{"message": "Invalid element ID"}` or `{"message": "Invalid input", "errors": {...}}`.
-        *   `401 Unauthorized`
-        *   `403 Forbidden`
-        *   `404 Not Found`: `{"message": "Element not found"}` (Checked before update).
-        *   `500 Internal Server Error`: `{"message": "Failed to update element", "error": "..."}`.
+---
 
-*   **DELETE `/api/signature/element/:id`**
-    *   **Description:** Deletes an element. Parent/child links are removed via DB cascade. Does *not* affect component `index_count`.
-    *   **Authentication:** Required (Role: `admin`).
-    *   **Path Parameters:**
-        *   `id`: The integer ID of the element.
-    *   **Responses:**
-        *   `204 No Content`: Successful deletion.
-        *   `400 Bad Request`: `{"message": "Invalid element ID"}`.
-        *   `401 Unauthorized`
-        *   `403 Forbidden`
-        *   `404 Not Found`: `{"message": "Element not found"}` (Checked before delete).
-        *   `500 Internal Server Error`
+**`GET /api/signature/components/id/:componentId/elements/all`** — List all elements for a component. Requires authentication (admin or employee).
 
-*   **POST `/api/signature/elements/search`**
-    *   **Description:** Searches elements based on criteria, including relationships.
-    *   **Authentication:** Required (Role: `admin` or `regular_user`).
-    *   **Request Body:** See [Search API Structure](#search-api-structure).
-        *   Allowed direct fields: `signatureElementId`, `signatureComponentId`, `name`, `description`, `index`, `createdOn`, `modifiedOn`.
-        *   Custom handlers: `parentIds` (`ANY_OF`, `value`: `elementId[]`), `hasParents` (`EQ`, `value`: `boolean`), `componentName` (`FRAGMENT` or `EQ`, `value`: `string`).
-    *   **Responses:**
-        *   `200 OK`: `SearchResponse<SignatureElementSearchResult>` *(Note: `parentElements` not populated)*.
-        *   `400 Bad Request`: Invalid search query.
-        *   `401 Unauthorized`
-        *   `403 Forbidden`
-        *   `500 Internal Server Error`
+Response `200 OK`: Array of element objects.
+
+---
+
+**`GET /api/signature/element/:id`** — Get a specific element. Requires authentication (admin or employee).
+
+Optional query param: `?populate=component,parents` to include related data.
+
+Response `200 OK`:
+```json
+{
+  "signatureElementId": 10,
+  "signatureComponentId": 1,
+  "name": "Series A",
+  "index": "1",
+  "component": { ... },
+  "parentElements": [ ... ]
+}
+```
+
+---
+
+**`PATCH /api/signature/element/:id`** — Update an element. Requires authentication (admin or employee). Updating `index` here does not affect the component's `index_count`.
+
+Request body:
+```json
+{
+  "name": "Updated Name",
+  "description": null,
+  "index": "NewIndex",
+  "parentIds": [3]
+}
+```
+
+Response `200 OK`: Updated element with populated `component` and `parentElements`.
+
+---
+
+**`DELETE /api/signature/element/:id`** — Delete an element. Requires authentication (admin only). Parent/child links removed via cascade.
+
+Response `204 No Content`
+
+---
+
+**`POST /api/signature/elements/search`** — Search elements. Requires authentication (admin or employee).
+
+Allowed direct fields: `signatureElementId`, `signatureComponentId`, `name`, `description`, `index`, `createdOn`, `modifiedOn`.
+
+Custom handlers:
+- `parentIds` with `ANY_OF`: `value` is an array of element IDs.
+- `hasParents` with `EQ`: `value` is a boolean.
+- `componentName` with `FRAGMENT` or `EQ`: `value` is a component name string.
+
+Response `200 OK`: `SearchResponse<SignatureElementSearchResult>`
+
+---
 
 ### 9. Archive Document Management
 
-Manage archive documents and units, including metadata, signatures, and tags. Uses soft delete (`active` flag).
+**`PUT /api/archive/document`** — Create a new document or unit. Requires authentication (admin or employee).
 
-*   **PUT `/api/archive/document`** (Should likely be POST for creation)
-    *   **Description:** Creates a new archive document or unit. Associates tags if `tagIds` provided. Signatures are stored as arrays of element ID paths.
-    *   **Authentication:** Required (Role: `admin` or `regular_user`).
-    *   **Request Body:** (`createArchiveDocumentSchema`)
-        ```json
-        {
-          "parentUnitArchiveDocumentId": null, // Optional: ID of parent unit, or null for root
-          "type": "document", // Required: "unit" | "document"
-          "topographicSignatureElementIds": [ [1, 5], [8] ], // Optional: Array of paths (element IDs)
-          "descriptiveSignatureElementIds": [ [10, 12] ], // Optional
-          "title": "Document Title", // Required
-          "creator": "Creator Name", // Required
-          "creationDate": "Circa 1950", // Required (flexible string)
-          // ... other metadata fields (numberOfPages, documentType, etc.) ... are optional strings
-          "isDigitized": false, // Optional, default false
-          "digitizedVersionLink": null, // Optional, nullable URL string
-          "tagIds": [1, 3] // Optional: Array of existing Tag IDs
-        }
-        ```
-    *   **Responses:**
-        *   `201 Created`: `{ "archiveDocumentId": 1, "type": "document", ..., "tags": [...] }` (Returns created document, populated with tags).
-        *   `400 Bad Request`: `{"message": "Invalid input", "errors": {...}}`.
-        *   `401 Unauthorized`
-        *   `403 Forbidden`
-        *   `500 Internal Server Error`: `{"message": "Failed to create archive document", "error": "..."}`.
+Request body:
+```json
+{
+  "parentUnitArchiveDocumentId": null,
+  "type": "document",
+  "topographicSignature": "Signature text",
+  "descriptiveSignatureElementIds": [[1, 5], [8]],
+  "title": "Document Title",
+  "creator": "Creator Name",
+  "creationDate": "Circa 1950",
+  "numberOfPages": "12",
+  "isDigitized": false,
+  "tagIds": [1, 3]
+}
+```
 
-*   **GET `/api/archive/document/id/:id`**
-    *   **Description:** Retrieves a specific *active* archive document/unit by ID, populated with its tags.
-    *   **Authentication:** Required (Role: `admin` or `regular_user`). *(Note: No ownership check currently enforced here)*.
-    *   **Path Parameters:**
-        *   `id`: The integer ID of the document/unit.
-    *   **Responses:**
-        *   `200 OK`: `{ "archiveDocumentId": 1, ..., "active": true, "tags": [...] }`
-        *   `400 Bad Request`: `{"message": "Invalid document ID"}`.
-        *   `401 Unauthorized`
-        *   `403 Forbidden`
-        *   `404 Not Found`: `{"message": "Document not found or not active"}`.
-        *   `500 Internal Server Error`
+- `type`: `"unit"` or `"document"`. Required.
+- `title`, `creator`, `creationDate`: Required.
+- `descriptiveSignatureElementIds`: Array of element ID paths (each path is an array of element IDs).
+- `tagIds`: Optional array of existing tag IDs.
 
-*   **PATCH `/api/archive/document/id/:id`**
-    *   **Description:** Updates an archive document/unit. Only owner or admin can update. Fields are optional. `tagIds` replaces existing tags. Can update signatures.
-    *   **Authentication:** Required (Role: `admin` or `regular_user`). User must be the owner or an admin.
-    *   **Path Parameters:**
-        *   `id`: The integer ID of the document/unit.
-    *   **Request Body:** (Partial `ArchiveDocument`, `updateArchiveDocumentSchema`)
-        ```json
-        {
-          "title": "Updated Title", // Optional
-          "topographicSignatureElementIds": [ [1, 6] ], // Optional: Replaces existing topo signatures
-          "condition": "Good", // Optional
-          "tagIds": [4] // Optional: Replaces tags
-        }
-        ```
-    *   **Responses:**
-        *   `200 OK`: `{ "archiveDocumentId": 1, ..., "tags": [...] }` (Returns updated document/unit, populated with tags).
-        *   `400 Bad Request`: `{"message": "Invalid document ID"}` or `{"message": "Invalid input", "errors": {...}}`.
-        *   `401 Unauthorized`
-        *   `403 Forbidden`: Authenticated user is not owner and not admin.
-        *   `404 Not Found`: `{"message": "Document not found"}` (Checked before update).
-        *   `500 Internal Server Error`: `{"message": "Failed to update archive document", "error": "..."}`.
-
-*   **DELETE `/api/archive/document/id/:id`**
-    *   **Description:** Disables (soft deletes) an archive document/unit by setting `active` to `false`. Only owner or admin can disable.
-    *   **Authentication:** Required (Role: `admin` or `regular_user`). User must be the owner or an admin.
-    *   **Path Parameters:**
-        *   `id`: The integer ID of the document/unit.
-    *   **Responses:**
-        *   `204 No Content`: Successful disable.
-        *   `400 Bad Request`: `{"message": "Invalid document ID"}` or `{"message": "Document already inactive"}`.
-        *   `401 Unauthorized`
-        *   `403 Forbidden`: Authenticated user is not owner and not admin.
-        *   `404 Not Found`: `{"message": "Document not found"}` or `{"message": "Document not found or disable failed"}` (if disable affected 0 rows).
-        *   `500 Internal Server Error`
-
-*   **POST `/api/archive/documents/search`**
-    *   **Description:** Searches *active* archive documents/units by default. Admins can search inactive ones. Supports searching by tags and signature prefixes. Results are populated with tags.
-    *   **Authentication:** Required (Role: `admin` or `regular_user`).
-    *   **Request Body:** See [Search API Structure](#search-api-structure).
-        *   Allowed direct fields: All fields from `ArchiveDocument` model *except* `active` (unless admin overrides).
-        *   Custom handlers: `tags` (`ANY_OF`, `value`: `tagId[]`), `topographicSignaturePrefix` (`ANY_OF`, `value`: `elementId[][]`), `descriptiveSignaturePrefix` (`ANY_OF`, `value`: `elementId[][]`).
-    *   **Responses:**
-        *   `200 OK`: `SearchResponse<ArchiveDocumentSearchResult>` (Results populated with `tags`).
-        *   `400 Bad Request`: Invalid search query.
-        *   `401 Unauthorized`
-        *   `403 Forbidden`
-        *   `500 Internal Server Error`: `{"message": "Failed to search archive documents", "error": "..."}`.
+Response `201 Created`: Created document object with populated `tags` and `resolvedDescriptiveSignatures`.
 
 ---
+
+**`GET /api/archive/document/id/:id`** — Get a specific document/unit. Requires authentication (admin, employee, or user). `user` role access is filtered by assigned tags.
+
+Optional query param: `?includeInactive=true` (admin/employee only) to fetch inactive documents.
+
+Response `200 OK`: Document object with populated `tags`.
+
+---
+
+**`PATCH /api/archive/document/id/:id`** — Update a document/unit. Requires authentication (admin or employee). Fields are optional; `tagIds` replaces existing tags.
+
+Response `200 OK`: Updated document object with populated `tags`.
+
+---
+
+**`DELETE /api/archive/document/id/:id`** — Soft-delete (disable) a document/unit. Requires authentication (admin or employee).
+
+Response `204 No Content`
+
+---
+
+**`POST /api/archive/documents/search`** — Search documents/units. Requires authentication (admin, employee, or user).
+
+Allowed direct fields: `archiveDocumentId`, `parentUnitArchiveDocumentId`, `createdBy`, `updatedBy`, `type`, `title`, `creator`, `creationDate`, `numberOfPages`, `documentType`, `dimensions`, `binding`, `condition`, `documentLanguage`, `contentDescription`, `remarks`, `accessLevel`, `accessConditions`, `additionalInformation`, `relatedDocumentsReferences`, `isDigitized`, `digitizedVersionLink`, `createdOn`, `modifiedOn`, `active`, `topographicSignature`.
+
+Custom handlers:
+- `tags` with `ANY_OF`: `value` is an array of `tagId` numbers.
+- `descriptiveSignature` with `STARTS_WITH` or `CONTAINS_SEQUENCE`: `value` is an array of element IDs.
+- `active`: By default, only active documents are returned. Admin/employee can override with `{ "field": "active", "condition": "EQ", "value": false }`. Non-admin/employee attempts to filter by `active` are ignored.
+- `user` role: Results are automatically filtered to documents matching assigned tags.
+
+Response `200 OK`: `SearchResponse<ArchiveDocumentSearchResult>` (results include `tags` and `resolvedDescriptiveSignatures`).
+
+---
+
+**`POST /api/archive/documents/batch-tag`** — Add or remove tags from documents matching a search query. Requires authentication (admin or employee).
+
+Request body:
+```json
+{
+  "searchQuery": [
+    { "field": "title", "condition": "FRAGMENT", "value": "report", "not": false }
+  ],
+  "tagIds": [1, 3],
+  "action": "add"
+}
+```
+
+- `searchQuery`: Array of search query elements (same format as search endpoints).
+- `tagIds`: Array of tag IDs to add or remove. At least one required.
+- `action`: `"add"` or `"remove"`.
+
+Response `200 OK`:
+```json
+{
+  "message": "Successfully added tags for 25 documents.",
+  "count": 25
+}
+```
+
+---
+
+### 10. Database Administration
+
+**`GET /api/admin/db/backup`** — Download the SQLite database file. Requires authentication (admin only).
+
+The server performs a WAL checkpoint before sending the file for consistency.
+
+Response `200 OK`: Binary SQLite database file with `Content-Disposition: attachment` header. Filename format: `jezarch-backup-YYYY-MM-DDTHH-MM-SS-ZZZ.sqlite.db`.

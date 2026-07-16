@@ -76,20 +76,34 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
               const validRoles: (UserRole | null)[] = ['admin', 'employee', 'user', null];
 
               if (validRoles.includes(storedUserRole) && !isNaN(parsedUserId)) {
-                  console.log("AuthContext: Found valid stored session. Setting state.");
-                  setState({
-                      token: storedToken,
-                      user: {
-                          login: storedUserLogin,
-                          role: storedUserRole,
-                          userId: parsedUserId,
-                          preferredLanguage: initialLang, // Use the determined initialLang
-                      },
-                      isAuthenticated: true,
-                      isLoading: false,
-                      error: null,
-                      preferredLanguage: initialLang, // Set top-level language
-                  });
+                  console.log("AuthContext: Found stored session. Validating with backend...");
+                  try {
+                      const validation = await api.validateSession(storedToken);
+                      console.log("AuthContext: Session validated successfully for user:", validation.login);
+                      const lang = validation.preferredLanguage && backendSupportedLanguages.includes(validation.preferredLanguage)
+                          ? validation.preferredLanguage
+                          : initialLang;
+                      setState({
+                          token: storedToken,
+                          user: {
+                              login: validation.login,
+                              role: validation.role,
+                              userId: validation.userId,
+                              preferredLanguage: lang,
+                          },
+                          isAuthenticated: true,
+                          isLoading: false,
+                          error: null,
+                          preferredLanguage: lang,
+                      });
+                  } catch (validationError) {
+                      console.error("AuthContext: Stored session validation failed. Clearing auth data.", validationError);
+                      localStorage.removeItem('authToken');
+                      localStorage.removeItem('authUserLogin');
+                      localStorage.removeItem('authUserRole');
+                      localStorage.removeItem('authUserId');
+                      setState(prevState => ({ ...initialState, isLoading: false, preferredLanguage: initialLang }));
+                  }
               } else {
                   // Invalid stored session data
                   console.error("AuthContext: Invalid UserID or Role found in storage. Clearing auth data.");
@@ -135,6 +149,19 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       };
 
       initializeAuth();
+
+      const handleUnauthorized = () => {
+          console.warn("AuthContext: Received auth:unauthorized event. Logging out.");
+          const lang = getStoredLanguagePreference();
+          localStorage.removeItem('authToken');
+          localStorage.removeItem('authUserLogin');
+          localStorage.removeItem('authUserRole');
+          localStorage.removeItem('authUserId');
+          setState({ ...initialState, isLoading: false, preferredLanguage: lang });
+      };
+
+      window.addEventListener('auth:unauthorized', handleUnauthorized);
+      return () => window.removeEventListener('auth:unauthorized', handleUnauthorized);
   }, []); // Run only once on mount
 
 

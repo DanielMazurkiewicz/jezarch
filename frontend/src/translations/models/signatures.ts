@@ -81,6 +81,7 @@ export type SignatureTranslationKey =
   | 'elementBrowserModeFree'
   | 'elementBrowserModeHierarchicalHint'
   | 'elementBrowserModeFreeHint'
+  | 'elementBrowserAddToPathTooltip' // e.g., Add to path
   | 'elementBrowserCreateElementButtonHint' // e.g., Create New Element in "{componentName}"...
   | 'cannotCreateElementError' // e.g., Cannot create element: Select a valid component first.
   | 'singlePathPickerPlaceholder' // e.g., Click to select signature...
@@ -122,6 +123,12 @@ export type SignatureTranslationKey =
   | 'elementLoadFailedError'
   | 'componentNoChangesDetected' // Added Key
   | 'elementBrowserSelectComponentFirst' // Added missing key
+  | 'signaturesHelpTitle'
+  | 'signaturesHelpComponents'
+  | 'signaturesHelpElements'
+  | 'signaturesHelpRelationship'
+  | 'elementFetchFailedError'
+  | 'componentNotFoundError'
   ;
 
 

@@ -1,7 +1,9 @@
 // backend/src/initialization/server.ts
-import { routes, Routes } from "./routes";
+import { routes } from "./routes";
 import { AppParams } from "./app_params";
 import { Log } from '../functionalities/log/db';
+import type { Routes } from './routes';
+import type { RouterTypes } from 'bun';
 import path from 'node:path';
 import { existsSync, watch } from 'node:fs'; // Added watch
 import type { ServeOptions, Server, TLSServeOptions, WebSocketServeOptions, FileBlob } from 'bun';
@@ -12,7 +14,7 @@ let httpServer: Server | null = null;
 let httpsServer: Server | null = null;
 let httpsOptions: TLSServeOptions | null = null; // Store current TLS options
 const fileWatcherEmitter = new EventEmitter(); // For signaling file changes
-let watchDebounceTimeout: NodeJS.Timeout | null = null;
+let watchDebounceTimeout: ReturnType<typeof setTimeout> | null = null;
 const WATCH_DEBOUNCE_DELAY = 10000; // 10 seconds
 
 // --- Exported Status Variables ---
@@ -84,7 +86,7 @@ async function handleError(error: Error): Promise<Response> {
 }
 
 // Function to load TLS files safely
-function loadTlsFiles(keyPath: string, certPath: string, caPath?: string | null): Omit<TLSServeOptions, 'port'> | null {
+function loadTlsFiles(keyPath: string, certPath: string, caPath?: string | null): Pick<TLSServeOptions, 'key' | 'cert' | 'ca'> | null {
     try {
         const key = Bun.file(keyPath);
         const cert = Bun.file(certPath);
@@ -154,7 +156,7 @@ async function handleTlsReload() {
 
     if (newTlsConfig) {
         httpsOptions = {
-            ...httpsServer.development, // Reuse existing server options like hostname, fetch, error etc.
+            // ...httpsServer.development, // Reuse existing server options like hostname, fetch, error etc.
             port: httpsPort!, // Use the existing port
             ...newTlsConfig, // Apply new key/cert/ca
             development: process.env.NODE_ENV !== 'production',
@@ -167,18 +169,17 @@ async function handleTlsReload() {
 
         try {
             // Reconstruct the full server options for reload
-             const reloadOptions: ServeOptions = {
-                 port: httpsPort!,
-                 hostname: httpsHostname,
-                 development: process.env.NODE_ENV !== 'production',
-                 fetch: handleFetch,
-                 error: handleError,
-                 tls: newTlsConfig, // Use the newly loaded config
-                 routes: routes, // Re-apply routes
-                 websocket: undefined, // Assuming no websockets for now
-             };
+              const reloadOptions: ServeOptions & { tls: any } & { routes: RouterTypes.RouteValue<string> } = {
+                  port: httpsPort!,
+                  hostname: httpsHostname,
+                  development: process.env.NODE_ENV !== 'production',
+                  fetch: handleFetch,
+                  error: handleError,
+                  tls: newTlsConfig,
+                  routes: routes,
+              };
 
-            const reloaded = httpsServer.reload(reloadOptions as WebSocketServeOptions); // Type assertion might be needed
+            const reloaded = httpsServer.reload(reloadOptions as unknown as WebSocketServeOptions);
 
             if (reloaded) {
                  isSslEnabled = true; // Ensure status reflects loaded state
@@ -207,7 +208,6 @@ export async function initializeServer() {
         fetch: handleFetch,
         error: handleError,
         development: process.env.NODE_ENV !== 'production',
-        routes: routes,
     };
 
     // --- Start HTTP Server ---
@@ -215,7 +215,8 @@ export async function initializeServer() {
         httpServer = Bun.serve({
             ...baseServerOptions,
             port: AppParams.httpPort,
-        });
+            routes: routes,
+        } as ServeOptions);
         httpHostname = httpServer.hostname;
         httpPort = httpServer.port;
         console.log(`* HTTP Server listening on http://${httpHostname}:${httpPort}`);
@@ -236,7 +237,8 @@ export async function initializeServer() {
                     ...baseServerOptions,
                     port: AppParams.httpsPort,
                     tls: initialTlsConfig,
-                 };
+                    routes: routes,
+                 } as unknown as TLSServeOptions;
                 httpsServer = Bun.serve(httpsOptions as ServeOptions);
                 httpsHostname = httpsServer.hostname;
                 httpsPort = httpsServer.port;

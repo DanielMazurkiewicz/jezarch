@@ -4,9 +4,10 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Link } from 'react-router-dom';
-import { FileText, Folder, Trash2, Edit } from 'lucide-react';
+import { FileText, Folder, Trash2, RefreshCcw, Edit } from 'lucide-react';
 import type { ArchiveDocument, ArchiveDocumentSearchResult } from '../../../../backend/src/functionalities/archive/document/models';
 import { useAuth } from '@/hooks/useAuth';
+import { type SupportedLanguage } from '@/translations/models';
 import { t } from '@/translations/utils'; // Import translation utility
 import { cn } from '@/lib/utils';
 
@@ -22,23 +23,22 @@ interface DocumentPreviewDialogProps {
     document: ArchiveDocumentSearchResult | null;
     onEdit: (doc: ArchiveDocument) => void;
     onDisable: (docId: number) => void;
+    onEnable: (docId: number) => void;
     parentUnitTitle?: string | null;
 }
 
-// --- Date Formatter ---
-let preferredLanguage: string = 'en'; // Global for formatter, updated by component instance
-
-const formatDate = (dateInput: Date | string | undefined | null): string => {
-    if (!dateInput) return t('archivePreviewNotApplicable', preferredLanguage);
+// --- Date Formatter (receives language parameter) ---
+const formatDate = (dateInput: Date | string | undefined | null, lang: SupportedLanguage): string => {
+    if (!dateInput) return t('archivePreviewNotApplicable', lang);
     try {
         const date = new Date(dateInput);
-        if (isNaN(date.getTime())) return t('archivePreviewInvalidDate', preferredLanguage);
+        if (isNaN(date.getTime())) return t('archivePreviewInvalidDate', lang);
         // Format date and time for Created/Updated On fields
         return date.toLocaleString(undefined, {
              year: 'numeric', month: 'short', day: 'numeric',
              hour: '2-digit', minute: '2-digit', second: '2-digit'
             });
-    } catch (e) { return t('archivePreviewErrorDate', preferredLanguage); }
+    } catch (e) { return t('archivePreviewErrorDate', lang); }
 };
 
 
@@ -48,10 +48,10 @@ const DocumentPreviewDialog: React.FC<DocumentPreviewDialogProps> = ({
     document: originalDoc,
     onEdit,
     onDisable,
+    onEnable,
     parentUnitTitle,
 }) => {
-    const { user, preferredLanguage: contextLang } = useAuth();
-    preferredLanguage = contextLang; // Update global for formatter
+    const { user, preferredLanguage } = useAuth();
 
     const previewingDoc = originalDoc as PreviewDocumentType | null;
 
@@ -71,6 +71,10 @@ const DocumentPreviewDialog: React.FC<DocumentPreviewDialogProps> = ({
         onDisable(previewingDoc.archiveDocumentId!);
     };
 
+    const handleEnableClick = () => {
+        onEnable(previewingDoc.archiveDocumentId!);
+    };
+
     return (
         <Dialog open={isOpen} onOpenChange={onOpenChange}>
             <DialogContent className="max-w-3xl">
@@ -86,8 +90,8 @@ const DocumentPreviewDialog: React.FC<DocumentPreviewDialogProps> = ({
                             <p><strong>{t('archivePreviewParentUnitLabel', preferredLanguage)}:</strong> <Link to={`/archive?unitId=${previewingDoc.parentUnitArchiveDocumentId}`} className='text-primary hover:underline' onClick={()=> onOpenChange(false)}>{parentUnitTitle || `ID ${previewingDoc.parentUnitArchiveDocumentId}`}</Link></p>
                         )}
                         {/* --- Updated: Show Created By / Updated By --- */}
-                        <p><strong>{t('archivePreviewCreatedByLabel', preferredLanguage)}:</strong> {previewingDoc.createdBy} ({formatDate(previewingDoc.createdOn)})</p>
-                        <p><strong>{t('archivePreviewUpdatedByLabel', preferredLanguage)}:</strong> {previewingDoc.updatedBy} ({formatDate(previewingDoc.modifiedOn)})</p>
+                        <p><strong>{t('archivePreviewCreatedByLabel', preferredLanguage)}:</strong> {previewingDoc.createdBy} ({formatDate(previewingDoc.createdOn, preferredLanguage)})</p>
+                        <p><strong>{t('archivePreviewUpdatedByLabel', preferredLanguage)}:</strong> {previewingDoc.updatedBy} ({formatDate(previewingDoc.modifiedOn, preferredLanguage)})</p>
                         {/* ------------------------------------------ */}
                         {previewingDoc.tags && previewingDoc.tags.length > 0 && (
                             <div className="flex flex-wrap gap-1 pt-1 items-center">
@@ -122,8 +126,8 @@ const DocumentPreviewDialog: React.FC<DocumentPreviewDialogProps> = ({
                            <p className="text-sm whitespace-pre-wrap">{previewingDoc.contentDescription}</p>
                         </div>
                     )}
-                     {/* Physical Description */}
-                    {(previewingDoc.numberOfPages || previewingDoc.documentType || previewingDoc.dimensions || previewingDoc.binding || previewingDoc.condition || previewingDoc.documentLanguage) && (
+                     {/* Physical Description (only for units) */}
+                    {previewingDoc.type === 'unit' && (previewingDoc.numberOfPages || previewingDoc.documentType || previewingDoc.dimensions || previewingDoc.binding || previewingDoc.condition || previewingDoc.documentLanguage) && (
                         <div>
                            <h4 className='font-semibold mb-1 text-base'>{t('archivePreviewPhysicalDetailsLabel', preferredLanguage)}</h4>
                            <ul className='list-disc list-inside text-sm space-y-0.5'>
@@ -165,16 +169,26 @@ const DocumentPreviewDialog: React.FC<DocumentPreviewDialogProps> = ({
                      )}
                 </ScrollArea>
                 <DialogFooter className='gap-2 sm:justify-between pt-4'>
-                    {/* Disable button placed on the left */}
+                    {/* Disable / Restore button placed on the left */}
                     <div>
-                        {canModify && (
+                        {canModify && (previewingDoc.active || previewingDoc.active === undefined) && (
                              <Button
                                 variant="outline"
                                 className={cn('border-destructive text-destructive hover:bg-destructive/10 hover:text-destructive')}
                                 size="sm"
                                 onClick={handleDisableClick}
                             >
-                                <Trash2 className='h-4 w-4 mr-2'/> {t('disableButton', preferredLanguage)} {t('itemLabel', preferredLanguage)}
+                                 <Trash2 className='h-4 w-4 mr-2'/> {t('disableButton', preferredLanguage)}
+                            </Button>
+                        )}
+                        {canModify && !previewingDoc.active && previewingDoc.active !== undefined && (
+                             <Button
+                                variant="outline"
+                                className={cn('border-green-600 text-green-600 hover:bg-green-50')}
+                                size="sm"
+                                onClick={handleEnableClick}
+                            >
+                                 <RefreshCcw className='h-4 w-4 mr-2'/> {t('enableButton', preferredLanguage)}
                             </Button>
                         )}
                     </div>

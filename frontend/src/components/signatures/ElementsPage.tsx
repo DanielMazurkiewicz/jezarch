@@ -5,8 +5,9 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { PlusCircle, ArrowLeft } from 'lucide-react';
 import ElementList from './ElementList';
 import ElementForm from './ElementForm';
+import ElementPreviewDialog from './ElementPreviewDialog';
 import SearchBar, { type SearchFieldOption } from '@/components/shared/SearchBar';
-import { Pagination } from '@/components/shared/Pagination';
+import Pagination from '@/components/shared/Pagination';
 import LoadingSpinner from '@/components/shared/LoadingSpinner';
 import ErrorDisplay from '@/components/shared/ErrorDisplay';
 import { useAuth } from '@/hooks/useAuth';
@@ -41,6 +42,8 @@ const ElementsPage: React.FC = () => {
     const [elementsError, setElementsError] = useState<string | null>(null);
     const [editingElement, setEditingElement] = useState<SignatureElement | null>(null);
     const [isElementFormOpen, setIsElementFormOpen] = useState(false);
+    const [previewingElement, setPreviewingElement] = useState<SignatureElement | null>(null);
+    const [isPreviewOpen, setIsPreviewOpen] = useState(false);
     const [elementSearchQuery, setElementSearchQuery] = useState<SearchRequest['query']>([]);
     const [currentElementPage, setCurrentElementPage] = useState(1);
     const [totalElements, setTotalElements] = useState(0);
@@ -117,6 +120,11 @@ const ElementsPage: React.FC = () => {
         setIsElementFormOpen(true);
     }, [canModify, preferredLanguage]); // Add preferredLanguage
 
+    const handlePreviewElement = useCallback((element: SignatureElement) => {
+        setPreviewingElement(element);
+        setIsPreviewOpen(true);
+    }, []);
+
     const handleCreateElement = useCallback(() => {
         if (!canModify) { toast.error(t('insufficientPermissionsError', preferredLanguage)); return; }
         if (!parentComponent) { toast.warning(t('parentComponentNotLoadedWarning', preferredLanguage)); return; } // Use translated warning
@@ -168,7 +176,7 @@ const ElementsPage: React.FC = () => {
         const currentParentId = parentComponent?.signatureComponentId; // Store ID before potential async operations
 
         // Fixed: Ensure currentParentId is a valid number before proceeding
-        if (typeof currentParentId === 'number' && !isNaN(currentParentId)) {
+        if (typeof currentParentId === 'number' && !isNaN(currentParentId) && token) {
             // Refetch elements for the current page first
             await fetchElements(currentElementPage, elementSearchQuery);
 
@@ -180,7 +188,7 @@ const ElementsPage: React.FC = () => {
                      setParentComponent(updatedParent);
                  } catch (err) {
                      console.error("Failed to refresh parent component after element save", err);
-                     toast.warn(t('parentComponentRefreshError', preferredLanguage)); // Use translated warning
+                     toast.warning(t('parentComponentRefreshError', preferredLanguage)); // Use translated warning
                  }
             }
         } else {
@@ -275,6 +283,7 @@ const ElementsPage: React.FC = () => {
                                 elements={elements}
                                 onEdit={handleEditElement}
                                 onDelete={handleDeleteElement}
+                                onPreview={handlePreviewElement}
                              />
                             {totalElementPages > 1 && (
                                 <div className="mt-4 flex justify-center">
@@ -292,6 +301,14 @@ const ElementsPage: React.FC = () => {
                     )}
                  </CardContent>
             </Card>
+
+            <ElementPreviewDialog
+                isOpen={isPreviewOpen}
+                onOpenChange={setIsPreviewOpen}
+                element={previewingElement}
+                onEdit={handleEditElement}
+                onDelete={handleDeleteElement}
+            />
         </div>
     );
 };

@@ -153,6 +153,9 @@ export type CommonTranslationKey =
   | 'updatedByLabel' // New
   | 'lastModifiedLabel' // New/Alternative
   | 'ownerLabel' // Keep? Remove? -> Keeping for now if used elsewhere
+  | 'createdOnLabel'
+  | 'componentPreviewTitle'
+  | 'elementPreviewTitle'
   ;
 
 export type CommonTranslationSet = TranslationSet<CommonTranslationKey>;

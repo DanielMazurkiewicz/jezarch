@@ -59,7 +59,7 @@ export const commonTranslationsPL: CommonTranslationSet = {
   viewButton: 'Zobacz',
   previewButton: 'Podgląd',
   openButton: 'Otwórz',
-  disableButton: 'Dezaktywuj',
+  disableButton: 'Usuń',
   enableButton: 'Aktywuj',
   assignButton: 'Przypisz',
   reindexButton: 'Reindeksuj',
@@ -154,4 +154,7 @@ export const commonTranslationsPL: CommonTranslationSet = {
   updatedByLabel: 'Zaktualizowane przez',
   lastModifiedLabel: 'Ostatnia modyfikacja', // Can be used instead of 'Updated By' depending on context
   ownerLabel: 'Właściciel', // Keep if needed elsewhere, otherwise remove/replace
+  createdOnLabel: 'Utworzono',
+  componentPreviewTitle: 'Szczegóły Komponentu',
+  elementPreviewTitle: 'Szczegóły Elementu',
 };

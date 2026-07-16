@@ -126,7 +126,7 @@ const ComponentForm: React.FC<ComponentFormProps> = ({ componentToEdit, onSave }
        </div>
         {/* Use translated button text */}
        <Button type="submit" disabled={isLoading} className="mt-2 justify-self-start"> {/* Align left */}
-         {isLoading ? <LoadingSpinner size="sm" className='mr-2' /> : (componentToEdit ? t('editButton', preferredLanguage) : t('createButton', preferredLanguage))} {t('componentSingularLabel', preferredLanguage)}
+         {isLoading ? <LoadingSpinner size="sm" className='mr-2' /> : (componentToEdit ? t('saveButton', preferredLanguage) : <>{t('createButton', preferredLanguage)} {t('componentSingularLabel', preferredLanguage)}</>)}
        </Button>
     </form>
   );

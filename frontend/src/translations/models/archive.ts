@@ -23,6 +23,9 @@ export type ArchiveTranslationKey =
   | 'archiveDisableConfirm' // e.g., "Are you sure you want to disable this {itemType}?"
   | 'archiveDisableSuccess'
   | 'archiveDisableFailed' // e.g., "Failed to disable item: {message}"
+  | 'archiveEnableConfirm' // e.g., "Are you sure you want to restore this {itemType}?"
+  | 'archiveEnableSuccess'
+  | 'archiveEnableFailed' // e.g., "Failed to restore item: {message}"
   | 'archiveSaveSuccess' // e.g., "Item {action} successfully."
   | 'archiveSaveFailed' // e.g., "Failed to save item: {message}"
   | 'archiveDetailsLoadFailed' // e.g., "Failed to load document details: {message}"
@@ -46,6 +49,7 @@ export type ArchiveTranslationKey =
   | 'archivePermissionErrorEdit'
   | 'archivePermissionErrorCreate'
   | 'archivePermissionErrorDisable'
+  | 'archivePermissionErrorEnable'
   | 'archivePermissionErrorBatchTag'
   | 'archivePreviewBasicInfoLabel'
   | 'archivePreviewCreatorLabel'
@@ -147,6 +151,10 @@ export type ArchiveTranslationKey =
   | 'ownerUserIdSearchLabel' // Keep key for reference, but update label in translation files
   | 'createdBySearchLabel' // New key
   | 'updatedBySearchLabel' // New key
+  | 'archiveHelpTitle'
+  | 'archiveHelpUnits'
+  | 'archiveHelpDocuments'
+  | 'archiveHelpSignatures'
   ;
 
 export type ArchiveTranslationSet = TranslationSet<ArchiveTranslationKey>;

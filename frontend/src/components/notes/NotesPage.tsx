@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'; // Removed unused imports
 import NoteList from './NoteList';
@@ -6,7 +6,7 @@ import NoteEditor from './NoteEditor';
 import LoadingSpinner from '@/components/shared/LoadingSpinner';
 import ErrorDisplay from '@/components/shared/ErrorDisplay';
 import SearchBar, { type SearchFieldOption } from '@/components/shared/SearchBar';
-import { Pagination } from '@/components/shared/Pagination';
+import Pagination from '@/components/shared/Pagination';
 import { useAuth } from '@/hooks/useAuth';
 import api from '@/lib/api';
 import type { NoteInput, NoteWithDetails } from '../../../../backend/src/functionalities/note/models';
@@ -40,6 +40,10 @@ const NotesPage: React.FC = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [totalNotes, setTotalNotes] = useState(0);
   const [totalPages, setTotalPages] = useState(1);
+  const currentPageRef = useRef(currentPage);
+  const searchQueryRef = useRef(searchQuery);
+  useEffect(() => { currentPageRef.current = currentPage; }, [currentPage]);
+  useEffect(() => { searchQueryRef.current = searchQuery; }, [searchQuery]);
 
   // Fetch available tags for the search bar options
   useEffect(() => {
@@ -56,7 +60,7 @@ const NotesPage: React.FC = () => {
   }, [token]);
 
   // Function to fetch/search notes
-  const fetchNotes = useCallback(async (page = currentPage, query = searchQuery) => {
+  const fetchNotes = useCallback(async (page = currentPageRef.current, query = searchQueryRef.current) => {
     if (!token || !user?.userId) {
         console.warn("NotesPage: fetchNotes called without user/token.");
         setIsLoading(false); setNotes([]); setTotalNotes(0); setTotalPages(1); return;
@@ -76,7 +80,7 @@ const NotesPage: React.FC = () => {
         console.error("NotesPage: Fetch Notes Error:", err);
         setNotes([]); setTotalNotes(0); setTotalPages(1);
     } finally { setIsLoading(false); }
-  }, [token, user?.userId, currentPage, searchQuery, preferredLanguage]); // Add preferredLanguage
+  }, [token, user?.userId, preferredLanguage]); // Add preferredLanguage
 
   // Trigger fetchNotes whenever dependencies change, BUT ONLY IF AUTH IS READY
   useEffect(() => {
@@ -240,6 +244,8 @@ const NotesPage: React.FC = () => {
              isOpen={isPreviewOpen}
              onOpenChange={setIsPreviewOpen}
              note={previewingNote}
+             onEdit={handleEdit}
+             onDelete={handleDelete}
           />
          {/* --- End Preview Dialog --- */}
     </div>

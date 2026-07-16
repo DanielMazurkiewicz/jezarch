@@ -93,7 +93,7 @@ const TagForm: React.FC<TagFormProps> = ({ tagToEdit, onSave }) => {
 
        {/* Use translated button text */}
        <Button type="submit" disabled={isLoading} className="mt-2 justify-self-start"> {/* Align left */}
-        {isLoading ? <LoadingSpinner size="sm" className='mr-2' /> : (tagToEdit ? t('editButton', preferredLanguage) : t('createButton', preferredLanguage))} {t('tagLabelSingular', preferredLanguage)}
+        {isLoading ? <LoadingSpinner size="sm" className='mr-2' /> : (tagToEdit ? t('saveButton', preferredLanguage) : <>{t('createButton', preferredLanguage)} {t('tagLabelSingular', preferredLanguage)}</>)}
       </Button>
     </form>
   );

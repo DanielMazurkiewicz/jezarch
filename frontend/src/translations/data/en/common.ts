@@ -154,4 +154,7 @@ export const commonTranslationsEN: CommonTranslationSet = {
   updatedByLabel: 'Updated By',
   lastModifiedLabel: 'Last Modified', // Can be used instead of 'Updated By' depending on context
   ownerLabel: 'Owner', // Keep if needed elsewhere, otherwise remove/replace
+  createdOnLabel: 'Created On',
+  componentPreviewTitle: 'Component Details',
+  elementPreviewTitle: 'Element Details',
 };

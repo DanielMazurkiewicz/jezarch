@@ -14,6 +14,7 @@ import ArchivePage from '@/components/archive/ArchivePage';
 import AdminPage from '@/components/admin/AdminPage';
 import ProtectedRoute from '@/components/auth/ProtectedRoute';
 import LoadingSpinner from '@/components/shared/LoadingSpinner';
+import ErrorBoundary from '@/components/shared/ErrorBoundary';
 // UserRole includes 'employee', 'user'
 import type { UserRole } from '../../backend/src/functionalities/user/models';
 import { t } from '@/translations/utils'; // Import translation utility
@@ -99,9 +100,11 @@ function AppContent() {
 // Main App component wrapping everything with AuthProvider
 function App() {
     return (
-        <AuthProvider>
-            <AppContent />
-        </AuthProvider>
+        <ErrorBoundary>
+            <AuthProvider>
+                <AppContent />
+            </AuthProvider>
+        </ErrorBoundary>
     );
 }
 

@@ -2,7 +2,7 @@ import React from 'react'; // Import React
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Edit, Trash2, ListRestart, FolderOpen } from 'lucide-react'; // Added FolderOpen icon
+import { Edit, Trash2, ListRestart, FolderOpen, Eye } from 'lucide-react'; // Added Eye icon
 import type { SignatureComponent } from '../../../../backend/src/functionalities/signature/component/models';
 import { useAuth } from '@/hooks/useAuth';
 import { cn } from '@/lib/utils';
@@ -12,6 +12,7 @@ interface ComponentListProps {
     components: SignatureComponent[];
     onEdit: (component: SignatureComponent) => void;
     onDelete: (componentId: number) => void;
+    onPreview: (component: SignatureComponent) => void;
     // Renamed onSelect to onOpen for clarity
     onOpen: (component: SignatureComponent) => void;
     onReindex: (componentId: number) => void;
@@ -19,9 +20,10 @@ interface ComponentListProps {
 
 // Wrap the functional component definition with React.memo
 const ComponentList: React.FC<ComponentListProps> = React.memo(({
-    components, onEdit, onDelete, onOpen, onReindex // Updated prop name
+    components, onEdit, onDelete, onPreview, onOpen, onReindex // Updated prop name
 }) => {
     const { user, preferredLanguage } = useAuth(); // Get preferredLanguage
+    const canModify = user?.role === 'admin' || user?.role === 'employee';
     const isAdmin = user?.role === 'admin';
 
     // Handle row click to open the component's element page
@@ -44,8 +46,6 @@ const ComponentList: React.FC<ComponentListProps> = React.memo(({
     if (components.length === 0) {
         return null;
     }
-
-    console.log("Rendering ComponentList"); // Add console log for debugging renders
 
     return (
         // Wrap in div for border and overflow
@@ -83,18 +83,25 @@ const ComponentList: React.FC<ComponentListProps> = React.memo(({
                             <TableCell><Badge variant="outline">{getIndexTypeLabel(component.index_type)}</Badge></TableCell>
                             <TableCell className="text-center">{component.index_count ?? 0}</TableCell>
                             <TableCell className="text-right space-x-1">
-                                {isAdmin ? (
+                                {canModify ? (
                                     <>
                                          {/* Use translated titles */}
-                                        <Button variant="ghost" size="icon" onClick={(e) => { e.stopPropagation(); onReindex(component.signatureComponentId!); }} title={t('reindexElementsButtonTooltip', preferredLanguage)}>
-                                            <ListRestart className="h-4 w-4" />
+                                        <Button variant="ghost" size="icon" onClick={(e) => { e.stopPropagation(); onPreview(component); }} title={t('previewButton', preferredLanguage)}>
+                                            <Eye className="h-4 w-4" />
                                         </Button>
+                                        {isAdmin && (
+                                            <Button variant="ghost" size="icon" onClick={(e) => { e.stopPropagation(); onReindex(component.signatureComponentId!); }} title={t('reindexElementsButtonTooltip', preferredLanguage)}>
+                                                <ListRestart className="h-4 w-4" />
+                                            </Button>
+                                        )}
                                         <Button variant="ghost" size="icon" onClick={(e) => { e.stopPropagation(); onEdit(component); }} title={t('editComponentButtonTooltip', preferredLanguage)}>
                                             <Edit className="h-4 w-4" />
                                         </Button>
-                                        <Button variant="ghost" size="icon" onClick={(e) => { e.stopPropagation(); onDelete(component.signatureComponentId!); }} title={t('deleteComponentButtonTooltip', preferredLanguage)}>
-                                            <Trash2 className="h-4 w-4 text-destructive" />
-                                        </Button>
+                                        {isAdmin && (
+                                            <Button variant="ghost" size="icon" onClick={(e) => { e.stopPropagation(); onDelete(component.signatureComponentId!); }} title={t('deleteComponentButtonTooltip', preferredLanguage)}>
+                                                <Trash2 className="h-4 w-4 text-destructive" />
+                                            </Button>
+                                        )}
                                     </>
                                 ) : (
                                      // Use translated read-only text

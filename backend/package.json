@@ -18,6 +18,10 @@
   "scripts": {
     "build": "bun build",
     "test": "bun test ../backend-tests/**/*.test.ts",
+    "test:file": "bun test",
+    "seed": "bun run ../scripts/seed-data.ts",
+    "seed:pl": "bun run ../scripts/seed-data-pl.ts",
+    "seed:en": "bun run ../scripts/seed-data-en.ts",
     "dev": "bun run src/main.ts"
   }
 }

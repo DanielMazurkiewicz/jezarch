@@ -222,7 +222,7 @@ const ElementForm: React.FC<ElementFormProps> = ({ elementToEdit, currentCompone
                      onClick={handleSubmit(handleFormSubmit)}
                      disabled={isLoading || isFetchingDetails}
                  >
-                     {isLoading ? <LoadingSpinner size="sm" className='mr-2' /> : (elementToEdit ? t('editButton', preferredLanguage) : t('createButton', preferredLanguage))} {t('elementSingularLabel', preferredLanguage)}
+                      {isLoading ? <LoadingSpinner size="sm" className='mr-2' /> : (elementToEdit ? t('saveButton', preferredLanguage) : <>{t('createButton', preferredLanguage)} {t('elementSingularLabel', preferredLanguage)}</>)}
                  </Button>
              </div>
         </div>

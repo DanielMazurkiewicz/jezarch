@@ -7,6 +7,7 @@ import { tagRoutes } from '../functionalities/tag/routes';
 import { signatureComponentRoutes } from '../functionalities/signature/component/routes';
 import { signatureElementRoutes } from '../functionalities/signature/element/routes';
 import { archiveDocumentRoutes } from '../functionalities/archive/document/routes';
+import { sessionRoutes } from '../functionalities/session/routes';
 // --- NEW: Import admin DB routes ---
 import { adminDbRoutes } from '../functionalities/admin_db/routes';
 
@@ -29,6 +30,7 @@ export const routes: Routes = {
     ...signatureElementRoutes,
     ...noteRoutes,
     ...archiveDocumentRoutes,
+    ...sessionRoutes,
     // --- NEW: Add admin DB routes ---
     ...adminDbRoutes,
     // No need to explicitly define "/" route here if handled by static server logic

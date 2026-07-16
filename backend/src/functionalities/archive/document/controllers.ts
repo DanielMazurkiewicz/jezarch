@@ -4,6 +4,7 @@ import {
     getArchiveDocumentById,
     updateArchiveDocument,
     disableArchiveDocument,
+    enableArchiveDocument,
     setTagsForArchiveDocument,
     getTagsForArchiveDocument,
     archiveDocumentSignatureSearchHandler,
@@ -26,7 +27,7 @@ import {
 // Removed isOwner import
 import { getSessionAndUser, isAllowedRole } from '../../session/controllers';
 import { Log } from '../../log/db';
-import { buildSearchQueries, executeSearch, SearchQueryElement, SearchRequest, SearchResponse } from '../../../utils/search';
+import { buildSearchQueries, executeSearch, SearchQuery, SearchQueryElement, SearchRequest, SearchResponse } from '../../../utils/search';
 import { Tag } from '../../tag/models';
 import { getAssignedTagIdsForUser } from '../../user/db';
 // Removed direct import of archiveDocumentTagSearchHandler, it's passed in buildSearchQueries
@@ -53,10 +54,22 @@ export const createArchiveDocumentController = async (req: BunRequest) => {
         const { tagIds, ...docData } = validation.data;
         const createdByLogin = sessionAndUser.user.login; // Use login for createdBy
 
+        // Strip physical description fields if type is 'document'
+        if (docData.type === 'document') {
+            delete (docData as any).numberOfPages;
+            delete (docData as any).documentType;
+            delete (docData as any).dimensions;
+            delete (docData as any).binding;
+            delete (docData as any).condition;
+            delete (docData as any).documentLanguage;
+        }
+
         const inputForDb = {
             ...docData,
+            condition: docData.condition ?? null,
+            topographicSignature: docData.topographicSignature ?? null,
             createdBy: createdByLogin, // Add createdBy field
-        };
+        } as Parameters<typeof createArchiveDocument>[0];
 
         // Pass the object directly, db function expects the correct shape
         const newDocumentId = await createArchiveDocument(inputForDb);
@@ -102,22 +115,12 @@ export const getArchiveDocumentByIdController = async (req: BunRequest<":id">) =
         }
 
         let document: ArchiveDocument | undefined;
-        const isAdminOrEmployee = isAllowedRole(sessionAndUser, 'admin', 'employee');
-        const includeInactive = isAdminOrEmployee && new URL(req.url).searchParams.get('includeInactive') === 'true';
 
-        // Fetching logic remains the same (internal fetches all, public checks active)
-        if (isAdminOrEmployee && includeInactive) {
-            document = await getArchiveDocumentByIdInternal(id);
-            if (document) {
-                await Log.info(`Admin/Employee fetched document (active/inactive): ${id}`, sessionAndUser.user.login, AREA);
-            }
-        } else {
-            document = await getArchiveDocumentById(id);
-        }
+        document = await getArchiveDocumentById(id);
 
         if (!document) {
-            await Log.info(`Document not found or inactive (user: ${sessionAndUser.user.login}, inactive access=${includeInactive})`, sessionAndUser.user.login, AREA, { documentId: id });
-            return new Response(JSON.stringify({ message: 'Document not found or inactive' }), { status: 404 });
+            await Log.info(`Document not found (user: ${sessionAndUser.user.login})`, sessionAndUser.user.login, AREA, { documentId: id });
+            return new Response(JSON.stringify({ message: 'Document not found' }), { status: 404 });
         }
 
         document.tags = await getTagsForArchiveDocument(id);
@@ -181,6 +184,16 @@ export const updateArchiveDocumentController = async (req: BunRequest<":id">) =>
 
         const { tagIds, ...updateData } = validation.data;
         const updatedByLogin = sessionAndUser.user.login; // Use login for updatedBy
+
+        // Strip physical description fields if type is 'document'
+        if (updateData.type === 'document') {
+            delete (updateData as any).numberOfPages;
+            delete (updateData as any).documentType;
+            delete (updateData as any).dimensions;
+            delete (updateData as any).binding;
+            delete (updateData as any).condition;
+            delete (updateData as any).documentLanguage;
+        }
 
         const updatedDocData = await updateArchiveDocument(id, updateData, updatedByLogin); // Pass updatedByLogin
 
@@ -255,6 +268,50 @@ export const disableArchiveDocumentController = async (req: BunRequest<":id">) =
     } catch (error: any) {
         await Log.error('Failed to disable archive document', sessionAndUser.user.login, AREA, error);
         return new Response(JSON.stringify({ message: 'Failed to disable archive document', error: error.message }), { status: 500 });
+    }
+};
+
+// --- Enable (Restore) ---
+export const enableArchiveDocumentController = async (req: BunRequest<":id">) => {
+    const sessionAndUser = await getSessionAndUser(req);
+    if (!sessionAndUser) return new Response("Unauthorized", { status: 401 });
+    if (!isAllowedRole(sessionAndUser, 'admin', 'employee')) return new Response("Forbidden", { status: 403 });
+
+    try {
+        const idParam = req.params.id;
+        const id = parseInt(idParam);
+        if (isNaN(id)) {
+            await Log.warn('Invalid document ID format for enable', sessionAndUser.user.login, AREA, { idParam });
+            return new Response(JSON.stringify({ message: 'Invalid document ID' }), { status: 400 });
+        }
+
+        const existingDoc = await getArchiveDocumentByIdInternal(id);
+        if (!existingDoc) {
+            await Log.warn(`Attempted to enable non-existent document`, sessionAndUser.user.login, AREA, { documentId: id });
+            return new Response(JSON.stringify({ message: 'Document not found' }), { status: 404 });
+        }
+        if (existingDoc.active) {
+            await Log.warn(`Attempted to enable already active document`, sessionAndUser.user.login, AREA, { documentId: id });
+            return new Response(JSON.stringify({ message: 'Document already active' }), { status: 400 });
+        }
+
+        const enabled = await enableArchiveDocument(id);
+
+        if (enabled) {
+            await Log.info(`Archive document enabled: ID ${id} by ${sessionAndUser.user.login}`, sessionAndUser.user.login, AREA);
+            return new Response(null, { status: 204 });
+        } else {
+            await Log.warn(`Document enable failed for ID ${id}`, sessionAndUser.user.login, AREA);
+            const currentDoc = await getArchiveDocumentByIdInternal(id);
+            if (currentDoc && currentDoc.active) {
+                return new Response(JSON.stringify({ message: 'Document already active' }), { status: 400 });
+            } else {
+                return new Response(JSON.stringify({ message: 'Document not found or enable failed' }), { status: 404 });
+            }
+        }
+    } catch (error: any) {
+        await Log.error('Failed to enable archive document', sessionAndUser.user.login, AREA, error);
+        return new Response(JSON.stringify({ message: 'Failed to enable archive document', error: error.message }), { status: 500 });
     }
 };
 
@@ -393,7 +450,7 @@ export const batchTagArchiveDocumentsController = async (req: BunRequest) => {
         }
 
         const { searchQuery, tagIds, action } = validation.data;
-        let finalQuery = [...searchQuery];
+        let finalQuery: SearchQuery = [...searchQuery] as SearchQuery;
         const isAdmin = isAllowedRole(sessionAndUser, 'admin');
         const isEmployee = isAllowedRole(sessionAndUser, 'employee');
         const isUserRole = sessionAndUser.user.role === 'user';
