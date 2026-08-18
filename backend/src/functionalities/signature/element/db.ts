@@ -108,11 +108,41 @@ export async function getElementById(id: number, populate: ('component' | 'paren
 }
 
 // Ensure sorting by name for re-indexing
-export async function getElementsByComponentId(componentId: number): Promise<SignatureElement[]> {
-     // Add "AND active = TRUE" if using soft deletes
-    const statement = db.prepare(`SELECT * FROM signature_elements WHERE signatureComponentId = ? ORDER BY name COLLATE NOCASE`); // Added COLLATE NOCASE for consistent sorting
+export async function getElementsByComponentId(componentId: number): Promise<(SignatureElement & { parentIds: number[]; childCount: number })[]> {
+    const statement = db.prepare(`SELECT * FROM signature_elements WHERE signatureComponentId = ? ORDER BY name COLLATE NOCASE`);
     const results = statement.all(componentId);
-    return results.map(dbToElement).filter(e => e !== undefined) as SignatureElement[];
+    const elements = results.map(dbToElement).filter(e => e !== undefined) as SignatureElement[];
+
+    const elementIds = elements.map(e => e.signatureElementId!).filter(id => id !== undefined);
+    if (elementIds.length === 0) return elements.map(e => ({ ...e, parentIds: [], childCount: 0 }));
+
+    const placeholders = elementIds.map(() => '?').join(',');
+    const parentRows = db.prepare(
+        `SELECT childElementId, parentElementId FROM signature_element_parents WHERE childElementId IN (${placeholders})`
+    ).all(...elementIds) as { childElementId: number; parentElementId: number }[];
+
+    const childCountRows = db.prepare(
+        `SELECT parentElementId, COUNT(*) as cnt FROM signature_element_parents WHERE parentElementId IN (${placeholders}) GROUP BY parentElementId`
+    ).all(...elementIds) as { parentElementId: number; cnt: number }[];
+
+    const parentsByChild = new Map<number, number[]>();
+    for (const row of parentRows) {
+        if (!parentsByChild.has(row.childElementId)) {
+            parentsByChild.set(row.childElementId, []);
+        }
+        parentsByChild.get(row.childElementId)!.push(row.parentElementId);
+    }
+
+    const childCountMap = new Map<number, number>();
+    for (const row of childCountRows) {
+        childCountMap.set(row.parentElementId, row.cnt);
+    }
+
+    return elements.map(e => ({
+        ...e,
+        parentIds: parentsByChild.get(e.signatureElementId!) || [],
+        childCount: childCountMap.get(e.signatureElementId!) || 0,
+    }));
 }
 
 // Helper to get component details efficiently if needed often

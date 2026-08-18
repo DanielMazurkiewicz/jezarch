@@ -159,4 +159,5 @@ export const archiveTranslationsPL: ArchiveTranslationSet = {
   archiveHelpUnits: 'Jednostki to kontenery (foldery) zawierające dokumenty. Reprezentują fizyczne lub logiczne grupowania w archiwum.',
   archiveHelpDocuments: 'Dokumenty to pojedyncze pozycje z metadanymi (tytuł, twórca, daty). Każdy dokument może należeć do jednostki.',
   archiveHelpSignatures: 'Użyj pola "Ścieżka sygnatury opisowej" aby klasyfikować dokumenty za pomocą systemu sygnatur zdefiniowanego w sekcji Sygnatury.',
+  quickFilterEnableLabel: 'Drzewo sygnatur opisowych',
 };

@@ -217,7 +217,7 @@ const createSignatureElement = (data: CreateSignatureElementInput, token: string
 const getSignatureElementById = (id: number, populate: ('component' | 'parents')[] = [], token: string) => fetchApi<SignatureElement>(`/signature/element/${id}${populate.length ? `?populate=${populate.join(',')}` : ''}`, 'GET', null, token);
 const updateSignatureElement = (id: number, data: UpdateSignatureElementInput, token: string) => fetchApi<SignatureElement>(`/signature/element/${id}`, 'PATCH', data, token);
 const deleteSignatureElement = (id: number, token: string) => fetchApi<{ success: boolean }>(`/signature/element/${id}`, 'DELETE', null, token);
-const getElementsByComponent = (componentId: number, token: string) => fetchApi<SignatureElement[]>(`/signature/components/id/${componentId}/elements/all`, 'GET', null, token);
+const getElementsByComponent = (componentId: number, token: string) => fetchApi<(SignatureElement & { parentIds: number[]; childCount: number })[]>(`/signature/components/id/${componentId}/elements/all`, 'GET', null, token);
 const searchSignatureElements = (searchRequest: SearchRequest, token: string) => fetchApi<SearchResponse<SignatureElementSearchResult>>("/signature/elements/search", "POST", searchRequest, token);
 // --- Archive API calls use updated types ---
 const createArchiveDocument = (data: CreateArchiveDocumentInput, token: string) => fetchApi<ArchiveDocument>('/archive/document', 'PUT', data, token);

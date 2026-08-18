@@ -12,7 +12,7 @@ import { useAuth } from '@/hooks/useAuth';
 import api from '@/lib/api';
 import type { Tag } from '../../../../backend/src/functionalities/tag/models';
 import type { ArchiveDocument, ArchiveDocumentSearchResult, ArchiveDocumentType } from '../../../../backend/src/functionalities/archive/document/models';
-import type { SearchRequest, SearchResponse, SearchQueryElement } from '../../../../backend/src/utils/search';
+import type { SearchRequest, SearchResponse, SearchQuery, SearchQueryElement } from '../../../../backend/src/utils/search';
 import { PlusCircle, ArrowLeft, Folder, FileText, Tags, MinusCircle, Archive as ArchiveIcon, FileSearch } from 'lucide-react';
 import Pagination from '@/components/shared/Pagination';
 import { toast } from "sonner";
@@ -22,6 +22,7 @@ import { Info } from 'lucide-react';
 import DocumentPreviewDialog from './DocumentPreviewDialog';
 import { cn } from '@/lib/utils';
 import { t } from '@/translations/utils'; // Import translation utility
+import { useQuickFilterContext } from '@/context/QuickFilterContext';
 
 const ARCHIVE_PAGE_SIZE = 10;
 
@@ -72,6 +73,27 @@ const ArchivePage: React.FC = () => {
   useEffect(() => { searchQueryRef.current = searchQuery; }, [searchQuery]);
   useEffect(() => { sortByRef.current = sortBy; }, [sortBy]);
   useEffect(() => { sortOrderRef.current = sortOrder; }, [sortOrder]);
+
+  const lastSearchBarQueryRef = useRef<SearchQuery>([]);
+  const quickFilterRef = useRef<SearchQueryElement | null>(null);
+  const { setOnFilterChange } = useQuickFilterContext();
+
+  const mergeQuickFilter = useCallback((quickFilter: SearchQueryElement | null, searchBarQuery: SearchQuery): SearchQuery => {
+    const base = searchBarQuery.filter(q => q.field !== 'descriptiveSignature');
+    if (quickFilter) {
+      return [...base, quickFilter];
+    }
+    return base;
+  }, []);
+
+  useEffect(() => {
+    setOnFilterChange((quickFilter: SearchQueryElement | null) => {
+      quickFilterRef.current = quickFilter;
+      const merged = mergeQuickFilter(quickFilter, lastSearchBarQueryRef.current);
+      setSearchQuery(merged);
+      setCurrentPage(1);
+    });
+  }, [setOnFilterChange, mergeQuickFilter]);
 
   const isSearchActive = useMemo(() => searchQuery.length > 0, [searchQuery]);
 
@@ -229,7 +251,12 @@ const ArchivePage: React.FC = () => {
         await fetchDocuments(currentPage, searchQuery);
     };
 
-   const handleSearch = (newQuery: SearchRequest['query']) => { setSearchQuery(newQuery); setCurrentPage(1); };
+   const handleSearch = (newQuery: SearchRequest['query']) => {
+     lastSearchBarQueryRef.current = newQuery;
+     const merged = mergeQuickFilter(quickFilterRef.current, newQuery);
+     setSearchQuery(merged);
+     setCurrentPage(1);
+   };
    const handlePageChange = (newPage: number) => { setCurrentPage(newPage); };
    const handleSort = useCallback((field: string) => {
        const currentSortBy = sortByRef.current;

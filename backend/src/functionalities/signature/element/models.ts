@@ -43,4 +43,5 @@ export type UpdateSignatureElementInput = z.infer<typeof updateSignatureElementS
 // Interface for search results potentially including parents
 export interface SignatureElementSearchResult extends SignatureElement {
      parentIds?: number[]; // Include raw parent IDs in search results if helpful
+     childCount?: number; // Include child count for tree display
 }

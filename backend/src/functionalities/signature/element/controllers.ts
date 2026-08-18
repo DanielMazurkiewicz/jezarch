@@ -1,5 +1,5 @@
 import { BunRequest } from 'bun';
-import { db } from '../../../initialization/db'; // Import db for transaction
+import { db } from '../../../initialization/db';
 import {
     createElement,
     getElementById,
@@ -262,7 +262,25 @@ export const searchElementsController = async (req: BunRequest) => {
 
         const searchResponse = await executeSearch<SignatureElementSearchResult>(dataQuery, countQuery);
 
-        // Optional: Post-process results if needed
+        const results = searchResponse.data;
+        if (results.length > 0) {
+            const ids = results
+                .map(r => r.signatureElementId!)
+                .filter(id => id !== undefined);
+            if (ids.length > 0) {
+                const placeholders = ids.map(() => '?').join(',');
+                const childCountRows = db.prepare(
+                    `SELECT parentElementId, COUNT(*) as cnt FROM signature_element_parents WHERE parentElementId IN (${placeholders}) GROUP BY parentElementId`
+                ).all(...ids) as { parentElementId: number; cnt: number }[];
+                const childCountMap = new Map<number, number>();
+                for (const row of childCountRows) {
+                    childCountMap.set(row.parentElementId, row.cnt);
+                }
+                for (const r of results) {
+                    r.childCount = childCountMap.get(r.signatureElementId!) || 0;
+                }
+            }
+        }
 
         return new Response(JSON.stringify(searchResponse), { status: 200 });
 

@@ -157,4 +157,5 @@ export const archiveTranslationsEN: ArchiveTranslationSet = {
   archiveHelpUnits: 'Units are containers (folders) that hold documents. They represent physical or logical groupings in your archive.',
   archiveHelpDocuments: 'Documents are individual items with metadata (title, creator, dates). Each document can belong to a unit.',
   archiveHelpSignatures: 'Use the "Descriptive Signature Path" field to classify documents using the signature system defined in the Signatures section.',
+  quickFilterEnableLabel: 'Descriptive signature tree',
 };

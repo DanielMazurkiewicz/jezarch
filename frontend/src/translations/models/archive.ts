@@ -155,6 +155,7 @@ export type ArchiveTranslationKey =
   | 'archiveHelpUnits'
   | 'archiveHelpDocuments'
   | 'archiveHelpSignatures'
+  | 'quickFilterEnableLabel'
   ;
 
 export type ArchiveTranslationSet = TranslationSet<ArchiveTranslationKey>;

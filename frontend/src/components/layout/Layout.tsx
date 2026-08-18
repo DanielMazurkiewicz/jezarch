@@ -3,6 +3,7 @@ import { Outlet } from 'react-router-dom'; // Import Outlet
 import Sidebar from './Sidebar';
 import Header from './Header';
 import { cn } from '@/lib/utils'; // Import cn
+import { QuickFilterProvider } from '@/context/QuickFilterContext';
 
 const Layout: React.FC = () => {
   // State for mobile sidebar toggle if needed in the future
@@ -10,15 +11,14 @@ const Layout: React.FC = () => {
   // const toggleSidebar = () => setIsSidebarOpen(!isSidebarOpen);
 
   return (
-    // Use flexbox for sidebar + main content layout
-    // bg-muted/40 provides a slightly tinted background for the whole layout area
+    <QuickFilterProvider>
     <div className="flex min-h-screen w-full bg-muted/40">
       {/* Sidebar - Always display as flex item */}
       <Sidebar className="flex" />
 
       {/* Main content area */}
       <div className="flex flex-col flex-1">
-         <Header /* toggleSidebar={toggleSidebar} // Pass toggle function if needed */ />
+         <Header />
         {/* Main content section with padding and max-width for centering */}
         {/* Ensure main content area has a solid background using the theme variable */}
         <main className={cn(
@@ -32,6 +32,7 @@ const Layout: React.FC = () => {
         </main>
       </div>
     </div>
+    </QuickFilterProvider>
   );
 };
 
