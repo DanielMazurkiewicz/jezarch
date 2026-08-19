@@ -19,7 +19,7 @@ export async function initializeSignatureElementTable() {
             "index" TEXT, -- <<< FIXED: Quoted reserved keyword
             createdOn DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
             modifiedOn DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-            -- active BOOLEAN NOT NULL DEFAULT TRUE, -- For soft deletes
+            -- isDeleted BOOLEAN NOT NULL DEFAULT FALSE, -- For soft deletes
             FOREIGN KEY (signatureComponentId) REFERENCES signature_components(signatureComponentId) ON DELETE CASCADE -- Delete elements if component is deleted
         )
     `);
@@ -59,7 +59,7 @@ const dbToElement = (data: any): SignatureElement | undefined => {
         index: data.index, // Map the index field
         createdOn: new Date(data.createdOn),
         modifiedOn: new Date(data.modifiedOn),
-        // active: Boolean(data.active), // If soft delete added
+        // isDeleted: Boolean(data.isDeleted), // If soft delete added
     } as SignatureElement;
 };
 
@@ -90,7 +90,7 @@ export async function createElement(
 }
 
 export async function getElementById(id: number, populate: ('component' | 'parents')[] = []): Promise<SignatureElement | undefined> {
-     // Add "WHERE active = TRUE" if using soft deletes
+     // Add "WHERE isDeleted = FALSE" if using soft deletes
     const statement = db.prepare(`SELECT * FROM signature_elements WHERE signatureElementId = ?`);
     const elementData = statement.get(id);
     const element = dbToElement(elementData);
@@ -209,7 +209,7 @@ export async function updateElementIndex(elementId: number, index: string): Prom
 
 export async function deleteElement(id: number): Promise<boolean> {
     // If using soft delete:
-    // return !!(await updateElement(id, { active: false }));
+    // return !!(await updateElement(id, { isDeleted: true }));
 
     // Hard delete - Cascade handles parent/child relationships in signature_element_parents
     const statement = db.prepare(`DELETE FROM signature_elements WHERE signatureElementId = ?`);
@@ -263,7 +263,7 @@ export async function setParentElementIds(childElementId: number, parentElementI
 
 
 export async function getParentElements(childElementId: number): Promise<SignatureElement[]> {
-    // Add "AND se.active = TRUE" if using soft deletes
+    // Add "AND se.isDeleted = FALSE" if using soft deletes
     const statement = db.prepare(`
         SELECT se.* FROM signature_elements se
         JOIN signature_element_parents sep ON se.signatureElementId = sep.parentElementId
@@ -275,7 +275,7 @@ export async function getParentElements(childElementId: number): Promise<Signatu
 }
 
 export async function getChildElements(parentElementId: number): Promise<SignatureElement[]> {
-    // Add "AND se.active = TRUE" if using soft deletes
+    // Add "AND se.isDeleted = FALSE" if using soft deletes
      const statement = db.prepare(`
         SELECT se.* FROM signature_elements se
         JOIN signature_element_parents sep ON se.signatureElementId = sep.childElementId

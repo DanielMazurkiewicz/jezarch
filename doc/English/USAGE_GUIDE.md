@@ -16,7 +16,7 @@ This guide covers the core functionalities of the JezArch application for differ
     *   [Viewing Details](#viewing-details)
     *   [Creating Units/Documents (Admin/Employee)](#creating-unitsdocuments-adminemployee)
     *   [Editing Units/Documents (Admin/Employee)](#editing-unitsdocuments-adminemployee)
-    *   [Disabling Items (Admin/Employee)](#disabling-items-adminemployee)
+    *   [Deleting Items (Admin/Employee)](#deleting-items-adminemployee)
     *   [Batch Tagging (Admin/Employee)](#batch-tagging-adminemployee)
 *   [Signatures (Admin/Employee)](#signatures-adminemployee)
     *   [Components](#components)
@@ -95,7 +95,7 @@ Accessible via the "Archive" / "Search Archive" link in the sidebar.
     *   For text fields (`Contains`): Enter text fragments.
     *   For `Tags`: Select one or more tags from the dropdown. `Has Any Of` finds items with *at least one* of the selected tags.
     *   For `Descriptive Signature`: Use the **Signature Path Picker** (`Equals`, `Starts With`, `Contains Sequence`) to build the signature path you want to search for.
-    *   For `boolean` fields (Is Digitized, Is Active): Select `True` or `False`.
+    *   For `boolean` fields (Is Digitized, Is Deleted): Select `True` or `False`.
 *   You can check the **NOT** box to negate a condition (e.g., find items *not* matching).
 *   Add multiple criteria to narrow down results (they are combined with AND).
 *   Click **Search** to apply filters. Click **Reset** to clear filters.
@@ -110,7 +110,7 @@ Accessible via the "Archive" / "Search Archive" link in the sidebar.
     *   Created By/Updated By information with timestamps.
     *   Content Description, Physical Details, Access info, Remarks, etc.
     *   A link to the digitized version if available.
-*   Admins/Employees see **Edit** and **Disable** buttons in the dialog footer.
+*   Admins/Employees see **Edit** and **Delete** buttons in the dialog footer (or **Restore** for deleted items).
 
 ### Creating Units/Documents (Admin/Employee)
 
@@ -130,11 +130,12 @@ Accessible via the "Archive" / "Search Archive" link in the sidebar.
 *   Modify the fields as needed. The 'Type' cannot be changed.
 *   Click **Update Item**.
 
-### Disabling Items (Admin/Employee)
+### Deleting Items (Admin/Employee)
 
-*   Click the **Disable** (trash can) icon on an item row or in the preview dialog.
+*   Click the **Delete** (trash can) icon on an item row or in the preview dialog.
 *   Confirm the action in the prompt.
-*   The item will be marked as inactive and hidden from regular views and searches (unless an Admin specifically includes inactive items in their search). Disabled items are not permanently deleted.
+*   The item is soft-deleted: it is not permanently removed. The list shows non-deleted items by default; Admins and Employees can reveal deleted items by removing the `Is Deleted` filter (or setting it to `True`) — deleted items then show the **Restore** icon. Regular users never see deleted items.
+*   Click the **Restore** icon on the item to bring it back.
 
 ### Batch Tagging (Admin/Employee)
 

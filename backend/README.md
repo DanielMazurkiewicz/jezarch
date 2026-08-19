@@ -68,11 +68,11 @@ Users with `null` role cannot log in (account disabled).
 |--------|---------|
 | `200 OK` | Request successful. Response body contains data or success message. |
 | `201 Created` | Resource created. Response body contains the created resource. |
-| `204 No Content` | Successful action with no response body (used by delete/disable endpoints). |
+| `204 No Content` | Successful action with no response body (used by soft-delete/restore endpoints). |
 | `400 Bad Request` | Malformed request: missing fields, invalid JSON, failed validation, invalid ID format. |
 | `401 Unauthorized` | Missing or invalid `Authorization` header, or expired token. |
 | `403 Forbidden` | Authenticated but insufficient permissions (wrong role or not owner). |
-| `404 Not Found` | Resource not found or not active. |
+| `404 Not Found` | Resource not found or not visible (e.g. soft-deleted archive documents). |
 | `409 Conflict` | Name already exists (duplicate user, tag, or component). |
 | `500 Internal Server Error` | Unexpected server error. Check server logs for details. |
 
@@ -728,7 +728,7 @@ Response `201 Created`: Created document object with populated `tags` and `resol
 
 **`GET /api/archive/document/id/:id`** — Get a specific document/unit. Requires authentication (admin, employee, or user). `user` role access is filtered by assigned tags.
 
-Optional query param: `?includeInactive=true` (admin/employee only) to fetch inactive documents.
+Soft-deleted documents return `404 Not Found` for all roles.
 
 Response `200 OK`: Document object with populated `tags`.
 
@@ -740,7 +740,13 @@ Response `200 OK`: Updated document object with populated `tags`.
 
 ---
 
-**`DELETE /api/archive/document/id/:id`** — Soft-delete (disable) a document/unit. Requires authentication (admin or employee).
+**`DELETE /api/archive/document/id/:id`** — Soft-delete a document/unit (sets `isDeleted` to `true`). Requires authentication (admin or employee). Deleting an already deleted document returns `400 Bad Request`.
+
+Response `204 No Content`
+
+---
+
+**`POST /api/archive/document/id/:id/restore`** — Restore a soft-deleted document/unit (sets `isDeleted` to `false`). Requires authentication (admin or employee). Restoring a document that is not deleted returns `400 Bad Request`.
 
 Response `204 No Content`
 
@@ -748,12 +754,12 @@ Response `204 No Content`
 
 **`POST /api/archive/documents/search`** — Search documents/units. Requires authentication (admin, employee, or user).
 
-Allowed direct fields: `archiveDocumentId`, `parentUnitArchiveDocumentId`, `createdBy`, `updatedBy`, `type`, `title`, `creator`, `creationDate`, `numberOfPages`, `documentType`, `dimensions`, `binding`, `condition`, `documentLanguage`, `contentDescription`, `remarks`, `accessLevel`, `accessConditions`, `additionalInformation`, `relatedDocumentsReferences`, `isDigitized`, `digitizedVersionLink`, `createdOn`, `modifiedOn`, `active`, `topographicSignature`.
+Allowed direct fields: `archiveDocumentId`, `parentUnitArchiveDocumentId`, `createdBy`, `updatedBy`, `type`, `title`, `creator`, `creationDate`, `numberOfPages`, `documentType`, `dimensions`, `binding`, `condition`, `documentLanguage`, `contentDescription`, `remarks`, `accessLevel`, `accessConditions`, `additionalInformation`, `relatedDocumentsReferences`, `isDigitized`, `digitizedVersionLink`, `createdOn`, `modifiedOn`, `isDeleted`, `topographicSignature`.
 
 Custom handlers:
 - `tags` with `ANY_OF`: `value` is an array of `tagId` numbers.
 - `descriptiveSignature` with `STARTS_WITH` or `CONTAINS_SEQUENCE`: `value` is an array of element IDs.
-- `active`: By default, only active documents are returned. Admin/employee can override with `{ "field": "active", "condition": "EQ", "value": false }`. Non-admin/employee attempts to filter by `active` are ignored.
+- `isDeleted`: Admin/employee see deleted documents in search results unless they explicitly filter them out (e.g. `{ "field": "isDeleted", "condition": "EQ", "value": false }`). For non-admin/employee roles the `isDeleted` filter is always forced to `false`, so only non-deleted documents are returned.
 - `user` role: Results are automatically filtered to documents matching assigned tags.
 
 Response `200 OK`: `SearchResponse<ArchiveDocumentSearchResult>` (results include `tags` and `resolvedDescriptiveSignatures`).

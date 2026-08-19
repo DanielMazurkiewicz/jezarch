@@ -133,7 +133,7 @@ Yes, all main sections now have:
 
 | Section | Preview | Delete |
 |---------|---------|--------|
-| Archive | DocumentPreviewDialog | Soft-disable (soft delete) |
+| Archive | DocumentPreviewDialog | Soft delete / restore (soft delete) |
 | Components | ComponentPreviewDialog | Admin-only hard delete |
 | Elements | ElementPreviewDialog | Admin/Employee delete |
 | Tags | Edit form serves as preview | Delete with confirmation |

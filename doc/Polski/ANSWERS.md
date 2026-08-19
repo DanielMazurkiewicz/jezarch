@@ -133,7 +133,7 @@ Tak, wszystkie główne sekcje mają teraz:
 
 | Sekcja | Podgląd | Usuwanie |
 |--------|---------|----------|
-| Archiwum | DocumentPreviewDialog | Miękkie wyłączenie (soft delete) |
+| Archiwum | DocumentPreviewDialog | Miękkie usunięcie / przywracanie (soft delete) |
 | Komponenty | ComponentPreviewDialog | Twarde usuwanie tylko dla admina |
 | Elementy | ElementPreviewDialog | Usuwanie dla admina/pracownika |
 | Tagi | Formularz edycji służy jako podgląd | Usuwanie z potwierdzeniem |

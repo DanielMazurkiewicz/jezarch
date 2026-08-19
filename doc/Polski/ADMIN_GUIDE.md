@@ -155,4 +155,4 @@ Poza dedykowanym Panelem Administratora, Administratorzy generalnie mają podwy�
 *   **Mogą edytować/usuwać dowolną Notatkę.**
 *   **Mogą edytować/usuwać dowolny Komponent Sygnatury (w tym Elementy przez kaskadę).**
 *   **Mogą omijać kontrole własności** przy przeglądaniu/edycji/usuwaniu większości elementów (z wyjątkiem zmiany własnej roli/hasła przez ścieżki administracyjne).
-*   Mogą wyświetlać nieaktywne pozycje Archiwum w wyszukiwaniach, jeśli jest to określone.
+*   Mogą wyświetlać usunięte pozycje Archiwum w wyszukiwaniach (warunek `Czy Usunięte` = `Prawda`).

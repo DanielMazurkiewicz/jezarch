@@ -163,4 +163,4 @@ Beyond the dedicated Admin Panel, Administrators generally have elevated permiss
 *   **Can edit/delete any Note.**
 *   **Can edit/delete any Signature Component (including Elements via cascade).**
 *   **Can bypass ownership checks** for viewing/editing/deleting most items (except changing their own role/password via admin routes).
-*   Can view inactive Archive items in searches if specified.
+*   Can view deleted Archive items in searches (included by default; use the `Is Deleted` filter to narrow them down).

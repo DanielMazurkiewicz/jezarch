@@ -11,8 +11,8 @@ import { t } from '@/translations/utils'; // Import translation utility
 interface DocumentListProps {
   documents: ArchiveDocumentSearchResult[]; // Use search result which includes resolved signatures
   onEdit: (doc: ArchiveDocument) => void; // Pass base type for editing simplicity
-  onDisable: (docId: number) => void;
-  onEnable: (docId: number) => void;
+  onDelete: (docId: number) => void;
+  onRestore: (docId: number) => void;
   onPreview: (doc: ArchiveDocumentSearchResult) => void;
   onOpenUnit: (doc: ArchiveDocumentSearchResult) => void;
   sortBy?: string;
@@ -26,7 +26,7 @@ type ArchiveDocumentSearchResultWithResolved = ArchiveDocumentSearchResult & {
 };
 
 
-const DocumentList: React.FC<DocumentListProps> = React.memo(({ documents, onEdit, onDisable, onEnable, onPreview, onOpenUnit, sortBy, sortOrder, onSort }) => {
+const DocumentList: React.FC<DocumentListProps> = React.memo(({ documents, onEdit, onDelete, onRestore, onPreview, onOpenUnit, sortBy, sortOrder, onSort }) => {
   const { user, preferredLanguage } = useAuth(); // Get preferredLanguage
 
   const canModify = () => {
@@ -84,6 +84,8 @@ const DocumentList: React.FC<DocumentListProps> = React.memo(({ documents, onEdi
                     const docWithResolved = doc as ArchiveDocumentSearchResultWithResolved;
                     const canUserModify = canModify(); // Check modification permission
                     const isUnit = doc.type === 'unit';
+                    const hasParent = doc.parentUnitArchiveDocumentId != null;
+                    const isDeleted = Boolean(doc.isDeleted);
 
                     return (
                         <TableRow
@@ -94,8 +96,8 @@ const DocumentList: React.FC<DocumentListProps> = React.memo(({ documents, onEdi
                         >
                             <TableCell className='text-center'>
                                 {isUnit
-                                    ? <Folder className='h-4 w-4 text-blue-600 inline-block'/>
-                                    : <FileText className='h-4 w-4 text-green-600 inline-block'/>}
+                                    ? <Folder className={cn('h-4 w-4 inline-block', hasParent ? 'text-blue-400' : 'text-blue-600')}/>
+                                    : <FileText className={cn('h-4 w-4 inline-block', hasParent ? 'text-green-400' : 'text-green-600')}/>}
                             </TableCell>
                             {/* Title cell: Allow wrapping and set max width */}
                             <TableCell className="font-medium max-w-sm md:max-w-md whitespace-normal break-words">{doc.title}</TableCell>
@@ -128,14 +130,14 @@ const DocumentList: React.FC<DocumentListProps> = React.memo(({ documents, onEdi
                                         <Edit className="h-4 w-4" />
                                     </Button>
                                 )}
-                                {/* Disable / Restore Button */}
-                                {canUserModify && (doc.active || doc.active === undefined) && (
-                                    <Button variant="ghost" size="icon" onClick={(e) => { e.stopPropagation(); onDisable(doc.archiveDocumentId!); }} title={t('disableButton', preferredLanguage)}>
+                                {/* Delete / Restore Button */}
+                                {canUserModify && !isDeleted && (
+                                    <Button variant="ghost" size="icon" onClick={(e) => { e.stopPropagation(); onDelete(doc.archiveDocumentId!); }} title={t('deleteButton', preferredLanguage)}>
                                         <Trash2 className="h-4 w-4 text-destructive" />
                                     </Button>
                                 )}
-                                {canUserModify && !doc.active && doc.active !== undefined && (
-                                    <Button variant="ghost" size="icon" onClick={(e) => { e.stopPropagation(); onEnable(doc.archiveDocumentId!); }} title={t('enableButton', preferredLanguage)}>
+                                {canUserModify && isDeleted && (
+                                    <Button variant="ghost" size="icon" onClick={(e) => { e.stopPropagation(); onRestore(doc.archiveDocumentId!); }} title={t('restoreButton', preferredLanguage)}>
                                         <RefreshCcw className="h-4 w-4 text-green-600" />
                                     </Button>
                                 )}

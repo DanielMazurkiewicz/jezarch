@@ -89,7 +89,8 @@ export async function buildSearchQueries<T extends Record<string, any>>(
     searchRequest: SearchRequest,
     allowedFields: (keyof T | string)[], // Allow string for potential JOINed fields like ownerLogin
     fieldHandlers?: Record<string, SearchOnCustomFieldHandler<T>>,
-    primaryKeyField: string = `${table.slice(0, -1)}Id`
+    primaryKeyField: string = `${table.slice(0, -1)}Id`,
+    primaryOrderBy?: string
 ): Promise<BuildSearchQueriesResult> {
     const mainTableAlias = `${table}_main`;
     const whereConditions: string[] = [];
@@ -175,12 +176,20 @@ export async function buildSearchQueries<T extends Record<string, any>>(
 
     const joins = Array.from(joinClauses).join('\n');
     const whereClause = whereConditions.length > 0 ? `WHERE ${whereConditions.join(' AND ')}` : '';
-    // Support configurable ORDER BY with defaults
-    const sortField = searchRequest.sortBy && allowedFields.includes(searchRequest.sortBy)
-        ? `${mainTableAlias}.${searchRequest.sortBy}`
-        : `${mainTableAlias}.${primaryKeyField}`;
+    // Support configurable ORDER BY with defaults.
+    // primaryOrderBy, when provided, is always the first sort key; the requested column (or primary key) sorts within it.
+    const hasExplicitSort = !!(searchRequest.sortBy && allowedFields.includes(searchRequest.sortBy));
     const sortDirection = searchRequest.sortOrder === 'ASC' ? 'ASC' : 'DESC';
-    const orderBy = `ORDER BY ${sortField} ${sortDirection}`;
+    let orderBy: string;
+    if (primaryOrderBy) {
+        const orderClauses: string[] = [primaryOrderBy];
+        if (hasExplicitSort) orderClauses.push(`${mainTableAlias}.${searchRequest.sortBy} ${sortDirection}`);
+        orderClauses.push(`${mainTableAlias}.${primaryKeyField} DESC`);
+        orderBy = `ORDER BY ${orderClauses.join(', ')}`;
+    } else {
+        const orderByField = hasExplicitSort ? searchRequest.sortBy : primaryKeyField;
+        orderBy = `ORDER BY ${mainTableAlias}.${orderByField} ${sortDirection}`;
+    }
 
     // Adjust SELECT columns based on potential JOINs (only ownerLogin handled explicitly for now)
     // createdBy/updatedBy are now direct fields, no JOIN needed for them.

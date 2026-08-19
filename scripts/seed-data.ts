@@ -197,6 +197,19 @@ async function main() {
     }
   }
 
+  // 7b. Soft-delete one sample document to demonstrate the delete/restore workflow
+  const deletedIds: number[] = [];
+  if (docIds.length > 0) {
+    const delId = docIds[docIds.length - 1];
+    const delRes = await api('DELETE', `/api/archive/document/id/${delId}`, undefined, adminToken);
+    if (delRes.status === 204) {
+      deletedIds.push(delId);
+      console.log(`  Soft-deleted sample document: id=${delId}`);
+    } else {
+      console.error(`  Failed to soft-delete document id=${delId}:`, delRes.text);
+    }
+  }
+
   // 8. Create notes
   console.log('\n--- Creating notes ---');
   const notes = [
@@ -220,7 +233,7 @@ async function main() {
   console.log(`Tags: ${tags.length}`);
   console.log(`Components: ${components.length}`);
   console.log(`Elements: ${Object.keys(elementIds).length}`);
-  console.log(`Documents: ${docIds.length}`);
+  console.log(`Documents: ${docIds.length} (${deletedIds.length} soft-deleted)`);
   console.log(`Notes: ${notes.length}`);
 }
 

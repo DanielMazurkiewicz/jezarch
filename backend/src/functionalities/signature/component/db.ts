@@ -15,7 +15,7 @@ export async function initializeSignatureComponentTable() {
             index_type TEXT NOT NULL DEFAULT 'dec' CHECK(index_type IN ('dec', 'roman', 'small_char', 'capital_char')), -- Added field with constraint
             createdOn DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
             modifiedOn DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
-            -- active BOOLEAN NOT NULL DEFAULT TRUE -- For soft deletes
+            -- isDeleted BOOLEAN NOT NULL DEFAULT FALSE -- For soft deletes
         )
     `);
     // Optional: Index on name if lookups are frequent
@@ -33,7 +33,7 @@ export const dbToComponent = (data: any): SignatureComponent | undefined => {
         index_type: data.index_type as SignatureComponentIndexType, // Map new field with type assertion
         createdOn: new Date(data.createdOn),
         modifiedOn: new Date(data.modifiedOn),
-        // active: Boolean(data.active), // If soft delete added
+        // isDeleted: Boolean(data.isDeleted), // If soft delete added
     } as SignatureComponent;
 };
 
@@ -61,19 +61,19 @@ export async function createComponent(name: string, description?: string, index_
 }
 
 export async function getComponentById(id: number): Promise<SignatureComponent | undefined> {
-    // Add "WHERE active = TRUE" if using soft deletes
+    // Add "WHERE isDeleted = FALSE" if using soft deletes
     const statement = db.prepare(`SELECT * FROM signature_components WHERE signatureComponentId = ?`);
     return dbToComponent(statement.get(id));
 }
 
 export async function getComponentByName(name: string): Promise<SignatureComponent | undefined> {
-     // Add "WHERE active = TRUE" if using soft deletes
+     // Add "WHERE isDeleted = FALSE" if using soft deletes
     const statement = db.prepare(`SELECT * FROM signature_components WHERE name = ?`);
     return dbToComponent(statement.get(name));
 }
 
 export async function getAllComponents(): Promise<SignatureComponent[]> {
-     // Add "WHERE active = TRUE" if using soft deletes
+     // Add "WHERE isDeleted = FALSE" if using soft deletes
     const statement = db.prepare(`SELECT * FROM signature_components ORDER BY name`);
     const results = statement.all();
     return results.map(dbToComponent).filter(c => c !== undefined) as SignatureComponent[];
@@ -115,7 +115,7 @@ export async function updateComponent(
 
 export async function deleteComponent(id: number): Promise<boolean> {
      // If using soft delete:
-     // return !!(await updateComponent(id, { active: false }));
+     // return !!(await updateComponent(id, { isDeleted: true }));
 
     // Hard delete - Elements associated via Foreign Key ON DELETE CASCADE will also be deleted
     const statement = db.prepare(`DELETE FROM signature_components WHERE signatureComponentId = ?`);

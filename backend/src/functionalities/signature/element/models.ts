@@ -9,7 +9,7 @@ export interface SignatureElement {
     index?: string | null; // New text field
     createdOn: Date;
     modifiedOn: Date;
-    // active: boolean; // Consider adding later
+    // isDeleted: boolean; // Consider adding later
 
     // Optional, populated fields
     component?: SignatureComponent;
@@ -33,7 +33,7 @@ export const updateSignatureElementSchema = z.object({
     description: z.string().max(500, "Description too long").optional().nullable(), // Allow setting to null
     index: z.string().max(255, "Index too long").optional().nullable(), // Allow setting index to null
     parentIds: z.array(z.number().int().positive()).optional(), // Allow updating parents
-    // active: z.boolean().optional(), // If soft delete is added
+    // isDeleted: z.boolean().optional(), // If soft delete is added
 });
 
 

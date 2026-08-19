@@ -223,8 +223,8 @@ const searchSignatureElements = (searchRequest: SearchRequest, token: string) =>
 const createArchiveDocument = (data: CreateArchiveDocumentInput, token: string) => fetchApi<ArchiveDocument>('/archive/document', 'PUT', data, token);
 const getArchiveDocumentById = (id: number, token: string) => fetchApi<ArchiveDocument>(`/archive/document/id/${id}`, 'GET', null, token);
 const updateArchiveDocument = (id: number, data: UpdateArchiveDocumentInput, token: string) => fetchApi<ArchiveDocument>(`/archive/document/id/${id}`, 'PATCH', data, token);
-const disableArchiveDocument = (id: number, token: string) => fetchApi<{ success: boolean }>(`/archive/document/id/${id}`, 'DELETE', null, token);
-const enableArchiveDocument = (id: number, token: string) => fetchApi<{ success: boolean }>(`/archive/document/id/${id}/restore`, 'POST', null, token);
+const softDeleteArchiveDocument = (id: number, token: string) => fetchApi<{ success: boolean }>(`/archive/document/id/${id}`, 'DELETE', null, token);
+const restoreArchiveDocument = (id: number, token: string) => fetchApi<{ success: boolean }>(`/archive/document/id/${id}/restore`, 'POST', null, token);
 const searchArchiveDocuments = (searchRequest: SearchRequest, token: string) => fetchApi<SearchResponse<ArchiveDocumentSearchResult>>("/archive/documents/search", "POST", searchRequest, token);
 const batchTagArchiveDocuments = (data: BatchTagDocumentsInput, token: string) => fetchApi<{ message: string; count: number }>("/archive/documents/batch-tag", "POST", data, token);
 const backupDatabase = (token: string) => fetchApi<Blob>("/admin/db/backup", "GET", null, token, { expectBlob: true });
@@ -243,6 +243,6 @@ export default {
     createSignatureElement, getSignatureElementById, updateSignatureElement,
     deleteSignatureElement, getElementsByComponent, searchSignatureElements,
     createArchiveDocument, getArchiveDocumentById, updateArchiveDocument,
-    disableArchiveDocument, enableArchiveDocument, searchArchiveDocuments,
+    softDeleteArchiveDocument, restoreArchiveDocument, searchArchiveDocuments,
     batchTagArchiveDocuments, backupDatabase,
 };

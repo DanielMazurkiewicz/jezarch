@@ -60,7 +60,7 @@ const conditionsByType: Record<FieldType, { value: SearchQueryElement['condition
 };
 
 type SearchCriterionState = Partial<Omit<SearchQueryElement, 'value' | 'condition'>> & {
-    value?: string | number | boolean | number[] | (string | number | boolean | null)[] | null;
+    value?: string | number | boolean | number[] | number[][] | (string | number | boolean | null)[] | null;
     condition?: SearchQueryElement['condition'];
     _key?: string;
 };
@@ -101,7 +101,13 @@ const SearchBar: React.FC<SearchBarProps> = ({
 }) => {
     const { preferredLanguage } = useAuth();
     const getInitialCriterion = useInitialCriterion(fields);
-    const defaultQuerySnapshot = useRef(defaultQuery);
+    // Live default: 'defaultQuery' can appear only after auth resolves, so keep this ref up to date
+    const defaultQueryRef = useRef(defaultQuery);
+    useEffect(() => {
+        if (defaultQuery && defaultQuery.length > 0) {
+            defaultQueryRef.current = defaultQuery;
+        }
+    }, [defaultQuery]);
     const defaultAppliedRef = useRef(false);
     const [criteria, setCriteria] = useState<SearchCriterionState[]>([]);
 
@@ -109,7 +115,7 @@ const SearchBar: React.FC<SearchBarProps> = ({
         if (fields.length === 0 && criteria.length > 0) {
             setCriteria([]);
         } else if (fields.length > 0 && criteria.length === 0 && !defaultAppliedRef.current) {
-            const snap = defaultQuerySnapshot.current;
+            const snap = defaultQueryRef.current;
             if (snap && snap.length > 0) {
                 setCriteria(snap.map(queryElementToCriterion));
                 defaultAppliedRef.current = true;
@@ -125,7 +131,7 @@ const SearchBar: React.FC<SearchBarProps> = ({
                  return crit;
              }).filter(Boolean));
         }
-    }, [fields, getInitialCriterion]);
+    }, [fields, getInitialCriterion, defaultQuery]);
 
     const handleAddCriterion = () => {
          if (fields.length === 0) return;
@@ -232,7 +238,7 @@ const SearchBar: React.FC<SearchBarProps> = ({
 
     const handleSearchClick = () => { const finalQuery = buildQuery(); onSearch(finalQuery); };
     const handleResetClick = () => {
-        const snap = defaultQuerySnapshot.current;
+        const snap = defaultQueryRef.current;
         if (snap && snap.length > 0) {
             setCriteria(snap.map(queryElementToCriterion));
             onSearch(snap);
@@ -246,7 +252,7 @@ const SearchBar: React.FC<SearchBarProps> = ({
     const getTagsFromOptions = (options: SearchFieldOption['options']): Tag[] => { if (!options) return []; return options.map(opt => ({ tagId: typeof opt.value === 'number' ? opt.value : parseInt(String(opt.value), 10), name: opt.label })).filter(tag => !isNaN(tag.tagId)); }
 
     const isCriteriaDirty = useMemo(() => {
-        const snap = defaultQuerySnapshot.current;
+        const snap = defaultQueryRef.current;
         let defaultCriteria: SearchCriterionState[];
         if (snap && snap.length > 0) {
             defaultCriteria = snap.map(queryElementToCriterion);

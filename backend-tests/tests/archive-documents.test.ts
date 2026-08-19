@@ -55,7 +55,7 @@ test('PUT /api/archive/document creates a document', async () => {
   const body = await res.json();
   expect(body.title).toBe('Test Document');
   expect(body.type).toBe('document');
-  expect(body.active).toBeTrue();
+  expect(body.isDeleted).toBeFalse();
   expect(body.tags).toBeArray();
   createdDocId = body.archiveDocumentId;
 });
@@ -99,6 +99,62 @@ test('DELETE /api/archive/document/id/:id soft-deletes document', async () => {
   await expectStatus(res, 204);
   const getRes = await api(B, 'GET', `/api/archive/document/id/${createdDocId}`, undefined, adminToken);
   await expectStatus(getRes, 404);
+});
+
+test('POST /api/archive/document/id/:id/restore restores deleted document', async () => {
+  const res = await api(B, 'POST', `/api/archive/document/id/${createdDocId}/restore`, undefined, adminToken);
+  await expectStatus(res, 204);
+  const getRes = await api(B, 'GET', `/api/archive/document/id/${createdDocId}`, undefined, adminToken);
+  await expectStatus(getRes, 200);
+  expect((await getRes.json()).isDeleted).toBeFalse();
+});
+
+test('POST /api/archive/document/id/:id/restore rejects already restored document', async () => {
+  const res = await api(B, 'POST', `/api/archive/document/id/${createdDocId}/restore`, undefined, adminToken);
+  await expectStatus(res, 400);
+});
+
+test('POST /api/archive/document/id/:id/restore requires admin or employee', async () => {
+  const res = await api(B, 'POST', `/api/archive/document/id/${createdDocId}/restore`, undefined, userToken);
+  await expectStatus(res, 403);
+});
+
+test('User-role search excludes deleted documents (server-side forced filter)', async () => {
+  const d = await (await api(B, 'PUT', '/api/archive/document', { type: 'document', title: 'User Hide Me', creator: 'C', creationDate: '2024', tagIds: [tagId1] }, adminToken)).json();
+  await (await api(B, 'DELETE', `/api/archive/document/id/${d.archiveDocumentId}`, undefined, adminToken));
+  const res = await api(B, 'POST', '/api/archive/documents/search', { query: [], page: 1, pageSize: 100 }, userToken);
+  await expectStatus(res, 200);
+  const body = await res.json();
+  expect(body.data.some((x: any) => x.archiveDocumentId === d.archiveDocumentId)).toBeFalse();
+});
+
+test('Admin/employee see deleted documents without a filter; user role never sees them', async () => {
+  const d = await (await api(B, 'PUT', '/api/archive/document', { type: 'document', title: 'RoleDefault Doc', creator: 'C', creationDate: '2024', tagIds: [tagId1] }, adminToken)).json();
+  await (await api(B, 'DELETE', `/api/archive/document/id/${d.archiveDocumentId}`, undefined, adminToken));
+
+  const contains = (body: any) => body.data.some((x: any) => x.archiveDocumentId === d.archiveDocumentId);
+
+  // Admin with no filter: deleted document is visible
+  const adminDefault = await (await api(B, 'POST', '/api/archive/documents/search', { query: [], page: 1, pageSize: 100 }, adminToken)).json();
+  expect(contains(adminDefault)).toBeTrue();
+
+  // Admin filtering out deleted: not visible
+  const adminHidden = await (await api(B, 'POST', '/api/archive/documents/search', { query: [{ field: 'isDeleted', condition: 'EQ', value: false, not: false }], page: 1, pageSize: 100 }, adminToken)).json();
+  expect(contains(adminHidden)).toBeFalse();
+
+  // Admin explicitly requesting deleted: visible
+  const adminShown = await (await api(B, 'POST', '/api/archive/documents/search', { query: [{ field: 'isDeleted', condition: 'EQ', value: true, not: false }], page: 1, pageSize: 100 }, adminToken)).json();
+  expect(contains(adminShown)).toBeTrue();
+
+  // Employee with no filter: deleted document is visible
+  const empDefault = await (await api(B, 'POST', '/api/archive/documents/search', { query: [], page: 1, pageSize: 100 }, employeeToken)).json();
+  expect(contains(empDefault)).toBeTrue();
+
+  // User role: never sees deleted documents, even when trying to opt in
+  const userDefault = await (await api(B, 'POST', '/api/archive/documents/search', { query: [], page: 1, pageSize: 100 }, userToken)).json();
+  expect(contains(userDefault)).toBeFalse();
+  const userOptIn = await (await api(B, 'POST', '/api/archive/documents/search', { query: [{ field: 'isDeleted', condition: 'EQ', value: true, not: false }], page: 1, pageSize: 100 }, userToken)).json();
+  expect(contains(userOptIn)).toBeFalse();
 });
 
 test('POST /api/archive/documents/search with type filter', async () => {

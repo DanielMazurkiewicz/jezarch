@@ -33,8 +33,8 @@ async function main() {
   const users = [
     { login: 'archiwista1', password: 'Archiwista1', role: 'employee' },
     { login: 'archiwista2', password: 'Archiwista2', role: 'employee' },
-    { login: 'badacz1', password: 'Badacz1', role: 'user' },
-    { login: 'badacz2', password: 'Badacz2', role: 'user' },
+    { login: 'badacz1', password: 'Badacz123', role: 'user' },
+    { login: 'badacz2', password: 'Badacz123', role: 'user' },
   ];
 
   for (const u of users) {
@@ -618,6 +618,19 @@ async function main() {
     }
   }
 
+  // 7b. Miękkie usunięcie jednej przykładowej pozycji (demonstracja usuwania/przywracania)
+  const deletedIds: number[] = [];
+  if (docIds.length > 0) {
+    const delId = docIds[docIds.length - 1];
+    const delRes = await api('DELETE', `/api/archive/document/id/${delId}`, undefined, adminToken);
+    if (delRes.status === 204) {
+      deletedIds.push(delId);
+      console.log(`  Miękko usunięto przykładową pozycję: id=${delId}`);
+    } else {
+      console.error(`  Nie udało się miękko usunąć dokumentu id=${delId}:`, delRes.text);
+    }
+  }
+
   // 8. Create notes
   console.log('\n--- Tworzenie notatek ---');
   const notes = [
@@ -642,7 +655,7 @@ async function main() {
   console.log(`Tagów: ${tags.length}`);
   console.log(`Komponentów sygnatury: ${components.length}`);
   console.log(`Elementów sygnatury: ${Object.keys(elementIds).length}`);
-  console.log(`Dokumentów: ${docIds.length}`);
+  console.log(`Dokumentów: ${docIds.length} (w tym usuniętych: ${deletedIds.length})`);
   console.log(`Notatek: ${notes.length}`);
 }
 

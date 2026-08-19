@@ -13,7 +13,7 @@ export interface SignatureComponent {
     index_type: SignatureComponentIndexType; // New field, default 'dec'
     createdOn: Date;
     modifiedOn: Date;
-    // active: boolean; // Consider adding later for soft deletes
+    // isDeleted: boolean; // Consider adding later for soft deletes
 }
 
 // Schema for creation input - index_type optional, index_count not included

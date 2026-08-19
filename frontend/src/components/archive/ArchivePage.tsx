@@ -47,8 +47,8 @@ const ArchivePage: React.FC = () => {
   const [previewingDoc, setPreviewingDoc] = useState<ArchiveDocument | null>(null);
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
 
-  const defaultActiveFilter: SearchRequest['query'] = [{ field: 'active', condition: 'EQ', value: true, not: false }];
-  const [searchQuery, setSearchQuery] = useState<SearchRequest['query']>(defaultActiveFilter);
+  const defaultDeletedFilter: SearchRequest['query'] = [{ field: 'isDeleted', condition: 'EQ', value: false, not: false }];
+  const [searchQuery, setSearchQuery] = useState<SearchRequest['query']>(defaultDeletedFilter);
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(ARCHIVE_PAGE_SIZE);
   const [totalDocs, setTotalDocs] = useState(0);
@@ -63,7 +63,7 @@ const ArchivePage: React.FC = () => {
   const isAdmin = user?.role === 'admin';
   const isEmployee = user?.role === 'employee';
   const isUserRole = user?.role === 'user';
-  const canFilterActive = isAdmin || isEmployee;
+  const canFilterDeleted = isAdmin || isEmployee;
 
   const currentPageRef = useRef(currentPage);
   const searchQueryRef = useRef(searchQuery);
@@ -194,18 +194,18 @@ const ArchivePage: React.FC = () => {
         setIsFormOpen(true);
     };
 
-    const handleDisable = async (docId: number) => {
-        if (!isAdmin && !isEmployee) { toast.error(t('archivePermissionErrorDisable', preferredLanguage)); return; }
+    const handleDelete = async (docId: number) => {
+        if (!isAdmin && !isEmployee) { toast.error(t('archivePermissionErrorDelete', preferredLanguage)); return; }
         if (!token || !docId) return;
-        const docToDisable = documents.find(d => d.archiveDocumentId === docId) ?? editingDoc ?? previewingDoc;
-        if (!docToDisable) return;
-        const itemTypeLabel = t(docToDisable.type === 'unit' ? 'archiveUnitLabel' : 'archiveDocumentLabel', preferredLanguage);
-        if (!window.confirm(t('archiveDisableConfirm', preferredLanguage, { itemType: itemTypeLabel }))) return;
+        const docToDelete = documents.find(d => d.archiveDocumentId === docId) ?? editingDoc ?? previewingDoc;
+        if (!docToDelete) return;
+        const itemTypeLabel = t(docToDelete.type === 'unit' ? 'archiveUnitLabel' : 'archiveDocumentLabel', preferredLanguage);
+        if (!window.confirm(t('archiveDeleteConfirm', preferredLanguage, { itemType: itemTypeLabel }))) return;
 
         setError(null); setIsLoading(true);
         try {
-            await api.disableArchiveDocument(docId, token);
-            toast.success(t('archiveDisableSuccess', preferredLanguage));
+            await api.softDeleteArchiveDocument(docId, token);
+            toast.success(t('archiveDeleteSuccess', preferredLanguage));
             const newTotalPages = Math.ceil((totalDocs - 1) / pageSize);
             const newCurrentPage = (currentPage > newTotalPages) ? Math.max(1, newTotalPages) : currentPage;
             await fetchDocuments(newCurrentPage, searchQuery);
@@ -213,34 +213,34 @@ const ArchivePage: React.FC = () => {
             if (previewingDoc?.archiveDocumentId === docId) setIsPreviewOpen(false);
         } catch (err: any) {
              const msg = err.message || 'Failed';
-             setError(t('archiveDisableFailed', preferredLanguage, { message: msg }));
-             toast.error(t('errorMessageTemplate', preferredLanguage, { message: t('archiveDisableFailed', preferredLanguage, { message: msg }) }));
-             console.error("Disable Error:", err);
+             setError(t('archiveDeleteFailed', preferredLanguage, { message: msg }));
+             toast.error(t('errorMessageTemplate', preferredLanguage, { message: t('archiveDeleteFailed', preferredLanguage, { message: msg }) }));
+             console.error("Delete Error:", err);
         } finally { setIsLoading(false); }
     };
 
-    const handleEnable = async (docId: number) => {
-        if (!isAdmin && !isEmployee) { toast.error(t('archivePermissionErrorEnable', preferredLanguage)); return; }
+    const handleRestore = async (docId: number) => {
+        if (!isAdmin && !isEmployee) { toast.error(t('archivePermissionErrorRestore', preferredLanguage)); return; }
         if (!token || !docId) return;
-        const docToEnable = documents.find(d => d.archiveDocumentId === docId) ?? previewingDoc;
-        if (!docToEnable) return;
-        const itemTypeLabel = t(docToEnable.type === 'unit' ? 'archiveUnitLabel' : 'archiveDocumentLabel', preferredLanguage);
-        if (!window.confirm(t('archiveEnableConfirm', preferredLanguage, { itemType: itemTypeLabel }))) return;
+        const docToRestore = documents.find(d => d.archiveDocumentId === docId) ?? previewingDoc;
+        if (!docToRestore) return;
+        const itemTypeLabel = t(docToRestore.type === 'unit' ? 'archiveUnitLabel' : 'archiveDocumentLabel', preferredLanguage);
+        if (!window.confirm(t('archiveRestoreConfirm', preferredLanguage, { itemType: itemTypeLabel }))) return;
 
         setError(null); setIsLoading(true);
         try {
-            await api.enableArchiveDocument(docId, token);
-            toast.success(t('archiveEnableSuccess', preferredLanguage));
-            const newTotalPages = Math.ceil((totalDocs - 1) / pageSize);
+            await api.restoreArchiveDocument(docId, token);
+            toast.success(t('archiveRestoreSuccess', preferredLanguage));
+            const newTotalPages = Math.ceil((totalDocs + 1) / pageSize);
             const newCurrentPage = (currentPage > newTotalPages) ? Math.max(1, newTotalPages) : currentPage;
             await fetchDocuments(newCurrentPage, searchQuery);
             if (currentPage !== newCurrentPage) setCurrentPage(newCurrentPage);
             if (previewingDoc?.archiveDocumentId === docId) setIsPreviewOpen(false);
         } catch (err: any) {
              const msg = err.message || 'Failed';
-             setError(t('archiveEnableFailed', preferredLanguage, { message: msg }));
-             toast.error(t('errorMessageTemplate', preferredLanguage, { message: t('archiveEnableFailed', preferredLanguage, { message: msg }) }));
-             console.error("Enable Error:", err);
+             setError(t('archiveRestoreFailed', preferredLanguage, { message: msg }));
+             toast.error(t('errorMessageTemplate', preferredLanguage, { message: t('archiveRestoreFailed', preferredLanguage, { message: msg }) }));
+             console.error("Restore Error:", err);
         } finally { setIsLoading(false); }
     };
 
@@ -261,7 +261,9 @@ const ArchivePage: React.FC = () => {
    const handleSort = useCallback((field: string) => {
        const currentSortBy = sortByRef.current;
        const currentSortOrder = sortOrderRef.current;
-       const newSortOrder = (currentSortBy === field && currentSortOrder === 'DESC') ? 'ASC' : 'DESC';
+        const newSortOrder = (field === 'type' && currentSortBy !== 'type')
+            ? 'ASC'
+            : (currentSortBy === field && currentSortOrder === 'DESC') ? 'ASC' : 'DESC';
        setSortBy(field);
        setSortOrder(newSortOrder);
        fetchDocuments(currentPageRef.current, searchQueryRef.current, field, newSortOrder);
@@ -345,7 +347,7 @@ const ArchivePage: React.FC = () => {
            );
        }
         if (isAdmin || isEmployee) {
-             baseFields.push({ value: 'active', label: t('archiveIsActiveLabel', preferredLanguage), type: 'boolean' });
+             baseFields.push({ value: 'isDeleted', label: t('archiveIsDeletedLabel', preferredLanguage), type: 'boolean' });
         }
        return baseFields;
    }, [isAdmin, isEmployee, availableTags, parentUnitId, preferredLanguage]);
@@ -440,7 +442,7 @@ const ArchivePage: React.FC = () => {
             fields={searchFields}
             onSearch={handleSearch}
             isLoading={isLoading || isBatchTagLoading}
-            defaultQuery={canFilterActive ? defaultActiveFilter : undefined}
+            defaultQuery={canFilterDeleted ? defaultDeletedFilter : undefined}
         />
        {/* --------------------------------------------- */}
 
@@ -471,8 +473,8 @@ const ArchivePage: React.FC = () => {
                       <DocumentList
                          documents={documents}
                          onEdit={handleEdit}
-                         onDisable={handleDisable}
-                         onEnable={handleEnable}
+                         onDelete={handleDelete}
+                         onRestore={handleRestore}
                          onPreview={handlePreview}
                          onOpenUnit={handleOpenUnit}
                         sortBy={sortBy}
@@ -503,8 +505,8 @@ const ArchivePage: React.FC = () => {
              onOpenChange={setIsPreviewOpen}
              document={previewingDoc}
              onEdit={handleEdit}
-             onDisable={handleDisable}
-             onEnable={handleEnable}
+             onDelete={handleDelete}
+             onRestore={handleRestore}
              parentUnitTitle={parentUnit?.archiveDocumentId === previewingDoc?.parentUnitArchiveDocumentId ? parentUnit?.title : undefined}
          />
 

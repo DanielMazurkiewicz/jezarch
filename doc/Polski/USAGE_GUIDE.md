@@ -16,7 +16,7 @@ Ten przewodnik opisuje podstawowe funkcjonalności aplikacji JezArch dla różny
     *   [Wyświetlanie Szczegółów](#wyświetlanie-szczegółów)
     *   [Tworzenie Jednostek/Dokumentów (Admin/Pracownik)](#tworzenie-jednostekdokumentów-adminpracownik)
     *   [Edytowanie Jednostek/Dokumentów (Admin/Pracownik)](#edytowanie-jednostekdokumentów-adminpracownik)
-    *   [Dezaktywacja Pozycji (Admin/Pracownik)](#dezaktywacja-pozycji-adminpracownik)
+    *   [Usuwanie Pozycji (Admin/Pracownik)](#usuwanie-pozycji-adminpracownik)
     *   [Wsadowe Tagowanie (Admin/Pracownik)](#wsadowe-tagowanie-adminpracownik)
 *   [Sygnatury (Admin/Pracownik)](#sygnatury-adminpracownik)
     *   [Komponenty](#komponenty)
@@ -94,7 +94,7 @@ Domyślna strona po zalogowaniu. Wyświetla wiadomość powitalną. Użytkownicy
     *   Dla pól tekstowych (`Zawiera`): Wprowadź fragmenty tekstu.
     *   Dla `Tagów`: Wybierz jeden lub więcej tagów z listy rozwijanej. `Ma którykolwiek z` znajduje pozycje z *przynajmniej jednym* z wybranych tagów.
     *   Dla `Sygnatury Opisowej`: Użyj **Selektora Ścieżki Sygnatury** (`Równa się`, `Zaczyna się`, `Zawiera Sekwencję`), aby zbudować ścieżkę sygnatury, której chcesz szukać.
-    *   Dla pól `boolean` (Czy zdigitalizowano, Czy Aktywny): Wybierz `Prawda` lub `Fałsz`.
+    *   Dla pól `boolean` (Czy zdigitalizowano, Czy Usunięte): Wybierz `Prawda` lub `Fałsz`.
 *   Możesz zaznaczyć pole **NIE**, aby zanegować warunek (np. znaleźć pozycje *nie* pasujące).
 *   Dodaj wiele kryteriów, aby zawęzić wyniki (są łączone operatorem AND).
 *   Kliknij **Szukaj**, aby zastosować filtry. Kliknij **Resetuj**, aby wyczyścić filtry.
@@ -109,7 +109,7 @@ Domyślna strona po zalogowaniu. Wyświetla wiadomość powitalną. Użytkownicy
     *   Informacje o tym, kto utworzył/zaktualizował pozycję wraz ze znacznikami czasu.
     *   Opis Treści, Szczegóły Fizyczne, informacje o Dostępie, Uwagi itp.
     *   Link do wersji cyfrowej, jeśli jest dostępna.
-*   Administratorzy/Pracownicy widzą przyciski **Edytuj** i **Dezaktywuj** w stopce okna dialogowego.
+*   Administratorzy/Pracownicy widzą przyciski **Edytuj** i **Usuń** w stopce okna dialogowego (oraz **Przywróć** dla usuniętych pozycji).
 
 ### Tworzenie Jednostek/Dokumentów (Admin/Pracownik)
 
@@ -129,11 +129,12 @@ Domyślna strona po zalogowaniu. Wyświetla wiadomość powitalną. Użytkownicy
 *   Zmodyfikuj pola według potrzeb. 'Typu' nie można zmienić.
 *   Kliknij **Aktualizuj Pozycję**.
 
-### Dezaktywacja Pozycji (Admin/Pracownik)
+### Usuwanie Pozycji (Admin/Pracownik)
 
-*   Kliknij ikonę **Dezaktywuj** (kosz) w wierszu pozycji lub w oknie podglądu.
+*   Kliknij ikonę **Usuń** (kosz) w wierszu pozycji lub w oknie podglądu.
 *   Potwierdź akcję w monicie.
-*   Pozycja zostanie oznaczona jako nieaktywna i ukryta w regularnych widokach i wyszukiwaniach (chyba że Administrator specjalnie uwzględni nieaktywne pozycje w swoim wyszukiwaniu). Dezaktywowane pozycje nie są trwale usuwane.
+*   Pozycja zostanie miękko usunięta: nie zostaje trwale usunięta. W domyślnym widoku pokazujemy tylko pozycje nieuusunięte; Administrator i Pracownik mogą ujawnić usunięte pozycje, usuwając filtr `Czy Usunięte` (lub ustawiając go na `Prawda`) — usunięte pozycje otrzymują ikonę **Przywróć**. Zwykli użytkownicy nigdy nie widzą pozycji usuniętych.
+*   Kliknij ikonę **Przywróć** przy pozycji, aby ją przywrócić.
 
 ### Wsadowe Tagowanie (Admin/Pracownik)
 

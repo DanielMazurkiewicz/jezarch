@@ -17,7 +17,7 @@ export interface ArchiveDocument {
     createdBy: string; // Login of the user who created the document
     updatedBy: string; // Login of the user who last updated the document
     type: ArchiveDocumentType;
-    active: boolean; // For soft delete
+    isDeleted: boolean; // For soft delete (true = deleted/hidden, false = visible)
 
     topographicSignature: string | null; // Simple text field for topographic signature
     descriptiveSignatureElementIds: SignatureElementIdPath[]; // JSON array of element ID paths

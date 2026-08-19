@@ -2,8 +2,8 @@ import {
     createArchiveDocumentController,
     getArchiveDocumentByIdController,
     updateArchiveDocumentController,
-    disableArchiveDocumentController,
-    enableArchiveDocumentController,
+    softDeleteArchiveDocumentController,
+    restoreArchiveDocumentController,
     searchArchiveDocumentsController,
     // --- NEW: Import batch tagging controller ---
     batchTagArchiveDocumentsController,
@@ -18,15 +18,15 @@ export const archiveDocumentRoutes = {
         // GET: getAllDocsController? // Maybe admin only? Add later if needed.
     },
 
-    // Get, Update, Disable (soft delete) a specific document/unit
+    // Get, Update, Soft delete a specific document/unit
     '/api/archive/document/id/:id': {
-        GET: getArchiveDocumentByIdController,    // Get by ID
-        PATCH: updateArchiveDocumentController,   // Update (partial)
-        DELETE: disableArchiveDocumentController, // Disable (soft delete)
+        GET: getArchiveDocumentByIdController,       // Get by ID
+        PATCH: updateArchiveDocumentController,      // Update (partial)
+        DELETE: softDeleteArchiveDocumentController, // Soft delete
     },
-    // Restore (enable) a disabled document/unit
+    // Restore a soft-deleted document/unit
     '/api/archive/document/id/:id/restore': {
-        POST: enableArchiveDocumentController,
+        POST: restoreArchiveDocumentController,
     },
     // Potential future routes:
     // '/api/archive/units/:id/children': { GET: getChildDocumentsController },

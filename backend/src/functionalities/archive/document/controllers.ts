@@ -3,8 +3,8 @@ import {
     createArchiveDocument,
     getArchiveDocumentById,
     updateArchiveDocument,
-    disableArchiveDocument,
-    enableArchiveDocument,
+    softDeleteArchiveDocument,
+    restoreArchiveDocument,
     setTagsForArchiveDocument,
     getTagsForArchiveDocument,
     archiveDocumentSignatureSearchHandler,
@@ -123,6 +123,12 @@ export const getArchiveDocumentByIdController = async (req: BunRequest<":id">) =
             return new Response(JSON.stringify({ message: 'Document not found' }), { status: 404 });
         }
 
+        // Deleted (soft-deleted) documents are treated as not found for everyone
+        if (document.isDeleted) {
+            await Log.info(`Deleted document was requested, treating as not found (user: ${sessionAndUser.user.login})`, sessionAndUser.user.login, AREA, { documentId: id });
+            return new Response(JSON.stringify({ message: 'Document not found' }), { status: 404 });
+        }
+
         document.tags = await getTagsForArchiveDocument(id);
 
         // Access control for 'user' role based on tags
@@ -223,56 +229,56 @@ export const updateArchiveDocumentController = async (req: BunRequest<":id">) =>
     }
 };
 
-// --- Disable (Soft Delete) ---
+// --- Soft Delete ---
 // Logic remains largely the same, but permissions are simplified
-export const disableArchiveDocumentController = async (req: BunRequest<":id">) => {
+export const softDeleteArchiveDocumentController = async (req: BunRequest<":id">) => {
     const sessionAndUser = await getSessionAndUser(req);
     if (!sessionAndUser) return new Response("Unauthorized", { status: 401 });
-    // Only admins and employees can disable
+    // Only admins and employees can delete
     if (!isAllowedRole(sessionAndUser, 'admin', 'employee')) return new Response("Forbidden", { status: 403 });
 
     try {
         const idParam = req.params.id;
         const id = parseInt(idParam);
         if (isNaN(id)) {
-             await Log.warn('Invalid document ID format for disable', sessionAndUser.user.login, AREA, { idParam });
+             await Log.warn(`Invalid document ID format for delete`, sessionAndUser.user.login, AREA, { idParam });
             return new Response(JSON.stringify({ message: 'Invalid document ID' }), { status: 400 });
         }
 
         const existingDoc = await getArchiveDocumentByIdInternal(id);
         if (!existingDoc) {
-             await Log.warn(`Attempted to disable non-existent document`, sessionAndUser.user.login, AREA, { documentId: id });
+             await Log.warn(`Attempted to delete non-existent document`, sessionAndUser.user.login, AREA, { documentId: id });
             return new Response(JSON.stringify({ message: 'Document not found' }), { status: 404 });
         }
-         if (!existingDoc.active) {
-             await Log.warn(`Attempted to disable already inactive document`, sessionAndUser.user.login, AREA, { documentId: id });
-             return new Response(JSON.stringify({ message: 'Document already inactive' }), { status: 400 });
+         if (existingDoc.isDeleted) {
+             await Log.warn(`Attempted to delete already deleted document`, sessionAndUser.user.login, AREA, { documentId: id });
+             return new Response(JSON.stringify({ message: 'Document already deleted' }), { status: 400 });
          }
 
-        const disabled = await disableArchiveDocument(id);
+        const deleted = await softDeleteArchiveDocument(id);
 
-        if (disabled) {
-            // Log the user who performed the disable action
-            await Log.info(`Archive document disabled: ID ${id} by ${sessionAndUser.user.login}`, sessionAndUser.user.login, AREA);
+        if (deleted) {
+            // Log the user who performed the delete action
+            await Log.info(`Archive document deleted: ID ${id} by ${sessionAndUser.user.login}`, sessionAndUser.user.login, AREA);
             return new Response(null, { status: 204 });
         } else {
              // This case is less likely now with the checks above, but keep for robustness
-             await Log.warn(`Document disable failed or already inactive for ID ${id}`, sessionAndUser.user.login, AREA);
+             await Log.warn(`Document delete failed or already deleted for ID ${id}`, sessionAndUser.user.login, AREA);
              const currentDoc = await getArchiveDocumentByIdInternal(id);
-             if (currentDoc && !currentDoc.active) {
-                return new Response(JSON.stringify({ message: 'Document already inactive' }), { status: 400 });
+             if (currentDoc && currentDoc.isDeleted) {
+                return new Response(JSON.stringify({ message: 'Document already deleted' }), { status: 400 });
              } else {
-                 return new Response(JSON.stringify({ message: 'Document not found or disable failed' }), { status: 404 });
+                 return new Response(JSON.stringify({ message: 'Document not found or delete failed' }), { status: 404 });
              }
         }
     } catch (error: any) {
-        await Log.error('Failed to disable archive document', sessionAndUser.user.login, AREA, error);
-        return new Response(JSON.stringify({ message: 'Failed to disable archive document', error: error.message }), { status: 500 });
+        await Log.error('Failed to soft delete archive document', sessionAndUser.user.login, AREA, error);
+        return new Response(JSON.stringify({ message: 'Failed to delete archive document', error: error.message }), { status: 500 });
     }
 };
 
-// --- Enable (Restore) ---
-export const enableArchiveDocumentController = async (req: BunRequest<":id">) => {
+// --- Restore ---
+export const restoreArchiveDocumentController = async (req: BunRequest<":id">) => {
     const sessionAndUser = await getSessionAndUser(req);
     if (!sessionAndUser) return new Response("Unauthorized", { status: 401 });
     if (!isAllowedRole(sessionAndUser, 'admin', 'employee')) return new Response("Forbidden", { status: 403 });
@@ -281,37 +287,37 @@ export const enableArchiveDocumentController = async (req: BunRequest<":id">) =>
         const idParam = req.params.id;
         const id = parseInt(idParam);
         if (isNaN(id)) {
-            await Log.warn('Invalid document ID format for enable', sessionAndUser.user.login, AREA, { idParam });
+            await Log.warn('Invalid document ID format for restore', sessionAndUser.user.login, AREA, { idParam });
             return new Response(JSON.stringify({ message: 'Invalid document ID' }), { status: 400 });
         }
 
         const existingDoc = await getArchiveDocumentByIdInternal(id);
         if (!existingDoc) {
-            await Log.warn(`Attempted to enable non-existent document`, sessionAndUser.user.login, AREA, { documentId: id });
+            await Log.warn(`Attempted to restore non-existent document`, sessionAndUser.user.login, AREA, { documentId: id });
             return new Response(JSON.stringify({ message: 'Document not found' }), { status: 404 });
         }
-        if (existingDoc.active) {
-            await Log.warn(`Attempted to enable already active document`, sessionAndUser.user.login, AREA, { documentId: id });
-            return new Response(JSON.stringify({ message: 'Document already active' }), { status: 400 });
+        if (!existingDoc.isDeleted) {
+            await Log.warn(`Attempted to restore already restored document`, sessionAndUser.user.login, AREA, { documentId: id });
+            return new Response(JSON.stringify({ message: 'Document already restored' }), { status: 400 });
         }
 
-        const enabled = await enableArchiveDocument(id);
+        const restored = await restoreArchiveDocument(id);
 
-        if (enabled) {
-            await Log.info(`Archive document enabled: ID ${id} by ${sessionAndUser.user.login}`, sessionAndUser.user.login, AREA);
+        if (restored) {
+            await Log.info(`Archive document restored: ID ${id} by ${sessionAndUser.user.login}`, sessionAndUser.user.login, AREA);
             return new Response(null, { status: 204 });
         } else {
-            await Log.warn(`Document enable failed for ID ${id}`, sessionAndUser.user.login, AREA);
+            await Log.warn(`Document restore failed for ID ${id}`, sessionAndUser.user.login, AREA);
             const currentDoc = await getArchiveDocumentByIdInternal(id);
-            if (currentDoc && currentDoc.active) {
-                return new Response(JSON.stringify({ message: 'Document already active' }), { status: 400 });
+            if (currentDoc && !currentDoc.isDeleted) {
+                return new Response(JSON.stringify({ message: 'Document already restored' }), { status: 400 });
             } else {
-                return new Response(JSON.stringify({ message: 'Document not found or enable failed' }), { status: 404 });
+                return new Response(JSON.stringify({ message: 'Document not found or restore failed' }), { status: 404 });
             }
         }
     } catch (error: any) {
-        await Log.error('Failed to enable archive document', sessionAndUser.user.login, AREA, error);
-        return new Response(JSON.stringify({ message: 'Failed to enable archive document', error: error.message }), { status: 500 });
+        await Log.error('Failed to restore archive document', sessionAndUser.user.login, AREA, error);
+        return new Response(JSON.stringify({ message: 'Failed to restore archive document', error: error.message }), { status: 500 });
     }
 };
 
@@ -336,28 +342,25 @@ export const searchArchiveDocumentsController = async (req: BunRequest) => {
             'dimensions', 'binding', 'condition', 'documentLanguage', 'contentDescription',
             'remarks', 'accessLevel', 'accessConditions', 'additionalInformation',
             'relatedDocumentsReferences', 'isDigitized', 'digitizedVersionLink',
-            'createdOn', 'modifiedOn', 'active',
+            'createdOn', 'modifiedOn', 'isDeleted',
             'topographicSignature'
         ];
         const primaryKey = 'archiveDocumentId';
 
         let queryClone = searchRequest.query ? [...searchRequest.query] : [];
 
-        // 'active' filter logic remains the same (non-admin/employee see only active)
-        const activeFilterIndex = queryClone.findIndex(el => el.field === 'active');
-        if (activeFilterIndex !== -1) {
-            const activeFilter = queryClone[activeFilterIndex];
-             if (!isAdmin && !isEmployee && activeFilter) {
-                 if ((activeFilter.condition === 'EQ' && activeFilter.value === false) || (activeFilter.condition !== 'EQ' || activeFilter.value !== true)) {
-                     queryClone[activeFilterIndex] = { field: 'active', condition: 'EQ', value: true, not: false };
-                     await Log.warn(`'user' role search forced to 'active=true'.`, sessionAndUser.user.login, AREA);
-                 }
+        // 'isDeleted' filter logic: 'user' role is always restricted to non-deleted
+        // documents; admin/employee see deleted documents unless they filter them out.
+        const isDeletedFilterIndex = queryClone.findIndex(el => el.field === 'isDeleted');
+        if (isDeletedFilterIndex !== -1) {
+             const isDeletedFilter = queryClone[isDeletedFilterIndex];
+             if (!isAdmin && !isEmployee && isDeletedFilter && (isDeletedFilter.condition !== 'EQ' || isDeletedFilter.value !== false)) {
+                 queryClone[isDeletedFilterIndex] = { field: 'isDeleted', condition: 'EQ', value: false, not: false };
+                 await Log.warn(`'user' role search forced to 'isDeleted=false'.`, sessionAndUser.user.login, AREA);
              }
-        } else {
-            if (!isAdmin && !isEmployee) {
-                 queryClone.push({ field: 'active', condition: 'EQ', value: true, not: false });
-                 await Log.info(`Defaulting 'active=true' for 'user' role search.`, sessionAndUser.user.login, AREA);
-            }
+        } else if (!isAdmin && !isEmployee) {
+            queryClone.push({ field: 'isDeleted', condition: 'EQ', value: false, not: false });
+            await Log.info(`Defaulting 'isDeleted=false' for 'user' role search.`, sessionAndUser.user.login, AREA);
         }
 
         // Tag filtering logic for 'user' role remains the same
@@ -378,6 +381,11 @@ export const searchArchiveDocumentsController = async (req: BunRequest) => {
         }
 
         const finalSearchRequest = { ...searchRequest, query: queryClone };
+
+        const useReversedTypeOrder = finalSearchRequest.sortBy === 'type' && finalSearchRequest.sortOrder === 'ASC';
+        const primaryOrderBy = useReversedTypeOrder
+            ? `CASE WHEN archive_documents_main.type = 'document' AND archive_documents_main.parentUnitArchiveDocumentId IS NULL THEN 0 WHEN archive_documents_main.type = 'document' AND archive_documents_main.parentUnitArchiveDocumentId IS NOT NULL THEN 1 WHEN archive_documents_main.type = 'unit' THEN 2 ELSE 2 END`
+            : `CASE WHEN archive_documents_main.type = 'unit' THEN 0 WHEN archive_documents_main.type = 'document' AND archive_documents_main.parentUnitArchiveDocumentId IS NULL THEN 1 ELSE 2 END`;
 
         // Build queries using updated allowedFields
         const { dataQuery, countQuery } = await buildSearchQueries<ArchiveDocumentSearchResult>(
@@ -400,7 +408,8 @@ export const searchArchiveDocumentsController = async (req: BunRequest) => {
                 'descriptiveSignature': archiveDocumentSignatureSearchHandler,
                 // No special handler needed for createdBy/updatedBy (handled by default text search)
             },
-            primaryKey
+            primaryKey,
+            primaryOrderBy
         );
 
         await Log.info("Prepared archive document search queries", sessionAndUser.user.login, AREA, {
@@ -411,6 +420,11 @@ export const searchArchiveDocumentsController = async (req: BunRequest) => {
          });
 
         const searchResponse = await executeSearch<ArchiveDocumentSearchResult>(dataQuery, countQuery);
+
+        // Normalize SQLite 0/1 flags to real booleans to match the TS models
+        searchResponse.data.forEach(doc => {
+            doc.isDeleted = Boolean(doc.isDeleted);
+        });
 
         // Populate tags and resolved signatures (remains the same)
         if (searchResponse.data.length > 0) {
@@ -451,20 +465,7 @@ export const batchTagArchiveDocumentsController = async (req: BunRequest) => {
 
         const { searchQuery, tagIds, action } = validation.data;
         let finalQuery: SearchQuery = [...searchQuery] as SearchQuery;
-        const isAdmin = isAllowedRole(sessionAndUser, 'admin');
-        const isEmployee = isAllowedRole(sessionAndUser, 'employee');
         const isUserRole = sessionAndUser.user.role === 'user';
-
-        // Active filter logic remains
-        const activeFilterIndex = finalQuery.findIndex(el => el.field === 'active');
-        if (!isAdmin && !isEmployee) {
-             if (activeFilterIndex !== -1) {
-                 finalQuery[activeFilterIndex] = { field: 'active', condition: 'EQ', value: true, not: false };
-             } else {
-                 finalQuery.push({ field: 'active', condition: 'EQ', value: true, not: false });
-             }
-             await Log.info(`Batch tag forced to 'active=true' for non-admin/employee (should not happen).`, sessionAndUser.user.login, AREA);
-        }
 
         // Tag filter logic remains
         if (isUserRole) {

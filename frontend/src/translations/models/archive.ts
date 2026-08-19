@@ -20,12 +20,12 @@ export type ArchiveTranslationKey =
   | 'archiveEditItemDialogTitle' // e.g., "Edit {itemType}"
   | 'archiveCreateItemDialogTitle' // e.g., "Create {itemType}"
   | 'archiveCreateInUnitDialogTitle' // e.g., "Create Document in Unit "{unitTitle}""
-  | 'archiveDisableConfirm' // e.g., "Are you sure you want to disable this {itemType}?"
-  | 'archiveDisableSuccess'
-  | 'archiveDisableFailed' // e.g., "Failed to disable item: {message}"
-  | 'archiveEnableConfirm' // e.g., "Are you sure you want to restore this {itemType}?"
-  | 'archiveEnableSuccess'
-  | 'archiveEnableFailed' // e.g., "Failed to restore item: {message}"
+  | 'archiveDeleteConfirm' // e.g., "Are you sure you want to delete this {itemType}?"
+  | 'archiveDeleteSuccess'
+  | 'archiveDeleteFailed' // e.g., "Failed to delete item: {message}"
+  | 'archiveRestoreConfirm' // e.g., "Are you sure you want to restore this {itemType}?"
+  | 'archiveRestoreSuccess'
+  | 'archiveRestoreFailed' // e.g., "Failed to restore item: {message}"
   | 'archiveSaveSuccess' // e.g., "Item {action} successfully."
   | 'archiveSaveFailed' // e.g., "Failed to save item: {message}"
   | 'archiveDetailsLoadFailed' // e.g., "Failed to load document details: {message}"
@@ -48,8 +48,8 @@ export type ArchiveTranslationKey =
   | 'archiveUnitOpenTitle' // e.g., "Open Unit "{title}""
   | 'archivePermissionErrorEdit'
   | 'archivePermissionErrorCreate'
-  | 'archivePermissionErrorDisable'
-  | 'archivePermissionErrorEnable'
+  | 'archivePermissionErrorDelete'
+  | 'archivePermissionErrorRestore'
   | 'archivePermissionErrorBatchTag'
   | 'archivePreviewBasicInfoLabel'
   | 'archivePreviewCreatorLabel'
@@ -134,7 +134,7 @@ export type ArchiveTranslationKey =
   | 'archiveBatchAddTooltipAll'
   | 'archiveBatchRemoveTooltipFiltered'
   | 'archiveBatchRemoveTooltipAll'
-  | 'archiveIsActiveLabel' // e.g., "Is Active"
+  | 'archiveIsDeletedLabel' // e.g., "Is Deleted"
   | 'unitLabel' // Singular "Unit"
   | 'archiveBrowsingUnit' // e.g., "Browsing items within "{unitTitle}"."
   | 'archiveDescriptionUser' // e.g., "Search documents based on your assigned tags."

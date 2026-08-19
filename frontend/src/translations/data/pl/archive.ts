@@ -20,12 +20,12 @@ export const archiveTranslationsPL: ArchiveTranslationSet = {
   archiveEditItemDialogTitle: 'Edytuj {itemType}', // itemType -> Jednostkę / Dokument
   archiveCreateItemDialogTitle: 'Utwórz {itemType}', // itemType -> Jednostkę / Dokument
   archiveCreateInUnitDialogTitle: 'Utwórz Dokument w Jednostce "{unitTitle}"',
-  archiveDisableConfirm: 'Czy na pewno chcesz usunąć tę {itemType}? Zostanie ukryta, ale administrator będzie mógł ją odzyskać.', // itemType -> jednostkę / dokument
-  archiveDisableSuccess: 'Pozycja została usunięta.',
-  archiveDisableFailed: 'Nie udało się usunąć pozycji: {message}',
-  archiveEnableConfirm: 'Czy na pewno chcesz przywrócić tę {itemType}?',
-  archiveEnableSuccess: 'Pozycja została przywrócona.',
-  archiveEnableFailed: 'Nie udało się przywrócić pozycji: {message}',
+  archiveDeleteConfirm: 'Czy na pewno chcesz usunąć tę {itemType}? Zostanie ukryta, ale administrator będzie mógł ją odzyskać.', // itemType -> jednostkę / dokument
+  archiveDeleteSuccess: 'Pozycja została usunięta.',
+  archiveDeleteFailed: 'Nie udało się usunąć pozycji: {message}',
+  archiveRestoreConfirm: 'Czy na pewno chcesz przywrócić tę {itemType}?',
+  archiveRestoreSuccess: 'Pozycja została przywrócona.',
+  archiveRestoreFailed: 'Nie udało się przywrócić pozycji: {message}',
   archiveSaveSuccess: 'Pozycja została {action} pomyślnie.', // action -> utworzona / zaktualizowana
   archiveSaveFailed: 'Nie udało się zapisać pozycji: {message}',
   archiveDetailsLoadFailed: 'Nie udało się załadować szczegółów dokumentu: {message}',
@@ -48,8 +48,8 @@ export const archiveTranslationsPL: ArchiveTranslationSet = {
   archiveUnitOpenTitle: 'Otwórz Jednostkę "{title}"',
   archivePermissionErrorEdit: 'Nie masz uprawnień do edycji pozycji.',
   archivePermissionErrorCreate: 'Nie masz uprawnień do tworzenia pozycji.',
-  archivePermissionErrorDisable: 'Nie masz uprawnień do usunięcia pozycji.',
-  archivePermissionErrorEnable: 'Nie masz uprawnień do przywrócenia pozycji.',
+  archivePermissionErrorDelete: 'Nie masz uprawnień do usunięcia pozycji.',
+  archivePermissionErrorRestore: 'Nie masz uprawnień do przywrócenia pozycji.',
   archivePermissionErrorBatchTag: 'Nie masz uprawnień do wykonywania akcji wsadowych.',
   archivePreviewBasicInfoLabel: 'Informacje Podstawowe',
   archivePreviewCreatorLabel: 'Twórca',
@@ -136,7 +136,7 @@ export const archiveTranslationsPL: ArchiveTranslationSet = {
   archiveBatchAddTooltipAll: 'Dodaj tagi do WSZYSTKICH pozycji w archiwum',
   archiveBatchRemoveTooltipFiltered: 'Usuń tagi z wyfiltrowanych pozycji',
   archiveBatchRemoveTooltipAll: 'Usuń tagi ze WSZYSTKICH pozycji w archiwum',
-  archiveIsActiveLabel: 'Nie usunięty',
+  archiveIsDeletedLabel: 'Usunięte',
   unitLabel: 'Jednostka',
   archiveBrowsingUnit: 'Przeglądanie pozycji w jednostce "{unitTitle}".',
   archiveDescriptionUser: 'Przeszukuj dokumenty na podstawie przypisanych tagów.',

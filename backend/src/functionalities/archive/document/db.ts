@@ -7,48 +7,87 @@ import { SearchQueryElement, SearchOnCustomFieldHandlerResult, SearchRequest, bu
 import { Tag } from '../../tag/models';
 // Removed getUserByUserId import
 
+// DDL for the archive documents table. The tableName parameter allows creating a temporary
+// copy under a different name during migrations (FKs reference the table itself).
+const archiveDocumentsTableDDL = (tableName: string) => `
+    CREATE TABLE IF NOT EXISTS ${tableName} (
+        archiveDocumentId INTEGER PRIMARY KEY AUTOINCREMENT,
+        parentUnitArchiveDocumentId INTEGER,
+        createdBy TEXT NOT NULL, -- Changed from ownerUserId
+        updatedBy TEXT NOT NULL, -- Added
+        type TEXT NOT NULL CHECK(type IN ('unit', 'document')),
+        isDeleted BOOLEAN NOT NULL DEFAULT FALSE,
+        topographicSignature TEXT,
+        descriptiveSignatureElementIds TEXT NOT NULL DEFAULT '[]',
+        title TEXT NOT NULL,
+        creator TEXT NOT NULL,
+        creationDate TEXT NOT NULL,
+        numberOfPages TEXT,
+        documentType TEXT,
+        dimensions TEXT,
+        binding TEXT,
+        condition TEXT,
+        documentLanguage TEXT,
+        contentDescription TEXT,
+        remarks TEXT,
+        accessLevel TEXT,
+        accessConditions TEXT,
+        additionalInformation TEXT,
+        relatedDocumentsReferences TEXT,
+        recordChangeHistory TEXT,
+        isDigitized BOOLEAN NOT NULL DEFAULT FALSE,
+        digitizedVersionLink TEXT,
+        createdOn DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        modifiedOn DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        -- FOREIGN KEY (ownerUserId) REFERENCES users(userId) ON DELETE CASCADE, -- Removed FK
+        FOREIGN KEY (parentUnitArchiveDocumentId) REFERENCES ${tableName}(archiveDocumentId) ON DELETE SET NULL
+    )
+`;
+
+// One-time migration: rename 'active' to 'isDeleted' (values and default flipped).
+// Note: ALTER TABLE RENAME COLUMN would keep the old DEFAULT TRUE, so the table is rebuilt instead.
+async function migrateActiveToIsDeleted() {
+    const columns: { name: string }[] = db.query<{ name: string }, any[]>('PRAGMA table_info(archive_documents)').all();
+    const hasActive = columns.some(col => col.name === 'active');
+    const hasIsDeleted = columns.some(col => col.name === 'isDeleted');
+    if (!hasActive || hasIsDeleted) return;
+
+    await Log.info(`Migrating archive_documents: renaming 'active' to 'isDeleted' with flipped values.`, 'system', 'migrate');
+    const migratedTable = 'archive_documents_migrated';
+    const migration = db.transaction(() => {
+        db.exec(archiveDocumentsTableDDL(migratedTable));
+        db.exec(`
+            INSERT INTO ${migratedTable} (
+                archiveDocumentId, parentUnitArchiveDocumentId, createdBy, updatedBy, type, isDeleted,
+                topographicSignature, descriptiveSignatureElementIds, title, creator, creationDate, numberOfPages,
+                documentType, dimensions, binding, condition, documentLanguage, contentDescription, remarks,
+                accessLevel, accessConditions, additionalInformation, relatedDocumentsReferences, recordChangeHistory,
+                isDigitized, digitizedVersionLink, createdOn, modifiedOn
+            )
+            SELECT archiveDocumentId, parentUnitArchiveDocumentId, createdBy, updatedBy, type, NOT active,
+                topographicSignature, descriptiveSignatureElementIds, title, creator, creationDate, numberOfPages,
+                documentType, dimensions, binding, condition, documentLanguage, contentDescription, remarks,
+                accessLevel, accessConditions, additionalInformation, relatedDocumentsReferences, recordChangeHistory,
+                isDigitized, digitizedVersionLink, createdOn, modifiedOn
+            FROM archive_documents
+        `);
+        db.exec(`DROP TABLE archive_documents;`);
+        db.exec(`ALTER TABLE ${migratedTable} RENAME TO archive_documents;`);
+    });
+    migration();
+    await Log.info(`Migration of archive_documents to 'isDeleted' completed.`, 'system', 'migrate');
+}
+
 // Initialization function for the main archive documents table
 export async function initializeArchiveDocumentTable() {
-    await db.exec(`
-        CREATE TABLE IF NOT EXISTS archive_documents (
-            archiveDocumentId INTEGER PRIMARY KEY AUTOINCREMENT,
-            parentUnitArchiveDocumentId INTEGER,
-            createdBy TEXT NOT NULL, -- Changed from ownerUserId
-            updatedBy TEXT NOT NULL, -- Added
-            type TEXT NOT NULL CHECK(type IN ('unit', 'document')),
-            active BOOLEAN NOT NULL DEFAULT TRUE,
-            topographicSignature TEXT,
-            descriptiveSignatureElementIds TEXT NOT NULL DEFAULT '[]',
-            title TEXT NOT NULL,
-            creator TEXT NOT NULL,
-            creationDate TEXT NOT NULL,
-            numberOfPages TEXT,
-            documentType TEXT,
-            dimensions TEXT,
-            binding TEXT,
-            condition TEXT,
-            documentLanguage TEXT,
-            contentDescription TEXT,
-            remarks TEXT,
-            accessLevel TEXT,
-            accessConditions TEXT,
-            additionalInformation TEXT,
-            relatedDocumentsReferences TEXT,
-            recordChangeHistory TEXT,
-            isDigitized BOOLEAN NOT NULL DEFAULT FALSE,
-            digitizedVersionLink TEXT,
-            createdOn DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-            modifiedOn DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-            -- FOREIGN KEY (ownerUserId) REFERENCES users(userId) ON DELETE CASCADE, -- Removed FK
-            FOREIGN KEY (parentUnitArchiveDocumentId) REFERENCES archive_documents(archiveDocumentId) ON DELETE SET NULL
-        )
-    `);
+    await migrateActiveToIsDeleted();
+    await db.exec(archiveDocumentsTableDDL('archive_documents'));
     // Removed index on ownerUserId
     await db.exec(`CREATE INDEX IF NOT EXISTS idx_ad_created_by ON archive_documents (createdBy);`); // Added index
     await db.exec(`CREATE INDEX IF NOT EXISTS idx_ad_updated_by ON archive_documents (updatedBy);`); // Added index
     await db.exec(`CREATE INDEX IF NOT EXISTS idx_ad_parent ON archive_documents (parentUnitArchiveDocumentId);`);
     await db.exec(`CREATE INDEX IF NOT EXISTS idx_ad_type ON archive_documents (type);`);
-    await db.exec(`CREATE INDEX IF NOT EXISTS idx_ad_active ON archive_documents (active);`);
+    await db.exec(`CREATE INDEX IF NOT EXISTS idx_ad_isDeleted ON archive_documents (isDeleted);`);
     await db.exec(`CREATE INDEX IF NOT EXISTS idx_ad_title ON archive_documents (title);`);
     await db.exec(`CREATE INDEX IF NOT EXISTS idx_ad_content ON archive_documents (contentDescription);`);
     await db.exec(`CREATE INDEX IF NOT EXISTS idx_ad_topo_sig ON archive_documents (topographicSignature);`);
@@ -83,7 +122,7 @@ export const dbToArchiveDocument = async (row?: any): Promise<ArchiveDocument | 
             createdBy: row.createdBy, // Changed from ownerUserId/ownerLogin
             updatedBy: row.updatedBy, // Added
             type: row.type, // No longer need cast if CHECK constraint is reliable
-            active: Boolean(row.active),
+            isDeleted: Boolean(row.isDeleted),
             topographicSignature: row.topographicSignature ?? null,
             descriptiveSignatureElementIds: JSON.parse(row.descriptiveSignatureElementIds || '[]'),
             title: row.title,
@@ -129,7 +168,7 @@ export const dbToArchiveDocument = async (row?: any): Promise<ArchiveDocument | 
 // --- Operations ---
 // Updated signature to accept createdBy login, removed ownerUserId
 export async function createArchiveDocument(
-    input: Omit<ArchiveDocument, 'archiveDocumentId' | 'createdOn' | 'modifiedOn' | 'active' | 'tags' | 'updatedBy'> & { createdBy: string }
+    input: Omit<ArchiveDocument, 'archiveDocumentId' | 'createdOn' | 'modifiedOn' | 'isDeleted' | 'tags' | 'updatedBy'> & { createdBy: string }
 ): Promise<number> {
     const now = sqliteNow();
     const descriptiveJson = JSON.stringify(input.descriptiveSignatureElementIds || []);
@@ -237,37 +276,37 @@ export async function updateArchiveDocument(
 }
 
 
-export async function disableArchiveDocument(id: number): Promise<boolean> {
+export async function softDeleteArchiveDocument(id: number): Promise<boolean> {
     try {
-        // Update modifiedOn when disabling
-        const statement = db.prepare(`UPDATE archive_documents SET active = FALSE, modifiedOn = ? WHERE archiveDocumentId = ? AND active = TRUE`);
+        // Update modifiedOn when deleting
+        const statement = db.prepare(`UPDATE archive_documents SET isDeleted = TRUE, modifiedOn = ? WHERE archiveDocumentId = ? AND isDeleted = FALSE`);
         const result = statement.run(sqliteNow() ?? null, id);
-        const disabled = result.changes > 0;
-        if (!disabled) {
+        const deleted = result.changes > 0;
+        if (!deleted) {
              const exists = await getArchiveDocumentByIdInternal(id);
-             if (exists) await Log.info(`Attempted to disable already inactive document: ${id}`, 'system', 'database');
-             else await Log.info(`Attempted to disable non-existent document: ${id}`, 'system', 'database');
+             if (exists) await Log.info(`Attempted to delete already deleted document: ${id}`, 'system', 'database');
+             else await Log.info(`Attempted to delete non-existent document: ${id}`, 'system', 'database');
         }
-        return disabled;
+        return deleted;
     } catch (error) {
-        await Log.error('Failed to disable archive document', 'system', 'database', { id, error });
+        await Log.error('Failed to soft delete archive document', 'system', 'database', { id, error });
         throw error;
     }
 }
 
-export async function enableArchiveDocument(id: number): Promise<boolean> {
+export async function restoreArchiveDocument(id: number): Promise<boolean> {
     try {
-        const statement = db.prepare(`UPDATE archive_documents SET active = TRUE, modifiedOn = ? WHERE archiveDocumentId = ? AND active = FALSE`);
+        const statement = db.prepare(`UPDATE archive_documents SET isDeleted = FALSE, modifiedOn = ? WHERE archiveDocumentId = ? AND isDeleted = TRUE`);
         const result = statement.run(sqliteNow() ?? null, id);
-        const enabled = result.changes > 0;
-        if (!enabled) {
+        const restored = result.changes > 0;
+        if (!restored) {
             const exists = await getArchiveDocumentByIdInternal(id);
-            if (exists) await Log.info(`Attempted to enable already active document: ${id}`, 'system', 'database');
-            else await Log.info(`Attempted to enable non-existent document: ${id}`, 'system', 'database');
+            if (exists) await Log.info(`Attempted to restore already restored document: ${id}`, 'system', 'database');
+            else await Log.info(`Attempted to restore non-existent document: ${id}`, 'system', 'database');
         }
-        return enabled;
+        return restored;
     } catch (error) {
-        await Log.error('Failed to enable archive document', 'system', 'database', { id, error });
+        await Log.error('Failed to restore archive document', 'system', 'database', { id, error });
         throw error;
     }
 }
@@ -388,7 +427,7 @@ export async function getMatchingDocumentIds(searchRequest: SearchRequest): Prom
             'creator', 'creationDate', 'numberOfPages', 'documentType', 'dimensions', 'binding',
             'condition', 'documentLanguage', 'contentDescription', 'remarks', 'accessLevel',
             'accessConditions', 'additionalInformation', 'relatedDocumentsReferences',
-            'isDigitized', 'digitizedVersionLink', 'createdOn', 'modifiedOn', 'active',
+            'isDigitized', 'digitizedVersionLink', 'createdOn', 'modifiedOn', 'isDeleted',
             'topographicSignature'
         ];
         const primaryKey = 'archiveDocumentId';

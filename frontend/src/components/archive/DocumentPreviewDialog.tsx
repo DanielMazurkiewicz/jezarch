@@ -22,8 +22,8 @@ interface DocumentPreviewDialogProps {
     onOpenChange: (isOpen: boolean) => void;
     document: ArchiveDocumentSearchResult | null;
     onEdit: (doc: ArchiveDocument) => void;
-    onDisable: (docId: number) => void;
-    onEnable: (docId: number) => void;
+    onDelete: (docId: number) => void;
+    onRestore: (docId: number) => void;
     parentUnitTitle?: string | null;
 }
 
@@ -47,8 +47,8 @@ const DocumentPreviewDialog: React.FC<DocumentPreviewDialogProps> = ({
     onOpenChange,
     document: originalDoc,
     onEdit,
-    onDisable,
-    onEnable,
+    onDelete,
+    onRestore,
     parentUnitTitle,
 }) => {
     const { user, preferredLanguage } = useAuth();
@@ -61,18 +61,19 @@ const DocumentPreviewDialog: React.FC<DocumentPreviewDialogProps> = ({
 
     // --- Permission Check ---
     const canModify = user?.role === 'admin' || user?.role === 'employee';
+    const isDeleted = Boolean(previewingDoc.isDeleted);
 
     const handleEditClick = () => {
         onOpenChange(false);
         onEdit(previewingDoc as ArchiveDocument);
     };
 
-    const handleDisableClick = () => {
-        onDisable(previewingDoc.archiveDocumentId!);
+    const handleDeleteClick = () => {
+        onDelete(previewingDoc.archiveDocumentId!);
     };
 
-    const handleEnableClick = () => {
-        onEnable(previewingDoc.archiveDocumentId!);
+    const handleRestoreClick = () => {
+        onRestore(previewingDoc.archiveDocumentId!);
     };
 
     return (
@@ -169,26 +170,26 @@ const DocumentPreviewDialog: React.FC<DocumentPreviewDialogProps> = ({
                      )}
                 </ScrollArea>
                 <DialogFooter className='gap-2 sm:justify-between pt-4'>
-                    {/* Disable / Restore button placed on the left */}
+                    {/* Delete / Restore button placed on the left */}
                     <div>
-                        {canModify && (previewingDoc.active || previewingDoc.active === undefined) && (
+                        {canModify && !isDeleted && (
                              <Button
                                 variant="outline"
                                 className={cn('border-destructive text-destructive hover:bg-destructive/10 hover:text-destructive')}
                                 size="sm"
-                                onClick={handleDisableClick}
+                                onClick={handleDeleteClick}
                             >
-                                 <Trash2 className='h-4 w-4 mr-2'/> {t('disableButton', preferredLanguage)}
+                                 <Trash2 className='h-4 w-4 mr-2'/> {t('deleteButton', preferredLanguage)}
                             </Button>
                         )}
-                        {canModify && !previewingDoc.active && previewingDoc.active !== undefined && (
+                        {canModify && isDeleted && (
                              <Button
                                 variant="outline"
                                 className={cn('border-green-600 text-green-600 hover:bg-green-50')}
                                 size="sm"
-                                onClick={handleEnableClick}
+                                onClick={handleRestoreClick}
                             >
-                                 <RefreshCcw className='h-4 w-4 mr-2'/> {t('enableButton', preferredLanguage)}
+                                 <RefreshCcw className='h-4 w-4 mr-2'/> {t('restoreButton', preferredLanguage)}
                             </Button>
                         )}
                     </div>
