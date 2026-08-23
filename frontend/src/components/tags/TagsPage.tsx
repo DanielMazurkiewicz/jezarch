@@ -16,7 +16,7 @@ import { t } from '@/translations/utils'; // Import translation utility
 
 const TagsPage: React.FC = () => {
   const { token, user, preferredLanguage } = useAuth(); // Get preferredLanguage
-  const isAdmin = user?.role === 'admin'; // Check if current user is an admin
+  const canManage = user?.role === 'admin' || user?.role === 'employee'; // Employees manage tags (per REQUIREMENTS.md)
   const [tags, setTags] = useState<Tag[]>([]);
   const [isLoading, setIsLoading] = useState(true); // Start loading initially
   const [error, setError] = useState<string | null>(null);
@@ -52,7 +52,7 @@ const TagsPage: React.FC = () => {
 
   // --- CRUD Handlers ---
   const handleEdit = (tag: Tag) => {
-    if (!isAdmin) {
+    if (!canManage) {
         toast.error(t('tagsPermissionErrorEdit', preferredLanguage));
         return;
     };
@@ -66,7 +66,7 @@ const TagsPage: React.FC = () => {
   };
 
   const handleDelete = async (tagId: number) => {
-      if (!token || !tagId || !isAdmin) {
+      if (!token || !tagId || !canManage) {
           toast.error(t('tagsPermissionErrorDelete', preferredLanguage));
           return;
       }
@@ -83,7 +83,7 @@ const TagsPage: React.FC = () => {
           toast.success(t('tagsDeleteSuccess', preferredLanguage, { tagName: tagToDelete?.name ?? tagId }));
           await fetchTags(); // Refresh list after delete
       } catch (err: any) {
-           const msg = err.message || 'Failed';
+           const msg = err.message || t('operationFailed', preferredLanguage);
            setError(t('tagsDeleteFailed', preferredLanguage, { message: msg }));
            toast.error(t('errorMessageTemplate', preferredLanguage, { message: t('tagsDeleteFailed', preferredLanguage, { message: msg }) }));
            console.error("Delete Tag Error:", err);
@@ -94,10 +94,10 @@ const TagsPage: React.FC = () => {
 
   // Callback when form saves successfully
   const handleSaveSuccess = async () => {
+    const wasEditing = !!editingTag; // capture before reset
     setIsFormOpen(false); // Close the dialog
     setEditingTag(null); // Reset editing state
-    const actionText = editingTag ? t('updated', preferredLanguage) : t('created', preferredLanguage); // TODO: Add updated/created keys
-    toast.success(t('tagSaveSuccess', preferredLanguage, { action: actionText })); // TODO: Add tagSaveSuccess
+    toast.success(t(wasEditing ? 'tagSavedUpdated' : 'tagSavedCreated', preferredLanguage));
     await fetchTags(); // Refresh the list to show changes
   };
 

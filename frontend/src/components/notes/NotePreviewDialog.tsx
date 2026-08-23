@@ -56,10 +56,10 @@ const NotePreviewDialog: React.FC<NotePreviewDialogProps> = ({
     return (
         <Dialog open={isOpen} onOpenChange={onOpenChange}>
             <DialogContent className="sm:max-w-2xl">
-                <DialogHeader>
+                <DialogHeader className='max-h-[35vh] overflow-y-auto'>
                     <DialogTitle>{previewingNote.title}</DialogTitle>
                     <DialogDescription>
-                        {t('notesPreviewBy', preferredLanguage)} {previewingNote.ownerLogin ?? 'Unknown'} {t('notesPreviewOn', preferredLanguage)} {formatDate(previewingNote.createdOn)}
+                        {t('notesPreviewBy', preferredLanguage)} {previewingNote.ownerLogin ?? t('unknown', preferredLanguage)} {t('notesPreviewOn', preferredLanguage)} {formatDate(previewingNote.createdOn)}
                         {previewingNote.shared ? <Badge variant="outline" className='ml-2'>{t('notesSharedBadge', preferredLanguage)}</Badge> : null}
                     </DialogDescription>
                     {/* Display Tags */}
@@ -72,7 +72,7 @@ const NotePreviewDialog: React.FC<NotePreviewDialogProps> = ({
                     )}
                 </DialogHeader>
                 {/* Make content scrollable */}
-                <ScrollArea className="max-h-[60vh] my-4">
+                <ScrollArea type="always" className="min-h-0 flex-1 my-4">
                     {/* Use pre-wrap to preserve whitespace and line breaks */}
                     <pre className="text-sm whitespace-pre-wrap font-sans p-1">
                        {previewingNote.content || <i className="text-muted-foreground">{t('notesNoContentPlaceholder', preferredLanguage)}</i>}

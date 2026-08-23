@@ -35,4 +35,6 @@ export const notesTranslationsPL: NotesTranslationSet = {
   notesNoContentPlaceholder: 'Brak treści.', // Added Key
   notesSharedBadge: 'Udostępniona', // Added Key
   notesPrivateBadge: 'Prywatna', // Added Key
+  noteSavedCreated: 'Notatka została pomyślnie utworzona.',
+  noteSavedUpdated: 'Notatka została pomyślnie zaktualizowana.',
 };

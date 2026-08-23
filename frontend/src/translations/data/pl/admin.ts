@@ -112,4 +112,13 @@ export const adminTranslationsPL: AdminTranslationSet = {
   setPasswordButton: 'Ustaw Hasło',
   createdBySearchLabel: 'Utworzone przez',
   updatedBySearchLabel: 'Zaktualizowane przez',
+  settingsLoadKeyFailedError: 'Nie udało się wczytać ustawienia „{configKey}”',
+  settingsLoadPartialFailedError: 'Nie udało się wczytać jednego lub więcej ustawień',
+  settingsSaveKeyFailedError: 'Nie udało się zapisać ustawienia „{configKey}”: {message}',
+  settingsSaveUnexpectedError: 'Wystąpił nieoczekiwany błąd podczas zapisywania ustawień',
+  clearHttpsFailedError: 'Nie udało się wyczyścić ustawień HTTPS.',
+  settingsLoadErrorHeader: 'Błąd wczytywania ustawień: {message}',
+  createUserFailedErrorAdmin: 'Nie udało się utworzyć użytkownika.',
+  logsFetchFailedError: 'Nie udało się pobrać logów',
+  languagePreferenceSaveFailedError: 'Nie udało się zapisać preferencji języka: {message}',
 };

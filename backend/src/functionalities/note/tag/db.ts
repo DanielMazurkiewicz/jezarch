@@ -13,6 +13,8 @@ export async function initializeNoteTagTable() {
             FOREIGN KEY (tagId) REFERENCES tags(tagId) ON DELETE CASCADE
         )
     `);
+    // Reverse lookups (which notes use tag X, cascade on tag delete)
+    await db.exec(`CREATE INDEX IF NOT EXISTS idx_note_tag_tag ON note_tags (tagId);`);
 }
 
 // Gets tags for a specific note
@@ -31,6 +33,28 @@ export async function getTagsForNote(noteId: number): Promise<Tag[]> {
         // Return empty array on error to avoid breaking callers
         return [];
     }
+}
+
+/** Bulk-fetch tags for many notes in a single query (avoids N+1 in searches). */
+export async function getTagsForNoteIds(noteIds: number[]): Promise<Map<number, Tag[]>> {
+    const map = new Map<number, Tag[]>();
+    if (noteIds.length === 0) return map;
+    try {
+        const placeholders = noteIds.map(() => '?').join(',');
+        const rows = db.prepare(`
+            SELECT nt.noteId, t.* FROM tags t
+            JOIN note_tags nt ON t.tagId = nt.tagId
+            WHERE nt.noteId IN (${placeholders})
+            ORDER BY nt.noteId, t.name COLLATE NOCASE
+        `).all(...noteIds) as ({ noteId: number } & Tag)[];
+        for (const { noteId, ...tag } of rows) {
+            if (!map.has(noteId)) map.set(noteId, []);
+            map.get(noteId)!.push(tag);
+        }
+    } catch (error) {
+        await Log.error('Failed to bulk fetch tags for notes', 'system', 'database', error);
+    }
+    return map;
 }
 
 

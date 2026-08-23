@@ -1,6 +1,7 @@
 import { AppConfigKeys } from '../functionalities/config/models';
 import { getConfig, setConfig } from '../functionalities/config/db';
 import { AppParams, AppParamsDefaults } from './app_params';
+import { actualDbPath } from './db'; // Single source of truth for the live DB path
 import { CmdParams } from './cmd'; // Import CmdParams
 import { Log } from '../functionalities/log/db'; // Import Log for warnings
 import { existsSync } from 'node:fs'; // Import existsSync to check file paths
@@ -36,11 +37,11 @@ export async function initializeConfigs() {
     // Define the order of precedence: CmdParams > Env Vars > DB Config > Defaults
     // Defaults are already set in AppParams
 
-    // --- Database Paths ---
-    // DB Path is special: Cmd > Env > Default (Not stored in DB config table)
-    AppParams.dbPath = CmdParams.dbPath
-                      || process.env.JEZARCH_DB_PATH
-                      || AppParamsDefaults.dbPath;
+    // --- Database Path ---
+    // The SQLite connection is already open by the time this runs (module-eval
+    // of initialization/db.ts, which applies Cmd > Env > Default itself).
+    // Reflect the actual path so logging/backup use what is really open.
+    AppParams.dbPath = actualDbPath;
 
     // --- Language ---
     const langFromDb = await getConfig(AppConfigKeys.DEFAULT_LANGUAGE);

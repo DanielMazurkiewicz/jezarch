@@ -26,7 +26,10 @@ export type ArchiveTranslationKey =
   | 'archiveRestoreConfirm' // e.g., "Are you sure you want to restore this {itemType}?"
   | 'archiveRestoreSuccess'
   | 'archiveRestoreFailed' // e.g., "Failed to restore item: {message}"
-  | 'archiveSaveSuccess' // e.g., "Item {action} successfully."
+  | 'archiveSaveSuccess'
+  | 'quickFilterRefreshTreeTooltip'
+  | 'archiveSavedCreated'
+  | 'archiveSavedUpdated' // e.g., "Item {action} successfully."
   | 'archiveSaveFailed' // e.g., "Failed to save item: {message}"
   | 'archiveDetailsLoadFailed' // e.g., "Failed to load document details: {message}"
   | 'archiveFoundItems' // e.g., "Found {count} item(s)."

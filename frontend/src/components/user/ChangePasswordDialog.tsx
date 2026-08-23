@@ -34,7 +34,7 @@ const ChangePasswordDialog: React.FC<ChangePasswordDialogProps> = ({ isOpen, onO
     });
 
     const onSubmit = async (data: ChangePasswordFormData) => {
-        if (!token) { setError("Authentication error."); return; }
+        if (!token) { setError(t('authenticationMissingError', preferredLanguage)); return; }
         setIsLoading(true); setError(null); setIsSuccess(false);
         const { confirmPassword, ...apiData } = data; // Exclude confirmPassword from API call
 
@@ -48,7 +48,7 @@ const ChangePasswordDialog: React.FC<ChangePasswordDialogProps> = ({ isOpen, onO
                 setIsSuccess(false); // Reset success state for next time
             }, 2500);
         } catch (err: any) {
-            const errorMsg = err.response?.data?.message || err.message || 'Failed to change password.';
+            const errorMsg = err.response?.data?.message || err.message || t('changePasswordFailedError', preferredLanguage);
             // Check specifically for old password mismatch error (status 401 from backend)
             if (err.message?.includes("Invalid current password") || err.status === 401) {
                 setError(t('changePasswordCurrentPasswordIncorrect', preferredLanguage)); // Use translated error

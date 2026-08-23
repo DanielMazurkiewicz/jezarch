@@ -87,7 +87,7 @@ const ElementForm: React.FC<ElementFormProps> = ({ elementToEdit, currentCompone
             }
         };
         fetchParentsAndPopulate();
-     }, [elementToEdit, reset, token, preferredLanguage]); // Add preferredLanguage
+     }, [elementToEdit, reset, token]); // preferredLanguage intentionally omitted: re-populating on locale switch would wipe unsaved input
 
 
      // Update RHF's parentIds when the selector state changes (for validation)
@@ -143,7 +143,7 @@ const ElementForm: React.FC<ElementFormProps> = ({ elementToEdit, currentCompone
                  }
 
 
-                 if (hasCoreChanges || JSON.stringify(selectedParentIds.sort()) !== JSON.stringify(originalParentIds.sort())) {
+                 if (hasCoreChanges || JSON.stringify([...selectedParentIds].sort()) !== JSON.stringify([...originalParentIds].sort())) {
                      savedElementResult = await api.updateSignatureElement(elementToEdit.signatureElementId, updatePayload, token);
                  } else {
                      console.log("No changes detected for element update.");
@@ -160,7 +160,8 @@ const ElementForm: React.FC<ElementFormProps> = ({ elementToEdit, currentCompone
             setError(msg);
             toast.error(t('errorMessageTemplate', preferredLanguage, { message: msg }));
             console.error("Save Element Error:", err);
-            onSave(null); // Indicate save failed / pass null
+            // Keep the dialog open so the user's input is not lost; onSave is
+            // only called on success (or explicit no-change save).
         } finally {
             setIsLoading(false);
         }

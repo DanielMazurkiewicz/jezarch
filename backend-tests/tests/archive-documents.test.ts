@@ -66,6 +66,22 @@ test('PUT /api/archive/document creates a unit', async () => {
   expect((await res.json()).type).toBe('unit');
 });
 
+test('PUT /api/archive/document persists documentLanguage for documents', async () => {
+  const res = await api(B, 'PUT', '/api/archive/document', {
+    type: 'document', title: 'Lang Doc', creator: 'Creator', creationDate: '2024',
+    documentLanguage: 'Polish', numberOfPages: '5',
+  }, adminToken);
+  await expectStatus(res, 201);
+  const body = await res.json();
+  expect(body.documentLanguage).toBe('Polish');
+  // physical fields other than language are still stripped for documents
+  expect(body.numberOfPages ?? null).toBeNull();
+
+  const patched = await api(B, 'PATCH', `/api/archive/document/id/${body.archiveDocumentId}`, { documentLanguage: 'Latin' }, adminToken);
+  await expectStatus(patched, 200);
+  expect((await patched.json()).documentLanguage).toBe('Latin');
+});
+
 test('PUT /api/archive/document rejects missing required fields', async () => {
   const res = await api(B, 'PUT', '/api/archive/document', { type: 'document' }, adminToken);
   await expectStatus(res, 400);
@@ -97,8 +113,13 @@ test('PATCH /api/archive/document/id/:id updates document', async () => {
 test('DELETE /api/archive/document/id/:id soft-deletes document', async () => {
   const res = await api(B, 'DELETE', `/api/archive/document/id/${createdDocId}`, undefined, adminToken);
   await expectStatus(res, 204);
+  // Staff can still inspect a soft-deleted document (flag is set)...
   const getRes = await api(B, 'GET', `/api/archive/document/id/${createdDocId}`, undefined, adminToken);
-  await expectStatus(getRes, 404);
+  await expectStatus(getRes, 200);
+  expect((await getRes.json()).isDeleted).toBeTrue();
+  // ...while the restricted 'user' role is told it does not exist.
+  const userRes = await api(B, 'GET', `/api/archive/document/id/${createdDocId}`, undefined, userToken);
+  await expectStatus(userRes, 404);
 });
 
 test('POST /api/archive/document/id/:id/restore restores deleted document', async () => {

@@ -3,9 +3,9 @@ import { CmdParams } from "../initialization/cmd";
 
 export const dumpLogs = async () => {
     if (CmdParams.logDuration) {
-        // Dump logs if --log is specified
-        console.log(`Dumping logs for ${CmdParams.logDuration / 1000} seconds...`);
-        const logs = await getAllLogs(); // Assuming you have a getAllLogs function in your log db
+        // Dump logs from the requested time window (e.g. --log 5m) and exit
+        console.log(`Dumping logs from the last ${CmdParams.logDuration / 1000} seconds...`);
+        const logs = await getAllLogs(CmdParams.logDuration);
 
         logs.forEach(logEntry => {
             console.log(`[${logEntry.createdOn}] [Level: ${logEntry.level}] User:${logEntry.userId || 'system'} Category:${logEntry.category || 'general'}: ${logEntry.message}`);

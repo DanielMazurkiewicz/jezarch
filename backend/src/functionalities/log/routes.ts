@@ -1,16 +1,11 @@
-import { getAllLogsController, searchLogsController, purgeLogsController } from './controllers'; // Added purgeLogsController
+import { searchLogsController, purgeLogsController } from './controllers';
 
 export const logRoutes = {
-    // Deprecated: Use /search instead
-    // '/api/logs/all': {
-    //     GET: getAllLogsController,
-    // },
     '/api/logs/search': {
         POST: searchLogsController,
     },
-    // --- NEW: Route for purging logs ---
+    // Purge log entries older than N days
     '/api/logs/purge': {
-        DELETE: purgeLogsController, // Use DELETE method for purging action
+        DELETE: purgeLogsController,
     }
-    // --- END NEW ROUTE ---
 };

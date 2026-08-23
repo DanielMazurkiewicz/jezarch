@@ -26,13 +26,18 @@ const AssignTagsDialog: React.FC<AssignTagsDialogProps> = ({ isOpen, onOpenChang
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
-    // Reset local state when dialog opens with new user
+    // Reset local state when the dialog opens for a (new) user. Depend on the
+    // user identity rather than the initialTagIds array — the parent recreates
+    // that array on every render, which would wipe in-progress selections.
+    const targetLogin = targetUser?.login;
+    const initialTagIdsKey = initialTagIds.join(',');
     React.useEffect(() => {
         if (isOpen) {
             setAssignedTags(initialTagIds);
             setError(null);
         }
-    }, [isOpen, initialTagIds]);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [isOpen, targetLogin, initialTagIdsKey]);
 
     const handleSave = async () => {
         if (!token || !targetUser) return;

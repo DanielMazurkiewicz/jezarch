@@ -23,21 +23,54 @@ export let httpHostname: string | undefined = undefined;
 export let httpPort: number | undefined = undefined;
 export let httpsHostname: string | undefined = undefined;
 export let httpsPort: number | undefined = undefined;
-export const publicDir = path.resolve(import.meta.dir, '../../../frontend/dist');
+function findPublicDir(): string {
+    const starts = [process.cwd(), import.meta.dir];
+    for (const start of starts) {
+        let dir: string | null = path.resolve(start);
+        while (dir) {
+            const candidate = path.join(dir, 'frontend', 'dist');
+            if (existsSync(path.join(candidate, 'index.html'))) return candidate;
+            const parent = path.dirname(dir);
+            if (parent === dir) break;
+            dir = parent;
+        }
+    }
+    return path.resolve(import.meta.dir, '../../../frontend/dist');
+}
+export const publicDir = findPublicDir();
 console.log(`* Serving static files from: ${publicDir}`);
 
 // --- Helper Functions ---
+
+/** Security headers applied to every response (API + static). */
+function withSecurityHeaders(response: Response): Response {
+    response.headers.set('X-Content-Type-Options', 'nosniff');
+    response.headers.set('X-Frame-Options', 'DENY');
+    response.headers.set('Referrer-Policy', 'same-origin');
+    if (isSslEnabled) {
+        response.headers.set('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
+    }
+    return response;
+}
 
 // Common fetch handler for both HTTP and HTTPS servers
 async function handleFetch(req: Request, serverInstance: Server): Promise<Response> {
     const url = new URL(req.url);
     let pathname = url.pathname;
 
+    // Unmatched /api/* routes must never fall through to the SPA shell —
+    // clients would otherwise parse HTML as a failed JSON payload.
+    const isApiRequest = pathname === '/api' || pathname.startsWith('/api/');
+
     try {
         pathname = decodeURIComponent(pathname);
     } catch (e: any) {
         await Log.error("Failed to decode pathname", 'system', 'server', { pathname, error: e });
-        return new Response("Bad Request", { status: 400 });
+        return withSecurityHeaders(new Response("Bad Request", { status: 400 }));
+    }
+
+    if (isApiRequest) {
+        return withSecurityHeaders(new Response(JSON.stringify({ message: 'Not found' }), { status: 404, headers: { 'Content-Type': 'application/json' } }));
     }
 
     let requestedPath = pathname;
@@ -48,9 +81,11 @@ async function handleFetch(req: Request, serverInstance: Server): Promise<Respon
     const filePath = path.join(publicDir, requestedPath);
     const resolvedPath = path.resolve(filePath);
 
-    if (!resolvedPath.startsWith(publicDir)) {
+    // Exact-match or true subpath check: a bare prefix test would also accept
+    // sibling directories such as ".../frontend/dist-evil".
+    if (resolvedPath !== publicDir && !resolvedPath.startsWith(publicDir + path.sep)) {
         await Log.warn(`Forbidden path access attempt: ${requestedPath}`, 'system', 'security', { resolvedPath, publicDir });
-        return new Response("Forbidden", { status: 403 });
+        return withSecurityHeaders(new Response("Forbidden", { status: 403 }));
     }
 
     try {
@@ -58,32 +93,52 @@ async function handleFetch(req: Request, serverInstance: Server): Promise<Respon
         const exists = await file.exists();
 
         if (exists && (await file.stat()).isFile()) {
-            return new Response(file);
+            return withSecurityHeaders(new Response(file));
         } else {
             const isAssetRequest = /\.(css|js|json|png|jpg|jpeg|gif|svg|ico|woff|woff2|ttf|eot|map)$/i.test(requestedPath);
             if (!isAssetRequest) {
                 const indexPath = path.join(publicDir, 'index.html');
                 const indexFile = Bun.file(indexPath);
                 if (await indexFile.exists()) {
-                    return new Response(indexFile);
+                    return withSecurityHeaders(new Response(indexFile));
                 }
             }
-            return new Response("Not Found", { status: 404 });
+            return withSecurityHeaders(new Response("Not Found", { status: 404 }));
         }
     } catch (error: any) {
         await Log.error(`Error accessing file ${resolvedPath}`, 'system', 'server', error);
         if (error.code === 'ENOENT') {
-            return new Response("Not Found", { status: 404 });
+            return withSecurityHeaders(new Response("Not Found", { status: 404 }));
         }
-        return new Response("Internal Server Error", { status: 500 });
+        return withSecurityHeaders(new Response("Internal Server Error", { status: 500 }));
     }
 }
 
 // Common error handler
 async function handleError(error: Error): Promise<Response> {
     await Log.error("Bun Serve Runtime Error", 'system', 'server', error);
-    return new Response(`Internal Server Error`, { status: 500 });
+    return withSecurityHeaders(new Response(`Internal Server Error`, { status: 500 }));
 }
+
+// Graceful shutdown: stop accepting connections, close the DB cleanly.
+let shuttingDown = false;
+async function shutdown(signal: string) {
+    if (shuttingDown) return;
+    shuttingDown = true;
+    console.log(`\n* Received ${signal}, shutting down...`);
+    try {
+        httpServer?.stop(true);
+        httpsServer?.stop(true);
+        const { closeDatabase } = await import('./db');
+        closeDatabase();
+        console.log('* Shutdown complete.');
+    } catch (error) {
+        console.error('* Error during shutdown:', error);
+    }
+    process.exit(0);
+}
+process.on('SIGINT', () => shutdown('SIGINT'));
+process.on('SIGTERM', () => shutdown('SIGTERM'));
 
 // Function to load TLS files safely
 function loadTlsFiles(keyPath: string, certPath: string, caPath?: string | null): Pick<TLSServeOptions, 'key' | 'cert' | 'ca'> | null {

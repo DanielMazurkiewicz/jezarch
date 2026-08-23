@@ -8,6 +8,7 @@ import { reloadTlsConfiguration, stopHttpsServer } from '../../initialization/se
 // ------------------------------------
 import { AppParams } from '../../initialization/app_params'; // Import AppParams to update runtime values
 import { existsSync } from 'node:fs'; // To check file existence before setting
+import { supportedLanguages } from '../user/models'; // Shared list of supported languages
 
 
 // --- NEW: Public Controller for Default Language ---
@@ -115,7 +116,7 @@ export const getConfigController = async (req: BunRequest<":key">) => {
 
     } catch (error: any) {
         await Log.error('Error getting config', sessionAndUser.user.login, 'config', error);
-        return new Response(JSON.stringify({ message: 'Failed to get config', error: error.message ?? String(error) }), {
+        return new Response(JSON.stringify({ message: 'Failed to get config' }), {
             status: 500,
             headers: { 'Content-Type': 'application/json' }
         });
@@ -165,15 +166,12 @@ export const setConfigController = async (req: BunRequest<":key">) => {
                  break;
              case AppConfigKeys.DEFAULT_LANGUAGE:
                  originalValue = AppParams.defaultLanguage;
-                 // --- UPDATED: Validate against known supported languages ---
-                 if (value === null || !existsSync(value)) { // Re-using existsSync logic doesn't fit, use explicit check
-                    // Correct the check to ensure the value is one of the supported languages
-                    const supportedLangs = ['en', 'pl']; // Assuming these are your supported languages
-                    if (value === null || !supportedLangs.includes(value)) {
-                         return new Response(JSON.stringify({ message: `Invalid Default Language value. Must be one of: ${supportedLangs.join(', ')}.` }), { status: 400 });
-                    }
+                 // Validate strictly against the shared supported-languages list.
+                 // (The previous existsSync() pre-check could be bypassed whenever
+                 // a file with the submitted name happened to exist.)
+                 if (typeof value !== 'string' || !(supportedLanguages as readonly string[]).includes(value)) {
+                     return new Response(JSON.stringify({ message: `Invalid Default Language value. Must be one of: ${supportedLanguages.join(', ')}.` }), { status: 400 });
                  }
-                 // --- END UPDATE ---
                  processedValue = value.trim();
                  break;
              case AppConfigKeys.HTTPS_KEY_PATH:
@@ -262,7 +260,7 @@ export const setConfigController = async (req: BunRequest<":key">) => {
 
     } catch (error: any) {
         await Log.error('Error setting config', sessionAndUser.user.login, 'config', error);
-        return new Response(JSON.stringify({ message: 'Failed to set config', error: error.message ?? String(error) }), {
+        return new Response(JSON.stringify({ message: 'Failed to set config' }), {
             status: 500,
             headers: { 'Content-Type': 'application/json' }
         });
@@ -307,7 +305,7 @@ export const clearHttpsConfigController = async (req: BunRequest) => {
 
     } catch (error: any) {
         await Log.error('Error clearing HTTPS config', sessionAndUser.user.login, 'config', error);
-        return new Response(JSON.stringify({ message: 'Failed to clear HTTPS configuration', error: error.message ?? String(error) }), {
+        return new Response(JSON.stringify({ message: 'Failed to clear HTTPS configuration' }), {
             status: 500,
             headers: { 'Content-Type': 'application/json' }
         });

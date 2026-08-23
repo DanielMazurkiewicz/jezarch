@@ -69,17 +69,38 @@ const ElementNode: React.FC<ElementNodeProps> = ({
     onSelect(id, currentPath);
   }, [enabled, hasChildren, id, currentPath, onSelect, toggleElementExpanded]);
 
+  const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      if (!enabled) return;
+      if (hasChildren) {
+        toggleElementExpanded(id);
+      }
+      onSelect(id, currentPath);
+    } else if (e.key === 'ArrowRight' && hasChildren && !isExpanded && enabled) {
+      e.preventDefault();
+      toggleElementExpanded(id);
+    } else if (e.key === 'ArrowLeft' && hasChildren && isExpanded && enabled) {
+      e.preventDefault();
+      toggleElementExpanded(id);
+    }
+  }, [enabled, hasChildren, id, currentPath, onSelect, toggleElementExpanded, isExpanded]);
+
   const showChildCount = hasChildren && !isExpanded && (el.childCount ?? 0) > 0;
 
   return (
     <div>
       <div
         className={cn(
-          "flex items-center gap-1 py-0.5 px-1 rounded cursor-pointer text-xs hover:bg-accent whitespace-nowrap",
+          "flex items-center gap-1 py-0.5 px-1 rounded cursor-pointer text-xs hover:bg-accent whitespace-nowrap focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
           isActive && "bg-primary text-primary-foreground font-semibold hover:bg-primary",
         )}
         style={{ paddingLeft: `${depth * 14 + 4}px` }}
         onClick={handleToggle}
+        onKeyDown={handleKeyDown}
+        tabIndex={0}
+        role="treeitem"
+        aria-expanded={hasChildren ? isExpanded : undefined}
       >
         {hasChildren ? (
           isExpanded ? <ChevronDown className="h-3 w-3 shrink-0" /> : <ChevronRight className="h-3 w-3 shrink-0" />
@@ -331,7 +352,7 @@ const QuickSignatureFilter: React.FC<QuickSignatureFilterProps> = ({
           size="icon"
           className="ml-auto h-7 w-7 shrink-0"
           onClick={triggerRefresh}
-          title="Refresh tree"
+          title={t('quickFilterRefreshTreeTooltip', preferredLanguage)}
         >
           <RefreshCw className="h-3.5 w-3.5" />
         </Button>

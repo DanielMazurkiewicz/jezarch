@@ -204,7 +204,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
            toast.success(t('welcomeMessage', langToStore, { userLogin: login }));
            return true;
        } catch (err: any) {
-           const errorMessage = err.message || 'Login failed';
+           const errorMessage = err.message || t('loginFailedFallbackError', state.preferredLanguage);
            console.error("AuthContext: Login failed -", errorMessage);
            // Clear auth-related items, but keep language preference from *before* login attempt
            const langBeforeLogin = state.preferredLanguage;
@@ -239,8 +239,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
      const languageToKeep = state.preferredLanguage; // Get current language before resetting
      setState({ ...initialState, isLoading: false, preferredLanguage: languageToKeep }); // Reset but keep language
 
-     if (currentLogin) toast.info(`User ${currentLogin} logged out.`); // Translate if needed
-     else toast.info("Logged out."); // Translate if needed
+     if (currentLogin) toast.info(t('logoutSuccessWithUser', state.preferredLanguage, { userLogin: currentLogin }));
+     else toast.info(t('logoutSuccess', state.preferredLanguage));
 
     try {
         if (currentToken) {
@@ -249,7 +249,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         }
     } catch (err: any) {
       console.error('AuthContext: Logout API call failed:', err);
-       toast.warning("Logged out locally, but failed to notify the server."); // Translate if needed
+       toast.warning(t('logoutServerNotifyFailedWarning', state.preferredLanguage));
     }
   }, [state.token, state.user?.login, state.preferredLanguage]); // Include preferredLanguage dependency
 
@@ -260,10 +260,10 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     try {
       const newUser = await api.register({ ...credentials, preferredLanguage });
       setState(prevState => ({ ...prevState, isLoading: false, error: null }));
-      toast.success(`Registration successful for ${newUser.login}! Please log in.`); // Translate if needed
+      toast.success(t('registerSuccessToast', state.preferredLanguage, { userLogin: newUser.login }));
       return true;
     } catch (err: any) {
-      const errorMessage = err.message || 'Registration failed';
+      const errorMessage = err.message || t('registrationFailedFallbackError', state.preferredLanguage);
        console.error("AuthContext: Registration failed -", errorMessage);
       setState(prevState => ({
         ...prevState,

@@ -40,6 +40,7 @@ export const signatureTranslationsPL: SignatureTranslationSet = {
   elementNameLabel: 'Nazwa Elementu',
   elementDescriptionLabel: 'Opis',
   elementIndexLabel: 'Indeks (Opcjonalnie - Nadpisuje Auto-Indeks)',
+  elementIndexShortLabel: 'Indeks',
   elementIndexPlaceholder: 'Auto ({type})',
   elementIndexHint: 'Pozostaw puste dla automatycznego indeksu zgodnego z typem komponentu.',
   elementParentElementsLabel: 'Elementy Nadrzędne (Opcjonalne)',

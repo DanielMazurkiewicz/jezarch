@@ -9,12 +9,23 @@ import api from '@/lib/api';
 import type { SignatureElement } from '../../../../backend/src/functionalities/signature/element/models';
 import { cn } from '@/lib/utils';
 // Import Dialog components
-import { Dialog, DialogTrigger, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogTrigger, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 // Use relative path again
 import ElementBrowserDialogContent from './ElementBrowserDialogContent.tsx';
 import { t } from '@/translations/utils'; // Import translation utility
 
 type ResolvedSignature = { idPath: number[]; display: string };
+
+// signatures is expected to be number[][], but can arrive as a JSON-encoded string (raw search rows); normalize defensively
+const normalizeSignaturePaths = (value: unknown): number[][] => {
+    if (typeof value === 'string') {
+        try { value = JSON.parse(value); } catch { return []; }
+    }
+    if (!Array.isArray(value)) return [];
+    return value.filter((path): path is number[] =>
+        Array.isArray(path) && path.every(id => typeof id === 'number' && Number.isInteger(id) && id > 0)
+    );
+};
 
 interface SignaturePathSelectorProps {
   label: string;
@@ -39,7 +50,7 @@ const SignaturePathSelector: React.FC<SignaturePathSelectorProps> = ({
 
   useEffect(() => {
     const resolveAllSignatures = async () => {
-        const currentSignatures = JSON.parse(stringifiedSignatures); // Use the memoized string
+        const currentSignatures = normalizeSignaturePaths(JSON.parse(stringifiedSignatures)); // Use the memoized string
         if (!token || currentSignatures.length === 0) {
             setResolvedSignatures([]); return;
         }
@@ -69,7 +80,7 @@ const SignaturePathSelector: React.FC<SignaturePathSelectorProps> = ({
   // Renamed callback for clarity
   const handleAddSignatureFromBrowser = useCallback((newSignature: number[]) => {
       const newSignatureStr = JSON.stringify(newSignature);
-      const currentSignatures = JSON.parse(stringifiedSignatures);
+      const currentSignatures = normalizeSignaturePaths(JSON.parse(stringifiedSignatures));
       if (!currentSignatures.some((p: number[]) => JSON.stringify(p) === newSignatureStr)) {
           onChange([...currentSignatures, newSignature]);
       }
@@ -79,7 +90,7 @@ const SignaturePathSelector: React.FC<SignaturePathSelectorProps> = ({
 
   const removeSignature = useCallback((signatureToRemove: number[]) => {
     const signatureToRemoveStr = JSON.stringify(signatureToRemove);
-    const currentSignatures = JSON.parse(stringifiedSignatures);
+    const currentSignatures = normalizeSignaturePaths(JSON.parse(stringifiedSignatures));
     onChange(currentSignatures.filter((p: number[]) => JSON.stringify(p) !== signatureToRemoveStr));
   }, [stringifiedSignatures, onChange]);
 
@@ -104,10 +115,11 @@ const SignaturePathSelector: React.FC<SignaturePathSelectorProps> = ({
              </DialogTrigger>
              <DialogContent className="w-[90vw] max-w-[700px] h-[80vh] p-0 flex flex-col"> {/* Adjust size and padding */}
                  <DialogHeader className='p-4 border-b shrink-0'>
-                      <DialogTitle>{t('elementBrowserPopoverSelectElementPlaceholder', preferredLanguage)}</DialogTitle> {/* Use a relevant title */}
-                 </DialogHeader>
+                       <DialogTitle>{t('elementBrowserPopoverSelectElementPlaceholder', preferredLanguage)}</DialogTitle> {/* Use a relevant title */}
+                       <DialogDescription className="sr-only">{t('elementBrowserPopoverSelectElementPlaceholder', preferredLanguage)}</DialogDescription>
+                  </DialogHeader>
                  {/* Render the browser content inside the dialog */}
-                 <div className='flex-grow overflow-hidden'> {/* Container for the content */}
+                  <div className='flex-grow min-h-0 overflow-hidden'> {/* Container for the content */}
                      {isBrowserOpen && ( // Render only when open to reset state
                          <ElementBrowserDialogContent
                             onSelectSignature={handleAddSignatureFromBrowser}
@@ -140,7 +152,7 @@ const SignaturePathSelector: React.FC<SignaturePathSelectorProps> = ({
           </div>
         ))}
          {/* Use translated placeholder */}
-         {!isLoadingSignatures && signatures.length === 0 && <p className="text-xs text-neutral-500 italic text-center py-1">{t('noSignaturesAddedHint', preferredLanguage)}</p>}
+          {!isLoadingSignatures && normalizeSignaturePaths(signatures).length === 0 && <p className="text-xs text-neutral-500 italic text-center py-1">{t('noSignaturesAddedHint', preferredLanguage)}</p>}
       </div>
     </div>
   );

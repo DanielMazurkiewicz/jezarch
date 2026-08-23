@@ -20,4 +20,13 @@ export const authTranslationsPL: AuthTranslationSet = {
   loginLink: 'Zaloguj się',
   languagePickerLabel: 'Język',
   logoutFailedError: 'Wylogowanie nie powiodło się: {message}',
+  registerSuccessTitle: 'Rejestracja zakończona pomyślnie!',
+  registerSuccessDescription: 'Twoje konto zostało utworzone. Możesz się teraz zalogować.',
+  registerGoToLoginButton: 'Przejdź do logowania',
+  logoutSuccessWithUser: 'Użytkownik {userLogin} został wylogowany.',
+  logoutSuccess: 'Wylogowano.',
+  logoutServerNotifyFailedWarning: 'Wylogowano lokalnie, ale nie powiadomiono serwera.',
+  registerSuccessToast: 'Rejestracja użytkownika {userLogin} zakończona pomyślnie! Zaloguj się.',
+  loginFailedFallbackError: 'Logowanie nie powiodło się',
+  registrationFailedFallbackError: 'Rejestracja nie powiodła się',
 };

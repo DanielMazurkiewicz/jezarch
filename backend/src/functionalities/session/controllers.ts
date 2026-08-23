@@ -5,8 +5,10 @@ import { BunRequest } from 'bun';
 import { UserRole } from '../user/models'; // UserRole now includes 'employee' and 'user'
 
 export async function getSessionAndUser(req: BunRequest): Promise<undefined | SessionAndUser> {
-    const authHeader = req.headers.get('Authorization');
+    let authHeader = req.headers.get('Authorization');
     if (!authHeader) return;
+    // Accept the standard "Bearer <token>" scheme in addition to bare tokens
+    if (authHeader.startsWith('Bearer ')) authHeader = authHeader.slice('Bearer '.length);
 
     const session = await getSessionByToken(authHeader);
     if (!session) return;

@@ -51,13 +51,13 @@ const RegisterForm: React.FC<RegisterFormProps> = ({ onSwitchToLogin }) => {
          <CardContent className="space-y-4 px-6 pb-6">
             <Alert variant="default" className="border-green-600 bg-green-50 dark:bg-green-50 text-green-700 dark:text-green-700">
                 <CheckCircle className="h-5 w-5 text-green-600" />
-                <AlertTitle>Registration Successful!</AlertTitle>
+                <AlertTitle>{t('registerSuccessTitle', preferredLanguage)}</AlertTitle>
                 <AlertDescription>
-                    Your account has been created. You can now log in.
+                    {t('registerSuccessDescription', preferredLanguage)}
                 </AlertDescription>
             </Alert>
             <Button variant="outline" className="w-full" onClick={onSwitchToLogin}>
-                Go to Login
+                {t('registerGoToLoginButton', preferredLanguage)}
             </Button>
          </CardContent>
       ) : (

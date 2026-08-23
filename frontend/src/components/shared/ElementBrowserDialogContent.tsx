@@ -267,7 +267,7 @@ const ElementBrowserDialogContent: React.FC<ElementBrowserDialogContentProps> = 
 
     return (
         // This component now renders the *content* of the dialog
-        <div className="space-y-3 p-4 w-full flex flex-col h-full overflow-hidden"> {/* Added flex layout */}
+        <div className="space-y-3 p-4 w-full flex flex-col h-full min-h-0 overflow-hidden"> {/* Added flex layout */}
             <div className="flex flex-col gap-3 shrink-0"> {/* Non-scrolling part */}
                 <div className='flex flex-col gap-1.5'>
                     <Label className='text-xs font-medium'>{t('elementBrowserSelectionModeLabel', preferredLanguage)}</Label>
@@ -318,7 +318,7 @@ const ElementBrowserDialogContent: React.FC<ElementBrowserDialogContentProps> = 
                 (mode === 'hierarchical' && (currentSignatureElements.length > 0 || selectedComponentId)) ||
                 (mode === 'free' && (selectedComponentId || debouncedSearchTerm.trim()))
              ) && (
-                <div className="flex-1 overflow-hidden flex flex-col gap-2 mt-3"> {/* Added mt-3 */}
+                 <div className="flex-1 min-h-0 overflow-hidden flex flex-col gap-2 mt-3"> {/* Added mt-3 */}
                      <Label className='text-xs mb-1 block shrink-0'>
                          {getNextStepPrompt()}
                      </Label>
@@ -333,7 +333,7 @@ const ElementBrowserDialogContent: React.FC<ElementBrowserDialogContentProps> = 
                          />
                          {/* --------------------------- */}
                          {/* Ensure CommandList can grow and scroll */}
-                         <CommandList className="flex-grow overflow-y-auto"> {/* Changed max-h to flex-grow */}
+                          <CommandList className="flex-grow min-h-0 overflow-y-auto"> {/* Changed max-h to flex-grow */}
                              {isLoadingElements && <div className='p-4 text-center'><LoadingSpinner size='sm' /></div>}
                              {error && !isLoadingElements && <CommandEmpty className='text-destructive px-2 py-4 text-center'>{error}</CommandEmpty>}
                              {!error && !isLoadingElements && elements.length === 0 && <CommandEmpty>{t('elementBrowserPopoverNoElementsFound', preferredLanguage)}</CommandEmpty>}

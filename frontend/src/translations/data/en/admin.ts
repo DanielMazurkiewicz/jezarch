@@ -112,4 +112,13 @@ export const adminTranslationsEN: AdminTranslationSet = {
   setPasswordButton: 'Set Password',
   createdBySearchLabel: 'Created By',
   updatedBySearchLabel: 'Updated By',
+  settingsLoadKeyFailedError: 'Failed to load setting "{configKey}"',
+  settingsLoadPartialFailedError: 'Failed to load one or more settings',
+  settingsSaveKeyFailedError: 'Failed to save setting "{configKey}": {message}',
+  settingsSaveUnexpectedError: 'An unexpected error occurred while saving settings',
+  clearHttpsFailedError: 'Failed to clear HTTPS settings.',
+  settingsLoadErrorHeader: 'Error loading settings: {message}',
+  createUserFailedErrorAdmin: 'Failed to create user.',
+  logsFetchFailedError: 'Failed to fetch logs',
+  languagePreferenceSaveFailedError: 'Failed to save language preference: {message}',
 };

@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useSearchParams, useNavigate, Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogTrigger } from '@/components/ui/dialog';
 import DocumentList from './DocumentList';
 import DocumentForm from './DocumentForm';
 import LoadingSpinner from '@/components/shared/LoadingSpinner';
@@ -80,11 +80,19 @@ const ArchivePage: React.FC = () => {
 
   const mergeQuickFilter = useCallback((quickFilter: SearchQueryElement | null, searchBarQuery: SearchQuery): SearchQuery => {
     const base = searchBarQuery.filter(q => q.field !== 'descriptiveSignature');
+    // Staff default: keep soft-deleted documents hidden unless the search bar
+    // carries an explicit isDeleted criterion of its own. Without this, a
+    // quick-filter change built from an empty search-bar baseline would drop
+    // the default filter and reveal deleted rows.
+    const hasExplicitDeletedFilter = base.some(q => q.field === 'isDeleted');
+    if ((isAdmin || isEmployee) && !hasExplicitDeletedFilter) {
+      base.push(...defaultDeletedFilter);
+    }
     if (quickFilter) {
       return [...base, quickFilter];
     }
     return base;
-  }, []);
+  }, [isAdmin, isEmployee]);
 
   useEffect(() => {
     setOnFilterChange((quickFilter: SearchQueryElement | null) => {
@@ -142,8 +150,10 @@ const ArchivePage: React.FC = () => {
     fetchTags();
   }, [token, isAdmin, isEmployee]);
 
+   const fetchSeqRef = useRef(0);
    const fetchDocuments = useCallback(async (page = currentPageRef.current, query = searchQueryRef.current, currentSortBy = sortByRef.current, currentSortOrder = sortOrderRef.current) => {
        if (!token) return;
+       const seq = ++fetchSeqRef.current;
        setIsLoading(true); setError(null);
        try {
            let finalQuery: SearchQueryElement[] = [...query];
@@ -153,17 +163,21 @@ const ArchivePage: React.FC = () => {
            }
            const searchRequest: SearchRequest = { query: finalQuery, page: page, pageSize: pageSize, sortBy: currentSortBy, sortOrder: currentSortOrder };
            const response = await api.searchArchiveDocuments(searchRequest, token);
+           if (seq !== fetchSeqRef.current) return; // a newer request superseded this one
            setDocuments(response.data);
            setTotalDocs(response.totalSize);
            setTotalPages(response.totalPages);
            setCurrentPage(response.page);
        } catch (err: any) {
+           if (seq !== fetchSeqRef.current) return;
            const msg = err.message || t('archiveFetchError', preferredLanguage);
            setError(msg);
            toast.error(t('errorMessageTemplate', preferredLanguage, { message: msg }));
            console.error("Fetch Error:", err);
            setDocuments([]); setTotalDocs(0); setTotalPages(1);
-       } finally { setIsLoading(false); }
+       } finally {
+           if (seq === fetchSeqRef.current) setIsLoading(false);
+       }
    }, [token, pageSize, parentUnitId, preferredLanguage]);
 
    useEffect(() => {
@@ -212,7 +226,7 @@ const ArchivePage: React.FC = () => {
             if (currentPage !== newCurrentPage) setCurrentPage(newCurrentPage);
             if (previewingDoc?.archiveDocumentId === docId) setIsPreviewOpen(false);
         } catch (err: any) {
-             const msg = err.message || 'Failed';
+             const msg = err.message || t('operationFailed', preferredLanguage);
              setError(t('archiveDeleteFailed', preferredLanguage, { message: msg }));
              toast.error(t('errorMessageTemplate', preferredLanguage, { message: t('archiveDeleteFailed', preferredLanguage, { message: msg }) }));
              console.error("Delete Error:", err);
@@ -237,7 +251,7 @@ const ArchivePage: React.FC = () => {
             if (currentPage !== newCurrentPage) setCurrentPage(newCurrentPage);
             if (previewingDoc?.archiveDocumentId === docId) setIsPreviewOpen(false);
         } catch (err: any) {
-             const msg = err.message || 'Failed';
+             const msg = err.message || t('operationFailed', preferredLanguage);
              setError(t('archiveRestoreFailed', preferredLanguage, { message: msg }));
              toast.error(t('errorMessageTemplate', preferredLanguage, { message: t('archiveRestoreFailed', preferredLanguage, { message: msg }) }));
              console.error("Restore Error:", err);
@@ -245,9 +259,11 @@ const ArchivePage: React.FC = () => {
     };
 
     const handleSaveSuccess = async () => {
-        setIsFormOpen(false); setEditingDoc(null);
-        const actionText = editingDoc ? t('updated', preferredLanguage) : t('created', preferredLanguage);
-        toast.success(t('archiveSaveSuccess', preferredLanguage, { action: actionText }));
+        setIsFormOpen(false);
+        // Capture before clearing: the flag decides the toast wording.
+        const wasEditing = !!editingDoc;
+        setEditingDoc(null);
+        toast.success(t(wasEditing ? 'archiveSavedUpdated' : 'archiveSavedCreated', preferredLanguage));
         await fetchDocuments(currentPage, searchQuery);
     };
 
@@ -277,7 +293,7 @@ const ArchivePage: React.FC = () => {
             setPreviewingDoc(fullDoc);
             setIsPreviewOpen(true);
         } catch (err: any) {
-            const msg = err.message || 'unknown error';
+            const msg = err.message || t('unknownError', preferredLanguage);
             toast.error(t('errorMessageTemplate', preferredLanguage, { message: t('archiveDetailsLoadFailed', preferredLanguage, { message: msg }) }));
              setPreviewingDoc(null);
              setIsPreviewOpen(false);
@@ -315,7 +331,7 @@ const ArchivePage: React.FC = () => {
            setIsBatchTagDialogOpen(false);
            await fetchDocuments(currentPage, searchQuery);
        } catch (err: any) {
-           const msg = err.message || 'unknown error';
+           const msg = err.message || t('unknownError', preferredLanguage);
            toast.error(t('errorMessageTemplate', preferredLanguage, { message: t('archiveBatchTagsFailed', preferredLanguage, { message: msg }) }));
            console.error("Batch Tag Error:", err);
        } finally {
@@ -406,8 +422,8 @@ const ArchivePage: React.FC = () => {
                          </Button>
                          </DialogTrigger>
                          <DialogContent className="w-[90vw] max-w-[1200px] h-[90vh] flex flex-col"> {/* Added flex flex-col */}
-                            <DialogHeader> <DialogTitle>{formDialogTitle}</DialogTitle> </DialogHeader>
-                            <div className="flex-grow overflow-y-auto pr-2 pl-1"> {/* Adjusted padding */}
+                            <DialogHeader> <DialogTitle>{formDialogTitle}</DialogTitle> <DialogDescription className="sr-only">{formDialogTitle}</DialogDescription> </DialogHeader>
+                            <div className="flex-grow min-h-0 overflow-y-auto pr-2 pl-1"> {/* Adjusted padding */}
                                 {isFormOpen && (
                                     <DocumentForm
                                         docToEdit={editingDoc}
@@ -492,7 +508,7 @@ const ArchivePage: React.FC = () => {
                               parentUnitId ? t('archiveNoItemsInUnit', preferredLanguage, { unitTitle: parentUnit?.title || t('thisUnit', preferredLanguage) }) :
                               isUserRole ? t('archiveNoItemsForUserTags', preferredLanguage) :
                               t('archiveIsEmpty', preferredLanguage)}
-                              {(isAdmin || isEmployee) && !parentUnitId && documents.length === 0 && searchQuery.length === 0 && ` ${t('archiveClickCreateHint', preferredLanguage)}`}
+                              {(isAdmin || isEmployee) && !parentUnitId && documents.length === 0 && searchQuery.every(q => q.field === 'isDeleted') && ` ${t('archiveClickCreateHint', preferredLanguage)}`}
                          </p>
                       )}
                    </>

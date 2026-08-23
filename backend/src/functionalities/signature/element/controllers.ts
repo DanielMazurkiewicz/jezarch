@@ -25,6 +25,8 @@ import {
 } from './models';
 // Import search utilities, including SearchQueryElement
 import { SearchQueryElement, SearchOnCustomFieldHandlerResult, SearchRequest, buildSearchQueries, executeSearch } from '../../../utils/search';
+import { parseSearchRequest } from '../../../utils/search_validation';
+import { removeSignatureElementIdsFromDocuments } from '../../archive/document/db';
 
 
 const ELEMENT_AREA = 'signature_element';
@@ -85,7 +87,7 @@ export const createElementController = async (req: BunRequest) => {
         if (error.message?.includes('Component with ID')) {
             return new Response(JSON.stringify({ message: error.message }), { status: 400 }); // Bad Request - invalid component ID
         }
-        return new Response(JSON.stringify({ message: 'Failed to create element', error: error.message }), { status: 500 });
+        return new Response(JSON.stringify({ message: 'Failed to create element' }), { status: 500 });
     }
 };
 
@@ -173,13 +175,25 @@ export const updateElementController = async (req: BunRequest<":id">) => {
              return new Response(JSON.stringify({ message: 'Element not found' }), { status: 404 });
         }
 
-        const updatedElementData = await updateElement(id, updateData);
-        if (!updatedElementData) {
-             return new Response(JSON.stringify({ message: 'Element not found or update failed' }), { status: 404 });
-        }
-
-        if (parentIds !== undefined) {
-            await setParentElementIds(id, parentIds);
+        // Core field update and parent replacement form one atomic unit.
+        const runUpdate = db.transaction(async () => {
+            const updated = await updateElement(id, updateData);
+            if (!updated) {
+                 throw new Error('Element not found or update failed');
+            }
+            if (parentIds !== undefined) {
+                await setParentElementIds(id, parentIds);
+            }
+            return updated;
+        });
+        let updatedElementData;
+        try {
+            updatedElementData = await runUpdate();
+        } catch (txError: any) {
+            if (txError.message === 'Element not found or update failed') {
+                return new Response(JSON.stringify({ message: 'Element not found or update failed' }), { status: 404 });
+            }
+            throw txError;
         }
 
         await Log.info(`Element updated: ${updatedElementData?.name} (ID: ${id})`, sessionAndUser.user.login, ELEMENT_AREA);
@@ -188,7 +202,7 @@ export const updateElementController = async (req: BunRequest<":id">) => {
 
     } catch (error: any) {
         await Log.error('Error updating element', sessionAndUser.user.login, ELEMENT_AREA, error);
-        return new Response(JSON.stringify({ message: 'Failed to update element', error: error.message }), { status: 500 });
+        return new Response(JSON.stringify({ message: 'Failed to update element' }), { status: 500 });
     }
 };
 
@@ -197,8 +211,9 @@ export const updateElementController = async (req: BunRequest<":id">) => {
 export const deleteElementController = async (req: BunRequest<":id">) => {
     const sessionAndUser = await getSessionAndUser(req);
     if (!sessionAndUser) return new Response("Unauthorized", { status: 401 });
-    // Allow admin and employees to delete elements
-    if (!isAllowedRole(sessionAndUser, 'admin', 'employee')) return new Response("Forbidden", { status: 403 });
+    // Admin-only, matching component deletion: deleting elements corrupts the
+    // signature paths stored inside archive documents (dangling ID references).
+    if (!isAllowedRole(sessionAndUser, 'admin')) return new Response("Forbidden", { status: 403 });
 
     try {
         const id = parseInt(req.params.id);
@@ -214,6 +229,12 @@ export const deleteElementController = async (req: BunRequest<":id">) => {
         const deleted = await deleteElement(id);
 
         if (deleted) {
+            // Strip now-dangling references from stored document signatures
+            try {
+                await removeSignatureElementIdsFromDocuments([id]);
+            } catch (cleanupError) {
+                await Log.error('Failed to clean document signatures after element delete', sessionAndUser.user.login, ELEMENT_AREA, cleanupError);
+            }
             await Log.info(`Element deleted: ID ${id}`, sessionAndUser.user.login, ELEMENT_AREA);
             return new Response(null, { status: 204 }); // No Content
         } else {
@@ -233,7 +254,11 @@ export const searchElementsController = async (req: BunRequest) => {
     if (!isAllowedRole(sessionAndUser, 'admin', 'employee')) return new Response("Forbidden", { status: 403 });
 
     try {
-        const searchRequest = await req.json() as SearchRequest;
+        const rawBody: unknown = await req.json();
+        const searchRequest = parseSearchRequest(rawBody);
+        if (!searchRequest) {
+            return new Response(JSON.stringify({ message: 'Invalid search request' }), { status: 400 });
+        }
 
         const allowedDirectFields: (keyof SignatureElement)[] = [
             'signatureElementId', 'signatureComponentId', 'name',
@@ -288,7 +313,6 @@ export const searchElementsController = async (req: BunRequest) => {
         await Log.error('Element search failed', sessionAndUser.user.login, ELEMENT_AREA, error);
         return new Response(JSON.stringify({
             message: 'Failed to search elements',
-            error: error instanceof Error ? error.message : 'Unknown error'
         }), { status: 500 });
     }
 };

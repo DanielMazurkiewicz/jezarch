@@ -30,6 +30,16 @@ const SetPasswordDialog: React.FC<SetPasswordDialogProps> = ({ isOpen, onOpenCha
         resolver: zodResolver(setPasswordSchema), defaultValues: { password: '' },
     });
 
+    // Clear any previous draft/errors whenever the dialog opens for a user —
+    // otherwise a cancelled attempt leaks into the next target.
+    React.useEffect(() => {
+        if (isOpen) {
+            reset({ password: '' });
+            setError(null);
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [isOpen, targetUser?.login]);
+
     const onSubmit = async (data: SetPasswordFormData) => {
         if (!token || !targetUser) return;
         setIsSubmitting(true);

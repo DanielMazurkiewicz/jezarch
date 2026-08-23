@@ -27,13 +27,23 @@ import { t } from '@/translations/utils';
 
 type CreateArchiveDocumentFormData = z.infer<typeof createArchiveDocumentFormSchema>;
 
+// docToEdit can come from raw search rows where the field is a JSON string; normalize to number[][]
+const normalizeSignaturePaths = (value: unknown): number[][] => {
+    if (typeof value === 'string') {
+        try { value = JSON.parse(value); } catch { return []; }
+    }
+    if (!Array.isArray(value)) return [];
+    return value.filter((path): path is number[] =>
+        Array.isArray(path) && path.every(id => typeof id === 'number' && Number.isInteger(id) && id > 0)
+    );
+};
+
 interface DocumentFormProps {
   docToEdit: ArchiveDocument | null;
   onSave: () => void;
   forceType?: ArchiveDocumentType;
   forcedParentId?: number;
   forcedParentTitle?: string;
-  onTypeChange?: (type: ArchiveDocumentType) => void;
 }
 
 const DocumentForm: React.FC<DocumentFormProps> = ({
@@ -42,7 +52,6 @@ const DocumentForm: React.FC<DocumentFormProps> = ({
     forceType,
     forcedParentId,
     forcedParentTitle,
-    onTypeChange
 }) => {
   const { token, preferredLanguage } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
@@ -70,9 +79,6 @@ const DocumentForm: React.FC<DocumentFormProps> = ({
   });
 
   const watchedType = watch('type');
-  useEffect(() => {
-    onTypeChange?.(watchedType);
-  }, [watchedType, onTypeChange]);
 
   useEffect(() => {
     if (forcedParentId === undefined) {
@@ -90,7 +96,7 @@ const DocumentForm: React.FC<DocumentFormProps> = ({
                 const tagIds = fullDoc.tags?.map(t => t.tagId!) ?? [];
                 const parentId = fullDoc.parentUnitArchiveDocumentId ?? null;
                 const topoSignature = fullDoc.topographicSignature ?? null;
-                const descSignatures = fullDoc.descriptiveSignatureElementIds ?? [];
+                const descSignatures = normalizeSignaturePaths(fullDoc.descriptiveSignatureElementIds);
 
                 reset({
                     parentUnitArchiveDocumentId: forcedParentId ?? parentId,
@@ -131,10 +137,10 @@ const DocumentForm: React.FC<DocumentFormProps> = ({
                     creationDate: docToEdit.creationDate ?? '',
                     tagIds: docToEdit.tags?.map(t => t.tagId!) ?? [],
                     topographicSignature: docToEdit.topographicSignature ?? null,
-                    descriptiveSignatureElementIds: docToEdit.descriptiveSignatureElementIds ?? [],
-                 });
-                 setSelectedTagIds(docToEdit.tags?.map(t => t.tagId!) ?? []);
-                 setDescriptiveSignatures(docToEdit.descriptiveSignatureElementIds ?? []);
+                    descriptiveSignatureElementIds: normalizeSignaturePaths(docToEdit.descriptiveSignatureElementIds),
+                  });
+                  setSelectedTagIds(docToEdit.tags?.map(t => t.tagId!) ?? []);
+                  setDescriptiveSignatures(normalizeSignaturePaths(docToEdit.descriptiveSignatureElementIds));
                  setSelectedParentUnitId(forcedParentId ?? docToEdit.parentUnitArchiveDocumentId ?? null);
             } finally { setIsFetchingDetails(false); }
         } else {
@@ -159,7 +165,7 @@ const DocumentForm: React.FC<DocumentFormProps> = ({
         }
     };
     populateForm();
-  }, [docToEdit, reset, token, forceType, forcedParentId, preferredLanguage]);
+  }, [docToEdit, reset, token, forceType, forcedParentId]); // preferredLanguage omitted: re-populating on locale switch would wipe unsaved input
 
   useEffect(() => { setValue('tagIds', selectedTagIds); }, [selectedTagIds, setValue]);
   useEffect(() => { setValue('descriptiveSignatureElementIds', descriptiveSignatures); }, [descriptiveSignatures, setValue]);
@@ -174,56 +180,56 @@ const DocumentForm: React.FC<DocumentFormProps> = ({
     const { tagIds: _, parentUnitArchiveDocumentId: __, type: _____, descriptiveSignatureElementIds: _______, ...coreData } = data;
 
     try {
+        // Empty strings are normalized to null so cleared fields persist and the
+        // backend URL validation never sees "".
+        const clearIfEmpty = (v: string | null | undefined) => (v === undefined || v === '' ? null : v);
         if (docToEdit?.archiveDocumentId) {
-            // Construct the update payload carefully, comparing with original doc
-            const updatePayload: UpdateArchiveDocumentInput = {};
-
-            // Add field to payload only if it has actually changed
-            if (finalParentId !== (docToEdit.parentUnitArchiveDocumentId ?? null)) updatePayload.parentUnitArchiveDocumentId = finalParentId ?? undefined;
-            if (coreData.title !== docToEdit.title) updatePayload.title = coreData.title;
-            if (coreData.creator !== docToEdit.creator) updatePayload.creator = coreData.creator;
-            if (coreData.creationDate !== docToEdit.creationDate) updatePayload.creationDate = coreData.creationDate;
-            if ((coreData.numberOfPages || null) !== docToEdit.numberOfPages) updatePayload.numberOfPages = coreData.numberOfPages || undefined;
-            if ((coreData.documentType || null) !== docToEdit.documentType) updatePayload.documentType = coreData.documentType || undefined;
-            if ((coreData.dimensions || null) !== docToEdit.dimensions) updatePayload.dimensions = coreData.dimensions || undefined;
-            if ((coreData.binding || null) !== docToEdit.binding) updatePayload.binding = coreData.binding || undefined;
-            if ((coreData.condition || null) !== docToEdit.condition) updatePayload.condition = coreData.condition || undefined;
-            if ((coreData.documentLanguage || null) !== docToEdit.documentLanguage) updatePayload.documentLanguage = coreData.documentLanguage || undefined;
-            if ((coreData.contentDescription || null) !== docToEdit.contentDescription) updatePayload.contentDescription = coreData.contentDescription || undefined;
-            if ((coreData.remarks || null) !== docToEdit.remarks) updatePayload.remarks = coreData.remarks || undefined;
-            if ((coreData.accessLevel || null) !== docToEdit.accessLevel) updatePayload.accessLevel = coreData.accessLevel || undefined;
-            if ((coreData.accessConditions || null) !== docToEdit.accessConditions) updatePayload.accessConditions = coreData.accessConditions || undefined;
-            if ((coreData.additionalInformation || null) !== docToEdit.additionalInformation) updatePayload.additionalInformation = coreData.additionalInformation || undefined;
-            if ((coreData.relatedDocumentsReferences || null) !== docToEdit.relatedDocumentsReferences) updatePayload.relatedDocumentsReferences = coreData.relatedDocumentsReferences || undefined;
-            if (coreData.isDigitized !== docToEdit.isDigitized) updatePayload.isDigitized = coreData.isDigitized;
-            if ((coreData.digitizedVersionLink || null) !== docToEdit.digitizedVersionLink) updatePayload.digitizedVersionLink = coreData.digitizedVersionLink || undefined;
-            if ((coreData.topographicSignature ?? null) !== docToEdit.topographicSignature) updatePayload.topographicSignature = coreData.topographicSignature ?? null;
-
-            // Always send tags and signatures for update (backend handles replace logic)
-            updatePayload.tagIds = selectedTagIds;
-            updatePayload.descriptiveSignatureElementIds = descriptiveSignatures;
-
-            // Check if anything actually changed besides tags/signatures/parent (which are handled by updatePayload anyway)
-            const hasCoreChanges = Object.keys(updatePayload).some(k => !['tagIds', 'descriptiveSignatureElementIds', 'parentUnitArchiveDocumentId'].includes(k));
-            const parentChanged = finalParentId !== (docToEdit.parentUnitArchiveDocumentId ?? null); // Re-check specifically
-
-            if (hasCoreChanges || parentChanged ||
-                JSON.stringify(selectedTagIds.sort()) !== JSON.stringify((docToEdit.tags?.map(t => t.tagId!) ?? []).sort()) ||
-                JSON.stringify(descriptiveSignatures) !== JSON.stringify(docToEdit.descriptiveSignatureElementIds ?? [])
-            ) {
-                 await api.updateArchiveDocument(docToEdit.archiveDocumentId, updatePayload, token);
-            } else {
-                toast.info(t('archiveFormNoChangesDetected', preferredLanguage));
-                onSave(); // Call onSave even if no API call made
-                setIsLoading(false);
-                return;
-            }
+            // Always send the full update payload — a save must produce an update request.
+            const updatePayload: UpdateArchiveDocumentInput = {
+                parentUnitArchiveDocumentId: finalParentId ?? null,
+                title: coreData.title,
+                creator: coreData.creator,
+                creationDate: coreData.creationDate,
+                numberOfPages: clearIfEmpty(coreData.numberOfPages),
+                documentType: clearIfEmpty(coreData.documentType),
+                dimensions: clearIfEmpty(coreData.dimensions),
+                binding: clearIfEmpty(coreData.binding),
+                condition: clearIfEmpty(coreData.condition),
+                documentLanguage: clearIfEmpty(coreData.documentLanguage),
+                contentDescription: clearIfEmpty(coreData.contentDescription),
+                remarks: clearIfEmpty(coreData.remarks),
+                accessLevel: clearIfEmpty(coreData.accessLevel),
+                accessConditions: clearIfEmpty(coreData.accessConditions),
+                additionalInformation: clearIfEmpty(coreData.additionalInformation),
+                relatedDocumentsReferences: clearIfEmpty(coreData.relatedDocumentsReferences),
+                isDigitized: coreData.isDigitized === true,
+                digitizedVersionLink: clearIfEmpty(coreData.digitizedVersionLink),
+                topographicSignature: clearIfEmpty(coreData.topographicSignature),
+                tagIds: selectedTagIds,
+                descriptiveSignatureElementIds: descriptiveSignatures,
+            };
+            await api.updateArchiveDocument(docToEdit.archiveDocumentId, updatePayload, token);
         } else {
              // Create payload uses all validated data + selected tags/signatures
              const createPayload: CreateArchiveDocumentInput = {
                 ...coreData, // Includes all validated fields from base schema
                 type: data.type, // Ensure type is included
-                parentUnitArchiveDocumentId: finalParentId ?? undefined,
+                parentUnitArchiveDocumentId: finalParentId ?? null,
+                numberOfPages: clearIfEmpty(coreData.numberOfPages),
+                documentType: clearIfEmpty(coreData.documentType),
+                dimensions: clearIfEmpty(coreData.dimensions),
+                binding: clearIfEmpty(coreData.binding),
+                condition: clearIfEmpty(coreData.condition),
+                documentLanguage: clearIfEmpty(coreData.documentLanguage),
+                contentDescription: clearIfEmpty(coreData.contentDescription),
+                remarks: clearIfEmpty(coreData.remarks),
+                accessLevel: clearIfEmpty(coreData.accessLevel),
+                accessConditions: clearIfEmpty(coreData.accessConditions),
+                additionalInformation: clearIfEmpty(coreData.additionalInformation),
+                relatedDocumentsReferences: clearIfEmpty(coreData.relatedDocumentsReferences),
+                digitizedVersionLink: clearIfEmpty(coreData.digitizedVersionLink),
+                topographicSignature: clearIfEmpty(coreData.topographicSignature),
+                isDigitized: coreData.isDigitized === true,
                 tagIds: selectedTagIds,
                 descriptiveSignatureElementIds: descriptiveSignatures,
              };
@@ -326,10 +332,26 @@ const DocumentForm: React.FC<DocumentFormProps> = ({
                     <CardHeader><CardTitle className='text-lg'>{t('archiveFormContentContextTitle', preferredLanguage)}</CardTitle></CardHeader>
                     <CardContent className="grid grid-cols-1 gap-4">
                         <GridItem><Label htmlFor="doc-language">{t('archiveFormLanguageLabel', preferredLanguage)}</Label><Input id="doc-language" {...register('documentLanguage')} placeholder={t('archiveFormLanguagePlaceholder', preferredLanguage)} /></GridItem>
-                        <GridItem><Label htmlFor="doc-contentDesc">{t('archiveFormContentDescLabel', preferredLanguage)}</Label><Textarea id="doc-contentDesc" {...register('contentDescription')} rows={4} placeholder={t('archiveFormContentDescPlaceholder', preferredLanguage)} /></GridItem>
-                        <GridItem><Label htmlFor="doc-remarks">{t('archiveFormRemarksLabel', preferredLanguage)}</Label><Textarea id="doc-remarks" {...register('remarks')} rows={2} placeholder={t('archiveFormRemarksPlaceholder', preferredLanguage)} /></GridItem>
-                        <GridItem><Label htmlFor="doc-related">{t('archiveFormRelatedDocsLabel', preferredLanguage)}</Label><Textarea id="doc-related" {...register('relatedDocumentsReferences')} rows={2} placeholder={t('archiveFormRelatedDocsPlaceholder', preferredLanguage)} /></GridItem>
-                        <GridItem><Label htmlFor="doc-additionalInfo">{t('archiveFormAdditionalInfoLabel', preferredLanguage)}</Label><Textarea id="doc-additionalInfo" {...register('additionalInformation')} rows={2} placeholder={t('archiveFormAdditionalInfoPlaceholder', preferredLanguage)} /></GridItem>
+                        <GridItem>
+                            <Label htmlFor="doc-contentDesc">{t('archiveFormContentDescLabel', preferredLanguage)}</Label>
+                            <Textarea id="doc-contentDesc" {...register('contentDescription')} rows={4} placeholder={t('archiveFormContentDescPlaceholder', preferredLanguage)} aria-invalid={!!errors.contentDescription} className={cn(errors.contentDescription && "border-destructive")}/>
+                            {errors.contentDescription && <p className="text-xs text-destructive">{errors.contentDescription.message}</p>}
+                        </GridItem>
+                        <GridItem>
+                            <Label htmlFor="doc-remarks">{t('archiveFormRemarksLabel', preferredLanguage)}</Label>
+                            <Textarea id="doc-remarks" {...register('remarks')} rows={2} placeholder={t('archiveFormRemarksPlaceholder', preferredLanguage)} aria-invalid={!!errors.remarks} className={cn(errors.remarks && "border-destructive")}/>
+                            {errors.remarks && <p className="text-xs text-destructive">{errors.remarks.message}</p>}
+                        </GridItem>
+                        <GridItem>
+                            <Label htmlFor="doc-related">{t('archiveFormRelatedDocsLabel', preferredLanguage)}</Label>
+                            <Textarea id="doc-related" {...register('relatedDocumentsReferences')} rows={2} placeholder={t('archiveFormRelatedDocsPlaceholder', preferredLanguage)} aria-invalid={!!errors.relatedDocumentsReferences} className={cn(errors.relatedDocumentsReferences && "border-destructive")}/>
+                            {errors.relatedDocumentsReferences && <p className="text-xs text-destructive">{errors.relatedDocumentsReferences.message}</p>}
+                        </GridItem>
+                        <GridItem>
+                            <Label htmlFor="doc-additionalInfo">{t('archiveFormAdditionalInfoLabel', preferredLanguage)}</Label>
+                            <Textarea id="doc-additionalInfo" {...register('additionalInformation')} rows={2} placeholder={t('archiveFormAdditionalInfoPlaceholder', preferredLanguage)} aria-invalid={!!errors.additionalInformation} className={cn(errors.additionalInformation && "border-destructive")}/>
+                            {errors.additionalInformation && <p className="text-xs text-destructive">{errors.additionalInformation.message}</p>}
+                        </GridItem>
                     </CardContent>
                 </Card>
                  {/* --- Access & Digitization --- */}

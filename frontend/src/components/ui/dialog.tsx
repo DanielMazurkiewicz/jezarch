@@ -2,6 +2,7 @@
 
 import * as React from "react"
 import * as DialogPrimitive from "@radix-ui/react-dialog"
+import { t } from '@/translations/utils';
 import { XIcon } from "lucide-react"
 
 import { cn } from "@/lib/utils"
@@ -59,12 +60,14 @@ function DialogContent({
       <DialogPrimitive.Content
         data-slot="dialog-content"
         className={cn(
-          "fixed top-[50%] left-[50%] z-50 grid w-full translate-x-[-50%] translate-y-[-50%] gap-4 rounded-lg border p-6 shadow-lg duration-200",
+          "fixed top-[50%] left-[50%] z-50 w-full translate-x-[-50%] translate-y-[-50%] gap-4 rounded-lg border p-6 shadow-lg duration-200",
           "max-w-[calc(100%-2rem)]",
           "bg-white dark:bg-white text-neutral-900 dark:text-neutral-900 border-neutral-200",
-           // Keep max-height and overflow here for the CONTENT part, form inside might scroll too
-          "max-h-[90vh] flex flex-col", // Added flex flex-col
-          "data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95",
+           // Flex column: header/footer pinned (shrink-0), inner content scrolls; clip any overflow to the box
+          "max-h-[90vh] flex flex-col overflow-hidden",
+          // Enter/exit translate compensation keeps the centered dialog in place
+          // while the animate keyframes override the translate-* utilities.
+          "data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[state=open]:slide-in-from-left-1/2 data-[state=open]:slide-in-from-top-1/2 data-[state=closed]:slide-out-to-left-1/2 data-[state=closed]:slide-out-to-top-1/2",
           className
         )}
         {...props}
@@ -73,7 +76,7 @@ function DialogContent({
         {children}
         <DialogPrimitive.Close className="ring-offset-background focus:ring-ring data-[state=open]:bg-accent data-[state=open]:text-muted-foreground absolute top-4 right-4 rounded-sm opacity-70 transition-opacity hover:opacity-100 focus:ring-2 focus:ring-offset-2 focus:outline-none disabled:pointer-events-none [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4 text-neutral-500 hover:text-neutral-900">
           <XIcon />
-          <span className="sr-only">Close</span>
+          <span className="sr-only">{t('closeButton')}</span>
         </DialogPrimitive.Close>
       </DialogPrimitive.Content>
     </DialogPortal>

@@ -67,9 +67,17 @@ const ComponentList: React.FC<ComponentListProps> = React.memo(({
                         <TableRow
                             key={component.signatureComponentId}
                             onClick={() => handleRowClick(component)}
+                            onKeyDown={(e) => {
+                                if (e.key === 'Enter' || e.key === ' ') {
+                                    e.preventDefault();
+                                    handleRowClick(component);
+                                }
+                            }}
+                            tabIndex={0}
+                            role="button"
                             // Apply styles for hover and cursor, removed selection highlight
                             className={cn(
-                                "cursor-pointer hover:bg-muted/50 transition-colors"
+                                "cursor-pointer hover:bg-muted/50 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                             )}
                         >
                             <TableCell className="font-medium flex items-center gap-2">

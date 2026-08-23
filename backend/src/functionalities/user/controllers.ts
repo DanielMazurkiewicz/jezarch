@@ -25,14 +25,26 @@ import {
     updatePreferredLanguageSchema, // Import preferred language schema
     SupportedLanguage, // Import SupportedLanguage type
 } from './models';
-import { createSession, deleteSession } from '../session/db';
+import { countAdminsExcluding } from './db';
+import { createSession, deleteSession, deleteSessionsForUser } from '../session/db';
 import { getSessionAndUser, isAllowedRole, isOwner } from '../session/controllers';
 import { Log } from '../log/db';
 import { z } from 'zod'; // Import z
+import { checkRateLimit, clientKey } from '../../utils/rateLimit';
+
+// Throttling rules for auth-sensitive endpoints
+const LOGIN_RATE_LIMIT = { limit: 10, windowMs: 5 * 60 * 1000 };   // 10 attempts / 5 min / IP+login
+const REGISTER_RATE_LIMIT = { limit: 10, windowMs: 60 * 60 * 1000 }; // 10 registrations / hour / IP
 
 
 export const createUserController = async (req: BunRequest) => {
     try {
+        // Throttle public registration to curb spam account creation
+        const limiter = checkRateLimit(`register:${clientKey(req.headers)}`, REGISTER_RATE_LIMIT);
+        if (!limiter.allowed) {
+            return new Response(JSON.stringify({ message: 'Too many registration attempts. Try again later.' }), { status: 429, headers: { 'Content-Type': 'application/json', 'Retry-After': String(limiter.retryAfterSec) } });
+        }
+
         const body = await req.json();
         // Validate against userSchema (which includes password complexity and optional preferredLanguage)
         const validatedData = userSchema.parse(body);
@@ -57,7 +69,7 @@ export const createUserController = async (req: BunRequest) => {
         if (error.message?.includes('already exists')) {
             return new Response(JSON.stringify({ message: error.message }), { status: 409, headers: { 'Content-Type': 'application/json' } });
         }
-        return new Response(JSON.stringify({ message: 'Failed to create user', error: error instanceof Error ? error.message : String(error) }), { status: 500, headers: { 'Content-Type': 'application/json' } });
+        return new Response(JSON.stringify({ message: 'Failed to create user' }), { status: 500, headers: { 'Content-Type': 'application/json' } });
     }
 };
 
@@ -129,7 +141,7 @@ export const getUserByLoginController = async (req: BunRequest<":login">) => {
         });
     } catch (error) {
         await Log.error('Error fetching user by login', sessionAndUser.user.login, 'user', { login: req.params.login, error });
-        return new Response(JSON.stringify({ message: 'Failed to get user', error: error instanceof Error ? error.message : String(error) }), { status: 500, headers: { 'Content-Type': 'application/json' } });
+        return new Response(JSON.stringify({ message: 'Failed to get user' }), { status: 500, headers: { 'Content-Type': 'application/json' } });
     }
 };
 
@@ -157,6 +169,16 @@ export const updateUserRoleController = async (req: BunRequest<":login">) => {
              return new Response(JSON.stringify({ message: 'User not found' }), { status: 404, headers: { 'Content-Type': 'application/json' } });
         }
 
+        // Last-admin protection: never allow removing the final administrator,
+        // including two admins demoting each other concurrently.
+        if (targetUser.role === 'admin' && role !== 'admin') {
+            const otherAdmins = await countAdminsExcluding(targetLogin);
+            if (otherAdmins === 0) {
+                await Log.warn(`Blocked demotion of the last admin: ${targetLogin}`, sessionAndUser.user.login, 'user');
+                return new Response(JSON.stringify({ message: 'Cannot remove the last administrator account' }), { status: 400, headers: { 'Content-Type': 'application/json' } });
+            }
+        }
+
         // Clear assigned tags if changing role away from 'user'
         if (targetUser.role === 'user' && role !== 'user') {
             try {
@@ -173,7 +195,7 @@ export const updateUserRoleController = async (req: BunRequest<":login">) => {
         return new Response(JSON.stringify({ message: 'User role updated successfully' }), { status: 200, headers: { 'Content-Type': 'application/json' } });
     } catch (error) {
         await Log.error('Error updating user role', sessionAndUser.user.login, 'user', { login: req.params.login, error });
-        return new Response(JSON.stringify({ message: 'Failed to update user role', error: error instanceof Error ? error.message : String(error) }), { status: 500, headers: { 'Content-Type': 'application/json' } });
+        return new Response(JSON.stringify({ message: 'Failed to update user role' }), { status: 500, headers: { 'Content-Type': 'application/json' } });
     }
 };
 
@@ -220,7 +242,7 @@ export const updateUserPreferredLanguageController = async (req: BunRequest<":lo
 
     } catch (error: any) {
         await Log.error('Error updating user preferred language', sessionAndUser.user.login, 'user', { login: req.params.login, error });
-        return new Response(JSON.stringify({ message: 'Failed to update user preferred language', error: error.message ?? String(error) }), { status: 500, headers: { 'Content-Type': 'application/json' } });
+        return new Response(JSON.stringify({ message: 'Failed to update user preferred language' }), { status: 500, headers: { 'Content-Type': 'application/json' } });
     }
 };
 // --- END NEW ---
@@ -252,12 +274,15 @@ export const updateUserPasswordController = async (req: BunRequest) => {
         }
 
         await updateUserPassword(login, newPassword);
+        // Invalidate every other session of this user; stolen tokens must not
+        // survive a credential change.
+        await deleteSessionsForUser(sessionAndUser.user.userId, sessionAndUser.session.token);
         await Log.info('User password updated successfully', sessionAndUser.user.login, 'user');
         return new Response(null, { status: 204 });
 
     } catch (error) {
         await Log.error('Failed to update own password', sessionAndUser.user.login, 'user', error);
-        return new Response(JSON.stringify({ message: 'Failed to update user password', error: error instanceof Error ? error.message : String(error) }), { status: 500, headers: { 'Content-Type': 'application/json' } });
+        return new Response(JSON.stringify({ message: 'Failed to update user password' }), { status: 500, headers: { 'Content-Type': 'application/json' } });
     }
 };
 
@@ -288,12 +313,14 @@ export const adminSetUserPasswordController = async (req: BunRequest<":login">) 
         }
 
         await adminSetUserPassword(targetLogin, newPassword);
+        // Revoke all sessions of the target user so old tokens stop working
+        await deleteSessionsForUser(userExists.userId);
         await Log.info(`Admin set password for user ${targetLogin}`, sessionAndUser.user.login, 'user');
         return new Response(null, { status: 204 });
 
     } catch (error) {
         await Log.error('Failed to admin-set user password', sessionAndUser.user.login, 'user', { targetLogin: req.params.login, error });
-        return new Response(JSON.stringify({ message: 'Failed to set user password', error: error instanceof Error ? error.message : String(error) }), { status: 500, headers: { 'Content-Type': 'application/json' } });
+        return new Response(JSON.stringify({ message: 'Failed to set user password' }), { status: 500, headers: { 'Content-Type': 'application/json' } });
     }
 };
 
@@ -305,6 +332,13 @@ export const loginController = async (req: BunRequest) => {
 
         if (!login || !password) {
             return new Response(JSON.stringify({ message: "Login and password are required" }), { status: 400, headers: { 'Content-Type': 'application/json' } });
+        }
+
+        // Throttle brute-force attempts per IP+login combination
+        const limiter = checkRateLimit(`login:${clientKey(req.headers)}:${login}`, LOGIN_RATE_LIMIT);
+        if (!limiter.allowed) {
+            await Log.warn(`Rate limit exceeded for login attempts: ${login}`, login, 'auth', { retryAfterSec: limiter.retryAfterSec });
+            return new Response(JSON.stringify({ message: "Too many login attempts. Try again later." }), { status: 429, headers: { 'Content-Type': 'application/json', 'Retry-After': String(limiter.retryAfterSec) } });
         }
 
         const isValid = await verifyPassword(login, password);
@@ -337,16 +371,18 @@ export const loginController = async (req: BunRequest) => {
 
     } catch (error) {
         await Log.error('Login error', undefined, 'auth', error);
-        return new Response(JSON.stringify({ message: 'Failed to login', error: error instanceof Error ? error.message : String(error) }), { status: 500, headers: { 'Content-Type': 'application/json' } });
+        return new Response(JSON.stringify({ message: 'Failed to login' }), { status: 500, headers: { 'Content-Type': 'application/json' } });
     }
 };
 
 export const logoutController = async (req: BunRequest) => {
     try {
-        const token = req.headers.get('Authorization');
+        let token = req.headers.get('Authorization');
         if (!token) {
             return new Response(JSON.stringify({ message: "Authorization token missing" }), { status: 400, headers: { 'Content-Type': 'application/json' } });
         }
+        // Tolerate the standard "Bearer" scheme as well as the bare-token form
+        if (token.startsWith('Bearer ')) token = token.slice('Bearer '.length);
         await deleteSession(token);
         await Log.info('User session deleted successfully via logout', undefined, 'auth');
         return new Response(null, { status: 204 });
@@ -379,7 +415,7 @@ export const getAssignedTagsForUserController = async (req: BunRequest<":login">
 
     } catch (error: any) {
         await Log.error(`Failed to get assigned tags for user ${req.params.login}`, sessionAndUser.user.login, 'user', error);
-        return new Response(JSON.stringify({ message: 'Failed to get assigned tags', error: error.message }), { status: 500 });
+        return new Response(JSON.stringify({ message: 'Failed to get assigned tags' }), { status: 500 });
     }
 };
 
@@ -415,6 +451,6 @@ export const assignTagsToUserController = async (req: BunRequest<":login">) => {
          if (error.message?.includes('Cannot assign tags to user')) {
             return new Response(JSON.stringify({ message: error.message }), { status: 400 });
          }
-         return new Response(JSON.stringify({ message: 'Failed to assign tags', error: error.message }), { status: 500 });
+         return new Response(JSON.stringify({ message: 'Failed to assign tags' }), { status: 500 });
     }
 };

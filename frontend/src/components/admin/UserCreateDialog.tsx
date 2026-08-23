@@ -37,7 +37,7 @@ const UserCreateDialog: React.FC<UserCreateDialogProps> = ({
     });
 
     const onSubmit = async (data: UserCreateFormData) => {
-        if (!token) { setError("Authentication error."); return; }
+        if (!token) { setError(t('authenticationMissingError', preferredLanguage)); return; }
         setIsLoading(true); setError(null);
         const { confirmPassword, ...apiData } = data; // Exclude confirmPassword
 
@@ -48,7 +48,7 @@ const UserCreateDialog: React.FC<UserCreateDialogProps> = ({
             onUserCreated(); // Notify parent to refresh list
             onOpenChange(false); // Close dialog
         } catch (err: any) {
-            const errorMsg = err.message || 'Failed to create user.';
+            const errorMsg = err.message || t('createUserFailedErrorAdmin', preferredLanguage);
             setError(errorMsg);
             // Use translated error message
             toast.error(t('errorMessageTemplate', preferredLanguage, { message: errorMsg }));

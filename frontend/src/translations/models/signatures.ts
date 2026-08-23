@@ -40,6 +40,7 @@ export type SignatureTranslationKey =
   | 'elementNameLabel'
   | 'elementDescriptionLabel'
   | 'elementIndexLabel'
+  | 'elementIndexShortLabel'
   | 'elementIndexPlaceholder'
   | 'elementIndexHint'
   | 'elementParentElementsLabel'

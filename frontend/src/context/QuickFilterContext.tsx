@@ -1,4 +1,5 @@
-import React, { createContext, useContext, useState, useCallback } from 'react';
+import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
+import { useLocation } from 'react-router-dom';
 import type { SearchQueryElement } from '../../../backend/src/utils/search';
 
 interface QuickFilterContextValue {
@@ -69,6 +70,26 @@ export const QuickFilterProvider: React.FC<{ children: React.ReactNode }> = ({ c
   const triggerRefresh = useCallback(() => {
     setRefreshKey(k => k + 1);
   }, []);
+
+  // Keep a ref to the latest handler so the location effect can invoke it.
+  const handlerRef = React.useRef(handler);
+  useEffect(() => { handlerRef.current = handler; }, [handler]);
+
+  // Leaving the archive section invalidates the quick signature filter —
+  // otherwise returning to /archive silently re-applies a stale filter.
+  const location = useLocation();
+  const wasInArchive = React.useRef(location.pathname.startsWith('/archive'));
+  useEffect(() => {
+    const inArchive = location.pathname.startsWith('/archive');
+    if (wasInArchive.current && !inArchive) {
+      setActiveElementId(null);
+      setActivePath(null);
+      setEnabled(true);
+      setCondition('STARTS_WITH');
+      handlerRef.current?.(null);
+    }
+    wasInArchive.current = inArchive;
+  }, [location.pathname]);
 
   return (
     <QuickFilterContext.Provider value={{

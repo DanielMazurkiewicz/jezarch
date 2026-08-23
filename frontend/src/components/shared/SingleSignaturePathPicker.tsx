@@ -12,7 +12,7 @@ import { cn } from '@/lib/utils';
 import LoadingSpinner from './LoadingSpinner';
 import { t } from '@/translations/utils'; // Import translation utility
 // Import Dialog components
-import { Dialog, DialogTrigger, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogTrigger, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 
 
 interface SingleSignaturePathPickerProps {
@@ -117,10 +117,11 @@ const SingleSignaturePathPicker: React.FC<SingleSignaturePathPickerProps> = ({
         {/* Dialog Content */}
         <DialogContent className="w-[90vw] max-w-[700px] h-[80vh] p-0 flex flex-col">
            <DialogHeader className='p-4 border-b shrink-0'>
-                <DialogTitle>{t('elementBrowserPopoverSelectElementPlaceholder', preferredLanguage)}</DialogTitle>
-           </DialogHeader>
+                 <DialogTitle>{t('elementBrowserPopoverSelectElementPlaceholder', preferredLanguage)}</DialogTitle>
+                 <DialogDescription className="sr-only">{t('elementBrowserPopoverSelectElementPlaceholder', preferredLanguage)}</DialogDescription>
+            </DialogHeader>
            {/* Render the browser content inside the dialog */}
-           <div className='flex-grow overflow-hidden'>
+            <div className='flex-grow min-h-0 overflow-hidden'>
                {isBrowserOpen && ( // Render only when open
                    <ElementBrowserDialogContent
                         onSelectSignature={handlePathSelected}

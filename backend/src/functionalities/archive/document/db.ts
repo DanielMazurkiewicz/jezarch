@@ -54,27 +54,43 @@ async function migrateActiveToIsDeleted() {
 
     await Log.info(`Migrating archive_documents: renaming 'active' to 'isDeleted' with flipped values.`, 'system', 'migrate');
     const migratedTable = 'archive_documents_migrated';
-    const migration = db.transaction(() => {
-        db.exec(archiveDocumentsTableDDL(migratedTable));
-        db.exec(`
-            INSERT INTO ${migratedTable} (
-                archiveDocumentId, parentUnitArchiveDocumentId, createdBy, updatedBy, type, isDeleted,
-                topographicSignature, descriptiveSignatureElementIds, title, creator, creationDate, numberOfPages,
-                documentType, dimensions, binding, condition, documentLanguage, contentDescription, remarks,
-                accessLevel, accessConditions, additionalInformation, relatedDocumentsReferences, recordChangeHistory,
-                isDigitized, digitizedVersionLink, createdOn, modifiedOn
-            )
-            SELECT archiveDocumentId, parentUnitArchiveDocumentId, createdBy, updatedBy, type, NOT active,
-                topographicSignature, descriptiveSignatureElementIds, title, creator, creationDate, numberOfPages,
-                documentType, dimensions, binding, condition, documentLanguage, contentDescription, remarks,
-                accessLevel, accessConditions, additionalInformation, relatedDocumentsReferences, recordChangeHistory,
-                isDigitized, digitizedVersionLink, createdOn, modifiedOn
-            FROM archive_documents
-        `);
-        db.exec(`DROP TABLE archive_documents;`);
-        db.exec(`ALTER TABLE ${migratedTable} RENAME TO archive_documents;`);
-    });
-    migration();
+
+    // Dropping a parent table while PRAGMA foreign_keys = ON makes SQLite run an
+    // implicit "DELETE FROM" first, which fires FK actions: every row in
+    // archive_document_tags would be cascade-deleted and all document<->tag
+    // associations lost. FK enforcement must therefore be disabled for the
+    // rebuild — and PRAGMAs only take effect OUTSIDE a transaction.
+    db.exec('PRAGMA foreign_keys = OFF;');
+    try {
+        const migration = db.transaction(() => {
+            db.exec(archiveDocumentsTableDDL(migratedTable));
+            db.exec(`
+                INSERT INTO ${migratedTable} (
+                    archiveDocumentId, parentUnitArchiveDocumentId, createdBy, updatedBy, type, isDeleted,
+                    topographicSignature, descriptiveSignatureElementIds, title, creator, creationDate, numberOfPages,
+                    documentType, dimensions, binding, condition, documentLanguage, contentDescription, remarks,
+                    accessLevel, accessConditions, additionalInformation, relatedDocumentsReferences, recordChangeHistory,
+                    isDigitized, digitizedVersionLink, createdOn, modifiedOn
+                )
+                SELECT archiveDocumentId, parentUnitArchiveDocumentId, createdBy, updatedBy, type, NOT active,
+                    topographicSignature, descriptiveSignatureElementIds, title, creator, creationDate, numberOfPages,
+                    documentType, dimensions, binding, condition, documentLanguage, contentDescription, remarks,
+                    accessLevel, accessConditions, additionalInformation, relatedDocumentsReferences, recordChangeHistory,
+                    isDigitized, digitizedVersionLink, createdOn, modifiedOn
+                FROM archive_documents
+            `);
+            db.exec(`DROP TABLE archive_documents;`);
+            db.exec(`ALTER TABLE ${migratedTable} RENAME TO archive_documents;`);
+        });
+        migration();
+
+        const violations = db.query('PRAGMA foreign_key_check;').all();
+        if (violations.length > 0) {
+            throw new Error(`Foreign key violations detected after archive_documents migration: ${JSON.stringify(violations)}`);
+        }
+    } finally {
+        db.exec('PRAGMA foreign_keys = ON;');
+    }
     await Log.info(`Migration of archive_documents to 'isDeleted' completed.`, 'system', 'migrate');
 }
 
@@ -88,6 +104,10 @@ export async function initializeArchiveDocumentTable() {
     await db.exec(`CREATE INDEX IF NOT EXISTS idx_ad_parent ON archive_documents (parentUnitArchiveDocumentId);`);
     await db.exec(`CREATE INDEX IF NOT EXISTS idx_ad_type ON archive_documents (type);`);
     await db.exec(`CREATE INDEX IF NOT EXISTS idx_ad_isDeleted ON archive_documents (isDeleted);`);
+    // Composite indexes matching the dominant listing patterns
+    // (isDeleted predicate combined with type / parent browsing).
+    await db.exec(`CREATE INDEX IF NOT EXISTS idx_ad_deleted_type ON archive_documents (isDeleted, type);`);
+    await db.exec(`CREATE INDEX IF NOT EXISTS idx_ad_parent_deleted ON archive_documents (parentUnitArchiveDocumentId, isDeleted);`);
     await db.exec(`CREATE INDEX IF NOT EXISTS idx_ad_title ON archive_documents (title);`);
     await db.exec(`CREATE INDEX IF NOT EXISTS idx_ad_content ON archive_documents (contentDescription);`);
     await db.exec(`CREATE INDEX IF NOT EXISTS idx_ad_topo_sig ON archive_documents (topographicSignature);`);
@@ -352,6 +372,48 @@ export async function setTagsForArchiveDocument(archiveDocumentId: number, tagId
          await Log.error('Failed to set tags for archive document', 'system', 'database', { archiveDocumentId, tagIds, error });
          throw error;
     }
+}
+
+/**
+ * Removes deleted signature element IDs from every document's stored
+ * descriptiveSignatureElementIds paths. Without this, deleting an element or
+ * component leaves dangling references that render as "[ID:x not found]" and
+ * silently drop out of signature searches.
+ */
+export async function removeSignatureElementIdsFromDocuments(elementIds: number[]): Promise<number> {
+    if (!elementIds || elementIds.length === 0) return 0;
+    const idSet = new Set(elementIds);
+    let touched = 0;
+
+    // Coarse prefilter: only rows whose JSON mentions one of the IDs.
+    const placeholders = elementIds.map(() => '?').join(',');
+    const candidates = db.prepare(
+        `SELECT archiveDocumentId, descriptiveSignatureElementIds FROM archive_documents
+         WHERE (${elementIds.map(() => `instr(descriptiveSignatureElementIds, ?)`).join(' OR ')})`
+    ).all(...elementIds) as { archiveDocumentId: number; descriptiveSignatureElementIds: string }[];
+
+    const updateStmt = db.prepare(`UPDATE archive_documents SET descriptiveSignatureElementIds = ?, modifiedOn = modifiedOn WHERE archiveDocumentId = ?`);
+    const run = db.transaction(() => {
+        for (const row of candidates) {
+            let paths: unknown;
+            try { paths = JSON.parse(row.descriptiveSignatureElementIds || '[]'); } catch { continue; }
+            if (!Array.isArray(paths)) continue;
+            const filtered = (paths as unknown[]).filter(
+                path => !(Array.isArray(path) && path.every(id => typeof id === 'number') && path.some(id => idSet.has(id)))
+            );
+            if (filtered.length !== paths.length) {
+                updateStmt.run(JSON.stringify(filtered), row.archiveDocumentId);
+                touched++;
+            }
+        }
+    });
+    try {
+        run();
+    } catch (error) {
+        await Log.error('Failed to strip deleted signature element ids from documents', 'system', 'database', { elementIds, error });
+        throw error;
+    }
+    return touched;
 }
 
 // --- Search Handlers ---

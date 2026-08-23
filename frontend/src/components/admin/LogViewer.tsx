@@ -22,6 +22,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 // -------------------------
 import { Dialog, DialogTrigger, DialogContent, DialogHeader, DialogTitle as DataDialogTitle, DialogFooter } from '@/components/ui/dialog'; // Added DialogFooter
 import { t } from '@/translations/utils'; // Import translation utility
+import { formatDateTime } from '@/lib/format';
 
 // Define the type alias for badge variants
 type BadgeVariant = VariantProps<typeof Badge>['variant'];
@@ -56,8 +57,10 @@ const LogViewer: React.FC = () => {
     // -------------------------------
 
     // Fetch/Search Logs function
+    const fetchSeqRef = useRef(0);
     const fetchLogs = useCallback(async (page = currentPageRef.current, query = searchQueryRef.current) => {
         if (!token) return;
+        const seq = ++fetchSeqRef.current;
         setIsLoading(true);
         setError(null);
         try {
@@ -67,17 +70,19 @@ const LogViewer: React.FC = () => {
                 pageSize: pageSize,
             };
             const response = await api.searchLogs(searchRequest, token);
+            if (seq !== fetchSeqRef.current) return; // superseded by a newer request
             setLogs(response.data);
             setTotalLogs(response.totalSize);
             setTotalPages(response.totalPages);
             setCurrentPage(response.page); // Update current page from response
         } catch (err: any) {
-            setError(err.message || 'Failed to fetch logs');
+            if (seq !== fetchSeqRef.current) return;
+            setError(err.message || t('logsFetchFailedError', preferredLanguage));
             setLogs([]); // Clear logs on error
             setTotalLogs(0);
             setTotalPages(1);
         } finally {
-            setIsLoading(false);
+            if (seq === fetchSeqRef.current) setIsLoading(false);
         }
     }, [token, pageSize]); // Ensure dependencies are correct
 
@@ -104,12 +109,17 @@ const LogViewer: React.FC = () => {
        }
        setIsPurging(true);
        setPurgeError(null);
-       try {
-           const result = await api.purgeLogs(purgeDays, token);
-           toast.success(t('logPurgeSuccessMessage', preferredLanguage, { count: result.deletedCount, days: purgeDays }));
-           await fetchLogs(1, searchQuery); // Refresh logs on page 1 after purge
-           if (currentPage !== 1) setCurrentPage(1); // Go to page 1
-       } catch (err: any) {
+        try {
+            const result = await api.purgeLogs(purgeDays, token);
+            toast.success(t('logPurgeSuccessMessage', preferredLanguage, { count: result.deletedCount, days: purgeDays }));
+            // Refresh on page 1: either via the [currentPage] effect (which
+            // triggers a single fetch) or directly when already there.
+            if (currentPage !== 1) {
+                setCurrentPage(1);
+            } else {
+                await fetchLogs(1, searchQueryRef.current);
+            }
+        } catch (err: any) {
            const msg = err.message || "Failed to purge logs.";
            setPurgeError(msg);
            toast.error(t('errorMessageTemplate', preferredLanguage, { message: msg }));
@@ -256,7 +266,7 @@ const LogViewer: React.FC = () => {
                                         <React.Fragment key={log.id}>
                                             {/* TableRow uses light gray hover */}
                                             <TableRow>
-                                                <TableCell className='text-xs'>{new Date(log.createdOn).toLocaleString()}</TableCell>
+                                                <TableCell className='text-xs'>{formatDateTime(log.createdOn, preferredLanguage)}</TableCell>
                                                 <TableCell>
                                                     <Badge variant={getBadgeVariant(log.level)} className='capitalize'>{getLogLevelText(log.level)}</Badge>
                                                 </TableCell>
@@ -306,7 +316,7 @@ const LogViewer: React.FC = () => {
                         <DataDialogTitle>{t('logDataDialogTitle', preferredLanguage)}</DataDialogTitle>
                     </DialogHeader>
                     {/* Use ScrollArea here - Use light gray bg */}
-                    <ScrollArea className="max-h-[60vh] my-4 border rounded p-3 bg-neutral-50">
+                    <ScrollArea className="min-h-0 flex-1 my-4 border rounded p-3 bg-neutral-50">
                         <pre className='text-xs overflow-auto text-neutral-800'> {/* Ensure text contrast */}
                            {viewingData || <i className="text-neutral-500">{t('noAdditionalData', preferredLanguage)}</i>} {/* Adjusted muted color */}
                         </pre>

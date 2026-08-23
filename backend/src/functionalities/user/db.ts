@@ -3,6 +3,7 @@ import { Log } from '../log/db';
 // Correctly import the EXPORTED defaultLanguage along with other types
 import { User, UserRole, SupportedLanguage, supportedLanguages, defaultLanguage } from './models';
 import * as bcrypt from 'bcryptjs';
+import * as crypto from 'node:crypto';
 import { Tag } from '../tag/models'; // Import Tag model for return type
 
 // initialization function
@@ -19,9 +20,22 @@ export async function initializeUserTable() {
 
     const admin = await getUserByLogin('admin');
     if (!admin) {
-        // Create admin with default language from model
-        await createUser('admin', 'admin', 'admin', defaultLanguage);
-        await Log.info(`Default admin user created with lang ${defaultLanguage}`, 'system', 'database', { action: 'initialization' });
+        // Create the initial admin account. A well-known default password would
+        // leave deployments wide open, so a strong secret is generated unless one
+        // is supplied explicitly via JEZARCH_INITIAL_ADMIN_PASSWORD.
+        const initialPassword = process.env.JEZARCH_INITIAL_ADMIN_PASSWORD || crypto.randomBytes(12).toString('base64url');
+        await createUser('admin', initialPassword, 'admin', defaultLanguage);
+        if (process.env.JEZARCH_INITIAL_ADMIN_PASSWORD) {
+            await Log.info(`Initial admin user created using JEZARCH_INITIAL_ADMIN_PASSWORD`, 'system', 'database', { action: 'initialization' });
+        } else {
+            console.log('======================================================================');
+            console.log('  Initial admin account created.');
+            console.log(`  login:    admin`);
+            console.log(`  password: ${initialPassword}`);
+            console.log('  Store it now — it is not shown again.');
+            console.log('======================================================================');
+            await Log.info(`Initial admin user created with a generated password`, 'system', 'database', { action: 'initialization' });
+        }
     }
 }
 
@@ -170,6 +184,15 @@ export async function updateUserRole(login: string, role: UserRole | null) {
     }
 }
 
+/** Number of admin accounts excluding the given login (for last-admin protection). */
+export async function countAdminsExcluding(excludedLogin?: string): Promise<number> {
+    const statement = excludedLogin
+        ? db.prepare(`SELECT COUNT(*) as count FROM users WHERE role = 'admin' AND login != ?`)
+        : db.prepare(`SELECT COUNT(*) as count FROM users WHERE role = 'admin'`);
+    const row = excludedLogin ? statement.get(excludedLogin) as { count: number } : statement.get() as { count: number };
+    return row?.count ?? 0;
+}
+
 // --- NEW: Update user's preferred language ---
 export async function updateUserPreferredLanguage(login: string, language: SupportedLanguage) {
     if (!supportedLanguages.includes(language)) {
@@ -241,10 +264,18 @@ export async function getAllUsers(): Promise<Omit<User, 'password'>[]> {
     }));
 }
 
+// Constant dummy hash so that logins for non-existent users pay the same
+// bcrypt cost as real ones (prevents username enumeration via timing).
+const TIMING_DUMMY_HASH = '$2a$10$PwD4xeEnzIO.ccmuC2s7/e3qXTGqLiTQgRQ3yxsOCwM5phkaXj5Ke';
+
 export async function verifyPassword(login: string, password: string): Promise<boolean> {
     const statement = db.prepare(`SELECT password FROM users WHERE login = ?`);
     const row = statement.get(login) as { password?: string } | undefined;
-    if (!row || !row.password) return false; // User not found or no password hash
+    if (!row || !row.password) {
+        // User not found: burn comparable CPU time before failing
+        try { await bcrypt.compare(password, TIMING_DUMMY_HASH); } catch { }
+        return false;
+    }
 
     try {
         return await bcrypt.compare(password, row.password);

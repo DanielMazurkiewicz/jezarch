@@ -98,7 +98,7 @@ const NoteEditor: React.FC<NoteEditorProps> = ({ noteToEdit, onSave }) => {
            setError(null); // Clear any previous errors
            setIsFetchingDetails(false); // Not fetching details for new note
        }
-   }, [noteToEdit, reset, token, preferredLanguage]); // Add preferredLanguage
+   }, [noteToEdit, reset, token]); // preferredLanguage omitted: re-populating on locale switch would wipe unsaved input
 
 
   // Update form's tagIds when TagSelector changes

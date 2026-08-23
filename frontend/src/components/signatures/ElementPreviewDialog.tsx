@@ -1,11 +1,12 @@
 import React from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Edit, Trash2, Layers } from 'lucide-react';
 import type { SignatureElement } from '../../../../backend/src/functionalities/signature/element/models';
 import { useAuth } from '@/hooks/useAuth';
 import { t } from '@/translations/utils';
+import { formatDateTime } from '@/lib/format';
 
 interface ElementPreviewDialogProps {
     isOpen: boolean;
@@ -27,6 +28,8 @@ const ElementPreviewDialog: React.FC<ElementPreviewDialogProps> = ({
     if (!element) return null;
 
     const canModify = user?.role === 'admin' || user?.role === 'employee';
+    // Deleting elements is admin-only (matches component deletion and the API)
+    const canDelete = user?.role === 'admin';
 
     return (
         <Dialog open={isOpen} onOpenChange={onOpenChange}>
@@ -36,20 +39,21 @@ const ElementPreviewDialog: React.FC<ElementPreviewDialogProps> = ({
                         <Layers className="h-5 w-5 text-muted-foreground" />
                         {t('elementPreviewTitle', preferredLanguage)}
                     </DialogTitle>
+                    <DialogDescription className="sr-only">{t('elementPreviewTitle', preferredLanguage)}</DialogDescription>
                 </DialogHeader>
-                <div className="space-y-4">
+                <div className="min-h-0 flex-1 space-y-4 overflow-y-auto pr-2">
                     <div className="grid gap-3">
                         <div>
-                            <span className="text-sm font-medium text-muted-foreground">{t('elementIndexLabel', preferredLanguage).split(' (')[0]}</span>
-                            <p className="text-base font-mono">{element.index || <em className="text-muted-foreground">{t('elementIndexAuto', preferredLanguage)}</em>}</p>
+                            <span className="text-sm font-medium text-muted-foreground">{t('elementIndexShortLabel', preferredLanguage)}</span>
+                            <p className="text-base font-mono break-words">{element.index || <em className="text-muted-foreground">{t('elementIndexAuto', preferredLanguage)}</em>}</p>
                         </div>
                         <div>
                             <span className="text-sm font-medium text-muted-foreground">{t('elementNameLabel', preferredLanguage)}</span>
-                            <p className="text-base font-semibold">{element.name}</p>
+                            <p className="text-base font-semibold break-words">{element.name}</p>
                         </div>
                         <div>
                             <span className="text-sm font-medium text-muted-foreground">{t('elementDescriptionLabel', preferredLanguage)}</span>
-                            <p className="text-sm">{element.description || <em className="text-muted-foreground">{t('noDescription', preferredLanguage)}</em>}</p>
+                            <p className="text-sm whitespace-pre-wrap break-words">{element.description || <em className="text-muted-foreground">{t('noDescription', preferredLanguage)}</em>}</p>
                         </div>
                         {element.parentElements && element.parentElements.length > 0 && (
                             <div>
@@ -66,21 +70,23 @@ const ElementPreviewDialog: React.FC<ElementPreviewDialogProps> = ({
                         {element.createdOn && (
                             <div>
                                 <span className="text-sm font-medium text-muted-foreground">{t('createdOnLabel', preferredLanguage)}</span>
-                                <p className="text-sm">{new Date(element.createdOn).toLocaleString()}</p>
+                                <p className="text-sm">{formatDateTime(element.createdOn, preferredLanguage)}</p>
                             </div>
                         )}
                     </div>
-                    {canModify && (
-                        <div className="flex justify-end gap-2 pt-2 border-t">
-                            <Button variant="outline" size="sm" onClick={() => { onOpenChange(false); onEdit(element); }}>
-                                <Edit className="mr-2 h-4 w-4" /> {t('editButton', preferredLanguage)}
-                            </Button>
+                </div>
+                {canModify && (
+                    <div className="flex shrink-0 justify-end gap-2 pt-2 border-t">
+                        <Button variant="outline" size="sm" onClick={() => { onOpenChange(false); onEdit(element); }}>
+                            <Edit className="mr-2 h-4 w-4" /> {t('editButton', preferredLanguage)}
+                        </Button>
+                        {canDelete && (
                             <Button variant="destructive" size="sm" onClick={() => { onOpenChange(false); onDelete(element.signatureElementId!); }}>
                                 <Trash2 className="mr-2 h-4 w-4" /> {t('deleteButton', preferredLanguage)}
                             </Button>
-                        </div>
-                    )}
-                </div>
+                        )}
+                    </div>
+                )}
             </DialogContent>
         </Dialog>
     );

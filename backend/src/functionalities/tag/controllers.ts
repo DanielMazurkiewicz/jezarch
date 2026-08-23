@@ -2,7 +2,7 @@ import { BunRequest } from 'bun';
 import { createTag, getAllTags, getTagById, updateTag, deleteTag, getTagByName } from './db';
 import { getSessionAndUser, isAllowedRole } from '../session/controllers';
 import { Log } from '../log/db';
-import { Tag } from './models'; // Import the Tag model
+import { Tag, tagSchema } from './models'; // Import the Tag model + zod schema
 
 export const createTagController = async (req: BunRequest) => {
     const sessionAndUser = await getSessionAndUser(req);
@@ -11,13 +11,13 @@ export const createTagController = async (req: BunRequest) => {
     if (!isAllowedRole(sessionAndUser, 'admin', 'employee')) return new Response("Forbidden", { status: 403 });
 
     try {
-        const body = await req.json() as Pick<Tag, 'name' | 'description'>;
-        const name = body.name?.trim();
-        const description = body.description;
-
-        if (!name) {
-            return new Response(JSON.stringify({ message: 'Tag name is required' }), { status: 400 });
+        const rawBody: unknown = await req.json();
+        const validation = tagSchema.safeParse(rawBody);
+        if (!validation.success) {
+            return new Response(JSON.stringify({ message: 'Invalid input', errors: validation.error.format() }), { status: 400 });
         }
+        const name = validation.data.name.trim();
+        const description = validation.data.description;
 
         const newTag = await createTag(name, description);
          if (!newTag) {
@@ -29,8 +29,8 @@ export const createTagController = async (req: BunRequest) => {
         return new Response(JSON.stringify(newTag), { status: 201 });
     } catch (error: any) {
         await Log.error('Failed to create tag', sessionAndUser.user.login, 'tag', error);
-        if (error.message?.includes('already exists')) {
-             return new Response(JSON.stringify({ message: error.message }), { status: 409 });
+        if (error.message?.includes('UNIQUE constraint failed') || error.message?.includes('already exists')) {
+             return new Response(JSON.stringify({ message: 'A tag with this name already exists.' }), { status: 409 });
         }
         return new Response(JSON.stringify({ message: 'Failed to create tag' }), { status: 500 });
     }
@@ -76,17 +76,21 @@ export const getTagByIdController = async (req: BunRequest<":tagId">) => {
 export const updateTagController = async (req: BunRequest<":tagId">) => {
     const sessionAndUser = await getSessionAndUser(req);
     if (!sessionAndUser) return new Response("Unauthorized", { status: 401 });
-    // Only admins can update tags? Or employees too? Let's restrict to admin for now.
-    if (!isAllowedRole(sessionAndUser, 'admin')) return new Response("Forbidden", { status: 403 });
+    // Employees manage tags (per REQUIREMENTS.md), same as create
+    if (!isAllowedRole(sessionAndUser, 'admin', 'employee')) return new Response("Forbidden", { status: 403 });
 
     try {
         const tagId = parseInt(req.params.tagId);
          if (isNaN(tagId)) {
             return new Response(JSON.stringify({ message: 'Invalid tag ID' }), { status: 400 });
         }
-        const body = await req.json() as Partial<Pick<Tag, 'name' | 'description'>>;
-        const name = body.name?.trim();
-        const description = body.description; // Allow setting description to empty string or null implicitly
+        const rawBody: unknown = await req.json();
+        const validation = tagSchema.partial().safeParse(rawBody);
+        if (!validation.success) {
+            return new Response(JSON.stringify({ message: 'Invalid input', errors: validation.error.format() }), { status: 400 });
+        }
+        const name = validation.data.name?.trim();
+        const description = validation.data.description;
 
         if (name === "" ) { // Check for empty string explicitly if name is provided
              return new Response(JSON.stringify({ message: 'Tag name cannot be empty' }), { status: 400 });
@@ -114,8 +118,8 @@ export const updateTagController = async (req: BunRequest<":tagId">) => {
 export const deleteTagController = async (req: BunRequest<":tagId">) => {
     const sessionAndUser = await getSessionAndUser(req);
     if (!sessionAndUser) return new Response("Unauthorized", { status: 401 });
-    // Only admins can delete tags
-    if (!isAllowedRole(sessionAndUser, 'admin')) return new Response("Forbidden", { status: 403 });
+    // Employees manage tags (per REQUIREMENTS.md), same as create/update
+    if (!isAllowedRole(sessionAndUser, 'admin', 'employee')) return new Response("Forbidden", { status: 403 });
 
     try {
         const tagId = parseInt(req.params.tagId);

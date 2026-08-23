@@ -27,6 +27,8 @@ export const archiveTranslationsPL: ArchiveTranslationSet = {
   archiveRestoreSuccess: 'Pozycja została przywrócona.',
   archiveRestoreFailed: 'Nie udało się przywrócić pozycji: {message}',
   archiveSaveSuccess: 'Pozycja została {action} pomyślnie.', // action -> utworzona / zaktualizowana
+  archiveSavedCreated: 'Pozycja została pomyślnie utworzona.',
+  archiveSavedUpdated: 'Pozycja została pomyślnie zaktualizowana.',
   archiveSaveFailed: 'Nie udało się zapisać pozycji: {message}',
   archiveDetailsLoadFailed: 'Nie udało się załadować szczegółów dokumentu: {message}',
   archiveFoundItems: 'Znaleziono {count, plural, one {# pozycję} few {# pozycje} many {# pozycji} other {# pozycji}}.', // Improved pluralization
@@ -160,4 +162,5 @@ export const archiveTranslationsPL: ArchiveTranslationSet = {
   archiveHelpDocuments: 'Dokumenty to pojedyncze pozycje z metadanymi (tytuł, twórca, daty). Każdy dokument może należeć do jednostki.',
   archiveHelpSignatures: 'Użyj pola "Ścieżka sygnatury opisowej" aby klasyfikować dokumenty za pomocą systemu sygnatur zdefiniowanego w sekcji Sygnatury.',
   quickFilterEnableLabel: 'Drzewo sygnatur opisowych',
+  quickFilterRefreshTreeTooltip: 'Odśwież drzewo',
 };

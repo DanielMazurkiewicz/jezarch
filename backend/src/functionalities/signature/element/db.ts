@@ -228,7 +228,49 @@ export async function deleteElement(id: number): Promise<boolean> {
 
 // --- Parent Relationship Management ---
 
+/** Direct parent IDs of an element. */
+async function getParentElementIds(elementId: number): Promise<number[]> {
+    const rows = db.prepare(`SELECT parentElementId FROM signature_element_parents WHERE childElementId = ?`).all(elementId) as { parentElementId: number }[];
+    return rows.map(r => r.parentElementId);
+}
+
+/**
+ * Replaces the parent set of an element.
+ * Guards:
+ *  - parents must exist
+ *  - no cycles: a proposed parent must not have the child anywhere in its ancestry
+ *
+ * Note: parents may belong to a different signature component on purpose —
+ * archival hierarchies span components (e.g. a Series element parented under
+ * a Fonds element).
+ */
 export async function setParentElementIds(childElementId: number, parentElementIds: number[]): Promise<void> {
+    const child = await getElementById(childElementId);
+    if (!child) throw new Error(`Child element ${childElementId} not found`);
+
+    const candidateIds = [...new Set((parentElementIds ?? []).filter(id => id !== childElementId))];
+
+    for (const parentId of candidateIds) {
+        const parent = await getElementById(parentId);
+        if (!parent) {
+            throw new Error(`Parent element ${parentId} does not exist.`);
+        }
+        // Walk the ancestor chain of the proposed parent; if we reach the child,
+        // accepting it would create a parent cycle.
+        const visited = new Set<number>();
+        const stack = [parentId];
+        while (stack.length > 0) {
+            const current = stack.pop()!;
+            if (current === childElementId) {
+                throw new Error('Circular parent relationship detected.');
+            }
+            if (visited.has(current)) continue;
+            visited.add(current);
+            const ancestors = await getParentElementIds(current);
+            stack.push(...ancestors);
+        }
+    }
+
     const transaction = db.transaction((ids: number[]) => {
         // 1. Delete existing parent associations for this child
         const deleteStmt = db.prepare(`DELETE FROM signature_element_parents WHERE childElementId = ?`);
@@ -357,12 +399,24 @@ export type ElementSearchResult = SignatureElement & { parentIds?: number[] };
 /**
  * Resolves a single path of element IDs to a display string.
  * Example: [1, 5] -> "[CompA-Idx1] ElementName1 / [CompB-Idx2] ElementName2"
+ *
+ * `cache` allows callers processing many documents to reuse element lookups
+ * within one batch instead of re-querying the same IDs per path.
  */
-export async function resolveSignaturePathToString(idPath: number[]): Promise<string | null> {
+export async function resolveSignaturePathToString(idPath: number[], cache?: Map<number, SignatureElement | null>): Promise<string | null> {
     if (!idPath || idPath.length === 0) return null;
     try {
         const elementsInPath: (SignatureElement | undefined)[] = await Promise.all(
-            idPath.map(id => getElementById(id, [])) // No need to populate further here
+            idPath.map(async id => {
+                if (!cache) return getElementById(id, []);
+                if (cache.has(id)) {
+                    const cached = cache.get(id);
+                    return cached ?? undefined;
+                }
+                const el = (await getElementById(id, [])) ?? null;
+                cache.set(id, el);
+                return el ?? undefined;
+            })
         );
 
         const displayParts = elementsInPath.map((el, index) => {
@@ -383,9 +437,11 @@ export async function resolveSignaturePathToString(idPath: number[]): Promise<st
 
 /**
  * Populates the 'resolvedDescriptiveSignatures' field for an array of ArchiveDocumentSearchResult.
- * Modifies the documents in place.
+ * Modifies the documents in place. Element lookups are cached across the whole
+ * batch so N documents sharing signature nodes trigger far fewer queries.
  */
 export async function populateResolvedDescriptiveSignatures(documents: ArchiveDocumentSearchResult[]): Promise<void> {
+    const elementCache = new Map<number, SignatureElement | null>();
     for (const doc of documents) {
         let descriptiveIds: number[][] = [];
         // Check if descriptiveSignatureElementIds is a string (from direct search result)
@@ -407,7 +463,7 @@ export async function populateResolvedDescriptiveSignatures(documents: ArchiveDo
                 descriptiveIds.map(idPath => {
                     // Ensure idPath itself is an array before passing to resolveSignaturePathToString
                     if (Array.isArray(idPath)) {
-                        return resolveSignaturePathToString(idPath);
+                        return resolveSignaturePathToString(idPath, elementCache);
                     }
                     Log.warn(`Invalid idPath found in descriptiveSignatureElementIds for doc ${doc.archiveDocumentId}`, 'system', 'signature_resolver', { idPath });
                     return Promise.resolve(null); // Return null for invalid paths

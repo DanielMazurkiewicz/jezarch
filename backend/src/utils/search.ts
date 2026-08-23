@@ -97,7 +97,11 @@ export async function buildSearchQueries<T extends Record<string, any>>(
     const allParams: any[] = [];
     const joinClauses = new Set<string>();
     const page = Math.max(1, searchRequest.page || 1);
-    const pageSize = Math.max(1, searchRequest.pageSize || 10);
+    // pageSize = -1 is an internal "fetch all rows" directive (e.g. used by
+    // the batch-tagging flow); it must not collapse into a single row.
+    const pageSize = searchRequest.pageSize === -1
+        ? Number.MAX_SAFE_INTEGER
+        : Math.max(1, searchRequest.pageSize || 10);
     const offset = (page - 1) * pageSize;
 
     for (const element of searchRequest.query) {
@@ -113,11 +117,12 @@ export async function buildSearchQueries<T extends Record<string, any>>(
             continue;
         }
 
-        // Allow strings in allowedFields for fields like 'ownerLogin' that might come from a JOIN handled elsewhere
-        // or fields like 'createdBy' which are directly searchable strings now.
+        // SECURITY: only allowlisted fields (or fields handled via fieldHandlers above)
+        // may be interpolated into SQL. Unknown fields are skipped — never assume a
+        // raw client-supplied string is a valid column name.
         if (!allowedFields.includes(field)) {
-             await Log.warn(`Search field '${field}' not explicitly allowed or handled. Ensure JOIN/field is valid.`, 'system', 'search', { field, table });
-             // Continue processing, assuming it's a valid column name possibly added by a JOIN in handler
+             await Log.warn(`Search field '${field}' not explicitly allowed or handled. Skipping query element.`, 'system', 'search', { field, table });
+             continue;
         }
 
         let baseCondition: string = '';

@@ -21,4 +21,6 @@ export const tagsTranslationsPL: TagsTranslationSet = {
   tagLoadFailedError: 'Nie udało się załadować tagów',
   tagSaveSuccess: 'Tag {action} pomyślnie.', // action: utworzono/zaktualizowano
   tagsLoadErrorPlaceholder: 'Nie udało się załadować tagów. Spróbuj ponownie później.',
+  tagSavedCreated: 'Tag został pomyślnie utworzony.',
+  tagSavedUpdated: 'Tag został pomyślnie zaktualizowany.',
 };

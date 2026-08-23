@@ -2,6 +2,7 @@ import { BunRequest } from 'bun';
 import { getAllLogs, Log, purgeLogsOlderThan } from './db';
 import { getSessionAndUser, isAllowedRole } from '../session/controllers';
 import { SearchRequest, SearchResponse, buildSearchQueries, executeSearch } from "../../utils/search";
+import { parseSearchRequest } from '../../utils/search_validation';
 import { LogEntry } from "./models";
 import { jsonResponse, jsonError } from '../../utils/http';
 
@@ -11,7 +12,11 @@ export const searchLogsController = async (req: BunRequest) => {
     if (!isAllowedRole(sessionAndUser, 'admin')) return jsonError('Forbidden', 403);
 
     try {
-        const searchRequest = await req.json() as SearchRequest;
+        const rawBody: unknown = await req.json();
+        const searchRequest = parseSearchRequest(rawBody);
+        if (!searchRequest) {
+            return jsonError('Invalid search request', 400);
+        }
         const allowedFields: (keyof LogEntry)[] = ['level', 'createdOn', 'userId', 'category', 'message', 'id'];
         const primaryKey = 'id';
 
@@ -65,18 +70,3 @@ export const purgeLogsController = async (req: BunRequest) => {
     }
 };
 // --- END NEW CONTROLLER ---
-
-// Deprecated - Use searchLogsController instead
-export const getAllLogsController = async (req: BunRequest) => {
-    const sessionAndUser = await getSessionAndUser(req);
-    if (!sessionAndUser) return jsonError('Unauthorized', 401);
-    if (!isAllowedRole(sessionAndUser, 'admin')) return jsonError('Forbidden', 403);
-
-    try {
-        const logs = await getAllLogs();
-        return jsonResponse(logs);
-    } catch (error) {
-        await Log.error('Error getting logs (deprecated endpoint)', sessionAndUser.user.login, 'log', error);
-        return jsonError('Failed to get logs', 500, error);
-    }
-};

@@ -79,7 +79,7 @@ const DocumentPreviewDialog: React.FC<DocumentPreviewDialogProps> = ({
     return (
         <Dialog open={isOpen} onOpenChange={onOpenChange}>
             <DialogContent className="max-w-3xl">
-                <DialogHeader>
+                <DialogHeader className='max-h-[45vh] overflow-y-auto'>
                     <DialogTitle className='flex items-center gap-2'>
                         {previewingDoc.type === 'unit' ? <Folder className='h-5 w-5 text-blue-600'/> : <FileText className='h-5 w-5 text-green-600'/>}
                         {previewingDoc.title}
@@ -119,12 +119,12 @@ const DocumentPreviewDialog: React.FC<DocumentPreviewDialogProps> = ({
                     </DialogDescription>
                 </DialogHeader>
 
-                <ScrollArea className="max-h-[50vh] my-4 space-y-4 pr-3 border-t border-b py-4">
+                <ScrollArea type="always" className="min-h-0 flex-1 my-4 space-y-4 pr-3 border-t border-b py-4">
                     {/* Content Description */}
                     {previewingDoc.contentDescription && (
                         <div>
                            <h4 className='font-semibold mb-1 text-base'>{t('archivePreviewContentDescriptionLabel', preferredLanguage)}</h4>
-                           <p className="text-sm whitespace-pre-wrap">{previewingDoc.contentDescription}</p>
+                           <p className="text-sm whitespace-pre-wrap break-words max-h-48 overflow-y-auto">{previewingDoc.contentDescription}</p>
                         </div>
                     )}
                      {/* Physical Description (only for units) */}
@@ -141,22 +141,35 @@ const DocumentPreviewDialog: React.FC<DocumentPreviewDialogProps> = ({
                            </ul>
                         </div>
                     )}
-                    {/* Other Details */}
-                     {(previewingDoc.remarks || previewingDoc.accessLevel || previewingDoc.additionalInformation || previewingDoc.relatedDocumentsReferences || previewingDoc.isDigitized !== null || previewingDoc.isDigitized !== undefined) && (
+                     {/* Other Details */}
+                     {(previewingDoc.remarks || previewingDoc.accessLevel || previewingDoc.additionalInformation || previewingDoc.relatedDocumentsReferences || (previewingDoc.type !== 'unit' && previewingDoc.documentLanguage) || (previewingDoc.isDigitized !== null && previewingDoc.isDigitized !== undefined)) && (
                          <div>
                             <h4 className='font-semibold mb-1 text-base'>{t('archivePreviewOtherDetailsLabel', preferredLanguage)}</h4>
                             <div className='text-sm space-y-1'>
+                                {/* Document language applies to documents too; units show it under Physical Details */}
+                                {previewingDoc.type !== 'unit' && previewingDoc.documentLanguage && (
+                                     <p><strong>{t('archivePreviewLanguageLabel', preferredLanguage)}:</strong> {previewingDoc.documentLanguage}</p>
+                                )}
                                 {previewingDoc.remarks && (
-                                    <p><strong>{t('archivePreviewRemarksLabel', preferredLanguage)}:</strong> {previewingDoc.remarks}</p>
+                                    <div>
+                                        <strong className='block'>{t('archivePreviewRemarksLabel', preferredLanguage)}:</strong>
+                                        <p className="text-sm whitespace-pre-wrap break-words max-h-48 overflow-y-auto">{previewingDoc.remarks}</p>
+                                    </div>
                                 )}
                                 {previewingDoc.accessLevel && (
                                      <p><strong>{t('archivePreviewAccessLabel', preferredLanguage)}:</strong> {previewingDoc.accessLevel} {previewingDoc.accessConditions ? `(${previewingDoc.accessConditions})` : ''}</p>
                                 )}
                                 {previewingDoc.additionalInformation && (
-                                     <p><strong>{t('archivePreviewAdditionalInfoLabel', preferredLanguage)}:</strong> {previewingDoc.additionalInformation}</p>
+                                     <div>
+                                        <strong className='block'>{t('archivePreviewAdditionalInfoLabel', preferredLanguage)}:</strong>
+                                        <p className="text-sm whitespace-pre-wrap break-words max-h-48 overflow-y-auto">{previewingDoc.additionalInformation}</p>
+                                     </div>
                                 )}
                                 {previewingDoc.relatedDocumentsReferences && (
-                                     <p><strong>{t('archivePreviewRelatedDocsLabel', preferredLanguage)}:</strong> {previewingDoc.relatedDocumentsReferences}</p>
+                                     <div>
+                                        <strong className='block'>{t('archivePreviewRelatedDocsLabel', preferredLanguage)}:</strong>
+                                        <p className="text-sm whitespace-pre-wrap break-words max-h-48 overflow-y-auto">{previewingDoc.relatedDocumentsReferences}</p>
+                                     </div>
                                 )}
                                 {(previewingDoc.isDigitized !== null && previewingDoc.isDigitized !== undefined) && (
                                     <p><strong>{t('archivePreviewDigitizedLabel', preferredLanguage)}:</strong> {previewingDoc.isDigitized ? `${t('archivePreviewDigitizedYes', preferredLanguage)} ${previewingDoc.digitizedVersionLink ? `- ${t('archivePreviewDigitizedYesLink', preferredLanguage)} ` : ''}` : t('archivePreviewDigitizedNo', preferredLanguage)}{previewingDoc.digitizedVersionLink && <a href={previewingDoc.digitizedVersionLink} target="_blank" rel="noopener noreferrer" className='text-primary hover:underline break-all'>{previewingDoc.digitizedVersionLink}</a>}</p>

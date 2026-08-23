@@ -1,12 +1,15 @@
 import { BunRequest } from 'bun';
-import { createNote, getAllNotesByOwnerUserId, getNoteById, updateNote, deleteNote, getNotesForUser } from './db';
-import { Note, NoteInput, NoteWithDetails } from './models'; // Added NoteWithDetails
+import { createNote, getNoteById, updateNote, deleteNote, getAllNotesByOwnerUserId } from './db';
+import { Note, NoteInput, NoteWithDetails, noteInputSchema } from './models'; // Added NoteWithDetails
+import { db } from '../../initialization/db';
 import { getSessionAndUser, isAllowedRole, isOwner } from '../session/controllers';
 import { Log } from '../log/db';
 import { getUserByLogin } from '../user/db';
 // Import buildSearchQueries and executeSearch explicitly
 import { SearchOnCustomFieldHandler, SearchOnCustomFieldHandlerResult, SearchQueryElement, SearchRequest, SearchResponse, buildSearchQueries, executeSearch } from "../../utils/search";
-import { getTagsForNote, setTagsForNote } from './tag/db'; // Use note-specific tag functions
+import { parseSearchRequest } from '../../utils/search_validation';
+import { normalizeNoteSearchRow } from '../../utils/dbRows';
+import { getTagsForNote, setTagsForNote, getTagsForNoteIds } from './tag/db'; // Use note-specific tag functions
 
 
 export const getNoteByIdController = async (req: BunRequest<":noteId">) => {
@@ -44,40 +47,9 @@ export const getNoteByIdController = async (req: BunRequest<":noteId">) => {
     } catch (error) {
         await Log.error('Error fetching note by ID', sessionAndUser.user.login, 'note', error);
         const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-        return new Response(JSON.stringify({ message: 'Failed to get note', error: errorMessage }), { status: 500 });
+        return new Response(JSON.stringify({ message: 'Failed to get note' }), { status: 500 });
     }
 };
-
-// This remains for fetching ONLY notes owned by a specific user ID
-// This is useful if an admin wants to see all notes of a specific user
-// It will now include tags and ownerLogin as well.
-export const getAllNotesByUserIdController = async (req: BunRequest<":userId">) => {
-    const sessionAndUser = await getSessionAndUser(req);
-    if (!sessionAndUser) return new Response("Unauthorized", { status: 401 });
-
-    const targetUserId = parseInt(req.params.userId);
-    if (isNaN(targetUserId)) {
-        await Log.warn('Invalid user ID format in getAllNotesByUserId', sessionAndUser.user.login, 'note', { targetUserId: req.params.userId });
-        return new Response(JSON.stringify({ message: 'Invalid user ID' }), { status: 400 });
-    }
-
-    // Authorization: Only allow admin to see other users' notes, or users see their own (employees included here)
-    if (!isAllowedRole(sessionAndUser, 'admin') && sessionAndUser.user.userId !== targetUserId) {
-         await Log.error(`Forbidden attempt to get notes for user ID ${targetUserId}`, sessionAndUser.user.login, 'note');
-         return new Response("Forbidden", { status: 403 });
-    }
-
-    try {
-        // getAllNotesByOwnerUserId now fetches tags and ownerLogin
-        const notes = await getAllNotesByOwnerUserId(targetUserId);
-        return new Response(JSON.stringify(notes), { status: 200 });
-    } catch (error) {
-        await Log.error('Error fetching notes by user ID', sessionAndUser.user.login, 'note', { targetUserId, error });
-        const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-        return new Response(JSON.stringify({ message: 'Failed to get notes', error: errorMessage }), { status: 500 });
-    }
-};
-
 
 // This remains for fetching ONLY notes owned by a specific user login
 // It will now include tags and ownerLogin as well.
@@ -109,7 +81,7 @@ export const getAllNotesByLoginController = async (req: BunRequest<":login">) =>
     } catch (error) {
         await Log.error('Error fetching notes by login', sessionAndUser.user.login, 'note', error);
         const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-        return new Response(JSON.stringify({ message: 'Failed to get notes', error: errorMessage }), { status: 500 });
+        return new Response(JSON.stringify({ message: 'Failed to get notes' }), { status: 500 });
     }
 };
 
@@ -146,7 +118,11 @@ export const searchNotesController = async (req: BunRequest) => {
     const currentUserId = sessionAndUser.user.userId;
 
     try {
-        const searchRequest = await req.json() as SearchRequest;
+        const rawBody: unknown = await req.json();
+        const searchRequest = parseSearchRequest(rawBody);
+        if (!searchRequest) {
+            return new Response(JSON.stringify({ message: 'Invalid search request' }), { status: 400 });
+        }
 
         // Fields directly on the notes table + ownerLogin (will be added via JOIN)
         const allowedDirectFields: (keyof NoteWithDetails)[] = ['noteId', 'title', 'content', 'shared', 'ownerUserId', 'createdOn', 'modifiedOn', 'ownerLogin'];
@@ -237,14 +213,13 @@ export const searchNotesController = async (req: BunRequest) => {
             { sql: modifiedCountSql, params: modifiedCountParams }
         );
 
-        // --- Populate Tags for Results ---
+        // Normalize raw SQLite rows (0/1 flags) to model shapes
+        response.data.forEach(normalizeNoteSearchRow);
+
+        // --- Populate Tags for Results (single bulk query) ---
         if (response.data.length > 0) {
             const noteIds = response.data.map(note => note.noteId!);
-            const tagsMap = new Map<number, Awaited<ReturnType<typeof getTagsForNote>>>();
-            // Consider optimizing tag fetching in bulk if performance is an issue
-            for (const noteId of noteIds) {
-                tagsMap.set(noteId, await getTagsForNote(noteId));
-            }
+            const tagsMap = await getTagsForNoteIds(noteIds);
             response.data.forEach(note => {
                  note.tags = tagsMap.get(note.noteId!) || [];
             });
@@ -254,7 +229,7 @@ export const searchNotesController = async (req: BunRequest) => {
     } catch (error) {
         await Log.error('Note Search failed', sessionAndUser.user.login, 'note', error);
         const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-        return new Response(JSON.stringify({ message: 'Note search failed', error: errorMessage }), { status: 500 });
+        return new Response(JSON.stringify({ message: 'Note search failed' }), { status: 500 });
     }
 };
 
@@ -266,17 +241,23 @@ export const createNoteController = async (req: BunRequest) => {
     if (!isAllowedRole(sessionAndUser, 'admin', 'employee')) return new Response("Forbidden", { status: 403 });
 
     try {
-        const body = await req.json() as NoteInput;
-        const { title, content, shared, tagIds } = body;
+        const rawBody: unknown = await req.json();
+        const validation = noteInputSchema.safeParse(rawBody);
+        if (!validation.success) {
+            return new Response(JSON.stringify({ message: 'Invalid input', errors: validation.error.format() }), { status: 400 });
+        }
+        const { title, content, shared, tagIds } = validation.data;
         const ownerUserId = sessionAndUser.user.userId;
 
-        // Create note core data
-        const noteId = await createNote(title, content ?? '', ownerUserId, shared); // Pass empty string for null content
-
-        // Set tags if provided
-        if (tagIds) {
-            await setTagsForNote(noteId, tagIds);
-        }
+        // Core insert and tag assignment form one atomic unit
+        const runInTransaction = db.transaction(async (): Promise<number> => {
+            const id = await createNote(title!, content ?? '', ownerUserId, shared ?? false);
+            if (tagIds) {
+                await setTagsForNote(id, tagIds);
+            }
+            return id;
+        });
+        const noteId = await runInTransaction();
 
         await Log.info(`Note created: ID ${noteId}`, sessionAndUser.user.login, 'note');
 
@@ -287,7 +268,7 @@ export const createNoteController = async (req: BunRequest) => {
     } catch (error) {
         await Log.error('Failed to create note', sessionAndUser.user.login, 'note', error);
         const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-        return new Response(JSON.stringify({ message: 'Failed to create note', error: errorMessage }), { status: 500 });
+        return new Response(JSON.stringify({ message: 'Failed to create note' }), { status: 500 });
     }
 };
 
@@ -317,7 +298,12 @@ export const updateNoteController = async (req: BunRequest<":noteId">) => {
             return new Response("Forbidden", { status: 403 });
         }
 
-        const body = await req.json() as NoteInput;
+        const rawBody: unknown = await req.json();
+        const validation = noteInputSchema.partial().safeParse(rawBody);
+        if (!validation.success) {
+            return new Response(JSON.stringify({ message: 'Invalid input', errors: validation.error.format() }), { status: 400 });
+        }
+        const body = validation.data;
 
         // Determine which fields have actually changed
         const updatePayload: Partial<NoteInput> = {};
@@ -375,7 +361,7 @@ export const updateNoteController = async (req: BunRequest<":noteId">) => {
     } catch (error) {
         await Log.error('Failed to update note', sessionAndUser.user.login, 'note', { error, noteId: req.params.noteId });
         const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-        return new Response(JSON.stringify({ message: 'Failed to update note', error: errorMessage }), { status: 500 });
+        return new Response(JSON.stringify({ message: 'Failed to update note' }), { status: 500 });
     }
 };
 
@@ -411,6 +397,6 @@ export const deleteNoteController = async (req: BunRequest<":noteId">) => {
     } catch (error) {
         await Log.error('Failed to delete note', sessionAndUser.user.login, 'note', error);
         const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-        return new Response(JSON.stringify({ message: 'Failed to delete note', error: errorMessage }), { status: 500 });
+        return new Response(JSON.stringify({ message: 'Failed to delete note' }), { status: 500 });
     }
 };

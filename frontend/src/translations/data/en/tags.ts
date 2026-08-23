@@ -21,4 +21,6 @@ export const tagsTranslationsEN: TagsTranslationSet = {
   tagLoadFailedError: 'Failed to load tags',
   tagSaveSuccess: 'Tag {action} successfully.',
   tagsLoadErrorPlaceholder: 'Could not load tags. Please try again later.',
+  tagSavedCreated: 'Tag created successfully.',
+  tagSavedUpdated: 'Tag updated successfully.',
 };

@@ -25,7 +25,7 @@ const DashboardPage = () => {
     return (
         <div className="p-4 md:p-6 space-y-4">
             {/* Use translated welcome message */}
-            <h1 className="text-2xl font-semibold">{t('welcomeMessage', preferredLanguage, { userLogin: user?.login || 'User' })}</h1>
+            <h1 className="text-2xl font-semibold">{t('welcomeMessage', preferredLanguage, { userLogin: user?.login || t('defaultUserName', preferredLanguage) })}</h1>
             <p className="text-muted-foreground">
                  {/* Use translated prompts */}
                  {user?.role === 'user'

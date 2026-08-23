@@ -13,7 +13,42 @@ export async function initializeTagTable() {
         )
     `);
 
-    // await db.exec(`CREATE UNIQUE INDEX IF NOT EXISTS idx_tag_name ON tags (name);`);
+    await dedupeTagNames();
+
+    // Enforce unique tag names; the controllers' 409 "already exists" paths
+    // rely on this constraint being present.
+    await db.exec(`CREATE UNIQUE INDEX IF NOT EXISTS idx_tag_name ON tags (name);`);
+}
+
+/**
+ * Merges duplicate tag names (possible before the unique index existed):
+ * the lowest tagId wins, all junction references are remapped to it and
+ * redundant rows are removed.
+ */
+async function dedupeTagNames() {
+    const duplicates = db.prepare(`
+        SELECT name, COUNT(*) as count FROM tags GROUP BY name HAVING COUNT(*) > 1
+    `).all() as { name: string }[];
+    if (duplicates.length === 0) return;
+
+    await Log.warn(`Found ${duplicates.length} duplicate tag name(s); merging before enabling unique index.`, 'system', 'database');
+    const tx = db.transaction(() => {
+        for (const { name } of duplicates) {
+            const rows = db.prepare('SELECT tagId FROM tags WHERE name = ? ORDER BY tagId ASC').all(name) as { tagId: number }[];
+            if (rows.length < 2) continue;
+            const keepId = rows[0]!.tagId;
+            const removeIds = rows.slice(1).map(r => r.tagId);
+            for (const table of ['note_tags', 'archive_document_tags', 'user_allowed_tags']) {
+                for (const removeId of removeIds) {
+                    db.prepare(`UPDATE OR IGNORE ${table} SET tagId = ? WHERE tagId = ?`).run(keepId, removeId);
+                    db.prepare(`DELETE FROM ${table} WHERE tagId = ?`).run(removeId);
+                }
+            }
+            const placeholders = removeIds.map(() => '?').join(',');
+            db.prepare(`DELETE FROM tags WHERE tagId IN (${placeholders})`).run(...removeIds);
+        }
+    });
+    tx();
 }
 
 // operation functions

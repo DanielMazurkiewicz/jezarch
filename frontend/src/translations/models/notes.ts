@@ -27,6 +27,8 @@ export type NotesTranslationKey =
   | 'notesDeleteSuccess'
   | 'notesDeleteFailed'
   | 'notesSaveSuccess'
+  | 'noteSavedCreated'
+  | 'noteSavedUpdated'
   | 'notesSaveFailed'
   | 'notesPreviewTitle'
   | 'notesPreviewBy'

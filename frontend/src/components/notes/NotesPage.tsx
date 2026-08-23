@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Button } from '@/components/ui/button';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'; // Removed unused imports
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogTrigger } from '@/components/ui/dialog'; // Removed unused imports
 import NoteList from './NoteList';
 import NoteEditor from './NoteEditor';
 import LoadingSpinner from '@/components/shared/LoadingSpinner';
@@ -60,26 +60,32 @@ const NotesPage: React.FC = () => {
   }, [token]);
 
   // Function to fetch/search notes
+  const fetchSeqRef = useRef(0);
   const fetchNotes = useCallback(async (page = currentPageRef.current, query = searchQueryRef.current) => {
     if (!token || !user?.userId) {
         console.warn("NotesPage: fetchNotes called without user/token.");
         setIsLoading(false); setNotes([]); setTotalNotes(0); setTotalPages(1); return;
     }
     const searchRequest: SearchRequest = { query: query, page, pageSize: NOTES_PAGE_SIZE };
+    const seq = ++fetchSeqRef.current;
     setIsLoading(true); setError(null);
     try {
         const response = await api.searchNotes(searchRequest, token);
+        if (seq !== fetchSeqRef.current) return; // superseded by a newer request
         setNotes(response.data);
         setTotalNotes(response.totalSize);
         setTotalPages(response.totalPages);
         setCurrentPage(response.page);
     } catch (err: any) {
+        if (seq !== fetchSeqRef.current) return;
         const msg = err.message || t('notesFetchError', preferredLanguage); // Use translated error
         setError(msg);
         toast.error(t('errorMessageTemplate', preferredLanguage, { message: msg }));
         console.error("NotesPage: Fetch Notes Error:", err);
         setNotes([]); setTotalNotes(0); setTotalPages(1);
-    } finally { setIsLoading(false); }
+    } finally {
+        if (seq === fetchSeqRef.current) setIsLoading(false);
+    }
   }, [token, user?.userId, preferredLanguage]); // Add preferredLanguage
 
   // Trigger fetchNotes whenever dependencies change, BUT ONLY IF AUTH IS READY
@@ -125,7 +131,7 @@ const NotesPage: React.FC = () => {
            if (currentPage !== newCurrentPage) { setCurrentPage(newCurrentPage); }
            else { await fetchNotes(newCurrentPage, searchQuery); }
        } catch (err: any) {
-            const msg = err.message || 'unknown error';
+            const msg = err.message || t('unknownError', preferredLanguage);
             setError(t('notesDeleteFailed', preferredLanguage, { message: msg }));
             toast.error(t('errorMessageTemplate', preferredLanguage, { message: t('notesDeleteFailed', preferredLanguage, { message: msg }) }));
             console.error("NotesPage: Delete Note Error:", err); setIsLoading(false);
@@ -133,10 +139,10 @@ const NotesPage: React.FC = () => {
    };
 
   const handleSaveSuccess = async () => {
+    const wasEditing = !!editingNote; // capture before reset
     setIsEditorOpen(false);
     setEditingNote(null);
-    const actionText = editingNote ? t('updated', preferredLanguage) : t('created', preferredLanguage); // TODO: Add updated/created keys
-    toast.success(t('notesSaveSuccess', preferredLanguage, { action: actionText }));
+    toast.success(t(wasEditing ? 'noteSavedUpdated' : 'noteSavedCreated', preferredLanguage));
     await fetchNotes(currentPage, searchQuery);
   };
 
@@ -193,6 +199,7 @@ const NotesPage: React.FC = () => {
             <DialogContent className="sm:max-w-[600px]">
                 <DialogHeader>
                  <DialogTitle>{editingNote ? t('notesEditTitle', preferredLanguage) : t('notesCreateTitle', preferredLanguage)}</DialogTitle>
+                 <DialogDescription className="sr-only">{editingNote ? t('notesEditTitle', preferredLanguage) : t('notesCreateTitle', preferredLanguage)}</DialogDescription>
                 </DialogHeader>
                 {isEditorOpen && <NoteEditor noteToEdit={editingNote} onSave={handleSaveSuccess} />}
             </DialogContent>

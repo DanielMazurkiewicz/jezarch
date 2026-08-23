@@ -92,7 +92,7 @@ const SettingsForm: React.FC = () => {
             results.forEach(result => {
                 const key = Object.keys(result)[0] as AppConfigKeys;
                  if ('error' in result && result.error) {
-                     setLoadError(prev => prev ? `${prev}, ${key}` : `Failed to load ${key}`);
+                     setLoadError(prev => prev ? `${prev}, ${t('settingsLoadKeyFailedError', preferredLanguage, { configKey: key })}` : t('settingsLoadKeyFailedError', preferredLanguage, { configKey: key }));
                      switch(key) {
                          case AppConfigKeys.HTTP_PORT: newFormValues[key] = 8080; break;
                          case AppConfigKeys.HTTPS_PORT: newFormValues[key] = 8443; break;
@@ -137,7 +137,7 @@ const SettingsForm: React.FC = () => {
             reset(newFormValues as SettingsFormData, { keepDirty: false, keepErrors: false });
 
         } catch (err: any) {
-             const msg = err.message || 'Failed to load one or more settings';
+             const msg = err.message || t('settingsLoadPartialFailedError', preferredLanguage);
              setLoadError(msg); toast.error(msg);
              reset(); setOriginalHttpPort(8080); setOriginalHttpsPort(8443);
              setOriginalKeyPath(null); setOriginalCertPath(null); setOriginalCaPath(null);
@@ -196,9 +196,9 @@ const SettingsForm: React.FC = () => {
                  if (result.skipped) return;
                 if (!result.success) {
                     anyError = true;
-                    const msg = result.error?.message || `Failed to save ${result.key}.`;
+                    const msg = result.error?.message || t('settingsSaveKeyFailedError', preferredLanguage, { configKey: result.key, message: '' });
                     setSaveError(prev => (prev ? `${prev}\n${msg}` : msg));
-                    toast.error(t('errorMessageTemplate', preferredLanguage, { message: `Failed to save ${result.key}: ${msg}` }));
+                    toast.error(t('errorMessageTemplate', preferredLanguage, { message: t('settingsSaveKeyFailedError', preferredLanguage, { configKey: result.key, message: msg }) }));
                  } else {
                      if (result.message?.includes("Manual server restart required")) {
                          restartRequiredBySave = true;
@@ -224,7 +224,7 @@ const SettingsForm: React.FC = () => {
             }
 
         } catch (err: any) {
-            const msg = err.message || 'An unexpected error occurred while saving settings';
+            const msg = err.message || t('settingsSaveUnexpectedError', preferredLanguage);
             setSaveError(msg);
             toast.error(t('errorMessageTemplate', preferredLanguage, { message: msg }));
             setSaveStatus('error');
@@ -242,7 +242,7 @@ const SettingsForm: React.FC = () => {
              await fetchSettings();
              setIsClearConfirmOpen(false);
          } catch (err: any) {
-             const msg = err.message || "Failed to clear HTTPS settings.";
+             const msg = err.message || t('clearHttpsFailedError', preferredLanguage);
              setSaveError(msg);
              toast.error(t('errorMessageTemplate', preferredLanguage, { message: msg }));
          } finally {
@@ -251,7 +251,7 @@ const SettingsForm: React.FC = () => {
      };
 
     if (isLoading) { return <div className='flex justify-center p-10'><LoadingSpinner /></div>; }
-    if (loadError && !isLoading) { return <ErrorDisplay message={`Error loading settings: ${loadError}`} />; }
+    if (loadError && !isLoading) { return <ErrorDisplay message={t('settingsLoadErrorHeader', preferredLanguage, { message: loadError })} />; }
 
     return (
         <Card>

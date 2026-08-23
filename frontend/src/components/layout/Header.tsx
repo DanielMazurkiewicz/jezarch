@@ -28,7 +28,6 @@ import { t } from '@/translations/utils';
 import { cn } from '@/lib/utils'; // Import cn
 
 interface HeaderProps {
-  toggleSidebar?: () => void;
 }
 
 // Helper function to get title and icon from path
@@ -76,7 +75,7 @@ const getPageInfoFromPath = (pathname: string, lang: AppSupportedLanguage, userR
     // Attempt to translate the key; fallback to a sensible default if key is invalid
     let title = t(titleKey as any, lang); // Use 'any' carefully or refine key type
     if (title === titleKey && title !== 'dashboardTitle') { // Fallback if translation missing
-         const segmentName = segments[0] || 'Dashboard';
+         const segmentName = segments[0] || t('dashboardTitle', lang);
          title = segmentName.charAt(0).toUpperCase() + segmentName.slice(1).replace(/-/g, ' ');
     }
 
@@ -84,7 +83,7 @@ const getPageInfoFromPath = (pathname: string, lang: AppSupportedLanguage, userR
 };
 
 
-const Header: React.FC<HeaderProps> = ({ toggleSidebar }) => {
+const Header: React.FC<HeaderProps> = () => {
     // Use preferredLanguage directly from context state
     const { logout, user, updateContextUser, setContextPreferredLanguage, preferredLanguage, token } = useAuth();
     const location = useLocation();
@@ -115,18 +114,13 @@ const Header: React.FC<HeaderProps> = ({ toggleSidebar }) => {
             // 5. Revert optimistic update if API call fails
             setContextPreferredLanguage(oldLanguage);
             // 6. Show error in the *original* language
-            toast.error(t('errorMessageTemplate', oldLanguage, { message: `Failed to save language preference: ${error.message}` }));
+            toast.error(t('errorMessageTemplate', oldLanguage, { message: t('languagePreferenceSaveFailedError', oldLanguage, { message: error.message }) }));
         }
     }, [user, token, setContextPreferredLanguage]); // Removed updateContextUser as it's redundant
 
 
     return (
         <header className="sticky top-0 z-30 flex h-14 items-center gap-4 border-b bg-background px-4 sm:static sm:h-auto sm:border-0 sm:bg-transparent sm:px-6">
-         {toggleSidebar && (
-            <Button size="icon" variant="outline" className="sm:hidden" onClick={toggleSidebar}>
-                <Menu className="h-5 w-5" /> <span className="sr-only">Toggle Menu</span>
-            </Button>
-         )}
           {/* Page Title with Icon */}
          <div className="flex flex-1 items-center gap-2">
              <CurrentPageIcon className={cn("h-5 w-5 text-muted-foreground")} />
@@ -139,12 +133,12 @@ const Header: React.FC<HeaderProps> = ({ toggleSidebar }) => {
                 <DropdownMenuTrigger asChild>
                 <Button variant="outline" size="icon" className="rounded-full">
                     <UserIcon className="h-4 w-4" />
-                    <span className="sr-only">User Menu</span>
+                    <span className="sr-only">{t('headerUserMenuLabel', preferredLanguage)}</span>
                 </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
                 <DropdownMenuLabel className='text-sm font-normal'>
-                    {t('headerSignedInAs', preferredLanguage)} <span className='font-medium'>{user?.login}</span> ({user?.role})
+                    {t('headerSignedInAs', preferredLanguage)} <span className='font-medium'>{user?.login}</span> ({user?.role === 'admin' ? t('roleAdminLabel', preferredLanguage) : user?.role === 'employee' ? t('roleEmployeeLabel', preferredLanguage) : user?.role === 'user' ? t('roleUserLabel', preferredLanguage) : user?.role})
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator />
                 {/* --- Language Submenu --- */}

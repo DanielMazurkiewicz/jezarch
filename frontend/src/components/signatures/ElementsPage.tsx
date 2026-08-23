@@ -1,7 +1,7 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogTrigger } from '@/components/ui/dialog';
 import { PlusCircle, ArrowLeft } from 'lucide-react';
 import ElementList from './ElementList';
 import ElementForm from './ElementForm';
@@ -76,12 +76,14 @@ const ElementsPage: React.FC = () => {
     }, [token, componentId, preferredLanguage]); // Add preferredLanguage
 
     // Fetch Elements Callback
+    const fetchSeqRef = useRef(0);
     const fetchElements = useCallback(async (page = 1, query: SearchRequest['query'] = []) => {
         if (!token || isNaN(componentId)) { // Added NaN check
             setIsElementsLoading(false);
             setElementsError(t('elementFetchPrereqError', preferredLanguage)); // Use translated error
             return;
         }
+        const seq = ++fetchSeqRef.current;
         setIsElementsLoading(true);
         setElementsError(null);
         try {
@@ -89,17 +91,21 @@ const ElementsPage: React.FC = () => {
             const finalQuery = [...query.filter(q => q.field !== 'signatureComponentId'), componentFilter];
             const searchRequest: SearchRequest = { query: finalQuery, page, pageSize: ELEMENTS_PAGE_SIZE };
             const response = await api.searchSignatureElements(searchRequest, token);
+            if (seq !== fetchSeqRef.current) return; // superseded by a newer request
             setElements(response.data);
             setTotalElements(response.totalSize);
             setTotalElementPages(response.totalPages);
             setCurrentElementPage(response.page);
         } catch (err: any) {
+             if (seq !== fetchSeqRef.current) return;
              const msg = err.message || t('elementFetchFailedError', preferredLanguage); // Use translated error
              setElementsError(msg);
              toast.error(t('errorMessageTemplate', preferredLanguage, { message: msg }));
              console.error("Fetch Elements Error:", err);
              setElements([]); setTotalElements(0); setTotalElementPages(1);
-        } finally { setIsElementsLoading(false); }
+        } finally {
+             if (seq === fetchSeqRef.current) setIsElementsLoading(false);
+        }
     }, [token, componentId, preferredLanguage]); // Add preferredLanguage dependency
 
     // Fetch Elements Effect
@@ -249,7 +255,7 @@ const ElementsPage: React.FC = () => {
                                 </Button>
                             </DialogTrigger>
                             <DialogContent className="sm:max-w-[600px]">
-                                <DialogHeader><DialogTitle>{editingElement ? t('editElementDialogTitle', preferredLanguage) : t('createElementDialogTitle', preferredLanguage)}</DialogTitle></DialogHeader>
+                                <DialogHeader><DialogTitle>{editingElement ? t('editElementDialogTitle', preferredLanguage) : t('createElementDialogTitle', preferredLanguage)}</DialogTitle><DialogDescription className="sr-only">{editingElement ? t('editElementDialogTitle', preferredLanguage) : t('createElementDialogTitle', preferredLanguage)}</DialogDescription></DialogHeader>
                                 {/* Ensure element form only renders when dialog is open and parent is loaded */}
                                 {isElementFormOpen && parentComponent && (
                                      <ElementForm
@@ -269,7 +275,7 @@ const ElementsPage: React.FC = () => {
                         fields={[ // Use translated labels
                             { value: 'name', label: t('elementNameLabel', preferredLanguage), type: 'text' as const },
                             { value: 'description', label: t('elementDescriptionLabel', preferredLanguage), type: 'text' as const},
-                            { value: 'index', label: t('elementIndexLabel', preferredLanguage).split(' (')[0], type: 'text' as const},
+                            { value: 'index', label: t('elementIndexShortLabel', preferredLanguage), type: 'text' as const},
                             { value: 'hasParents', label: t('elementHasParentsLabel', preferredLanguage), type: 'boolean' as const },
                          ]}
                         onSearch={handleElementSearch}

@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom'; // Import useNavigate
 import { Button } from '@/components/ui/button';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogTrigger } from '@/components/ui/dialog';
 import { PlusCircle } from 'lucide-react';
 import ComponentList from './ComponentList';
 import ComponentForm from './ComponentForm';
@@ -174,7 +174,7 @@ const ComponentsPage: React.FC = () => {
                                   </DialogTrigger>
                                   <DialogContent className="sm:max-w-[500px]">
                                        {/* Use translated dialog title */}
-                                      <DialogHeader><DialogTitle>{editingComponent ? t('editComponentDialogTitle', preferredLanguage) : t('createComponentDialogTitle', preferredLanguage)}</DialogTitle></DialogHeader>
+                                       <DialogHeader><DialogTitle>{editingComponent ? t('editComponentDialogTitle', preferredLanguage) : t('createComponentDialogTitle', preferredLanguage)}</DialogTitle><DialogDescription className="sr-only">{editingComponent ? t('editComponentDialogTitle', preferredLanguage) : t('createComponentDialogTitle', preferredLanguage)}</DialogDescription></DialogHeader>
                                       <ComponentForm componentToEdit={editingComponent} onSave={handleComponentSaveSuccess} />
                                   </DialogContent>
                               </Dialog>

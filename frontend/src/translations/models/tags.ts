@@ -19,7 +19,9 @@ export type TagsTranslationKey =
   | 'tagsPermissionErrorEdit' // e.g., Only administrators can edit tags.
   | 'tagsPermissionErrorDelete' // e.g., Only administrators can delete tags.
   | 'tagLoadFailedError' // Added Key
-  | 'tagSaveSuccess' // Added Key
+  | 'tagSaveSuccess'
+  | 'tagSavedCreated'
+  | 'tagSavedUpdated' // Added Key
   | 'tagsLoadErrorPlaceholder' // Added Key
   ;
 

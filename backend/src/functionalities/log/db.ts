@@ -18,6 +18,8 @@ export async function initializeLogTable() {
     `);
     // Add index on createdOn for faster purging
     await db.exec(`CREATE INDEX IF NOT EXISTS idx_log_created_on ON logs (createdOn);`);
+    await db.exec(`CREATE INDEX IF NOT EXISTS idx_log_user ON logs (userId);`);
+    await db.exec(`CREATE INDEX IF NOT EXISTS idx_log_category ON logs (category);`);
 }
 
 const dbToSession = (data: any) => {
@@ -37,7 +39,13 @@ const dbToSession = (data: any) => {
 
 
 // Deprecated - Use search query instead
-export async function getAllLogs(): Promise<LogEntry[]> {
+export async function getAllLogs(sinceMs?: number): Promise<LogEntry[]> {
+    if (sinceMs !== undefined && sinceMs > 0) {
+        // Only entries from the last `sinceMs` window (used by --log <duration>)
+        const statement = db.prepare(`SELECT * FROM logs WHERE createdOn >= DATETIME('now', ?) ORDER BY createdOn DESC`);
+        const results = statement.all(`-${Math.floor(sinceMs / 1000)} seconds`);
+        return results.map(row => dbToSession(row)).filter(log => log !== undefined) as LogEntry[];
+    }
     const statement = db.prepare(`SELECT * FROM logs ORDER BY createdOn DESC`);
     const results = statement.all();
     // Apply parsing to each row safely

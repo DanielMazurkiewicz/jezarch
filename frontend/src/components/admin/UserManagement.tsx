@@ -100,9 +100,19 @@ const UserManagement: React.FC = () => {
         }
 
         try {
-            setUsers(prev => prev.map(u => (u.login === login ? { ...u, role: newRole, assignedTags: newRole === 'user' ? u.assignedTags : undefined } : u)));
             await api.updateUserRole(login, newRole, token);
             toast.success(t('roleUpdatedSuccess', preferredLanguage, { login, roleText }));
+
+            // Reconcile with the server response instead of trusting an
+            // optimistic guess (server may normalize/attach extra fields).
+            try {
+                const freshUser = await api.getUserByLogin(login, token);
+                if (freshUser) {
+                    setUsers(prev => prev.map(u => (u.login === login ? { ...u, ...freshUser } : u)));
+                }
+            } catch {
+                // Non-fatal: the full list refresh below also reconciles state.
+            }
 
             if (newRole === 'user') {
                 const updatedUser = await api.getUserByLogin(login, token);
@@ -253,7 +263,7 @@ const UserManagement: React.FC = () => {
                                                                 ))
                                                             ) : (
                                                                  // Use translated text, adjusted muted color
-                                                                <span className="text-xs text-neutral-500 italic">{t('noneLabel', preferredLanguage)} {t('assignButton', preferredLanguage).toLowerCase()}ed</span>
+                                                                <span className="text-xs text-neutral-500 italic">{t('noTagsAssignedLabel', preferredLanguage)}</span>
                                                             )
                                                         ) : (
                                                             <span className="text-xs text-neutral-500">—</span> // Adjusted muted color
@@ -262,7 +272,7 @@ const UserManagement: React.FC = () => {
                                                              <Tooltip>
                                                                  <TooltipTrigger asChild>
                                                                       {/* Badge secondary adjusted for white bg */}
-                                                                     <Badge variant="secondary" className='cursor-default'>+{user.assignedTags.length - 3} more</Badge>
+                                                                     <Badge variant="secondary" className='cursor-default'>{t('moreItemsBadge', preferredLanguage, { count: user.assignedTags.length - 3 })}</Badge>
                                                                  </TooltipTrigger>
                                                                  <TooltipContent className="max-w-xs break-words">
                                                                      {user.assignedTags.slice(3).map(t => t.name).join(', ')}

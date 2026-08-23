@@ -14,7 +14,7 @@ interface TagListProps {
 
 const TagList: React.FC<TagListProps> = React.memo(({ tags, onEdit, onDelete }) => {
    const { user, preferredLanguage } = useAuth(); // Get preferredLanguage
-   const isAdmin = user?.role === 'admin'; // Assuming only admin can edit/delete tags
+   const canManage = user?.role === 'admin' || user?.role === 'employee'; // Employees manage tags (per REQUIREMENTS.md)
 
   if (tags.length === 0) {
     return null; // Parent component handles empty state message
@@ -29,7 +29,7 @@ const TagList: React.FC<TagListProps> = React.memo(({ tags, onEdit, onDelete }) 
              {/* Use translated headers */}
             <TableHead>{t('nameLabel', preferredLanguage)}</TableHead>
             <TableHead>{t('descriptionLabel', preferredLanguage)}</TableHead>
-            {isAdmin && <TableHead className="text-right w-[100px]">{t('actionsLabel', preferredLanguage)}</TableHead>}
+            {canManage && <TableHead className="text-right w-[100px]">{t('actionsLabel', preferredLanguage)}</TableHead>}
             </TableRow>
         </TableHeader>
         <TableBody>
@@ -38,7 +38,7 @@ const TagList: React.FC<TagListProps> = React.memo(({ tags, onEdit, onDelete }) 
                 <TableCell className="font-medium">{tag.name}</TableCell>
                  {/* Use translated placeholder */}
                  <TableCell className="text-sm text-muted-foreground">{tag.description || <span className="italic">{t('noDescription', preferredLanguage)}</span>}</TableCell> {/* TODO: Add 'noDescription' to translations */}
-                {isAdmin && (
+                {canManage && (
                     <TableCell className="text-right space-x-1">
                     <Button variant="ghost" size="icon" onClick={() => onEdit(tag)} title={t('editButton', preferredLanguage)}>
                         <Edit className="h-4 w-4" />

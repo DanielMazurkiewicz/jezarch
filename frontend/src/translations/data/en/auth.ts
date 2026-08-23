@@ -20,4 +20,13 @@ export const authTranslationsEN: AuthTranslationSet = {
   loginLink: 'Login',
   languagePickerLabel: 'Language',
   logoutFailedError: 'Logout failed: {message}',
+  registerSuccessTitle: 'Registration Successful!',
+  registerSuccessDescription: 'Your account has been created. You can now log in.',
+  registerGoToLoginButton: 'Go to Login',
+  logoutSuccessWithUser: 'User {userLogin} logged out.',
+  logoutSuccess: 'Logged out.',
+  logoutServerNotifyFailedWarning: 'Logged out locally, but failed to notify the server.',
+  registerSuccessToast: 'Registration successful for {userLogin}! Please log in.',
+  loginFailedFallbackError: 'Login failed',
+  registrationFailedFallbackError: 'Registration failed',
 };

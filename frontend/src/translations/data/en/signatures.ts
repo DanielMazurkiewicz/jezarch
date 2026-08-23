@@ -40,6 +40,7 @@ export const signatureTranslationsEN: SignatureTranslationSet = {
   elementNameLabel: 'Element Name',
   elementDescriptionLabel: 'Description',
   elementIndexLabel: 'Index (Optional - Override Auto-Index)',
+  elementIndexShortLabel: 'Index',
   elementIndexPlaceholder: 'Auto ({type})',
   elementIndexHint: 'Leave empty for automatic index based on component type.',
   elementParentElementsLabel: 'Parent Elements (Optional)',

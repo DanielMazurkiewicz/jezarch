@@ -33,7 +33,7 @@ const ElementList: React.FC<ElementListProps> = React.memo(({ elements, onEdit, 
             <TableHeader>
                 <TableRow>
                     {/* Use translated headers */}
-                    <TableHead className="w-[80px] text-center">{t('elementIndexLabel', preferredLanguage).split(' (')[0]}</TableHead>
+                    <TableHead className="w-[80px] text-center">{t('elementIndexShortLabel', preferredLanguage)}</TableHead>
                     <TableHead>{t('elementNameLabel', preferredLanguage)}</TableHead>
                     <TableHead>{t('elementDescriptionLabel', preferredLanguage)}</TableHead>
                     {/* Actions column if user can modify */}

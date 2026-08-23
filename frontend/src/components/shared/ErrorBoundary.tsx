@@ -1,6 +1,7 @@
 import React from 'react';
 import { Button } from '@/components/ui/button';
 import { AlertTriangle } from 'lucide-react';
+import { t } from '@/translations/utils';
 
 interface ErrorBoundaryProps {
     children: React.ReactNode;
@@ -30,12 +31,12 @@ class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundarySta
             return (
                 <div className="flex flex-col items-center justify-center min-h-screen p-8 text-center">
                     <AlertTriangle className="h-12 w-12 text-destructive mb-4" />
-                    <h1 className="text-xl font-semibold mb-2">Something went wrong</h1>
+                    <h1 className="text-xl font-semibold mb-2">{t('errorBoundaryTitle')}</h1>
                     <p className="text-muted-foreground mb-4 max-w-md">
-                        {this.state.error?.message || 'An unexpected error occurred.'}
+                        {this.state.error?.message || t('errorBoundaryUnexpectedError')}
                     </p>
                     <Button onClick={() => { this.setState({ hasError: false, error: null }); window.location.href = '/'; }}>
-                        Return to Home
+                        {t('errorBoundaryReturnHomeButton')}
                     </Button>
                 </div>
             );

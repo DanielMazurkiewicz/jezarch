@@ -56,4 +56,18 @@ export const searchRequestSchema = z.object({
     query: z.array(searchQueryElementSchema),
     page: z.number().int().positive().optional().default(1),
     pageSize: z.number().int().min(-1).optional().default(10),
+    sortBy: z.string().min(1).optional(),
+    sortOrder: z.enum(['ASC', 'DESC']).optional(),
 });
+
+/**
+ * Validates an untrusted request body as a SearchRequest.
+ * Returns the parsed value or null when invalid (callers must respond 400).
+ */
+export function parseSearchRequest(body: unknown): import('./search').SearchRequest | null {
+    const result = searchRequestSchema.safeParse(body);
+    // The zod discriminated union (with .refine members) does not structurally
+    // match SearchQueryElement at the type level, but the runtime shape is
+    // identical — defaults are applied and unknown keys stripped.
+    return result.success ? (result.data as unknown as import('./search').SearchRequest) : null;
+}

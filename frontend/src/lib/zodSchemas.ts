@@ -130,12 +130,12 @@ export const createArchiveDocumentFormSchema = z.object({
     binding: z.string().max(100).optional().nullable(),
     condition: z.string().max(255).optional().nullable(),
     documentLanguage: z.string().max(50).optional().nullable(),
-    contentDescription: z.string().max(2000).optional().nullable(),
+    contentDescription: z.string().max(10000).optional().nullable(),
     remarks: z.string().optional().nullable(),
     accessLevel: z.string().max(50).optional().nullable(),
     accessConditions: z.string().max(255).optional().nullable(),
-    additionalInformation: z.string().max(1000).optional().nullable(),
-    relatedDocumentsReferences: z.string().max(500).optional().nullable(),
+    additionalInformation: z.string().max(10000).optional().nullable(),
+    relatedDocumentsReferences: z.string().max(10000).optional().nullable(),
     isDigitized: z.boolean().optional().default(false),
     digitizedVersionLink: z.preprocess(
         (val) => (val === "" ? null : val),
@@ -154,7 +154,6 @@ export const createArchiveDocumentFormSchema = z.object({
             dimensions: null,
             binding: null,
             condition: null,
-            documentLanguage: null,
         };
     }
     return data;
@@ -194,16 +193,3 @@ export const settingsSchema = z.object({
     path: [AppConfigKeys.HTTPS_KEY_PATH],
 });
 export type SettingsFormData = z.infer<typeof settingsSchema>;
-
-// --- User Tag Assignment ---
-export const assignTagsSchema = z.object({
-    tagIds: z.array(z.number().int().positive(), { invalid_type_error: "Tags must be an array of numbers" }).default([]),
-});
-export type AssignTagsFormData = z.infer<typeof assignTagsSchema>;
-
-// --- Batch Tagging ---
-export const batchTagDialogSchema = z.object({
-    tagIds: z.array(z.number().int().positive())
-             .min(1, "Please select at least one tag."),
-});
-export type BatchTagDialogFormData = z.infer<typeof batchTagDialogSchema>;

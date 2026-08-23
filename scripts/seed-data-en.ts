@@ -1,4 +1,7 @@
 const BASE_URL = process.argv[2] || 'http://localhost:8080';
+// The bootstrap admin password is random unless the server was started with
+// JEZARCH_INITIAL_ADMIN_PASSWORD set. Provide it here or as the 2nd CLI argument.
+const ADMIN_PASSWORD = process.env.SEED_ADMIN_PASSWORD || process.argv[3] || 'admin';
 
 async function api(method: string, path: string, body?: unknown, token?: string) {
   const headers: Record<string, string> = { 'Content-Type': 'application/json' };
@@ -19,9 +22,9 @@ async function main() {
 
   // 1. Login as admin
   console.log('--- Logging in as admin ---');
-  const login = await api('POST', '/api/user/login', { login: 'admin', password: 'admin' });
+  const login = await api('POST', '/api/user/login', { login: 'admin', password: ADMIN_PASSWORD });
   if (login.status !== 200) {
-    console.error('Failed to login as admin. Make sure the server is running.');
+    console.error('Failed to login as admin. Make sure the server is running and pass the bootstrap admin password (env SEED_ADMIN_PASSWORD, 2nd CLI argument, or start the server with JEZARCH_INITIAL_ADMIN_PASSWORD=admin).');
     console.error(login.text);
     process.exit(1);
   }
@@ -42,7 +45,9 @@ async function main() {
       login: u.login,
       password: u.password,
     });
-    if (create.status === 201 || create.status === 409) {
+    // 429 = rate-limited: the user most likely already exists from an earlier run;
+      // the role PATCH below fails loudly if it really is missing.
+    if (create.status === 201 || create.status === 409 || create.status === 429) {
       const roleRes = await api('PATCH', `/api/user/by-login/${u.login}`, { role: u.role }, adminToken);
       console.log(`  ${u.login} (${u.role}): ${create.status === 409 ? 'already exists' : 'created'}`);
     } else {
@@ -70,6 +75,16 @@ async function main() {
       console.log(`  ${t.name}: tagId=${res.body.tagId}`);
     } else {
       console.error(`  Failed to create tag ${t.name}:`, res.text);
+    }
+  }
+
+  // Idempotency: backfill IDs for tags that already existed (409 on create)
+  {
+    const all = await api('GET', '/api/tags', undefined, adminToken);
+    if (all.status === 200 && Array.isArray(all.body)) {
+      for (const t of all.body) {
+        if (tagIds[t.name] === undefined) tagIds[t.name] = t.tagId;
+      }
     }
   }
 
@@ -106,6 +121,16 @@ async function main() {
     }
   }
 
+  // Idempotency: backfill IDs for components that already existed (409 on create)
+  {
+    const all = await api('GET', '/api/signature/components', undefined, adminToken);
+    if (all.status === 200 && Array.isArray(all.body)) {
+      for (const c of all.body) {
+        if (componentIds[c.name] === undefined) componentIds[c.name] = c.signatureComponentId;
+      }
+    }
+  }
+
   // 6. Create signature elements
   console.log('\n--- Creating signature elements ---');
 
@@ -127,6 +152,8 @@ async function main() {
     if (res.status === 201) {
       elementIds[e.name] = res.body.signatureElementId;
       console.log(`  ${e.name} (${e.component}): id=${res.body.signatureElementId}`);
+    } else {
+      console.error(`  Failed to create element:`, res.text);
     }
   }
 
@@ -147,6 +174,8 @@ async function main() {
     if (res.status === 201) {
       elementIds[e.name] = res.body.signatureElementId;
       console.log(`  ${e.name} (${e.component}): id=${res.body.signatureElementId}`);
+    } else {
+      console.error(`  Failed to create element:`, res.text);
     }
   }
 
@@ -166,6 +195,8 @@ async function main() {
     if (res.status === 201) {
       elementIds[e.name] = res.body.signatureElementId;
       console.log(`  ${e.name} (${e.component}): id=${res.body.signatureElementId}`);
+    } else {
+      console.error(`  Failed to create element:`, res.text);
     }
   }
 
@@ -185,6 +216,8 @@ async function main() {
     if (res.status === 201) {
       elementIds[e.name] = res.body.signatureElementId;
       console.log(`  ${e.name} (${e.component}): id=${res.body.signatureElementId}`);
+    } else {
+      console.error(`  Failed to create element:`, res.text);
     }
   }
 
@@ -204,6 +237,8 @@ async function main() {
     if (res.status === 201) {
       elementIds[e.name] = res.body.signatureElementId;
       console.log(`  ${e.name} (${e.component}): id=${res.body.signatureElementId}`);
+    } else {
+      console.error(`  Failed to create element:`, res.text);
     }
   }
 
@@ -224,6 +259,8 @@ async function main() {
     if (res.status === 201) {
       elementIds[e.name] = res.body.signatureElementId;
       console.log(`  ${e.name} (${e.component}): id=${res.body.signatureElementId}`);
+    } else {
+      console.error(`  Failed to create element:`, res.text);
     }
   }
 
@@ -238,6 +275,8 @@ async function main() {
     if (res.status === 201) {
       elementIds[y] = res.body.signatureElementId;
       console.log(`  Year ${y}: id=${res.body.signatureElementId}`);
+    } else {
+      console.error(`  Failed to create element:`, res.text);
     }
   }
 
@@ -251,6 +290,8 @@ async function main() {
     if (res.status === 201) {
       elementIds[l] = res.body.signatureElementId;
       console.log(`  ${l}: id=${res.body.signatureElementId}`);
+    } else {
+      console.error(`  Failed to create element:`, res.text);
     }
   }
 

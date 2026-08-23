@@ -41,7 +41,7 @@ test('PUT /api/note creates a note with tags', async () => {
 
 test('PUT /api/note rejects missing title', async () => {
   const res = await api(B, 'PUT', '/api/note', { content: 'No title' }, adminToken);
-  await expectStatus(res, 500);
+  await expectStatus(res, 400);
 });
 
 test('GET /api/note/id/:noteId returns own note', async () => {

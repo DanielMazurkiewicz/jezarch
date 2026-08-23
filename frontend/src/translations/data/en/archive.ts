@@ -27,6 +27,8 @@ export const archiveTranslationsEN: ArchiveTranslationSet = {
   archiveRestoreSuccess: 'Item restored successfully.',
   archiveRestoreFailed: 'Failed to restore item: {message}',
   archiveSaveSuccess: 'Item {action} successfully.', // action will be 'created' or 'updated'
+  archiveSavedCreated: 'Item created successfully.',
+  archiveSavedUpdated: 'Item updated successfully.',
   archiveSaveFailed: 'Failed to save item: {message}',
   archiveDetailsLoadFailed: 'Failed to load document details: {message}',
   archiveFoundItems: 'Found {count} item(s).',
@@ -158,4 +160,5 @@ export const archiveTranslationsEN: ArchiveTranslationSet = {
   archiveHelpDocuments: 'Documents are individual items with metadata (title, creator, dates). Each document can belong to a unit.',
   archiveHelpSignatures: 'Use the "Descriptive Signature Path" field to classify documents using the signature system defined in the Signatures section.',
   quickFilterEnableLabel: 'Descriptive signature tree',
+  quickFilterRefreshTreeTooltip: 'Refresh tree',
 };

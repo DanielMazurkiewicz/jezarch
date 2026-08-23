@@ -30,9 +30,9 @@ test('PUT /api/tag creates a tag', async () => {
   expect(body.description).toBe('Important items');
 });
 
-test('PUT /api/tag ignores duplicate name (no unique constraint on tags.name)', async () => {
+test('PUT /api/tag rejects duplicate name (unique index on tags.name)', async () => {
   const res = await api(B, 'PUT', '/api/tag', { name: 'Important', description: 'dup' }, adminToken);
-  await expectStatus(res, 201);
+  await expectStatus(res, 409);
 });
 
 test('PUT /api/tag rejects empty name', async () => {
@@ -71,12 +71,12 @@ test('PATCH /api/tag/id/:tagId updates tag', async () => {
   expect((await res.json()).name).toBe('Critical');
 });
 
-test('PATCH /api/tag/id/:tagId rejects employee', async () => {
+test('PATCH /api/tag/id/:tagId allows employee (employees manage tags)', async () => {
   const tagsRes = await api(B, 'GET', '/api/tags', undefined, adminToken);
   const tags = await tagsRes.json();
   const tagId = tags.find((t: any) => t.name === 'Critical')!.tagId;
-  const res = await api(B, 'PATCH', `/api/tag/id/${tagId}`, { name: 'Hacked' }, employeeToken);
-  await expectStatus(res, 403);
+  const res = await api(B, 'PATCH', `/api/tag/id/${tagId}`, { name: 'Critical' }, employeeToken);
+  await expectStatus(res, 200);
 });
 
 test('DELETE /api/tag/id/:tagId deletes tag', async () => {
@@ -88,9 +88,11 @@ test('DELETE /api/tag/id/:tagId deletes tag', async () => {
   await expectStatus(checkRes, 404);
 });
 
-test('DELETE /api/tag/id/:tagId rejects employee', async () => {
-  const res = await api(B, 'DELETE', '/api/tag/id/1', undefined, employeeToken);
-  await expectStatus(res, 403);
+test('DELETE /api/tag/id/:tagId allows employee (employees manage tags)', async () => {
+  const createRes = await api(B, 'PUT', '/api/tag', { name: 'EmpDeleteTag', description: 'employee delete check' }, employeeToken);
+  const created = await createRes.json();
+  const res = await api(B, 'DELETE', `/api/tag/id/${created.tagId}`, undefined, employeeToken);
+  await expectStatus(res, 200);
 });
 
 test('GET /api/tags rejects unauthenticated', async () => {

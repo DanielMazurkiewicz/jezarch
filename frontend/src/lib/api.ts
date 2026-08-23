@@ -174,8 +174,6 @@ interface ValidateSessionResponse {
 
 
 // --- API Function Exports ---
-const getApiStatus = () => fetchApi<{ message: string }>("/api/status");
-const pingApi = () => fetchApi<string>("/api/ping");
 // Login response and User type now include preferredLanguage
 const login = (credentials: UserCredentials) => fetchApi<{ token: string } & Omit<User, 'password'>>("/user/login", "POST", credentials);
 const logout = (token: string) => fetchApi<{ success: boolean }>("/user/logout", "POST", null, token);
@@ -187,7 +185,6 @@ const updateUserRole = (login: string, role: UserRole | null, token: string) => 
 const updateUserPreferredLanguage = (login: string, language: SupportedLanguage, token: string) => fetchApi<Omit<User, "password">>(`/user/by-login/${login}/language`, "PATCH", { preferredLanguage: language }, token);
 const changePassword = (passwords: { oldPassword: string; password: string; }, token: string) => fetchApi<{ success: boolean }>("/user/change-password", "POST", passwords, token);
 const adminSetUserPassword = (login: string, password: string, token: string) => fetchApi<{ success: boolean }>(`/user/by-login/${login}/set-password`, "PATCH", { password }, token);
-const getAssignedTagsForUser = (login: string, token: string) => fetchApi<Tag[]>(`/user/by-login/${login}/tags`, "GET", null, token);
 const assignTagsToUser = (login: string, tagIds: number[], token: string) => fetchApi<Tag[]>(`/user/by-login/${login}/tags`, "PUT", { tagIds }, token);
 const getConfig = <K extends AppConfigKeys>(key: K, token: string) => fetchApi<GetConfigResponse<K>>(`/configs/${key}`, "GET", null, token);
 const setConfig = (key: AppConfigKeys, value: string | null, token: string) => fetchApi<{ message: string }>(`/configs/${key}`, "PUT", { value }, token);
@@ -198,46 +195,44 @@ const searchLogs = (searchRequest: SearchRequest, token: string) => fetchApi<Sea
 const purgeLogs = (days: number, token: string) => fetchApi<PurgeLogsResponse>(`/logs/purge?days=${days}`, "DELETE", null, token);
 const createTag = (tagData: Pick<Tag, 'name' | 'description'>, token: string) => fetchApi<Tag>('/tag', 'PUT', tagData, token);
 const getAllTags = (token: string) => fetchApi<Tag[]>('/tags', 'GET', null, token);
-const getTagById = (tagId: number, token: string) => fetchApi<Tag>(`/tag/id/${tagId}`, 'GET', null, token);
 const updateTag = (tagId: number, tagData: Partial<Pick<Tag, 'name' | 'description'>>, token: string) => fetchApi<Tag>(`/tag/id/${tagId}`, 'PATCH', tagData, token);
 const deleteTag = (tagId: number, token: string) => fetchApi<{ message: string }>(`/tag/id/${tagId}`, 'DELETE', null, token);
 const createNote = (noteData: NoteInput, token: string) => fetchApi<NoteWithDetails>('/note', 'PUT', noteData, token);
 const getNoteById = (noteId: number, token: string) => fetchApi<NoteWithDetails>(`/note/id/${noteId}`, 'GET', null, token);
 const updateNote = (noteId: number, noteData: NoteInput, token: string) => fetchApi<NoteWithDetails>(`/note/id/${noteId}`, 'PATCH', noteData, token);
 const deleteNote = (noteId: number, token: string) => fetchApi<{ message: string }>(`/note/id/${noteId}`, 'DELETE', null, token);
-const getNotesByLogin = (login: string, token: string) => fetchApi<NoteWithDetails[]>(`/notes/by-login/${login}`, 'GET', null, token);
 const searchNotes = (searchRequest: SearchRequest, token: string) => fetchApi<SearchResponse<NoteWithDetails>>("/notes/search", "POST", searchRequest, token);
 const createSignatureComponent = (data: CreateSignatureComponentInput, token: string) => fetchApi<SignatureComponent>('/signature/component', 'PUT', data, token);
 const getAllSignatureComponents = (token: string) => fetchApi<SignatureComponent[]>('/signature/components', 'GET', null, token);
 const getSignatureComponentById = (id: number, token: string) => fetchApi<SignatureComponent>(`/signature/component/${id}`, 'GET', null, token);
 const updateSignatureComponent = (id: number, data: UpdateSignatureComponentInput, token: string) => fetchApi<SignatureComponent>(`/signature/component/${id}`, 'PATCH', data, token);
-const deleteSignatureComponent = (id: number, token: string) => fetchApi<{ success: boolean }>(`/signature/component/${id}`, 'DELETE', null, token);
+const deleteSignatureComponent = (id: number, token: string) => fetchApi<void>(`/signature/component/${id}`, 'DELETE', null, token);
 const reindexComponentElements = (id: number, token: string) => fetchApi<{ message: string, finalCount: number }>(`/signature/components/id/${id}/reindex`, 'POST', null, token);
 const createSignatureElement = (data: CreateSignatureElementInput, token: string) => fetchApi<SignatureElement>('/signature/element', 'PUT', data, token);
 const getSignatureElementById = (id: number, populate: ('component' | 'parents')[] = [], token: string) => fetchApi<SignatureElement>(`/signature/element/${id}${populate.length ? `?populate=${populate.join(',')}` : ''}`, 'GET', null, token);
 const updateSignatureElement = (id: number, data: UpdateSignatureElementInput, token: string) => fetchApi<SignatureElement>(`/signature/element/${id}`, 'PATCH', data, token);
-const deleteSignatureElement = (id: number, token: string) => fetchApi<{ success: boolean }>(`/signature/element/${id}`, 'DELETE', null, token);
+const deleteSignatureElement = (id: number, token: string) => fetchApi<void>(`/signature/element/${id}`, 'DELETE', null, token);
 const getElementsByComponent = (componentId: number, token: string) => fetchApi<(SignatureElement & { parentIds: number[]; childCount: number })[]>(`/signature/components/id/${componentId}/elements/all`, 'GET', null, token);
 const searchSignatureElements = (searchRequest: SearchRequest, token: string) => fetchApi<SearchResponse<SignatureElementSearchResult>>("/signature/elements/search", "POST", searchRequest, token);
 // --- Archive API calls use updated types ---
 const createArchiveDocument = (data: CreateArchiveDocumentInput, token: string) => fetchApi<ArchiveDocument>('/archive/document', 'PUT', data, token);
 const getArchiveDocumentById = (id: number, token: string) => fetchApi<ArchiveDocument>(`/archive/document/id/${id}`, 'GET', null, token);
 const updateArchiveDocument = (id: number, data: UpdateArchiveDocumentInput, token: string) => fetchApi<ArchiveDocument>(`/archive/document/id/${id}`, 'PATCH', data, token);
-const softDeleteArchiveDocument = (id: number, token: string) => fetchApi<{ success: boolean }>(`/archive/document/id/${id}`, 'DELETE', null, token);
-const restoreArchiveDocument = (id: number, token: string) => fetchApi<{ success: boolean }>(`/archive/document/id/${id}/restore`, 'POST', null, token);
+const softDeleteArchiveDocument = (id: number, token: string) => fetchApi<void>(`/archive/document/id/${id}`, 'DELETE', null, token);
+const restoreArchiveDocument = (id: number, token: string) => fetchApi<void>(`/archive/document/id/${id}/restore`, 'POST', null, token);
 const searchArchiveDocuments = (searchRequest: SearchRequest, token: string) => fetchApi<SearchResponse<ArchiveDocumentSearchResult>>("/archive/documents/search", "POST", searchRequest, token);
 const batchTagArchiveDocuments = (data: BatchTagDocumentsInput, token: string) => fetchApi<{ message: string; count: number }>("/archive/documents/batch-tag", "POST", data, token);
 const backupDatabase = (token: string) => fetchApi<Blob>("/admin/db/backup", "GET", null, token, { expectBlob: true });
 
 export default {
-    getApiStatus, pingApi, login, logout, register, getAllUsers, getUserByLogin,
+    login, logout, register, getAllUsers, getUserByLogin,
     updateUserRole, changePassword, adminSetUserPassword,
-    getAssignedTagsForUser, assignTagsToUser, updateUserPreferredLanguage,
+    assignTagsToUser, updateUserPreferredLanguage,
     getConfig, setConfig, getDefaultLanguage, validateSession,
     clearHttpsConfig,
     searchLogs, purgeLogs,
-    createTag, getAllTags, getTagById, updateTag, deleteTag,
-    createNote, getNoteById, updateNote, deleteNote, getNotesByLogin, searchNotes,
+    createTag, getAllTags, updateTag, deleteTag,
+    createNote, getNoteById, updateNote, deleteNote, searchNotes,
     createSignatureComponent, getAllSignatureComponents, getSignatureComponentById,
     updateSignatureComponent, deleteSignatureComponent, reindexComponentElements,
     createSignatureElement, getSignatureElementById, updateSignatureElement,

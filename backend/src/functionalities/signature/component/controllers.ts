@@ -17,6 +17,7 @@ import {
 import { getSessionAndUser, isAllowedRole } from '../../session/controllers';
 import { Log } from '../../log/db';
 import { formatIndex } from '../../../utils/formatIndex'; // Import formatter
+import { removeSignatureElementIdsFromDocuments } from '../../archive/document/db';
 import { createSignatureComponentSchema, updateSignatureComponentSchema, CreateSignatureComponentInput, UpdateSignatureComponentInput } from './models';
 
 const COMPONENT_AREA = 'signature_component';
@@ -152,11 +153,25 @@ export const deleteComponentController = async (req: BunRequest<":id">) => {
         const existing = await getComponentById(id);
         if (!existing) {
              return new Response(JSON.stringify({ message: 'Component not found' }), { status: 404 });
-        }
+         }
+
+        // Collect the component's elements first: deleting the component
+        // cascades to its elements, whose IDs may be referenced inside
+        // archive documents' signature paths.
+        const ownedElements = await getElementsByComponentId(id);
 
         const deleted = await deleteComponent(id); // DB handles cascade to elements
 
         if (deleted) {
+            // Strip now-dangling references from stored document signatures
+            const elementIds = ownedElements.map(e => e.signatureElementId!).filter(v => typeof v === 'number');
+            if (elementIds.length > 0) {
+                try {
+                    await removeSignatureElementIdsFromDocuments(elementIds);
+                } catch (cleanupError) {
+                    await Log.error('Failed to clean document signatures after component delete', sessionAndUser.user.login, COMPONENT_AREA, cleanupError);
+                }
+            }
             await Log.info(`Component deleted: ID ${id}`, sessionAndUser.user.login, COMPONENT_AREA);
              return new Response(null, { status: 204 });
         } else {
@@ -216,8 +231,8 @@ export const reindexComponentElementsController = async (req: BunRequest<":id">)
             return new Response(JSON.stringify({ message: error.message }), { status: 404 }); // Component not found
         }
         if (error.message?.includes('Element with ID')) {
-             return new Response(JSON.stringify({ message: "Re-indexing failed during element update", error: error.message }), { status: 500 });
+             return new Response(JSON.stringify({ message: "Re-indexing failed during element update" }), { status: 500 });
         }
-        return new Response(JSON.stringify({ message: 'Failed to re-index elements', error: error.message }), { status: 500 });
+        return new Response(JSON.stringify({ message: 'Failed to re-index elements' }), { status: 500 });
     }
 };

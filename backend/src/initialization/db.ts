@@ -6,13 +6,34 @@ import { initializeConfigTable } from '../functionalities/config/db';
 import { initializeLogTable } from '../functionalities/log/db';
 import { initializeSessionTable } from '../functionalities/session/db';
 import { AppParams } from './app_params';
+import { CmdParams } from './cmd';
 import { initializeTagTable } from '../functionalities/tag/db';
 import { initializeNoteTagTable } from '../functionalities/note/tag/db';
 import { initializeSignatureComponentTable } from '../functionalities/signature/component/db';
 import { initializeSignatureElementTable, initializeSignatureElementParentTable } from '../functionalities/signature/element/db';
 import { initializeArchiveDocumentTable, initializeArchiveDocumentTagTable } from '../functionalities/archive/document/db';
 
-export const db = new Database(AppParams.dbPath);
+// Resolve the database file path BEFORE opening the connection.
+// Precedence: CLI arg > env var > AppParams (compile-time defaults, or a
+// pre-import override such as the one applied by the test-suite bootstrap).
+// The database itself cannot contribute its own path (chicken-and-egg),
+// therefore this value is the single source of truth for the live connection.
+export const actualDbPath = CmdParams.dbPath
+    || process.env.JEZARCH_DB_PATH
+    || AppParams.dbPath;
+
+// The connection is created at module-eval time because every feature module
+// imports this binding directly. All consumers share this single connection.
+export const db = new Database(actualDbPath);
+
+/** Close the shared connection (used by graceful shutdown). */
+export function closeDatabase() {
+    try {
+        db.close();
+    } catch {
+        // Already closed — nothing to do.
+    }
+}
 
 // Export variables to hold DB status for logging
 export let dbForeignKeysEnabled: boolean = false;

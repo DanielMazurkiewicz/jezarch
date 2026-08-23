@@ -2,12 +2,7 @@
   "scripts": {
     "frontend": "bun --cwd frontend dev",
     "backend": "bun --cwd backend dev",
-    "dev": "bun --cwd backend dev & bun --cwd frontend dev",
-    "dump-frontend": "~/task/code/dump ./backend/",
-    "dump-backend": "~/task/code/dump ./frontend",
-    "dump": "~/task/code/dump ./backend/ && ~/task/code/dump ./frontend -a",
-    "check-frontend": "~/task/code/dump",
-    "check-backend": "~/task/code/dump"
+    "dev": "bun --cwd backend dev & bun --cwd frontend dev"
   },
   "dependencies": {
     "typescript": "^5.8.3"

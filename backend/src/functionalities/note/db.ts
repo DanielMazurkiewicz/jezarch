@@ -127,25 +127,6 @@ export async function getAllNotesByOwnerUserId(ownerUserId: number): Promise<Not
      }
 }
 
-// Get notes relevant to a user (owned or shared) - Used by search/general listing
-// Returns basic note data + ownerLogin, tags need separate population
-export async function getNotesForUser(userId: number): Promise<(Note & { ownerLogin: string })[]> {
-     try {
-        const statement = db.prepare(`
-            SELECT n.*, u.login as ownerLogin
-            FROM notes n
-            JOIN users u ON n.ownerUserId = u.userId
-            WHERE n.ownerUserId = ? OR n.shared = TRUE
-            ORDER BY n.modifiedOn DESC
-        `);
-        // This query doesn't fetch tags yet, they are populated in the controller after search usually
-        return statement.all(userId) as (Note & { ownerLogin: string })[];
-     } catch (error) {
-         await Log.error(`Failed to get notes for user ${userId} (own/shared)`, 'system', 'database', error);
-         throw error;
-     }
-}
-
 
 export async function updateNote(
     noteId: number,

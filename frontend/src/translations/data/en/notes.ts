@@ -33,4 +33,6 @@ export const notesTranslationsEN: NotesTranslationSet = {
   notesNoContentPlaceholder: 'No content.', // Added Key
   notesSharedBadge: 'Shared', // Added Key
   notesPrivateBadge: 'Private', // Added Key
+  noteSavedCreated: 'Note created successfully.',
+  noteSavedUpdated: 'Note updated successfully.',
 };

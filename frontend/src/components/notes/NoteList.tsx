@@ -7,6 +7,7 @@ import type { NoteWithDetails } from '../../../../backend/src/functionalities/no
 import { useAuth } from '@/hooks/useAuth'; // Import useAuth
 import { cn } from '@/lib/utils'; // Import cn
 import { t } from '@/translations/utils'; // Import translation utility
+import { formatDate } from '@/lib/format';
 
 interface NoteListProps {
   notes: NoteWithDetails[]; // Expect notes with tags and ownerLogin
@@ -45,8 +46,16 @@ const NoteList: React.FC<NoteListProps> = React.memo(({ notes, onEdit, onDelete,
                     <TableRow key={note.noteId}>
                         {/* Make Title cell clickable */}
                         <TableCell
-                           className="font-medium cursor-pointer hover:text-primary hover:underline"
+                           className="font-medium cursor-pointer hover:text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                            onClick={() => onPreview(note)}
+                           onKeyDown={(e) => {
+                               if (e.key === 'Enter' || e.key === ' ') {
+                                   e.preventDefault();
+                                   onPreview(note);
+                               }
+                           }}
+                           tabIndex={0}
+                           role="button"
                            title={t('notesPreviewTitleTooltip', preferredLanguage, { title: note.title })} // Use translated tooltip
                         >
                            {note.title}
@@ -55,10 +64,10 @@ const NoteList: React.FC<NoteListProps> = React.memo(({ notes, onEdit, onDelete,
                          <TableCell className='text-sm text-muted-foreground'>
                              <div className='flex items-center gap-1' title={note.ownerLogin}>
                                 {isOwner ? <User className='h-3 w-3 text-primary'/> : <User className='h-3 w-3'/>}
-                                <span className={cn(isOwner && 'font-medium text-foreground')}>{note.ownerLogin ?? 'Unknown'}</span>
+                                <span className={cn(isOwner && 'font-medium text-foreground')}>{note.ownerLogin ?? t('unknown', preferredLanguage)}</span>
                              </div>
                          </TableCell>
-                        <TableCell className='text-sm'>{new Date(note.modifiedOn).toLocaleDateString()}</TableCell>
+                        <TableCell className='text-sm'>{formatDate(note.modifiedOn, preferredLanguage)}</TableCell>
                         <TableCell>
                             {note.shared ? <Badge variant="outline">{t('notesSharedBadge', preferredLanguage)}</Badge> : <Badge variant="secondary">{t('notesPrivateBadge', preferredLanguage)}</Badge>}
                         </TableCell>
@@ -68,7 +77,7 @@ const NoteList: React.FC<NoteListProps> = React.memo(({ notes, onEdit, onDelete,
                                      <Badge key={tag.tagId} variant='secondary' className='text-xs font-normal'>{tag.name}</Badge>
                                  ))}
                                  {note.tags && note.tags.length > 3 && (
-                                    <Badge variant='outline' className='text-xs font-normal'>+{note.tags.length - 3} more</Badge>
+                                    <Badge variant='outline' className='text-xs font-normal'>{t('moreItemsBadge', preferredLanguage, { count: note.tags.length - 3 })}</Badge>
                                  )}
                                  {(!note.tags || note.tags.length === 0) && <span className='text-xs italic text-muted-foreground'>{t('notesNoTagsPlaceholder', preferredLanguage)}</span>}
                              </div>
@@ -78,10 +87,14 @@ const NoteList: React.FC<NoteListProps> = React.memo(({ notes, onEdit, onDelete,
                              <Button variant="ghost" size="icon" onClick={() => onPreview(note)} title={t('previewButton', preferredLanguage)}>
                                  <Eye className="h-4 w-4" />
                              </Button>
-                             {/* Edit button always visible if user can access the note */}
-                             <Button variant="ghost" size="icon" onClick={() => onEdit(note)} title={t('editButton', preferredLanguage)}>
-                                <Edit className="h-4 w-4" />
-                            </Button>
+                             {/* Editing is limited to the owner or an admin (matches the API) */}
+                             {(isOwner || isAdmin) ? (
+                                <Button variant="ghost" size="icon" onClick={() => onEdit(note)} title={t('editButton', preferredLanguage)}>
+                                    <Edit className="h-4 w-4" />
+                                </Button>
+                             ) : (
+                                <span className="inline-block w-9 h-9"></span>
+                             )}
                             {/* Delete button visible if owner OR admin */}
                             {canDelete ? (
                                 <Button variant="ghost" size="icon" onClick={() => onDelete(note.noteId!)} title={t('deleteButton', preferredLanguage)}>

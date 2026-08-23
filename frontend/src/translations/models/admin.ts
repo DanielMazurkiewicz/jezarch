@@ -3,6 +3,15 @@ import { TranslationSet } from "../models";
 
 export type AdminTranslationKey =
   | 'adminPanelTitle'
+  | 'settingsLoadKeyFailedError'
+  | 'settingsLoadPartialFailedError'
+  | 'settingsSaveKeyFailedError'
+  | 'settingsSaveUnexpectedError'
+  | 'clearHttpsFailedError'
+  | 'settingsLoadErrorHeader'
+  | 'createUserFailedErrorAdmin'
+  | 'logsFetchFailedError'
+  | 'languagePreferenceSaveFailedError'
   | 'adminPanelDescription'
   | 'userManagementTab'
   | 'appSettingsTab'

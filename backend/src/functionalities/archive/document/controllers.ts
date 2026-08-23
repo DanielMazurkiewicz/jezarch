@@ -28,6 +28,8 @@ import {
 import { getSessionAndUser, isAllowedRole } from '../../session/controllers';
 import { Log } from '../../log/db';
 import { buildSearchQueries, executeSearch, SearchQuery, SearchQueryElement, SearchRequest, SearchResponse } from '../../../utils/search';
+import { parseSearchRequest } from '../../../utils/search_validation';
+import { normalizeDocumentSearchRow } from '../../../utils/dbRows';
 import { Tag } from '../../tag/models';
 import { getAssignedTagIdsForUser } from '../../user/db';
 // Removed direct import of archiveDocumentTagSearchHandler, it's passed in buildSearchQueries
@@ -54,14 +56,30 @@ export const createArchiveDocumentController = async (req: BunRequest) => {
         const { tagIds, ...docData } = validation.data;
         const createdByLogin = sessionAndUser.user.login; // Use login for createdBy
 
+        // Validate the parent unit: it must exist, be visible (not soft-deleted)
+        // and actually be a unit — otherwise documents end up filed under
+        // hidden or non-hierarchical nodes.
+        if (docData.parentUnitArchiveDocumentId !== undefined && docData.parentUnitArchiveDocumentId !== null) {
+            const parent = await getArchiveDocumentByIdInternal(docData.parentUnitArchiveDocumentId);
+            if (!parent) {
+                return new Response(JSON.stringify({ message: 'Parent unit not found' }), { status: 400 });
+            }
+            if (parent.isDeleted) {
+                return new Response(JSON.stringify({ message: 'Parent unit is deleted and cannot be used' }), { status: 400 });
+            }
+            if (parent.type !== 'unit') {
+                return new Response(JSON.stringify({ message: 'Parent must be a unit, not a document' }), { status: 400 });
+            }
+        }
+
         // Strip physical description fields if type is 'document'
+        // (documentLanguage is kept: it applies to documents too)
         if (docData.type === 'document') {
             delete (docData as any).numberOfPages;
             delete (docData as any).documentType;
             delete (docData as any).dimensions;
             delete (docData as any).binding;
             delete (docData as any).condition;
-            delete (docData as any).documentLanguage;
         }
 
         const inputForDb = {
@@ -71,12 +89,15 @@ export const createArchiveDocumentController = async (req: BunRequest) => {
             createdBy: createdByLogin, // Add createdBy field
         } as Parameters<typeof createArchiveDocument>[0];
 
-        // Pass the object directly, db function expects the correct shape
-        const newDocumentId = await createArchiveDocument(inputForDb);
-
-        if (tagIds && tagIds.length > 0) {
-            await setTagsForArchiveDocument(newDocumentId, tagIds);
-        }
+        // Document insert + tag assignment form one atomic unit
+        const runCreate = db.transaction(async (): Promise<number> => {
+            const id = await createArchiveDocument(inputForDb);
+            if (tagIds && tagIds.length > 0) {
+                await setTagsForArchiveDocument(id, tagIds);
+            }
+            return id;
+        });
+        const newDocumentId = await runCreate();
 
         await Log.info(`Archive document created: ${docData.title} (ID: ${newDocumentId}) by ${createdByLogin}`, sessionAndUser.user.login, AREA);
 
@@ -95,7 +116,7 @@ export const createArchiveDocumentController = async (req: BunRequest) => {
 
     } catch (error: any) {
         await Log.error('Failed to create archive document', sessionAndUser.user.login, AREA, error);
-        return new Response(JSON.stringify({ message: 'Failed to create archive document', error: error.message }), { status: 500 });
+        return new Response(JSON.stringify({ message: 'Failed to create archive document' }), { status: 500 });
     }
 };
 
@@ -123,9 +144,10 @@ export const getArchiveDocumentByIdController = async (req: BunRequest<":id">) =
             return new Response(JSON.stringify({ message: 'Document not found' }), { status: 404 });
         }
 
-        // Deleted (soft-deleted) documents are treated as not found for everyone
-        if (document.isDeleted) {
-            await Log.info(`Deleted document was requested, treating as not found (user: ${sessionAndUser.user.login})`, sessionAndUser.user.login, AREA, { documentId: id });
+        // Soft-deleted documents stay hidden from the restricted 'user' role;
+        // admin/employee may inspect them (e.g. to decide about restoring).
+        if (document.isDeleted && !isAllowedRole(sessionAndUser, 'admin', 'employee')) {
+            await Log.info(`Deleted document was requested by 'user' role, treating as not found (user: ${sessionAndUser.user.login})`, sessionAndUser.user.login, AREA, { documentId: id });
             return new Response(JSON.stringify({ message: 'Document not found' }), { status: 404 });
         }
 
@@ -153,7 +175,7 @@ export const getArchiveDocumentByIdController = async (req: BunRequest<":id">) =
 
     } catch (error: any) {
         await Log.error('Error fetching archive document by ID', sessionAndUser.user.login, AREA, error);
-        return new Response(JSON.stringify({ message: 'Failed to get archive document', error: error.message }), { status: 500 });
+        return new Response(JSON.stringify({ message: 'Failed to get archive document' }), { status: 500 });
     }
 };
 
@@ -191,23 +213,44 @@ export const updateArchiveDocumentController = async (req: BunRequest<":id">) =>
         const { tagIds, ...updateData } = validation.data;
         const updatedByLogin = sessionAndUser.user.login; // Use login for updatedBy
 
+        // Validate the parent unit when it is being changed
+        if (updateData.parentUnitArchiveDocumentId !== undefined) {
+            if (updateData.parentUnitArchiveDocumentId === id) {
+                return new Response(JSON.stringify({ message: 'Document cannot be its own parent' }), { status: 400 });
+            }
+            if (updateData.parentUnitArchiveDocumentId !== null) {
+                const parent = await getArchiveDocumentByIdInternal(updateData.parentUnitArchiveDocumentId);
+                if (!parent) {
+                    return new Response(JSON.stringify({ message: 'Parent unit not found' }), { status: 400 });
+                }
+                if (parent.isDeleted) {
+                    return new Response(JSON.stringify({ message: 'Parent unit is deleted and cannot be used' }), { status: 400 });
+                }
+                if (parent.type !== 'unit') {
+                    return new Response(JSON.stringify({ message: 'Parent must be a unit, not a document' }), { status: 400 });
+                }
+            }
+        }
+
         // Strip physical description fields if type is 'document'
+        // (documentLanguage is kept: it applies to documents too)
         if (updateData.type === 'document') {
             delete (updateData as any).numberOfPages;
             delete (updateData as any).documentType;
             delete (updateData as any).dimensions;
             delete (updateData as any).binding;
             delete (updateData as any).condition;
-            delete (updateData as any).documentLanguage;
         }
 
-        const updatedDocData = await updateArchiveDocument(id, updateData, updatedByLogin); // Pass updatedByLogin
-
-        // Handle tags separately (remains the same)
-        const validatedTagIds = rawBody.tagIds;
-        if (validatedTagIds !== undefined && Array.isArray(validatedTagIds)) {
-            await setTagsForArchiveDocument(id, validatedTagIds.filter((tid): tid is number => typeof tid === 'number'));
-        }
+        // Core update + tag replacement form one atomic unit; use the zod-validated tagIds.
+        const runUpdate = db.transaction(async () => {
+            const updated = await updateArchiveDocument(id, updateData, updatedByLogin);
+            if (tagIds !== undefined) {
+                await setTagsForArchiveDocument(id, tagIds);
+            }
+            return updated;
+        });
+        const updatedDocData = await runUpdate();
 
         await Log.info(`Archive document updated: ${updatedDocData?.title} (ID: ${id}) by ${updatedByLogin}`, sessionAndUser.user.login, AREA);
 
@@ -225,7 +268,7 @@ export const updateArchiveDocumentController = async (req: BunRequest<":id">) =>
 
     } catch (error: any) {
         await Log.error('Error updating archive document', sessionAndUser.user.login, AREA, error);
-        return new Response(JSON.stringify({ message: 'Failed to update archive document', error: error.message }), { status: 500 });
+        return new Response(JSON.stringify({ message: 'Failed to update archive document' }), { status: 500 });
     }
 };
 
@@ -273,7 +316,7 @@ export const softDeleteArchiveDocumentController = async (req: BunRequest<":id">
         }
     } catch (error: any) {
         await Log.error('Failed to soft delete archive document', sessionAndUser.user.login, AREA, error);
-        return new Response(JSON.stringify({ message: 'Failed to delete archive document', error: error.message }), { status: 500 });
+        return new Response(JSON.stringify({ message: 'Failed to delete archive document' }), { status: 500 });
     }
 };
 
@@ -317,7 +360,7 @@ export const restoreArchiveDocumentController = async (req: BunRequest<":id">) =
         }
     } catch (error: any) {
         await Log.error('Failed to restore archive document', sessionAndUser.user.login, AREA, error);
-        return new Response(JSON.stringify({ message: 'Failed to restore archive document', error: error.message }), { status: 500 });
+        return new Response(JSON.stringify({ message: 'Failed to restore archive document' }), { status: 500 });
     }
 };
 
@@ -330,7 +373,11 @@ export const searchArchiveDocumentsController = async (req: BunRequest) => {
     if (!isAllowedRole(sessionAndUser, 'admin', 'employee', 'user')) return new Response("Forbidden", { status: 403 });
 
     try {
-        const searchRequest = await req.json() as SearchRequest;
+        const rawBody: unknown = await req.json();
+        const searchRequest = parseSearchRequest(rawBody);
+        if (!searchRequest) {
+            return new Response(JSON.stringify({ message: 'Invalid search request' }), { status: 400 });
+        }
         const isAdmin = isAllowedRole(sessionAndUser, 'admin');
         const isEmployee = isAllowedRole(sessionAndUser, 'employee');
         const isUserRole = sessionAndUser.user.role === 'user';
@@ -421,10 +468,8 @@ export const searchArchiveDocumentsController = async (req: BunRequest) => {
 
         const searchResponse = await executeSearch<ArchiveDocumentSearchResult>(dataQuery, countQuery);
 
-        // Normalize SQLite 0/1 flags to real booleans to match the TS models
-        searchResponse.data.forEach(doc => {
-            doc.isDeleted = Boolean(doc.isDeleted);
-        });
+        // Normalize raw SQLite rows (0/1 flags, JSON columns) to model shapes
+        searchResponse.data.forEach(normalizeDocumentSearchRow);
 
         // Populate tags and resolved signatures (remains the same)
         if (searchResponse.data.length > 0) {
@@ -442,7 +487,6 @@ export const searchArchiveDocumentsController = async (req: BunRequest) => {
         await Log.error('Archive document search failed', sessionAndUser.user.login, AREA, error);
         return new Response(JSON.stringify({
             message: 'Failed to search archive documents',
-            error: error instanceof Error ? error.message : 'Unknown error'
         }), { status: 500 });
     }
 };
@@ -464,22 +508,7 @@ export const batchTagArchiveDocumentsController = async (req: BunRequest) => {
         }
 
         const { searchQuery, tagIds, action } = validation.data;
-        let finalQuery: SearchQuery = [...searchQuery] as SearchQuery;
-        const isUserRole = sessionAndUser.user.role === 'user';
-
-        // Tag filter logic remains
-        if (isUserRole) {
-             const allowedTagIds = await getAssignedTagIdsForUser(sessionAndUser.user.userId);
-             if (allowedTagIds.length === 0) {
-                 return new Response(JSON.stringify({ message: "No documents match criteria (user has no assigned tags)." }), { status: 200 });
-             }
-             const existingTagFilterIndex = finalQuery.findIndex(q => q.field === 'tags');
-             if (existingTagFilterIndex !== -1) {
-                 finalQuery.splice(existingTagFilterIndex, 1);
-             }
-             finalQuery.push({ field: 'tags', condition: 'ANY_OF', value: allowedTagIds, not: false });
-             await Log.info(`Batch tag applying mandatory tag filter for 'user' role (should not happen).`, sessionAndUser.user.login, AREA);
-        }
+        const finalQuery: SearchQuery = [...searchQuery] as SearchQuery;
 
         // Get IDs using the potentially updated search fields
         const matchingIds = await getMatchingDocumentIds({ query: finalQuery, page: 1, pageSize: -1 });
@@ -507,7 +536,6 @@ export const batchTagArchiveDocumentsController = async (req: BunRequest) => {
         await Log.error('Batch tagging operation failed', sessionAndUser.user.login, AREA, error);
         return new Response(JSON.stringify({
             message: 'Failed to perform batch tag operation',
-            error: error instanceof Error ? error.message : 'Unknown error'
         }), { status: 500 });
     }
 };

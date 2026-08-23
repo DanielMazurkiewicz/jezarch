@@ -91,7 +91,16 @@ const DocumentList: React.FC<DocumentListProps> = React.memo(({ documents, onEdi
                         <TableRow
                            key={doc.archiveDocumentId}
                            onClick={() => handleClick(doc)}
-                           className='cursor-pointer hover:bg-muted/50 transition-colors'
+                           onKeyDown={(e) => {
+                               if (e.key === 'Enter' || e.key === ' ') {
+                                   e.preventDefault();
+                                   handleClick(doc);
+                               }
+                           }}
+                           tabIndex={0}
+                           role="button"
+                           aria-label={isUnit ? t('archiveUnitOpenTitle', preferredLanguage, { title: doc.title }) : t('archiveDocumentPreviewTitle', preferredLanguage, { title: doc.title })}
+                           className='cursor-pointer hover:bg-muted/50 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring'
                            title={isUnit ? t('archiveUnitOpenTitle', preferredLanguage, { title: doc.title }) : t('archiveDocumentPreviewTitle', preferredLanguage, { title: doc.title })}
                         >
                             <TableCell className='text-center'>
@@ -118,12 +127,10 @@ const DocumentList: React.FC<DocumentListProps> = React.memo(({ documents, onEdi
                                 }
                             </TableCell>
                             <TableCell className="text-right space-x-1">
-                                {/* Preview Button (only for documents) */}
-                                {!isUnit && (
-                                    <Button variant="ghost" size="icon" onClick={(e) => { e.stopPropagation(); onPreview(doc); }} title={t('previewButton', preferredLanguage)}>
-                                        <Eye className="h-4 w-4" />
-                                    </Button>
-                                )}
+                                {/* Preview Button */}
+                                <Button variant="ghost" size="icon" onClick={(e) => { e.stopPropagation(); onPreview(doc); }} title={t('previewButton', preferredLanguage)}>
+                                    <Eye className="h-4 w-4" />
+                                </Button>
                                 {/* Edit Button (always available if permissions allow) */}
                                 {canUserModify && (
                                     <Button variant="ghost" size="icon" onClick={(e) => { e.stopPropagation(); onEdit(doc); }} title={t('editButton', preferredLanguage)}>
