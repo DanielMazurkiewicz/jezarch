@@ -15,7 +15,7 @@ This document provides a brief overview of the technical stack and configuration
     *   Library: React 19
     *   Language: TypeScript
     *   UI Components: [Shadcn UI](https://ui.shadcn.com/) (built upon Radix UI and Tailwind CSS)
-    *   Styling: Tailwind CSS (processed via `bun-plugin-tailwind`)
+    *   Styling: Tailwind CSS v4 (processed via `bun-plugin-tailwind`)
     *   Routing: React Router DOM
     *   Forms: React Hook Form
     *   Validation: Zod
@@ -52,9 +52,9 @@ The final, effective parameters used by the running application are logged to th
 The backend exposes a RESTful API under the `/api` prefix. Key resource endpoints include:
 
 *   `/api/user/...` (Authentication, User Management)
-*   `/api/config/...` (Application Configuration)
+*   `/api/configs/...` (Application Configuration)
 *   `/api/logs/...` (System Logs)
-*   `/api/tags/...` (Global Tags)
+*   `/api/tag/...`, `/api/tags` (Global Tags)
 *   `/api/note/...` (Notes)
 *   `/api/signature/component/...` (Signature Components)
 *   `/api/signature/element/...` (Signature Elements)
@@ -62,3 +62,5 @@ The backend exposes a RESTful API under the `/api` prefix. Key resource endpoint
 *   `/api/admin/db/...` (Database Administration)
 
 Authentication is handled via a session token (UUID) passed in the `Authorization` header. Session tokens are obtained via `POST /api/user/login` and expire after 24 hours. Specific endpoints require different user roles (`admin`, `employee`, or `user`) for access.
+
+On first start the application bootstraps an initial `admin` account: the password comes from `JEZARCH_INITIAL_ADMIN_PASSWORD` if set, otherwise a strong random password is generated and printed once to the console.

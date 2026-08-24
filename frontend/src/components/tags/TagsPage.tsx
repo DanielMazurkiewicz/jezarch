@@ -8,7 +8,8 @@ import ErrorDisplay from '@/components/shared/ErrorDisplay';
 import { useAuth } from '@/hooks/useAuth';
 import api from '@/lib/api';
 import type { Tag } from '../../../../backend/src/functionalities/tag/models';
-import { PlusCircle } from 'lucide-react';
+import { PlusCircle, HelpCircle } from 'lucide-react';
+import HelpDialog, { HelpSection } from '@/components/shared/HelpDialog';
 import { toast } from "sonner";
 // Import Card components for layout
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -22,6 +23,7 @@ const TagsPage: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [editingTag, setEditingTag] = useState<Tag | null>(null);
   const [isFormOpen, setIsFormOpen] = useState(false);
+  const [helpOpen, setHelpOpen] = useState(false);
 
   // Function to fetch all tags
   const fetchTags = useCallback(async () => {
@@ -105,10 +107,10 @@ const TagsPage: React.FC = () => {
     <div className="space-y-6"> {/* Overall page spacing */}
        {/* Header Section */}
        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-           <div>
-                <h1 className="text-2xl font-bold">{t('tagsTitle', preferredLanguage)}</h1>
-                <p className='text-muted-foreground'>{t('tagsDescription', preferredLanguage)}</p>
+            <div>
+                 <h1 className="text-2xl font-bold">{t('tagsTitle', preferredLanguage)}</h1>
             </div>
+            <div className='flex items-center gap-2 flex-wrap justify-end'>
             {/* Create Tag Button & Dialog */}
             <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
                 <DialogTrigger asChild>
@@ -128,7 +130,11 @@ const TagsPage: React.FC = () => {
                 {isFormOpen && <TagForm tagToEdit={editingTag} onSave={handleSaveSuccess} />}
                 </DialogContent>
             </Dialog>
-       </div>
+            <Button variant="ghost" size="sm" onClick={() => setHelpOpen(true)} title={t('helpButton', preferredLanguage)}>
+                <HelpCircle className="mr-2 h-4 w-4" /> {t('helpButton', preferredLanguage)}
+            </Button>
+            </div>
+        </div>
 
         {/* Tags List Section */}
         <Card>
@@ -153,6 +159,17 @@ const TagsPage: React.FC = () => {
                 )}
             </CardContent>
         </Card>
+
+        <HelpDialog
+            isOpen={helpOpen}
+            onOpenChange={setHelpOpen}
+            title={t('tagsHelpTitle', preferredLanguage)}
+            sections={[
+                { body: t('tagsHelpIntro', preferredLanguage) },
+                { heading: t('accessLabel', preferredLanguage), body: t('tagsHelpAccess', preferredLanguage) },
+                { heading: t('permissionsLabel', preferredLanguage), body: t('tagsHelpPermissions', preferredLanguage) },
+            ] as HelpSection[]}
+        />
     </div>
   );
 };

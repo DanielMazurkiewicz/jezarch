@@ -17,8 +17,8 @@ import { PlusCircle, ArrowLeft, Folder, FileText, Tags, MinusCircle, Archive as 
 import Pagination from '@/components/shared/Pagination';
 import { toast } from "sonner";
 import { Card, CardContent, CardHeader, CardDescription } from '@/components/ui/card';
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { Info } from 'lucide-react';
+import { HelpCircle } from 'lucide-react';
+import HelpDialog, { HelpSection } from '@/components/shared/HelpDialog';
 import DocumentPreviewDialog from './DocumentPreviewDialog';
 import { cn } from '@/lib/utils';
 import { t } from '@/translations/utils'; // Import translation utility
@@ -59,6 +59,7 @@ const ArchivePage: React.FC = () => {
   const [isBatchTagDialogOpen, setIsBatchTagDialogOpen] = useState(false);
   const [batchTagAction, setBatchTagAction] = useState<'add' | 'remove'>('add');
   const [isBatchTagLoading, setIsBatchTagLoading] = useState(false);
+  const [helpOpen, setHelpOpen] = useState(false);
 
   const isAdmin = user?.role === 'admin';
   const isEmployee = user?.role === 'employee';
@@ -383,11 +384,6 @@ const ArchivePage: React.FC = () => {
                        {parentUnit ? <>{t('archiveUnitLabel', preferredLanguage)}: <span className='text-primary'>{parentUnit.title}</span></>
                                    : <>{t('archiveTitle', preferredLanguage)}</>}
                     </h1>
-                    <p className='text-muted-foreground'>
-                       {parentUnit ? t('archiveBrowsingUnit', preferredLanguage, { unitTitle: parentUnit.title })
-                        : isUserRole ? t('archiveDescriptionUser', preferredLanguage)
-                        : t('archiveDescription', preferredLanguage)}
-                    </p>
                 </div>
            </div>
            <div className='flex items-center gap-2 flex-wrap justify-end'>
@@ -435,25 +431,34 @@ const ArchivePage: React.FC = () => {
                                 )}
                             </div>
                          </DialogContent>
-                     </Dialog>
-                 )}
-            </div>
-       </div>
+                      </Dialog>
+                  )}
+                  <Button
+                     variant="ghost"
+                     size="sm"
+                     onClick={() => setHelpOpen(true)}
+                     title={t('helpButton', preferredLanguage)}
+                  >
+                     <HelpCircle className="mr-2 h-4 w-4" /> {t('helpButton', preferredLanguage)}
+                  </Button>
+              </div>
+         </div>
 
-        {/* Help Panel - only show at root level */}
-        {!parentUnitId && (
-            <Alert>
-                <Info className="h-4 w-4" />
-                <AlertTitle>{t('archiveHelpTitle', preferredLanguage)}</AlertTitle>
-                <AlertDescription className="mt-2 space-y-1 text-sm">
-                    <p><strong>{t('archiveUnitLabel', preferredLanguage)}:</strong> {t('archiveHelpUnits', preferredLanguage)}</p>
-                    <p><strong>{t('archiveDocumentLabel', preferredLanguage)}:</strong> {t('archiveHelpDocuments', preferredLanguage)}</p>
-                    <p><strong>{t('archiveDescSigLabel', preferredLanguage)}:</strong> {t('archiveHelpSignatures', preferredLanguage)}</p>
-                </AlertDescription>
-            </Alert>
-        )}
+         <HelpDialog
+            isOpen={helpOpen}
+            onOpenChange={setHelpOpen}
+            title={t('archiveHelpTitle', preferredLanguage)}
+            sections={[
+               { body: t('archiveHelpIntro', preferredLanguage) },
+               { heading: t('archiveUnitLabel', preferredLanguage), body: t('archiveHelpUnits', preferredLanguage) },
+               { heading: t('archiveDocumentLabel', preferredLanguage), body: t('archiveHelpDocuments', preferredLanguage) },
+               { heading: t('archiveDescSigLabel', preferredLanguage), body: t('archiveHelpSignatures', preferredLanguage) },
+               { heading: t('permissionsLabel', preferredLanguage), body: t('archiveHelpPermissions', preferredLanguage) },
+               { heading: t('archiveIsDeletedLabel', preferredLanguage), body: t('archiveHelpDeleted', preferredLanguage) },
+            ] as HelpSection[]}
+         />
 
-        {/* --- SearchBar uses the updated searchFields --- */}
+         {/* --- SearchBar uses the updated searchFields --- */}
         <SearchBar
             fields={searchFields}
             onSearch={handleSearch}

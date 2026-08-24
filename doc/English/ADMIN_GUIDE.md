@@ -7,6 +7,7 @@ This guide details the functionalities available exclusively to users with the '
 *   [Accessing the Admin Panel](#accessing-the-admin-panel)
 *   [User Management](#user-management)
     *   [Viewing Users](#viewing-users)
+    *   [Creating Users](#creating-users)
     *   [Assigning/Changing Roles](#assigningchanging-roles)
     *   [Assigning Tags (for 'User' role)](#assigning-tags-for-user-role)
     *   [Setting User Passwords](#setting-user-passwords)
@@ -42,6 +43,12 @@ Navigate to the "User Management" tab within the Admin Panel.
 
 *   A table displays all registered users, including their Login, Role, Preferred Language, and Assigned Tags (if applicable).
 *   Users with `null` (No Role / Disabled) role cannot log in.
+
+### Creating Users
+
+*   Click the **Create User** button at the top of the User Management tab.
+*   Enter a unique Login and a Password (with confirmation).
+*   The new account is created without a role — use the Role dropdown (see below) to activate it.
 
 ### Assigning/Changing Roles
 
@@ -101,7 +108,7 @@ Navigate to the "App Settings" tab within the Admin Panel. Changes here might re
 
 *   Changing **HTTP Port** or **HTTPS Port** requires a **manual restart** of the backend server process.
 *   Changing **Default Language** takes effect immediately for new sessions/users without preferences.
-*   Changing **HTTPS Paths** triggers automatic actions (reload/stop HTTPS service) but a manual restart might sometimes be beneficial if issues occur.
+*   Changing **HTTPS Paths** takes effect immediately — the server automatically reloads or stops the HTTPS configuration as needed (check server logs for confirmation); no restart required.
 
 ---
 
@@ -159,8 +166,8 @@ Navigate to the "System Logs" tab.
 
 Beyond the dedicated Admin Panel, Administrators generally have elevated permissions throughout the application:
 
-*   **Can edit/delete any Tag.**
+*   **Can edit/delete any Tag.** *(Employees can also manage tags.)*
 *   **Can edit/delete any Note.**
-*   **Can edit/delete any Signature Component (including Elements via cascade).**
+*   **Can edit/delete any Signature Component or Element.** *(Employees can create/edit components and elements and re-index them, but cannot delete.)*
 *   **Can bypass ownership checks** for viewing/editing/deleting most items (except changing their own role/password via admin routes).
 *   Can view deleted Archive items in searches (included by default; use the `Is Deleted` filter to narrow them down).

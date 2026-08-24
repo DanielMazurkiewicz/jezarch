@@ -124,10 +124,18 @@ export const signatureTranslationsEN: SignatureTranslationSet = {
   elementLoadFailedError: 'Failed to load elements',
   componentNoChangesDetected: 'No changes detected.', // Added Key
   elementBrowserSelectComponentFirst: 'Select a component first to see elements.', // Added missing key
-  signaturesHelpTitle: 'How Signatures Work',
-  signaturesHelpComponents: 'Components are classification categories (e.g., "Fonds", "Series", "Sub-series"). They define the structure of your archive system.',
-  signaturesHelpElements: 'Elements are individual items within a component (e.g., "Series A" under "Fonds X"). Elements can have parent elements from other components, forming a hierarchy.',
-  signaturesHelpRelationship: 'When you create a document in the Archive section, you assign it a "descriptive signature path" - a sequence of elements that classifies where the document belongs in the archive structure.',
+  signaturesHelpTitle: 'About Signatures',
+  signaturesHelpIntro: 'Signatures provide a classification system for your archive. They are built from components and elements and let you assign a descriptive signature path to each document.',
+  signaturesHelpComponents: 'Components are classification categories (e.g., "Fonds", "Series", "Sub-series"). Each component has an index type that determines how its elements are numbered.',
+  signaturesHelpElements: 'Elements are individual items within a component (e.g., "Series A" under "Fonds X"). Elements can reference parent elements, forming a hierarchy, and each has an index.',
+  signaturesHelpRelationship: 'When you create or edit a document in the Archive, you assign it a descriptive signature path — an ordered sequence of elements that classifies where the document belongs in the archive structure.',
+  signaturesHelpReindex: 'Re-indexing renumbers all elements in a component: they are sorted alphabetically by name and assigned new sequential indices using the component\'s index type (decimal, Roman, or letters). It also refreshes the component\'s element count. Custom indices set on elements are overwritten, so re-index after adding or renaming elements. Available to admins and employees from the Components list.',
+  signaturesHelpPermissions: 'Admins and employees can create and edit components and elements, and re-index components. Only administrators can delete components or elements.',
+  elementsHelpTitle: 'About Elements',
+  elementsHelpIntro: 'This page lists the elements of the selected component. Elements are the building blocks of descriptive signatures.',
+  elementsHelpHierarchy: 'Elements can have one or more parent elements, forming a hierarchy. Use the parent selector to link an element to its parents.',
+  elementsHelpIndex: 'Each element has an index within its component. When creating an element, leave the index empty to assign the next number automatically based on the component\'s index type, or enter a custom value. When editing, clearing the index removes the custom override. Re-indexing (from the Components page) renumbers all elements alphabetically and overwrites custom values.',
+  elementsHelpPermissions: 'Admins and employees can create and edit elements and re-index their component. Only administrators can delete elements.',
   elementFetchFailedError: 'Failed to fetch elements',
   componentNotFoundError: 'Component with ID {id} not found.',
 };

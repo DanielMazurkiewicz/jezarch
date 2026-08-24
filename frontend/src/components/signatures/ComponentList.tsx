@@ -97,7 +97,7 @@ const ComponentList: React.FC<ComponentListProps> = React.memo(({
                                         <Button variant="ghost" size="icon" onClick={(e) => { e.stopPropagation(); onPreview(component); }} title={t('previewButton', preferredLanguage)}>
                                             <Eye className="h-4 w-4" />
                                         </Button>
-                                        {isAdmin && (
+                                        {canModify && (
                                             <Button variant="ghost" size="icon" onClick={(e) => { e.stopPropagation(); onReindex(component.signatureComponentId!); }} title={t('reindexElementsButtonTooltip', preferredLanguage)}>
                                                 <ListRestart className="h-4 w-4" />
                                             </Button>

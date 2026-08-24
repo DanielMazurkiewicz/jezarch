@@ -125,9 +125,17 @@ export type SignatureTranslationKey =
   | 'componentNoChangesDetected' // Added Key
   | 'elementBrowserSelectComponentFirst' // Added missing key
   | 'signaturesHelpTitle'
+  | 'signaturesHelpIntro'
   | 'signaturesHelpComponents'
   | 'signaturesHelpElements'
   | 'signaturesHelpRelationship'
+  | 'signaturesHelpReindex'
+  | 'signaturesHelpPermissions'
+  | 'elementsHelpTitle'
+  | 'elementsHelpIntro'
+  | 'elementsHelpHierarchy'
+  | 'elementsHelpIndex'
+  | 'elementsHelpPermissions'
   | 'elementFetchFailedError'
   | 'componentNotFoundError'
   ;

@@ -15,7 +15,7 @@ Ten dokument zawiera krótki przegląd stosu technologicznego i koncepcji konfig
     *   Biblioteka: React 19
     *   Język: TypeScript
     *   Komponenty UI: [Shadcn UI](https://ui.shadcn.com/) (zbudowane na Radix UI i Tailwind CSS)
-    *   Stylizacja: Tailwind CSS (przetwarzane przez `bun-plugin-tailwind`)
+    *   Stylizacja: Tailwind CSS v4 (przetwarzane przez `bun-plugin-tailwind`)
     *   Routing: React Router DOM
     *   Formularze: React Hook Form
     *   Walidacja: Zod
@@ -52,13 +52,15 @@ Ostateczne, obowiązujące parametry używane przez działającą aplikację są
 Backend udostępnia API RESTful pod prefiksem `/api`. Kluczowe punkty końcowe zasobów obejmują:
 
 *   `/api/user/...` (Uwierzytelnianie, Zarządzanie Użytkownikami)
-*   `/api/config/...` (Konfiguracja Aplikacji)
+*   `/api/configs/...` (Konfiguracja Aplikacji)
 *   `/api/logs/...` (Logi Systemowe)
-*   `/api/tags/...` (Tagi Globalne)
+*   `/api/tag/...`, `/api/tags` (Tagi Globalne)
 *   `/api/note/...` (Notatki)
 *   `/api/signature/component/...` (Komponenty Sygnatur)
 *   `/api/signature/element/...` (Elementy Sygnatur)
 *   `/api/archive/document/...` (Dokumenty/Jednostki Archiwalne)
 *   `/api/admin/db/...` (Administracja Bazą Danych)
 
-Uwierzytelnianie odbywa się za pomocą tokena sesyjnego (UUID) przekazywanego w nagłówku `Authorization`. Tokeny sesyjne są uzyskiwane przez `POST /api/user/login` i wygrywają po 24 godzinach. Konkretne punkty końcowe wymagają różnych ról użytkownika (`admin`, `employee` lub `user`) do uzyskania dostępu.
+Uwierzytelnianie odbywa się za pomocą tokena sesyjnego (UUID) przekazywanego w nagłówku `Authorization`. Tokeny sesyjne są uzyskiwane przez `POST /api/user/login` i wygasają po 24 godzinach. Konkretne punkty końcowe wymagają różnych ról użytkownika (`admin`, `employee` lub `user`) do uzyskania dostępu.
+
+Podczas pierwszego uruchomienia aplikacja tworzy początkowe konto `admin`: hasło pochodzi ze zmiennej `JEZARCH_INITIAL_ADMIN_PASSWORD`, jeśli jest ustawiona; w przeciwnym razie generowane jest silne losowe hasło i wyświetlane jednorazowo w konsoli.

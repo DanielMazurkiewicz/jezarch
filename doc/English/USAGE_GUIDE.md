@@ -37,7 +37,7 @@ This guide covers the core functionalities of the JezArch application for differ
 ## Logging In & Registration
 
 *   **Login:** Access the application via the URL provided by your administrator (e.g., `http://localhost:8080`). Enter your username and password on the login screen.
-*   **Registration:** If registration is enabled, click the "Register" link. Provide a username and a strong password (minimum 8 characters, including uppercase, lowercase, and a number). Confirm your password. After successful registration, you will typically have no assigned role ('null') and cannot log in until an Administrator assigns you a role ('employee' or 'user').
+*   **Registration:** Click the "Register" link. Provide a username and a strong password (minimum 8 characters, including uppercase, lowercase, and a number). Confirm your password. After successful registration, you will typically have no assigned role ('null') and cannot log in until an Administrator assigns you a role ('employee' or 'user').
 
 ---
 
@@ -159,7 +159,7 @@ Manage the building blocks for descriptive signatures.
 *   **Create:** Click **New Component**. Provide a unique Name, optional Description, and choose the Index Formatting type (how element indices within this component will be displayed - Decimal, Roman, etc.).
 *   **Edit:** Click the **Edit** (pencil) icon. Modify Name, Description, or Index Type.
 *   **Delete (Admin only):** Click the **Delete** (trash can) icon. **Warning:** This permanently deletes the component AND all its elements.
-*   **Re-index (Admin only):** Click the **Re-index** (list restart) icon. This recalculates and updates the `index` field for all elements within that component based on their alphabetical order and the component's index type. Useful after adding/deleting/renaming multiple elements.
+*   **Re-index (Admin/Employee):** Click the **Re-index** (list restart) icon. This recalculates and updates the `index` field for all elements within that component based on their alphabetical order and the component's index type. Useful after adding/deleting/renaming multiple elements. Note that custom index overrides are overwritten.
 *   **Open:** Click a component row to navigate to its Elements page.
 
 ### Elements
@@ -167,8 +167,8 @@ Manage the building blocks for descriptive signatures.
 *   Access this page by clicking a component row on the Signatures page.
 *   View elements belonging to the selected parent component.
 *   **Create:** Click **New Element**. Provide a Name, optional Description. You can optionally provide a specific Index override (text, e.g., "1a", "V"), otherwise it will be auto-generated based on the component's counter and index type. Use the **Parent Elements** selector to link this element as a child of other elements (creating hierarchical relationships).
-*   **Edit:** Click the **Edit** (pencil) icon. Modify Name, Description, Index override, or Parent Elements.
-*   **Delete:** Click the **Delete** (trash can) icon.
+*   **Edit:** Click the **Edit** (pencil) icon. Modify Name, Description, Index override, or Parent Elements. Clearing the Index override removes it (the element keeps its current index until a re-index).
+*   **Delete (Admin only):** Click the **Delete** (trash can) icon. This permanently removes the element and cleans up any references to it in document signature paths.
 *   **Search:** Use the search bar to filter elements within the current component by Name, Description, Index, or whether they have parents.
 
 ---
@@ -180,8 +180,8 @@ Manage global tags used for organizing documents and notes.
 *   Navigate to **Tags**.
 *   View all existing tags.
 *   **Create:** Click **Create Tag**. Enter a Name and optional Description.
-*   **Edit (Admin only):** Click the **Edit** (pencil) icon. Modify Name or Description.
-*   **Delete (Admin only):** Click the **Delete** (trash can) icon. Confirm deletion. This removes the tag globally and from all associated items.
+*   **Edit (Admin/Employee):** Click the **Edit** (pencil) icon. Modify Name or Description.
+*   **Delete (Admin/Employee):** Click the **Delete** (trash can) icon. Confirm deletion. This removes the tag globally and from all associated items.
 
 ---
 

@@ -10,7 +10,8 @@ Ten przewodnik zawiera instrukcje dotyczące instalacji i uruchamiania aplikacji
     *   [macOS](#macos-1)
     *   [Linux](#linux-1)
 *   [Uruchamianie Aplikacji](#uruchamianie-aplikacji)
-    *   [Tryb Deweloperski](#tryb-deweloperski)
+    *   [Szybki Start (Deweloperski)](#szybki-start-deweloperski)
+    *   [Tylko Backend (Deweloperski)](#tylko-backend-deweloperski)
     *   [Tryb Produkcyjny](#tryb-produkcyjny)
 *   [Początkowa Konfiguracja](#początkowa-konfiguracja)
 
@@ -65,7 +66,21 @@ Ten przewodnik zawiera instrukcje dotyczące instalacji i uruchamiania aplikacji
 
 ---
 
-### Tryb Deweloperski
+## Uruchamianie Aplikacji
+
+Możesz uruchomić oba serwery jednym poleceniem z katalogu głównego repozytorium lub uruchamiać je osobno.
+
+### Szybki Start (Deweloperski)
+
+Z katalogu głównego repozytorium:
+
+```bash
+bun run dev
+```
+
+Polecenie to uruchamia równocześnie serwer API **backendu** i serwer deweloperski **frontendu**. Sprawdź dane wyjściowe konsoli, aby poznać adresy URL (backend domyślnie nasłuchuje na porcie HTTP 8080; serwer deweloperski frontendu wypisuje własny adres).
+
+### Tylko Backend (Deweloperski)
 
 Ten tryb wykorzystuje wbudowany mechanizm śledzenia plików Bun do automatycznego przeładowania (frontend może wymagać ręcznego odświeżenia w zależności od zmian).
 
@@ -82,6 +97,8 @@ Ten tryb wykorzystuje wbudowany mechanizm śledzenia plików Bun do automatyczne
     *   Backend serwuje pliki frontendu z katalogu `frontend/dist` (skrypt budujący frontend umieszcza tam pliki).
 
 3.  Otwórz aplikację w przeglądarce pod adresem `http://localhost:8080` (lub skonfigurowanym portem).
+
+> **Uwaga:** W tym trybie musisz co najmniej raz zbudować frontend (`cd frontend && bun run build`), aby katalog `frontend/dist` istniał — w przeciwnym razie dostępne będzie tylko API.
 
 ---
 
@@ -116,7 +133,7 @@ W trybie produkcyjnym zazwyczaj buduje się zoptymalizowane zasoby frontendu i u
         cd backend
         bun run src/main.ts [opcjonalne --argumenty]
         ```
-    *   Zastąp `[opcjonalne --argumenty]` dowolnymi potrzebnymi argumentami linii poleceń (np. `--http-port 80`, `--https-key-path /sciezka/do/klucza`). Zobacz [Konfiguracja](#konfiguracja) (link TBD lub wspomnij, gdzie dokumentacja konfiguracji) dla dostępnych argumentów.
+    *   Zastąp `[opcjonalne --argumenty]` dowolnymi potrzebnymi argumentami linii poleceń (np. `--http-port 80`, `--https-key-path /sciezka/do/klucza`). Pełna lista znajduje się w sekcji "Argumenty Linii Poleceń" (Command Line Arguments) pliku [REQUIREMENTS.md](../../REQUIREMENTS.md).
 
 4.  Otwórz aplikację w przeglądarce pod skonfigurowanym adresem URL i portem produkcyjnym.
 
@@ -125,7 +142,19 @@ W trybie produkcyjnym zazwyczaj buduje się zoptymalizowane zasoby frontendu i u
 ## Początkowa Konfiguracja
 
 *   Przy pierwszym uruchomieniu aplikacja utworzy plik bazy danych SQLite (np. `jezarch.sqlite.db` w katalogu `backend`, chyba że skonfigurowano inaczej).
-*   Domyślny użytkownik administratora jest tworzony z następującymi danymi logowania:
+*   Początkowe konto administratora jest tworzone automatycznie:
     *   **Login:** `admin`
-    *   **Hasło:** `admin`
-*   **Zdecydowanie zaleca się natychmiastowe zalogowanie i zmianę domyślnego hasła administratora.** Użyj opcji "Zmień hasło" w menu użytkownika w nagłówku.
+    *   **Hasło:** pobierane ze zmiennej środowiskowej `JEZARCH_INITIAL_ADMIN_PASSWORD`, jeśli jest ustawiona; w przeciwnym razie generowane jest silne losowe hasło i **wyświetlane jednorazowo w konsoli serwera** podczas startu.
+*   **Skopiuj wygenerowane hasło natychmiast — nie zostanie pokazane ponownie.** Później możesz je zmienić opcją "Zmień hasło" w menu użytkownika w nagłówku.
+
+### Wypełnianie Danymi Demo (Opcjonalne)
+
+Backend udostępnia skrypty, które przez API zapełniają świeżo zainstalowaną instancję przykładową zawartością (serwer musi być uruchomiony):
+
+```bash
+cd backend
+SEED_ADMIN_PASSWORD=<haslo-admina> bun run seed      # dane demo po angielsku
+SEED_ADMIN_PASSWORD=<haslo-admina> bun run seed:pl   # dane demo po polsku
+```
+
+Hasło administratora jest odczytywane ze zmiennej `SEED_ADMIN_PASSWORD`, z argumentu CLI podanego po opcjonalnym adresie serwera (`bun run seed [adres] [haslo-admina]`), lub z `JEZARCH_INITIAL_ADMIN_PASSWORD`, jeśli serwer został z nim uruchomiony.

@@ -37,7 +37,7 @@ Ten przewodnik opisuje podstawowe funkcjonalności aplikacji JezArch dla różny
 ## Logowanie i Rejestracja
 
 *   **Logowanie:** Wejdź do aplikacji pod adresem URL podanym przez administratora (np. `http://localhost:8080`). Wprowadź swoją nazwę użytkownika i hasło na ekranie logowania.
-*   **Rejestracja:** Jeśli rejestracja jest włączona, kliknij link "Zarejestruj się". Podaj nazwę użytkownika i silne hasło (minimum 8 znaków, w tym wielka litera, mała litera i cyfra). Potwierdź hasło. Po pomyślnej rejestracji zazwyczaj nie będziesz miał przypisanej żadnej roli ('null') i nie będziesz mógł się zalogować, dopóki Administrator nie przypisze Ci roli ('pracownik' lub 'użytkownik').
+*   **Rejestracja:** Kliknij link "Zarejestruj się". Podaj nazwę użytkownika i silne hasło (minimum 8 znaków, w tym wielka litera, mała litera i cyfra). Potwierdź hasło. Po pomyślnej rejestracji zazwyczaj nie będziesz miał przypisanej żadnej roli ('null') i nie będziesz mógł się zalogować, dopóki Administrator nie przypisze Ci roli ('pracownik' lub 'użytkownik').
 
 ---
 
@@ -149,6 +149,8 @@ Domyślna strona po zalogowaniu. Wyświetla wiadomość powitalną. Użytkownicy
 
 ## Sygnatury (Admin/Pracownik)
 
+Zarządzaj elementami składowymi sygnatur opisowych.
+
 ### Komponenty
 
 *   Przejdź do sekcji **Sygnatury**.
@@ -156,7 +158,7 @@ Domyślna strona po zalogowaniu. Wyświetla wiadomość powitalną. Użytkownicy
 *   **Tworzenie:** Kliknij **Nowy Komponent**. Podaj unikalną Nazwę, opcjonalny Opis i wybierz Typ Formatowania Indeksu (jak będą wyświetlane indeksy elementów w tym komponencie - Dziesiętny, Rzymski itp.).
 *   **Edycja:** Kliknij ikonę **Edytuj** (ołówek). Zmodyfikuj Nazwę, Opis lub Typ Indeksu.
 *   **Usuwanie (Tylko Admin):** Kliknij ikonę **Usuń** (kosz). **Ostrzeżenie:** To trwale usuwa komponent ORAZ wszystkie jego elementy.
-*   **Reindeksacja (Tylko Admin):** Kliknij ikonę **Reindeksuj** (lista restart). Przelicza i aktualizuje pole `index` dla wszystkich elementów w tym komponencie w oparciu o ich kolejność alfabetyczną i typ indeksu komponentu. Przydatne po dodaniu/usunięciu/zmianie nazwy wielu elementów.
+*   **Reindeksacja (Admin/Pracownik):** Kliknij ikonę **Reindeksuj** (lista restart). Przelicza i aktualizuje pole `index` dla wszystkich elementów w tym komponencie w oparciu o ich kolejność alfabetyczną i typ indeksu komponentu. Przydatne po dodaniu/usunięciu/zmianie nazwy wielu elementów. Uwaga: własne indeksy elementów zostaną nadpisane.
 *   **Otwórz:** Kliknij wiersz komponentu, aby przejść do strony jego Elementów.
 
 ### Elementy
@@ -164,8 +166,8 @@ Domyślna strona po zalogowaniu. Wyświetla wiadomość powitalną. Użytkownicy
 *   Przejdź na tę stronę, klikając wiersz komponentu na stronie Sygnatury.
 *   Wyświetl elementy należące do wybranego komponentu nadrzędnego.
 *   **Tworzenie:** Kliknij **Nowy Element**. Podaj Nazwę, opcjonalny Opis. Możesz opcjonalnie podać konkretny Indeks (tekst, np. "1a", "V"), w przeciwnym razie zostanie on wygenerowany automatycznie na podstawie licznika komponentu i typu indeksu. Użyj selektora **Elementy Nadrzędne**, aby połączyć ten element jako dziecko innych elementów (tworząc relacje hierarchiczne).
-*   **Edycja:** Kliknij ikonę **Edytuj** (ołówek). Zmodyfikuj Nazwę, Opis, Indeks lub Elementy Nadrzędne.
-*   **Usuwanie:** Kliknij ikonę **Usuń** (kosz).
+*   **Edycja:** Kliknij ikonę **Edytuj** (ołówek). Zmodyfikuj Nazwę, Opis, Indeks lub Elementy Nadrzędne. Wyczyszczenie pola Indeks usuwa własną wartość (element zachowa bieżący indeks do czasu reindeksacji).
+*   **Usuwanie (Tylko Admin):** Kliknij ikonę **Usuń** (kosz). To trwale usuwa element i czyści odwołania do niego w ścieżkach sygnatur dokumentów.
 *   **Wyszukiwanie:** Użyj paska wyszukiwania, aby filtrować elementy w bieżącym komponencie według Nazwy, Opisu, Indeksu lub tego, czy mają elementy nadrzędne.
 
 ---
@@ -177,12 +179,14 @@ Zarządzaj globalnymi tagami używanymi do organizacji dokumentów i notatek.
 *   Przejdź do sekcji **Tagi**.
 *   Wyświetl wszystkie istniejące tagi.
 *   **Tworzenie:** Kliknij **Utwórz Tag**. Wprowadź Nazwę i opcjonalny Opis.
-*   **Edycja (Tylko Admin):** Kliknij ikonę **Edytuj** (ołówek). Zmodyfikuj Nazwę lub Opis.
-*   **Usuwanie (Tylko Admin):** Kliknij ikonę **Usuń** (kosz). Potwierdź usunięcie. Spowoduje to globalne usunięcie taga i usunięcie go ze wszystkich powiązanych elementów.
+*   **Edycja (Admin/Pracownik):** Kliknij ikonę **Edytuj** (ołówek). Zmodyfikuj Nazwę lub Opis.
+*   **Usuwanie (Admin/Pracownik):** Kliknij ikonę **Usuń** (kosz). Potwierdź usunięcie. Spowoduje to globalne usunięcie taga i usunięcie go ze wszystkich powiązanych elementów.
 
 ---
 
 ## Notatki (Admin/Pracownik)
+
+Twórz i zarządzaj osobistymi oraz udostępnionymi notatkami.
 
 ### Przeglądanie i Wyszukiwanie
 

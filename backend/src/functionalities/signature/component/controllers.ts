@@ -187,8 +187,8 @@ export const deleteComponentController = async (req: BunRequest<":id">) => {
 export const reindexComponentElementsController = async (req: BunRequest<":id">) => {
     const sessionAndUser = await getSessionAndUser(req);
     if (!sessionAndUser) return new Response("Unauthorized", { status: 401 });
-    // Only admins should re-index
-    if (!isAllowedRole(sessionAndUser, 'admin')) return new Response("Forbidden", { status: 403 });
+    // Admins and employees may re-index
+    if (!isAllowedRole(sessionAndUser, 'admin', 'employee')) return new Response("Forbidden", { status: 403 });
 
     let componentId: number | null = null; // For logging
 

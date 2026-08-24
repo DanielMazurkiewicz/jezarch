@@ -14,6 +14,18 @@ bun run build
 bun run ./dist/server.js
 ```
 
+On first start the SQLite database is created and an initial `admin` account is bootstrapped: the password comes from `JEZARCH_INITIAL_ADMIN_PASSWORD` if set, otherwise a strong random password is printed once to the console.
+
+### Seeding Demo Data (Optional)
+
+With a running server, populate the instance with demo content (users, tags, signatures, documents, notes):
+
+```bash
+SEED_ADMIN_PASSWORD=<admin-password> bun run seed      # English demo data
+SEED_ADMIN_PASSWORD=<admin-password> bun run seed:pl   # Polish demo data
+# or: bun run seed [server-url] [admin-password]
+```
+
 ---
 
 # JezArch Backend API Documentation
@@ -56,8 +68,8 @@ Tokens are obtained via `POST /api/user/login` and expire after 24 hours.
 
 | Role | Description |
 |------|-------------|
-| `admin` | Full access: user management, configuration, deleting any resource, re-indexing signatures, viewing all logs, managing archive documents. |
-| `employee` | Can manage archive documents, signature components/elements, tags, and notes. Cannot delete components or re-index. |
+| `admin` | Full access: user management, configuration, deleting components/elements, viewing all logs, managing archive documents. |
+| `employee` | Can manage archive documents, signature components/elements (create, edit, re-index), tags, and notes. Cannot delete signature components or elements. |
 | `user` | Restricted: can only view/search archive documents filtered by tags assigned by an administrator. |
 
 Users with `null` role cannot log in (account disabled).
@@ -216,7 +228,7 @@ Response `204 No Content`
 
 ---
 
-**`GET /api/users/all`** — List all users. Requires authentication (any role).
+**`GET /api/users/all`** — List all users. Requires authentication (admin only).
 
 Response `200 OK`:
 ```json
@@ -388,19 +400,19 @@ Response `200 OK`: `{"message": "Note updated successfully"}`
 
 ---
 
-**`DELETE /api/note/id/:noteId`** — Delete a note. Requires authentication (admin only). Associated tag links removed via cascade.
+**`DELETE /api/note/id/:noteId`** — Delete a note. Requires authentication (admin or employee). Must be the owner or an admin. Associated tag links removed via cascade.
 
 Response `200 OK`: `{"message": "Note deleted successfully"}`
 
 ---
 
-**`GET /api/notes/by-login/:login`** — Get all notes owned by a user. Requires authentication (admin or employee).
+**`GET /api/notes/by-login/:login`** — Get all notes owned by a user. Requires authentication (admin, or the same user for their own notes).
 
 Response `200 OK`: Array of note objects.
 
 ---
 
-**`POST /api/notes/search`** — Search notes. Requires authentication (admin or employee).
+**`POST /api/notes/search`** — Search notes. Requires authentication (admin or employee). Only the user's own notes and shared notes are returned (admins see shared notes as well as their own).
 
 Allowed fields: `title`, `content`, `shared`, `ownerUserId`, `createdOn`, `modifiedOn`.
 
@@ -446,7 +458,7 @@ Response `200 OK`: Tag object.
 
 ---
 
-**`PATCH /api/tag/id/:tagId`** — Update a tag. Requires authentication (admin only). Name must remain unique.
+**`PATCH /api/tag/id/:tagId`** — Update a tag. Requires authentication (admin or employee). Name must remain unique.
 
 Request body:
 ```json
@@ -460,7 +472,7 @@ Response `200 OK`: Updated tag object.
 
 ---
 
-**`DELETE /api/tag/id/:tagId`** — Delete a tag. Requires authentication (admin only). Association links removed via cascade.
+**`DELETE /api/tag/id/:tagId`** — Delete a tag. Requires authentication (admin or employee). Association links removed via cascade.
 
 Response `200 OK`: `{"message": "Tag deleted successfully"}`
 
@@ -549,7 +561,7 @@ Response `200 OK`:
 
 ### 7. Signature Component Management
 
-**`PUT /api/signature/component`** — Create a new component. Requires authentication (admin only).
+**`PUT /api/signature/component`** — Create a new component. Requires authentication (admin or employee).
 
 Request body:
 ```json
@@ -580,7 +592,7 @@ Response `200 OK`: Component object.
 
 ---
 
-**`PATCH /api/signature/component/:id`** — Update a component. Requires authentication (admin only). Name must remain unique.
+**`PATCH /api/signature/component/:id`** — Update a component. Requires authentication (admin or employee). Name must remain unique.
 
 Request body:
 ```json
@@ -601,7 +613,7 @@ Response `204 No Content`
 
 ---
 
-**`POST /api/signature/components/id/:id/reindex`** — Recalculate all element indices within a component. Requires authentication (admin only). Sorts elements alphabetically and assigns indices based on the component's `index_type`.
+**`POST /api/signature/components/id/:id/reindex`** — Recalculate all element indices within a component. Requires authentication (admin or employee). Sorts elements alphabetically and assigns sequential indices based on the component's `index_type`, then updates the component's `index_count`. Custom element indices are overwritten.
 
 Response `200 OK`:
 ```json

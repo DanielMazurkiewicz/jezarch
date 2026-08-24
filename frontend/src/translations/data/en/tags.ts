@@ -15,12 +15,16 @@ export const tagsTranslationsEN: TagsTranslationSet = {
   tagsDeleteSuccess: 'Tag "{tagName}" deleted successfully.',
   tagsDeleteFailed: 'Failed to delete tag: {message}',
   tagsSaveFailed: 'Failed to save tag: {message}',
-  tagsPermissionErrorEdit: 'Only administrators can edit tags.',
-  tagsPermissionErrorDelete: 'Only administrators can delete tags.',
+  tagsPermissionErrorEdit: 'You do not have permission to manage tags.',
+  tagsPermissionErrorDelete: 'You do not have permission to delete tags.',
   // New Tags Keys
   tagLoadFailedError: 'Failed to load tags',
   tagSaveSuccess: 'Tag {action} successfully.',
   tagsLoadErrorPlaceholder: 'Could not load tags. Please try again later.',
   tagSavedCreated: 'Tag created successfully.',
   tagSavedUpdated: 'Tag updated successfully.',
+  tagsHelpTitle: 'About Tags',
+  tagsHelpIntro: 'Tags are labels you apply to documents and notes to organize and filter them. Tags are global — defined once and reused everywhere.',
+  tagsHelpAccess: 'Tags also control access for the restricted user role: an admin assigns specific tags to a user, and that user can only view documents carrying those tags.',
+  tagsHelpPermissions: 'Admins and employees can create, edit, and delete tags. Deleting a tag removes it from all documents and notes.',
 };

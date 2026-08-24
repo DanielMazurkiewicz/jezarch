@@ -12,7 +12,8 @@ import api from '@/lib/api';
 import type { NoteInput, NoteWithDetails } from '../../../../backend/src/functionalities/note/models';
 import type { Tag } from '../../../../backend/src/functionalities/tag/models';
 import type { SearchRequest, SearchResponse, SearchQueryElement } from '../../../../backend/src/utils/search';
-import { PlusCircle } from 'lucide-react'; // Removed unused X icon
+import { PlusCircle, HelpCircle } from 'lucide-react'; // Removed unused X icon
+import HelpDialog, { HelpSection } from '@/components/shared/HelpDialog';
 import { toast } from "sonner";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import NotePreviewDialog from './NotePreviewDialog'; // Import the extracted component
@@ -29,6 +30,7 @@ const NotesPage: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [editingNote, setEditingNote] = useState<NoteWithDetails | null>(null);
   const [isEditorOpen, setIsEditorOpen] = useState(false);
+  const [helpOpen, setHelpOpen] = useState(false);
 
   // --- State for Preview ---
   const [previewingNote, setPreviewingNote] = useState<NoteWithDetails | null>(null);
@@ -188,8 +190,8 @@ const NotesPage: React.FC = () => {
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
             <div>
                  <h1 className="text-2xl font-bold">{t('notesTitle', preferredLanguage)}</h1>
-                 <p className='text-muted-foreground'>{t('notesDescription', preferredLanguage)}</p>
             </div>
+            <div className='flex items-center gap-2 flex-wrap justify-end'>
             <Dialog open={isEditorOpen} onOpenChange={setIsEditorOpen}>
             <DialogTrigger asChild>
                 <Button onClick={handleCreateNew} className='shrink-0'>
@@ -204,6 +206,10 @@ const NotesPage: React.FC = () => {
                 {isEditorOpen && <NoteEditor noteToEdit={editingNote} onSave={handleSaveSuccess} />}
             </DialogContent>
             </Dialog>
+            <Button variant="ghost" size="sm" onClick={() => setHelpOpen(true)} title={t('helpButton', preferredLanguage)}>
+                <HelpCircle className="mr-2 h-4 w-4" /> {t('helpButton', preferredLanguage)}
+            </Button>
+            </div>
         </div>
 
        {/* Search Bar Section */}
@@ -254,8 +260,20 @@ const NotesPage: React.FC = () => {
              onEdit={handleEdit}
              onDelete={handleDelete}
           />
-         {/* --- End Preview Dialog --- */}
-    </div>
+          {/* --- End Preview Dialog --- */}
+
+          <HelpDialog
+              isOpen={helpOpen}
+              onOpenChange={setHelpOpen}
+              title={t('notesHelpTitle', preferredLanguage)}
+              sections={[
+                  { body: t('notesHelpIntro', preferredLanguage) },
+                  { heading: t('notesSharedColumn', preferredLanguage), body: t('notesHelpSharing', preferredLanguage) },
+                  { heading: t('deleteButton', preferredLanguage), body: t('notesHelpDeleting', preferredLanguage) },
+                  { heading: t('permissionsLabel', preferredLanguage), body: t('notesHelpPermissions', preferredLanguage) },
+              ] as HelpSection[]}
+          />
+     </div>
   );
 };
 

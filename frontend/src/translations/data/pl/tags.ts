@@ -15,12 +15,16 @@ export const tagsTranslationsPL: TagsTranslationSet = {
   tagsDeleteSuccess: 'Tag "{tagName}" usunięty pomyślnie.',
   tagsDeleteFailed: 'Nie udało się usunąć taga: {message}',
   tagsSaveFailed: 'Nie udało się zapisać taga: {message}',
-  tagsPermissionErrorEdit: 'Tylko administratorzy mogą edytować tagi.',
-  tagsPermissionErrorDelete: 'Tylko administratorzy mogą usuwać tagi.',
+  tagsPermissionErrorEdit: 'Nie masz uprawnień do zarządzania tagami.',
+  tagsPermissionErrorDelete: 'Nie masz uprawnień do usuwania tagów.',
   // New Tags PL Keys
   tagLoadFailedError: 'Nie udało się załadować tagów',
   tagSaveSuccess: 'Tag {action} pomyślnie.', // action: utworzono/zaktualizowano
   tagsLoadErrorPlaceholder: 'Nie udało się załadować tagów. Spróbuj ponownie później.',
   tagSavedCreated: 'Tag został pomyślnie utworzony.',
   tagSavedUpdated: 'Tag został pomyślnie zaktualizowany.',
+  tagsHelpTitle: 'O tagach',
+  tagsHelpIntro: 'Tagi to etykiety nadawane dokumentom i notatom w celu ich organizowania i filtrowania. Tagi są globalne — zdefiniowane raz i wielokrotnie używane.',
+  tagsHelpAccess: 'Tagi kontrolują również dostęp dla ograniczonej roli użytkownika: administrator przypisuje użytkownikowi określone tagi, a ten użytkownik widzi tylko dokumenty oznaczone tymi tagami.',
+  tagsHelpPermissions: 'Administratorzy i pracownicy mogą tworzyć, edytować i usuwać tagi. Usunięcie tagu usuwa go ze wszystkich dokumentów i notatek.',
 };

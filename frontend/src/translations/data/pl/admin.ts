@@ -121,4 +121,10 @@ export const adminTranslationsPL: AdminTranslationSet = {
   createUserFailedErrorAdmin: 'Nie udało się utworzyć użytkownika.',
   logsFetchFailedError: 'Nie udało się pobrać logów',
   languagePreferenceSaveFailedError: 'Nie udało się zapisać preferencji języka: {message}',
+  adminHelpTitle: 'O panelu administratora',
+  adminHelpIntro: 'Panel administratora to miejsce, w którym zarządzasz samym oprogramowaniem. Jest dostępny tylko dla roli administratora.',
+  adminHelpUsers: 'Twórz użytkowników i przypisuj role (administrator, pracownik, użytkownik lub brak). Ustawiaj hasła i preferowany język oraz — dla ograniczonej roli użytkownika — przypisuj tagi kontrolujące, które dokumenty archiwalne mogą widzieć.',
+  adminHelpSettings: 'Konfiguruj domyślny język, porty HTTP/HTTPS oraz ścieżki certyfikatów HTTPS/SSL. Zmiana portów wymaga ręcznego restartu serwera; zmiany ścieżek certyfikatów działają natychmiast, bez restartu.',
+  adminHelpDatabase: 'Pobierz pełną kopię zapasową bazy SQLite. Aby przywrócić, zatrzymaj serwer, zamień plik bazy danych na swoją kopię zapasową i uruchom ponownie.',
+  adminHelpLogs: 'Przeglądaj, filtruj i wyszukiwaj zdarzenia systemowe, błędy i ostrzeżenia oraz czyść wpisy starsze niż ustalona liczba dni.',
 };

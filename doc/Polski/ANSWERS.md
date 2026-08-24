@@ -96,10 +96,11 @@ To było ograniczenie, które zostało naprawione. Teraz zarówno rola **admin**
 - Edytować komponenty
 - Tworzyć i edytować elementy
 - Przeglądać podgląd komponentów i elementów
+- Reindeksować elementy (przelicza wszystkie indeksy)
 
 **Tylko admin** może:
 - Usuwać komponenty (destrukcyjne - kaskadowo do wszystkich elementów)
-- Reindeksować elementy (przelicza wszystkie indeksy)
+- Usuwać elementy (destrukcyjne - czyści odwołania w ścieżkach sygnatur dokumentów)
 
 ### Dlaczego pracownicy nie mają dostępu do sekcji Sygnatury? (#28)
 
@@ -135,7 +136,7 @@ Tak, wszystkie główne sekcje mają teraz:
 |--------|---------|----------|
 | Archiwum | DocumentPreviewDialog | Miękkie usunięcie / przywracanie (soft delete) |
 | Komponenty | ComponentPreviewDialog | Twarde usuwanie tylko dla admina |
-| Elementy | ElementPreviewDialog | Usuwanie dla admina/pracownika |
+| Elementy | ElementPreviewDialog | Twarde usuwanie tylko dla admina |
 | Tagi | Formularz edycji służy jako podgląd | Usuwanie z potwierdzeniem |
 | Notatki | NotePreviewDialog | Usuwanie z potwierdzeniem |
 

@@ -13,8 +13,8 @@ import api from '@/lib/api';
 import type { SignatureComponent } from '../../../../backend/src/functionalities/signature/component/models';
 import { toast } from "sonner";
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/components/ui/card';
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { Info } from 'lucide-react';
+import { HelpCircle } from 'lucide-react';
+import HelpDialog, { HelpSection } from '@/components/shared/HelpDialog';
 import { t } from '@/translations/utils'; // Import translation utility
 
 // Renamed from SignaturesPage to ComponentsPage
@@ -32,6 +32,7 @@ const ComponentsPage: React.FC = () => {
     const [isComponentFormOpen, setIsComponentFormOpen] = useState(false);
     const [previewingComponent, setPreviewingComponent] = useState<SignatureComponent | null>(null);
     const [isPreviewOpen, setIsPreviewOpen] = useState(false);
+    const [helpOpen, setHelpOpen] = useState(false);
 
     // --- Component Logic ---
 
@@ -102,7 +103,6 @@ const ComponentsPage: React.FC = () => {
     }, [isAdmin, token, fetchComponents, preferredLanguage]); // Add preferredLanguage
 
     const handleReindexComponent = useCallback(async (componentId: number) => {
-        if (!isAdmin) { toast.error(t('componentAdminRequiredError', preferredLanguage)); return; }
         if (!token) { toast.error(t('componentAuthTokenMissingError', preferredLanguage)); return; }
         if (!window.confirm(t('confirmReindexComponentMessage', preferredLanguage, { componentId }))) return;
 
@@ -119,7 +119,7 @@ const ComponentsPage: React.FC = () => {
             setIsComponentsLoading(false); // Stop loading on error
         }
         // Loading state will be reset by fetchComponents on success
-    }, [isAdmin, token, fetchComponents, preferredLanguage]); // Add preferredLanguage
+    }, [token, fetchComponents, preferredLanguage]); // Add preferredLanguage
 
     const handleComponentSaveSuccess = useCallback(() => {
         setIsComponentFormOpen(false);
@@ -141,19 +141,7 @@ const ComponentsPage: React.FC = () => {
             <div>
                  {/* Use translated title and description */}
                 <h1 className="text-2xl font-bold">{t('signaturesTitle', preferredLanguage)}</h1>
-                <p className='text-muted-foreground'>{t('signaturesDescription', preferredLanguage)}</p>
             </div>
-
-            {/* Help Panel */}
-            <Alert>
-                <Info className="h-4 w-4" />
-                <AlertTitle>{t('signaturesHelpTitle', preferredLanguage)}</AlertTitle>
-                <AlertDescription className="mt-2 space-y-1 text-sm">
-                    <p><strong>{t('componentsTitle', preferredLanguage)}:</strong> {t('signaturesHelpComponents', preferredLanguage)}</p>
-                    <p><strong>{t('elementsTitle', preferredLanguage)}:</strong> {t('signaturesHelpElements', preferredLanguage)}</p>
-                    <p><strong>{t('archiveTitle', preferredLanguage)}:</strong> {t('signaturesHelpRelationship', preferredLanguage)}</p>
-                </AlertDescription>
-            </Alert>
 
             {/* Components Section */}
             <Card>
@@ -164,26 +152,31 @@ const ComponentsPage: React.FC = () => {
                              <CardTitle>{t('componentsTitle', preferredLanguage)}</CardTitle>
                              <CardDescription>{t('clickComponentToViewElements', preferredLanguage)}</CardDescription>
                          </div>
-                          {canModify ? (
-                              <Dialog open={isComponentFormOpen} onOpenChange={setIsComponentFormOpen}>
-                                  <DialogTrigger asChild>
-                                      {/* Use translated button text */}
-                                      <Button onClick={handleCreateComponent} size="sm" className='shrink-0'>
-                                          <PlusCircle className="mr-2 h-4 w-4" /> {t('newComponentButton', preferredLanguage)}
-                                      </Button>
-                                  </DialogTrigger>
-                                  <DialogContent className="sm:max-w-[500px]">
-                                       {/* Use translated dialog title */}
-                                       <DialogHeader><DialogTitle>{editingComponent ? t('editComponentDialogTitle', preferredLanguage) : t('createComponentDialogTitle', preferredLanguage)}</DialogTitle><DialogDescription className="sr-only">{editingComponent ? t('editComponentDialogTitle', preferredLanguage) : t('createComponentDialogTitle', preferredLanguage)}</DialogDescription></DialogHeader>
-                                      <ComponentForm componentToEdit={editingComponent} onSave={handleComponentSaveSuccess} />
-                                  </DialogContent>
-                              </Dialog>
-                          ) : (
-                              <Button size="sm" className='shrink-0' disabled title={t('insufficientPermissionsError', preferredLanguage)}>
-                                 <PlusCircle className="mr-2 h-4 w-4" /> {t('newComponentButton', preferredLanguage)}
-                              </Button>
-                          )}
-                     </div>
+                          <div className='flex items-center gap-2 flex-wrap justify-end'>
+                           {canModify ? (
+                               <Dialog open={isComponentFormOpen} onOpenChange={setIsComponentFormOpen}>
+                                   <DialogTrigger asChild>
+                                       {/* Use translated button text */}
+                                       <Button onClick={handleCreateComponent} size="sm" className='shrink-0'>
+                                           <PlusCircle className="mr-2 h-4 w-4" /> {t('newComponentButton', preferredLanguage)}
+                                       </Button>
+                                   </DialogTrigger>
+                                   <DialogContent className="sm:max-w-[500px]">
+                                        {/* Use translated dialog title */}
+                                        <DialogHeader><DialogTitle>{editingComponent ? t('editComponentDialogTitle', preferredLanguage) : t('createComponentDialogTitle', preferredLanguage)}</DialogTitle><DialogDescription className="sr-only">{editingComponent ? t('editComponentDialogTitle', preferredLanguage) : t('createComponentDialogTitle', preferredLanguage)}</DialogDescription></DialogHeader>
+                                       <ComponentForm componentToEdit={editingComponent} onSave={handleComponentSaveSuccess} />
+                                   </DialogContent>
+                               </Dialog>
+                           ) : (
+                               <Button size="sm" className='shrink-0' disabled title={t('insufficientPermissionsError', preferredLanguage)}>
+                                  <PlusCircle className="mr-2 h-4 w-4" /> {t('newComponentButton', preferredLanguage)}
+                               </Button>
+                           )}
+                           <Button variant="ghost" size="sm" onClick={() => setHelpOpen(true)} title={t('helpButton', preferredLanguage)}>
+                               <HelpCircle className="mr-2 h-4 w-4" /> {t('helpButton', preferredLanguage)}
+                           </Button>
+                          </div>
+                      </div>
                 </CardHeader>
                 <CardContent>
                     {componentsError && <ErrorDisplay message={componentsError} />}
@@ -214,6 +207,20 @@ const ComponentsPage: React.FC = () => {
                 component={previewingComponent}
                 onEdit={handleEditComponent}
                 onDelete={handleDeleteComponent}
+            />
+
+            <HelpDialog
+                isOpen={helpOpen}
+                onOpenChange={setHelpOpen}
+                title={t('signaturesHelpTitle', preferredLanguage)}
+                sections={[
+                    { body: t('signaturesHelpIntro', preferredLanguage) },
+                    { heading: t('componentsTitle', preferredLanguage), body: t('signaturesHelpComponents', preferredLanguage) },
+                    { heading: t('elementsTitle', preferredLanguage), body: t('signaturesHelpElements', preferredLanguage) },
+                    { heading: t('archiveTitle', preferredLanguage), body: t('signaturesHelpRelationship', preferredLanguage) },
+                    { heading: t('reindexButton', preferredLanguage), body: t('signaturesHelpReindex', preferredLanguage) },
+                    { heading: t('permissionsLabel', preferredLanguage), body: t('signaturesHelpPermissions', preferredLanguage) },
+                ] as HelpSection[]}
             />
 
         </div>

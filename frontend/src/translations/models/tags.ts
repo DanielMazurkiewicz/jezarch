@@ -23,6 +23,10 @@ export type TagsTranslationKey =
   | 'tagSavedCreated'
   | 'tagSavedUpdated' // Added Key
   | 'tagsLoadErrorPlaceholder' // Added Key
+  | 'tagsHelpTitle'
+  | 'tagsHelpIntro'
+  | 'tagsHelpAccess'
+  | 'tagsHelpPermissions'
   ;
 
 export type TagsTranslationSet = TranslationSet<TagsTranslationKey>;

@@ -155,9 +155,12 @@ export type ArchiveTranslationKey =
   | 'createdBySearchLabel' // New key
   | 'updatedBySearchLabel' // New key
   | 'archiveHelpTitle'
+  | 'archiveHelpIntro'
   | 'archiveHelpUnits'
   | 'archiveHelpDocuments'
   | 'archiveHelpSignatures'
+  | 'archiveHelpPermissions'
+  | 'archiveHelpDeleted'
   | 'quickFilterEnableLabel'
   ;
 

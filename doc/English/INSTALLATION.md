@@ -10,7 +10,8 @@ This guide provides instructions for installing and running the JezArch applicat
     *   [macOS](#macos)
     *   [Linux](#linux)
 *   [Running the Application](#running-the-application)
-    *   [Development Mode](#development-mode)
+    *   [Quick Start (Development)](#quick-start-development)
+    *   [Backend Only (Development)](#backend-only-development)
     *   [Production Mode](#production-mode)
 *   [Initial Setup](#initial-setup)
 
@@ -67,9 +68,19 @@ This guide provides instructions for installing and running the JezArch applicat
 
 ## Running the Application
 
-You need to run the **backend** server. The frontend is served statically by the backend.
+You can either start both servers with one command from the repository root, or run them individually.
 
-### Development Mode
+### Quick Start (Development)
+
+From the repository root:
+
+```bash
+bun run dev
+```
+
+This starts the **backend** API server and the **frontend** development server concurrently. Check the console output for the URLs (backend defaults to HTTP 8080; the frontend dev server prints its own address and proxies/builds on the fly).
+
+### Backend Only (Development)
 
 This mode uses Bun's built-in file watcher for hot reloading (frontend might require manual refresh depending on changes).
 
@@ -86,6 +97,8 @@ This mode uses Bun's built-in file watcher for hot reloading (frontend might req
     *   The backend serves the frontend files from the `frontend/dist` directory (the frontend build script places files there).
 
 3.  Access the application in your browser at `http://localhost:8080` (or the configured port).
+
+> **Note:** In this mode you need to build the frontend at least once (`cd frontend && bun run build`) so that `frontend/dist` exists, otherwise only the API will be available.
 
 ### Production Mode
 
@@ -118,7 +131,7 @@ For production, you typically build optimized frontend assets and run the backen
         cd backend
         bun run src/main.ts [optional --arguments]
         ```
-    *   Replace `[optional --arguments]` with any command-line arguments needed (e.g., `--http-port 80`, `--https-key-path /path/to/key`). See [Configuration](#configuration) (link TBD or mention where config is documented) for available arguments.
+    *   Replace `[optional --arguments]` with any command-line arguments needed (e.g., `--http-port 80`, `--https-key-path /path/to/key`). The full list is documented in the "Command Line Arguments" section of the root [REQUIREMENTS.md](../../REQUIREMENTS.md).
 
 4.  Access the application in your browser at the configured production URL and port.
 
@@ -127,7 +140,19 @@ For production, you typically build optimized frontend assets and run the backen
 ## Initial Setup
 
 *   On the first run, the application will create the SQLite database file (e.g., `jezarch.sqlite.db` in the `backend` directory, unless configured otherwise).
-*   A default administrator user is created with the following credentials:
+*   An initial administrator account is created automatically:
     *   **Login:** `admin`
-    *   **Password:** `admin`
-*   **It is strongly recommended to log in immediately and change the default admin password.** Use the "Change Password" option in the user dropdown menu in the header.
+    *   **Password:** taken from the `JEZARCH_INITIAL_ADMIN_PASSWORD` environment variable if set; otherwise a strong random password is generated and **printed once to the server console** during startup.
+*   **Copy the generated password immediately — it is not shown again.** You can change it later with the "Change Password" option in the user dropdown menu in the header.
+
+### Seeding Demo Data (Optional)
+
+The backend provides scripts that populate a freshly installed instance with demo content via the API (the server must be running):
+
+```bash
+cd backend
+SEED_ADMIN_PASSWORD=<admin-password> bun run seed      # English demo data
+SEED_ADMIN_PASSWORD=<admin-password> bun run seed:pl   # Polish demo data
+```
+
+The admin password is read from `SEED_ADMIN_PASSWORD`, from the CLI argument after the optional server URL (`bun run seed [url] [admin-password]`), or falls back to `JEZARCH_INITIAL_ADMIN_PASSWORD` if the server was started with it.

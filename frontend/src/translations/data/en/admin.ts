@@ -121,4 +121,10 @@ export const adminTranslationsEN: AdminTranslationSet = {
   createUserFailedErrorAdmin: 'Failed to create user.',
   logsFetchFailedError: 'Failed to fetch logs',
   languagePreferenceSaveFailedError: 'Failed to save language preference: {message}',
+  adminHelpTitle: 'About the Admin Panel',
+  adminHelpIntro: 'The Admin Panel is where you manage the application itself. It is only available to the admin role.',
+  adminHelpUsers: 'Create users and assign roles (admin, employee, user, or none). Set passwords and preferred language, and — for the restricted user role — assign the tags that control which archive documents they can see.',
+  adminHelpSettings: 'Configure the default language, HTTP/HTTPS ports, and HTTPS/SSL certificate paths. Changing ports requires a manual server restart; certificate path changes take effect immediately without one.',
+  adminHelpDatabase: 'Download a full backup of the SQLite database. To restore, stop the server, replace the database file with your backup, and restart.',
+  adminHelpLogs: 'View, filter, and search system events, errors, and warnings, and purge entries older than a set number of days.',
 };

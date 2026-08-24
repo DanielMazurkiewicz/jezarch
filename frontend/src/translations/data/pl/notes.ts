@@ -37,4 +37,9 @@ export const notesTranslationsPL: NotesTranslationSet = {
   notesPrivateBadge: 'Prywatna', // Added Key
   noteSavedCreated: 'Notatka została pomyślnie utworzona.',
   noteSavedUpdated: 'Notatka została pomyślnie zaktualizowana.',
+  notesHelpTitle: 'O notatkach',
+  notesHelpIntro: 'Notatki to Twoja osobista przestrzeń robocza. Twórz, edytuj i usuwaj notatki, dodawaj tagi i szukaj wśród nich.',
+  notesHelpSharing: 'Oznacz notatkę jako udostępnioną, aby była widoczna dla innych pracowników. Tylko właściciel notatki lub administrator może zmienić jej status udostępnienia.',
+  notesHelpDeleting: 'Możesz usuwać własne notatki; tylko administrator może usunąć notatkę utworzoną przez kogoś innego.',
+  notesHelpPermissions: 'Notatki są dostępne dla ról administratora i pracownika. Ograniczona rola użytkownika nie ma dostępu do tej sekcji.',
 };

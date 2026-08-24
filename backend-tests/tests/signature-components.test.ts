@@ -88,6 +88,13 @@ test('POST /api/signature/components/id/:id/reindex reindexes elements', async (
   expect((await res.json()).message).toContain('re-indexed');
 });
 
+test('POST /api/signature/components/id/:id/reindex allows employee', async () => {
+  const list = await (await api(B, 'GET', '/api/signature/components', undefined, adminToken)).json();
+  const id = list.find((c: any) => c.name === 'Updated Series')!.signatureComponentId;
+  const res = await api(B, 'POST', `/api/signature/components/id/${id}/reindex`, undefined, employeeToken);
+  await expectStatus(res, 200);
+});
+
 test('Employee can create components', async () => {
   const res = await api(B, 'PUT', '/api/signature/component', { name: 'Employee Series' }, employeeToken);
   await expectStatus(res, 201);

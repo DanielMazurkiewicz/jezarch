@@ -124,10 +124,18 @@ export const signatureTranslationsPL: SignatureTranslationSet = {
   elementLoadFailedError: 'Nie udało się załadować elementów',
   componentNoChangesDetected: 'Nie wykryto żadnych zmian.', // Added Key
   elementBrowserSelectComponentFirst: 'Najpierw wybierz komponent, aby zobaczyć elementy.', // Added missing key
-  signaturesHelpTitle: 'Jak działają Sygnatury',
-  signaturesHelpComponents: 'Komponenty to kategorie klasyfikacyjne (np. "Zbiór", "Seria", "Podseria"). Definiują strukturę systemu archiwalnego.',
-  signaturesHelpElements: 'Elementy to poszczególne pozycje w ramach komponentu (np. "Seria A" w ramach "Zbioru X"). Elementy mogą mieć elementy nadrzędne z innych komponentów, tworząc hierarchię.',
-  signaturesHelpRelationship: 'Tworząc dokument w sekcji Archiwum, przypisujesz mu "ścieżkę sygnatury opisowej" - sekwencję elementów klasyfikujących miejsce dokumentu w strukturze archiwum.',
+  signaturesHelpTitle: 'O sygnaturach',
+  signaturesHelpIntro: 'Sygnatury stanowią system klasyfikacji Twojego archiwum. Są budowane z komponentów i elementów i pozwalają przypisać każdemu dokumentowi ścieżkę sygnatury opisowej.',
+  signaturesHelpComponents: 'Komponenty to kategorie klasyfikacyjne (np. "Zbiór", "Seria", "Podseria"). Każdy komponent ma typ indeksu określający sposób numerowania jego elementów.',
+  signaturesHelpElements: 'Elementy to poszczególne pozycje w ramach komponentu (np. "Seria A" w "Zbiorze X"). Elementy mogą odwoływać się do elementów nadrzędnych, tworząc hierarchię, a każdy z nich ma indeks.',
+  signaturesHelpRelationship: 'Tworząc lub edytując dokument w archiwum, przypisujesz mu ścieżkę sygnatury opisowej — uporządkowaną sekwencję elementów klasyfikujących miejsce dokumentu w strukturze archiwum.',
+  signaturesHelpReindex: 'Reindeksacja ponownie numeruje wszystkie elementy w komponencie: są sortowane alfabetycznie po nazwie i otrzymują nowe kolejne indeksy zgodnie z typem indeksu komponentu (dziesiętny, rzymski lub litery). Odświeża również liczbę elementów komponentu. Własne indeksy ustawione na elementach są nadpisywane, więc reindeksuj po dodaniu lub zmianie nazwy elementów. Dostępna dla administratorów i pracowników z listy Komponentów.',
+  signaturesHelpPermissions: 'Administratorzy i pracownicy mogą tworzyć i edytować komponenty oraz elementy i reindeksować komponenty. Tylko administratorzy mogą usuwać komponenty lub elementy.',
+  elementsHelpTitle: 'O elementach',
+  elementsHelpIntro: 'Ta strona wymienia elementy wybranego komponentu. Elementy są elementami składowymi sygnatur opisowych.',
+  elementsHelpHierarchy: 'Elementy mogą mieć jednego lub więcej elementów nadrzędnych, tworząc hierarchię. Użyj selektora rodziców, aby powiązać element z jego rodzicami.',
+  elementsHelpIndex: 'Każdy element ma indeks w ramach swojego komponentu. Podczas tworzenia elementu pozostaw indeks pusty, aby automatycznie nadać kolejny numer zgodnie z typem indeksu komponentu, lub wpisz własną wartość. Podczas edycji wyczyszczenie indeksu usuwa własną wartość. Reindeksacja (ze strony Komponentów) ponownie numeruje wszystkie elementy alfabetycznie i nadpisuje własne wartości.',
+  elementsHelpPermissions: 'Administratorzy i pracownicy mogą tworzyć i edytować elementy oraz reindeksować ich komponent. Tylko administratorzy mogą usuwać elementy.',
   elementFetchFailedError: 'Nie udało się pobrać elementów',
   componentNotFoundError: 'Komponent o ID {id} nie został znaleziony.',
 };

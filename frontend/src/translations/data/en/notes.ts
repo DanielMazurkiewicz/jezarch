@@ -35,4 +35,9 @@ export const notesTranslationsEN: NotesTranslationSet = {
   notesPrivateBadge: 'Private', // Added Key
   noteSavedCreated: 'Note created successfully.',
   noteSavedUpdated: 'Note updated successfully.',
+  notesHelpTitle: 'About Notes',
+  notesHelpIntro: 'Notes are your personal workspace. Create, edit, and delete notes, add tags, and search across them.',
+  notesHelpSharing: 'Mark a note as shared to make it visible to other staff. Only the note\'s owner or an admin can change its shared status.',
+  notesHelpDeleting: 'You can delete your own notes; only an admin can delete a note created by someone else.',
+  notesHelpPermissions: 'Notes are available to admin and employee roles. The restricted user role does not have access to this section.',
 };

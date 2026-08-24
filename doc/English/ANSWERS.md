@@ -96,10 +96,11 @@ This was a limitation that has been fixed. Now both **admin** and **employee** r
 - Edit components
 - Create and edit elements
 - View component and element previews
+- Re-index elements (recalculates all indices)
 
 **Admin-only** actions remain:
 - Delete components (destructive - cascades to all elements)
-- Re-index elements (recalculates all indices)
+- Delete elements (destructive - removes references from document signature paths)
 
 ### Why can't employees access the Signatures section? (#28)
 
@@ -135,7 +136,7 @@ Yes, all main sections now have:
 |---------|---------|--------|
 | Archive | DocumentPreviewDialog | Soft delete / restore (soft delete) |
 | Components | ComponentPreviewDialog | Admin-only hard delete |
-| Elements | ElementPreviewDialog | Admin/Employee delete |
+| Elements | ElementPreviewDialog | Admin-only hard delete |
 | Tags | Edit form serves as preview | Delete with confirmation |
 | Notes | NotePreviewDialog | Delete with confirmation |
 

@@ -121,6 +121,12 @@ export type AdminTranslationKey =
   | 'setPasswordButton'
   | 'createdBySearchLabel' // New
   | 'updatedBySearchLabel' // New
+  | 'adminHelpTitle'
+  | 'adminHelpIntro'
+  | 'adminHelpUsers'
+  | 'adminHelpSettings'
+  | 'adminHelpDatabase'
+  | 'adminHelpLogs'
   ;
 
 export type AdminTranslationSet = TranslationSet<AdminTranslationKey>;

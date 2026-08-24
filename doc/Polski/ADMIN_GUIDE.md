@@ -7,6 +7,7 @@ Ten przewodnik szczegółowo opisuje funkcjonalności dostępne wyłącznie dla 
 *   [Dostęp do Panelu Administratora](#dostęp-do-panelu-administratora)
 *   [Zarządzanie Użytkownikami](#zarządzanie-użytkownikami)
     *   [Przeglądanie Użytkowników](#przeglądanie-użytkowników)
+    *   [Tworzenie Użytkowników](#tworzenie-użytkowników)
     *   [Przypisywanie/Zmiana Ról](#przypisywaniezmiana-ról)
     *   [Przypisywanie Tagów (dla roli 'Użytkownik')](#przypisywanie-tagów-dla-roli-użytkownik)
     *   [Ustawianie Haseł Użytkowników](#ustawianie-haseł-użytkowników)
@@ -40,6 +41,12 @@ Ten przewodnik szczegółowo opisuje funkcjonalności dostępne wyłącznie dla 
 
 *   Tabela wyświetla wszystkich zarejestrowanych użytkowników, w tym ich Login, Rolę, Preferowany Język i Przypisane Tagi (jeśli dotyczy).
 *   Użytkownicy z rolą `null` (Brak Roli / Wyłączony) nie mogą się zalogować.
+
+### Tworzenie Użytkowników
+
+*   Kliknij przycisk **Utwórz Użytkownika** na górze zakładki Zarządzanie Użytkownikami.
+*   Wprowadź unikalny Login oraz Hasło (z potwierdzeniem).
+*   Nowe konto jest tworzone bez roli — użyj listy rozwijanej Rola (patrz niżej), aby je aktywować.
 
 ### Przypisywanie/Zmiana Ról
 
@@ -97,7 +104,7 @@ Ten przewodnik szczegółowo opisuje funkcjonalności dostępne wyłącznie dla 
 
 *   Zmiana **Portu HTTP** lub **Portu HTTPS** wymaga **ręcznego restartu** procesu serwera backendu.
 *   Zmiana **Domyślnego Języka** działa natychmiast dla nowych sesji/użytkowników bez ustawionych preferencji.
-*   Zmiana **Ścieżek HTTPS** wywołuje automatyczne akcje (przeładowanie/zatrzymanie usługi HTTPS), ale ręczny restart może być czasem korzystny w przypadku problemów.
+*   Zmiana **Ścieżek HTTPS** działa natychmiast — serwer automatycznie przeładowuje lub zatrzymuje konfigurację HTTPS w razie potrzeby (potwierdzenie znajdziesz w logach serwera); restart nie jest wymagany.
 
 ---
 
@@ -151,8 +158,8 @@ Ten przewodnik szczegółowo opisuje funkcjonalności dostępne wyłącznie dla 
 
 Poza dedykowanym Panelem Administratora, Administratorzy generalnie mają podwyższone uprawnienia w całej aplikacji:
 
-*   **Mogą edytować/usuwać dowolny Tag.**
+*   **Mogą edytować/usuwać dowolny Tag.** *(Pracownicy również mogą zarządzać tagami.)*
 *   **Mogą edytować/usuwać dowolną Notatkę.**
-*   **Mogą edytować/usuwać dowolny Komponent Sygnatury (w tym Elementy przez kaskadę).**
+*   **Mogą edytować/usuwać dowolny Komponent lub Element Sygnatury.** *(Pracownicy mogą tworzyć/edytować komponenty i elementy oraz je reindeksować, ale nie mogą ich usuwać.)*
 *   **Mogą omijać kontrole własności** przy przeglądaniu/edycji/usuwaniu większości elementów (z wyjątkiem zmiany własnej roli/hasła przez ścieżki administracyjne).
-*   Mogą wyświetlać usunięte pozycje Archiwum w wyszukiwaniach (warunek `Czy Usunięte` = `Prawda`).
+*   Mogą wyświetlać usunięte pozycje Archiwum w wyszukiwaniach (domyślnie uwzględniane; zawęź wyniki filtrem `Czy Usunięte`).

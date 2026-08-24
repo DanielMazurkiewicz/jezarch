@@ -36,6 +36,11 @@ export type NotesTranslationKey =
   | 'notesNoContentPlaceholder' // Added missing key
   | 'notesSharedBadge' // Added missing key
   | 'notesPrivateBadge' // Added missing key
+  | 'notesHelpTitle'
+  | 'notesHelpIntro'
+  | 'notesHelpSharing'
+  | 'notesHelpDeleting'
+  | 'notesHelpPermissions'
   ;
 
 export type NotesTranslationSet = TranslationSet<NotesTranslationKey>;

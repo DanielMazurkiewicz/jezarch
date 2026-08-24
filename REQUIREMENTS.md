@@ -5,6 +5,7 @@ This document outlines the requirements for a web application designed to facili
 ## 2. Functional Requirements
 *   **User Authentication & Authorization:**
 *   **Registration:** The application allows new users to register with a unique login and password. Newly registered users have no role assigned (`null`) and cannot log in until an administrator assigns them a role.
+*   **Initial Administrator:** On first start (when no `admin` account exists) the application automatically creates an `admin` account. Its password is taken from the `JEZARCH_INITIAL_ADMIN_PASSWORD` environment variable; if unset, a strong random password is generated and printed to the server console exactly once.
 *   **Login:** Registered users can log in using their credentials. A session token (UUID) is returned, valid for 24 hours.
 *   **Role-Based Access Control (RBAC):** The system implements three roles:
     *   `admin` — Full access to all features including user management, configuration, and log viewing.
@@ -20,7 +21,7 @@ This document outlines the requirements for a web application designed to facili
 *   **Core Functionalities (Main Screen):** The main screen provides access to the following functionalities via a left-side navigation menu with icons and labels:
     *   **Dashboard:** Overview page with welcome message and quick navigation prompts.
     *   **Archive:** Browse, search, create, edit, and disable archival units and documents. Supports batch tagging, topographic/descriptive signature assignment, and tag-based filtering.
-    *   **Signatures:** Define and manage signature components (classification categories like Fonds, Series) and elements (individual items within components). Supports hierarchical parent-child relationships between elements.
+    *   **Signatures:** Define and manage signature components (classification categories like Fonds, Series) and elements (individual items within components). Supports hierarchical parent-child relationships between elements and re-indexing of element indices.
     *   **Tags:** Create and manage global tags used for organizing documents and notes.
     *   **Notes:** Create, read, update, and delete personal notes. Notes can be shared with other users. Supports tag assignment.
     *   **Users Management:** (Admin Only) — Manage user accounts, roles, tags, passwords, and language preferences.
@@ -55,19 +56,21 @@ This document outlines the requirements for a web application designed to facili
 *   **Data Persistence:** All application data — including user accounts, sessions, notes, tags, archive documents, signature components/elements, configuration, and logs — is persistently stored in the database.
 *   **Database Initialization & Migration:**
     *   If the database file does not exist, the application creates it and performs initial schema setup (table creation).
-    *   Tables created include: `users`, `sessions`, `notes`, `note_tags`, `tags`, `archive_documents`, `archive_document_tags`, `signature_components`, `signature_elements`, `signature_element_parents`, `config`, `logs`.
+    *   Tables created include: `users`, `sessions`, `user_allowed_tags`, `notes`, `note_tags`, `tags`, `archive_documents`, `archive_document_tags`, `signature_components`, `signature_elements`, `signature_element_parents`, `config`, `logs`.
 *   **Configuration Storage:** Application configuration (default language, ports, HTTPS paths) is stored in the `config` table in the SQLite database. This eliminates the need for external configuration files, though environment variables and CLI arguments can override values.
 
 ## 6. Command Line Arguments
 The application accepts the following command-line arguments (highest precedence):
 *   `--http-port <number>`: Port for HTTP traffic (default: 8080).
 *   `--https-port <number>`: Port for HTTPS traffic (default: 8443).
-*   `--database <path>`: Path to the SQLite database file (default: `jezarch.sqlite.db`).
-*   `--language <code>`: Default language code (default: "en").
+*   `--db-path <path>`: Path to the SQLite database file (default: `./jezarch.sqlite.db`).
+*   `--default-language <code>`: Default language code (default: "en").
 *   `--https-key-path <path>`: Path to HTTPS private key file.
 *   `--https-cert-path <path>`: Path to HTTPS certificate file.
 *   `--https-ca-path <path>`: Path to HTTPS CA chain file.
-*   `--log`: Dump log entries and exit (does not start the server).
+*   `--log <duration><unit>`: Dump log entries from the last given duration (e.g. `--log 5m`) to the console and exit (does not start the server).
+*   `--debug-console`: Print all internal logs (`Log.info`, `Log.error`) to the console.
+*   `--help`: Display the help message and exit.
 
 ## 7. Technology Stack
 *   **Runtime:** [Bun](https://bun.sh/) (JavaScript/TypeScript runtime, bundler, package manager)

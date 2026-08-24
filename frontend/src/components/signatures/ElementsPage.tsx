@@ -2,7 +2,8 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogTrigger } from '@/components/ui/dialog';
-import { PlusCircle, ArrowLeft } from 'lucide-react';
+import { PlusCircle, ArrowLeft, HelpCircle } from 'lucide-react';
+import HelpDialog, { HelpSection } from '@/components/shared/HelpDialog';
 import ElementList from './ElementList';
 import ElementForm from './ElementForm';
 import ElementPreviewDialog from './ElementPreviewDialog';
@@ -44,6 +45,7 @@ const ElementsPage: React.FC = () => {
     const [isElementFormOpen, setIsElementFormOpen] = useState(false);
     const [previewingElement, setPreviewingElement] = useState<SignatureElement | null>(null);
     const [isPreviewOpen, setIsPreviewOpen] = useState(false);
+    const [helpOpen, setHelpOpen] = useState(false);
     const [elementSearchQuery, setElementSearchQuery] = useState<SearchRequest['query']>([]);
     const [currentElementPage, setCurrentElementPage] = useState(1);
     const [totalElements, setTotalElements] = useState(0);
@@ -234,9 +236,10 @@ const ElementsPage: React.FC = () => {
                     <h1 className="text-2xl font-bold">
                          {t('elementsForComponentTitle', preferredLanguage, { componentName: parentComponent.name })}
                     </h1>
-                    <p className='text-muted-foreground'>{t('elementsDescription', preferredLanguage)}</p>
-                    <Badge variant="secondary" className='mt-1'>{t('componentBadgeIndexType', preferredLanguage, { type: parentComponent.index_type })}</Badge>
-                    <Badge variant="outline" className='mt-1 ml-2'>{t('componentBadgeElementsCount', preferredLanguage, { count: parentComponent.index_count ?? t('notAvailableAbbr', preferredLanguage) })}</Badge> {/* TODO: Add notAvailableAbbr */}
+                    <div className='mt-2 flex flex-wrap gap-2'>
+                        <Badge variant="secondary">{t('componentBadgeIndexType', preferredLanguage, { type: parentComponent.index_type })}</Badge>
+                        <Badge variant="outline">{t('componentBadgeElementsCount', preferredLanguage, { count: parentComponent.index_count ?? t('notAvailableAbbr', preferredLanguage) })}</Badge>
+                    </div>
                  </div>
             </div>
 
@@ -248,25 +251,30 @@ const ElementsPage: React.FC = () => {
                               <CardTitle>{t('elementListElementsHeader', preferredLanguage)}</CardTitle>
                               <CardDescription>{t('elementsDescription', preferredLanguage)}</CardDescription>
                            </div>
-                         <Dialog open={isElementFormOpen} onOpenChange={setIsElementFormOpen}>
-                            <DialogTrigger asChild>
-                                <Button onClick={handleCreateElement} size="sm" className='shrink-0' disabled={!canModify} title={!canModify ? t('insufficientPermissionsError', preferredLanguage) : ''}>
-                                    <PlusCircle className="mr-2 h-4 w-4" /> {t('newElementButton', preferredLanguage)}
-                                </Button>
-                            </DialogTrigger>
-                            <DialogContent className="sm:max-w-[600px]">
-                                <DialogHeader><DialogTitle>{editingElement ? t('editElementDialogTitle', preferredLanguage) : t('createElementDialogTitle', preferredLanguage)}</DialogTitle><DialogDescription className="sr-only">{editingElement ? t('editElementDialogTitle', preferredLanguage) : t('createElementDialogTitle', preferredLanguage)}</DialogDescription></DialogHeader>
-                                {/* Ensure element form only renders when dialog is open and parent is loaded */}
-                                {isElementFormOpen && parentComponent && (
-                                     <ElementForm
-                                        elementToEdit={editingElement}
-                                        currentComponent={parentComponent}
-                                        onSave={handleElementSaveSuccess}
-                                      />
-                                )}
-                            </DialogContent>
-                         </Dialog>
-                      </div>
+                          <div className='flex items-center gap-2 flex-wrap justify-end'>
+                          <Dialog open={isElementFormOpen} onOpenChange={setIsElementFormOpen}>
+                             <DialogTrigger asChild>
+                                 <Button onClick={handleCreateElement} size="sm" className='shrink-0' disabled={!canModify} title={!canModify ? t('insufficientPermissionsError', preferredLanguage) : ''}>
+                                     <PlusCircle className="mr-2 h-4 w-4" /> {t('newElementButton', preferredLanguage)}
+                                 </Button>
+                             </DialogTrigger>
+                             <DialogContent className="sm:max-w-[600px]">
+                                 <DialogHeader><DialogTitle>{editingElement ? t('editElementDialogTitle', preferredLanguage) : t('createElementDialogTitle', preferredLanguage)}</DialogTitle><DialogDescription className="sr-only">{editingElement ? t('editElementDialogTitle', preferredLanguage) : t('createElementDialogTitle', preferredLanguage)}</DialogDescription></DialogHeader>
+                                 {/* Ensure element form only renders when dialog is open and parent is loaded */}
+                                 {isElementFormOpen && parentComponent && (
+                                      <ElementForm
+                                         elementToEdit={editingElement}
+                                         currentComponent={parentComponent}
+                                         onSave={handleElementSaveSuccess}
+                                       />
+                                 )}
+                             </DialogContent>
+                          </Dialog>
+                          <Button variant="ghost" size="sm" onClick={() => setHelpOpen(true)} title={t('helpButton', preferredLanguage)}>
+                              <HelpCircle className="mr-2 h-4 w-4" /> {t('helpButton', preferredLanguage)}
+                          </Button>
+                          </div>
+                       </div>
                  </CardHeader>
                  <CardContent className='space-y-4'>
                     {elementsError && <ErrorDisplay message={elementsError} />}
@@ -314,6 +322,18 @@ const ElementsPage: React.FC = () => {
                 element={previewingElement}
                 onEdit={handleEditElement}
                 onDelete={handleDeleteElement}
+            />
+
+            <HelpDialog
+                isOpen={helpOpen}
+                onOpenChange={setHelpOpen}
+                title={t('elementsHelpTitle', preferredLanguage)}
+                sections={[
+                    { body: t('elementsHelpIntro', preferredLanguage) },
+                    { heading: t('elementParentElementsLabel', preferredLanguage), body: t('elementsHelpHierarchy', preferredLanguage) },
+                    { heading: t('elementIndexShortLabel', preferredLanguage), body: t('elementsHelpIndex', preferredLanguage) },
+                    { heading: t('permissionsLabel', preferredLanguage), body: t('elementsHelpPermissions', preferredLanguage) },
+                ] as HelpSection[]}
             />
         </div>
     );
