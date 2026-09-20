@@ -150,3 +150,33 @@ Yes, the archive list supports sorting by:
 - **Topographic Signature** - alphabetical sorting of the signature text
 
 Click a column header to sort. Click again to toggle between ascending and descending order. Sort indicators (arrows) show the current sort direction.
+
+### What is the "Descriptive signature tree" in the sidebar? (#32)
+
+It is a **quick filter** for the Archive page that lets you filter by descriptive signature by browsing the hierarchy instead of typing a path:
+
+1. Enable the checkbox on the tree at the bottom of the sidebar.
+2. Pick a condition: `Starts With`, `Contains Sequence`, or `Equals`.
+3. Click through components and elements (drilling into child elements as needed) to select the path you want.
+4. The selected path is applied on top of any criteria in the search bar and shown as a resolved path (with a limit of 1000 results in the tree).
+5. Click a selected element to clear the filter, and use the refresh button if components/elements were changed elsewhere.
+
+### Why do my search results change when I enter a unit? (#33)
+
+Archive navigation is hierarchical: while you are inside a unit, the list is automatically scoped to that unit's children via the `parentUnitArchiveDocumentId` field, and the search bar shows a pre-applied "Parent Unit" filter. Leave the unit (back arrow) to search the whole archive again. Some fields, such as **Type**, are only offered at the archive root.
+
+### How long does my login last? (#34)
+
+A session is valid for **24 hours**, after which you are logged out and must sign in again. Login and registration attempts are also rate-limited; if you make too many attempts you will receive a "too many requests" response and need to wait before trying again.
+
+### What can a restricted 'User' account see? (#35)
+
+A user with the `user` role:
+- Can log in and open the Archive page (shown as "Search Archive").
+- Only sees documents that carry **at least one** of the tags an administrator assigned to that account. If no tags are assigned, the search returns nothing.
+- Cannot see tags, notes, signatures, or admin sections, and never sees deleted items.
+- Is automatically restricted by a tag filter applied to every archive search.
+
+### What happens when I delete an archive item? (#36)
+
+Deleting a document or unit is a **soft delete**: the item is hidden but not erased, and admins/employees can recover it. To see deleted items, set the `Is Deleted` filter to `True` (or remove the default `Is Deleted = False` filter). Deleted rows show a **Restore** icon that brings the item back. Users with the `user` role never see deleted items. Deleting a **component or element** in Signatures, in contrast, is permanent and admin-only.

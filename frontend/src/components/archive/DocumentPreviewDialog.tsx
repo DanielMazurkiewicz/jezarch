@@ -87,6 +87,9 @@ const DocumentPreviewDialog: React.FC<DocumentPreviewDialogProps> = ({
                     <DialogDescription className='space-y-1 pt-1 text-left'>
                         <p><strong>{t('archivePreviewCreatorLabel', preferredLanguage)}:</strong> {previewingDoc.creator}</p>
                         <p><strong>{t('archivePreviewDateLabel', preferredLanguage)}:</strong> {previewingDoc.creationDate}</p>
+                        {previewingDoc.creationPlace && (
+                            <p><strong>{t('archivePreviewPlaceLabel', preferredLanguage)}:</strong> {previewingDoc.creationPlace}</p>
+                        )}
                         {previewingDoc.parentUnitArchiveDocumentId && (
                             <p><strong>{t('archivePreviewParentUnitLabel', preferredLanguage)}:</strong> <Link to={`/archive?unitId=${previewingDoc.parentUnitArchiveDocumentId}`} className='text-primary hover:underline' onClick={()=> onOpenChange(false)}>{parentUnitTitle || `ID ${previewingDoc.parentUnitArchiveDocumentId}`}</Link></p>
                         )}
@@ -142,7 +145,7 @@ const DocumentPreviewDialog: React.FC<DocumentPreviewDialogProps> = ({
                         </div>
                     )}
                      {/* Other Details */}
-                     {(previewingDoc.remarks || previewingDoc.accessLevel || previewingDoc.additionalInformation || previewingDoc.relatedDocumentsReferences || (previewingDoc.type !== 'unit' && previewingDoc.documentLanguage) || (previewingDoc.isDigitized !== null && previewingDoc.isDigitized !== undefined)) && (
+                     {(previewingDoc.remarks || previewingDoc.seals || previewingDoc.accessLevel || previewingDoc.additionalInformation || previewingDoc.relatedDocumentsReferences || (previewingDoc.type !== 'unit' && previewingDoc.documentLanguage) || (previewingDoc.isDigitized !== null && previewingDoc.isDigitized !== undefined)) && (
                          <div>
                             <h4 className='font-semibold mb-1 text-base'>{t('archivePreviewOtherDetailsLabel', preferredLanguage)}</h4>
                             <div className='text-sm space-y-1'>
@@ -154,6 +157,12 @@ const DocumentPreviewDialog: React.FC<DocumentPreviewDialogProps> = ({
                                     <div>
                                         <strong className='block'>{t('archivePreviewRemarksLabel', preferredLanguage)}:</strong>
                                         <p className="text-sm whitespace-pre-wrap break-words max-h-48 overflow-y-auto">{previewingDoc.remarks}</p>
+                                    </div>
+                                )}
+                                {previewingDoc.seals && (
+                                    <div>
+                                        <strong className='block'>{t('archivePreviewSealsLabel', preferredLanguage)}:</strong>
+                                        <p className="text-sm whitespace-pre-wrap break-words max-h-48 overflow-y-auto">{previewingDoc.seals}</p>
                                     </div>
                                 )}
                                 {previewingDoc.accessLevel && (
@@ -178,7 +187,7 @@ const DocumentPreviewDialog: React.FC<DocumentPreviewDialogProps> = ({
                          </div>
                      )}
                      {/* Empty Content Placeholder */}
-                     {!previewingDoc.contentDescription && !(previewingDoc.numberOfPages || previewingDoc.documentType || previewingDoc.dimensions || previewingDoc.binding || previewingDoc.condition || previewingDoc.documentLanguage) && !(previewingDoc.remarks || previewingDoc.accessLevel || previewingDoc.additionalInformation || previewingDoc.relatedDocumentsReferences || previewingDoc.isDigitized !== null || previewingDoc.isDigitized !== undefined) && (
+                     {!previewingDoc.contentDescription && !(previewingDoc.numberOfPages || previewingDoc.documentType || previewingDoc.dimensions || previewingDoc.binding || previewingDoc.condition || previewingDoc.documentLanguage) && !(previewingDoc.remarks || previewingDoc.seals || previewingDoc.accessLevel || previewingDoc.additionalInformation || previewingDoc.relatedDocumentsReferences || previewingDoc.isDigitized !== null || previewingDoc.isDigitized !== undefined) && (
                           <p className="text-sm text-muted-foreground italic text-center py-4">{t('archivePreviewEmptyContent', preferredLanguage)}</p>
                      )}
                 </ScrollArea>

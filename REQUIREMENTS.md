@@ -38,18 +38,19 @@ This document outlines the requirements for a web application designed to facili
 *   **Usability:** The application has an intuitive and user-friendly interface. Navigation is clear and consistent. Built with Shadcn UI components (Radix UI + Tailwind CSS).
 *   **Scalability:** While initial scale is not a primary concern, the architecture allows for future scalability to accommodate a growing number of users and data.
 *   **Maintainability:** Code is written in TypeScript with static typing, modular structure, and consistent patterns across feature modules (controllers, models, db, routes).
-*   **Portability:** The application runs on standard web servers without requiring specific platform dependencies beyond Bun and SQLite.
+*   **Portability:** The application runs on any platform supported by Bun (Linux, macOS, Windows) without platform-specific dependencies beyond Bun and SQLite. A cross-platform command runner (`scripts/run.ts`, exposed through the root `package.json` scripts) makes setup, build, run, update, test, and seed commands work identically under bash, cmd.exe, and PowerShell.
 *   **Deployment:** The backend serves the React front-end files (HTML, CSS, JavaScript) and any static media assets from the `frontend/dist` directory.
 *   **HTTPS:** The application supports HTTPS for secure communication over LAN environments via configurable SSL key/certificate file paths.
 *   **Localization:** The translation system uses `intl-messageformat` with ICU MessageFormat support for pluralization and gender-aware strings.
 
 ## 4. Security Requirements
 *   **Password Storage:** User passwords are securely hashed and salted using bcrypt before being stored in the database.
-*   **Authentication:** Session-based authentication using UUID tokens stored in a `sessions` table, valid for 24 hours.
+*   **Authentication:** Session-based authentication using opaque UUID tokens stored in the `sessions` table (SHA-256 hash of the token), valid for 24 hours.
 *   **Authorization:** Access to functionalities is restricted based on user roles (`admin`, `employee`, `user`) enforced in both backend controllers and frontend routing.
 *   **Data Validation:** All user inputs are validated using Zod schemas on both frontend and backend to prevent injection attacks.
-*   **Session Management:** Sessions are stored server-side in SQLite. The `Authorization` header carries the session token.
+*   **Session Management:** Sessions are stored server-side in SQLite as the SHA-256 hash of the session token. The `Authorization` header carries the token (either bare or as `Bearer <token>`), and the session is validated with `GET /api/session/validate`.
 *   **SQLite Security:** Foreign keys are enforced via `PRAGMA foreign_keys = ON`. Database uses WAL journal mode for data integrity.
+*   **Rate Limiting:** `POST /api/user/login` and `POST /api/user/create` are rate limited to prevent brute-force and spam. The limit can be disabled for testing with the `JEZARCH_RATE_LIMIT_DISABLED` environment variable.
 
 ## 5. Database Requirements
 *   **Database System:** SQLite is used as the primary data store, accessed via `bun:sqlite`.
@@ -59,7 +60,21 @@ This document outlines the requirements for a web application designed to facili
     *   Tables created include: `users`, `sessions`, `user_allowed_tags`, `notes`, `note_tags`, `tags`, `archive_documents`, `archive_document_tags`, `signature_components`, `signature_elements`, `signature_element_parents`, `config`, `logs`.
 *   **Configuration Storage:** Application configuration (default language, ports, HTTPS paths) is stored in the `config` table in the SQLite database. This eliminates the need for external configuration files, though environment variables and CLI arguments can override values.
 
-## 6. Command Line Arguments
+## 6. Environment Variables
+Configuration precedence is **command-line argument > environment variable > database config > default**.
+
+*   `JEZARCH_DB_PATH`: Path to the SQLite database file (overrides the default `./jezarch.sqlite.db`).
+*   `JEZARCH_HTTP_PORT`: HTTP server port (default: 8080).
+*   `JEZARCH_HTTPS_PORT`: HTTPS server port (default: 8443).
+*   `JEZARCH_HTTPS_KEY_PATH`: Path to the HTTPS private key file (PEM). Ignored if the file does not exist.
+*   `JEZARCH_HTTPS_CERT_PATH`: Path to the HTTPS certificate file (PEM). Ignored if the file does not exist.
+*   `JEZARCH_HTTPS_CA_PATH`: Path to the HTTPS CA chain file (PEM). Optional. Ignored if the file does not exist.
+*   `JEZARCH_DEFAULT_LANGUAGE`: Default language code (`en` or `pl`).
+*   `JEZARCH_INITIAL_ADMIN_PASSWORD`: Password for the bootstrapped `admin` account on first start. If unset, a strong random password is generated and printed once to the console.
+*   `JEZARCH_RATE_LIMIT_DISABLED`: Set to any truthy value (e.g. `1`) to disable rate limiting on login/registration (intended for testing).
+*   `SEED_ADMIN_PASSWORD`: Admin password used by the demo-data seed scripts (`scripts/seed-data*.ts`) when the positional arguments are omitted.
+
+## 7. Command Line Arguments
 The application accepts the following command-line arguments (highest precedence):
 *   `--http-port <number>`: Port for HTTP traffic (default: 8080).
 *   `--https-port <number>`: Port for HTTPS traffic (default: 8443).
@@ -72,15 +87,15 @@ The application accepts the following command-line arguments (highest precedence
 *   `--debug-console`: Print all internal logs (`Log.info`, `Log.error`) to the console.
 *   `--help`: Display the help message and exit.
 
-## 7. Technology Stack
+## 8. Technology Stack
 *   **Runtime:** [Bun](https://bun.sh/) (JavaScript/TypeScript runtime, bundler, package manager)
 *   **Backend:** TypeScript, Bun native HTTP server API, SQLite via `bun:sqlite`, Zod validation, bcryptjs password hashing
 *   **Frontend:** React 19, TypeScript, [Shadcn UI](https://ui.shadcn.com/) (Radix UI + Tailwind CSS), React Router DOM, React Hook Form, Zod validation, custom build script via `Bun.build` API
 *   **Localization:** Custom translation system using `intl-messageformat` with ICU MessageFormat support, English and Polish translations
 *   **Database:** SQLite with WAL mode and foreign key enforcement
 
-## 8. Further Considerations/Open Questions:
+## 9. Further Considerations/Open Questions:
 *   **Error Handling & Logging:** Application logs are stored in the `logs` table with level, category, user, and optional JSON data. Log viewer available in admin panel. Log purging by age is supported.
-*   **Testing:** Unit tests, integration tests, and end-to-end tests are important for quality assurance. Test infrastructure is referenced in `package.json` scripts.
+*   **Testing:** Unit tests, integration tests, and end-to-end tests are important for quality assurance. Tests run from the repository root with `bun run test` (type checks via `test:types`, then the Bun test runner over frontend + backend via `test:code`).
 *   **API Design:** RESTful API under `/api` prefix with consistent patterns across resource endpoints.
 *   **Media Storage:** Media files associated with archive documents are referenced via URL strings (not stored as BLOBs).

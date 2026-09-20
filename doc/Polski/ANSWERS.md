@@ -106,7 +106,7 @@ To było ograniczenie, które zostało naprawione. Teraz zarówno rola **admin**
 
 Sekcja Sygnatury jest dostępna zarówno dla roli admin, jak i pracownik. Jeśli masz problemy z dostępem:
 
-1. Upewnij się, że Twoje konto ma przypisaną rolę `employee` (nie `null`)
+1. Upewnij się, że Twoje konto ma przypisaną rolę `pracownik` (nie `null`)
 2. Wyloguj się i zaloguj ponownie, aby odświeżyć sesję
 3. Sprawdź, czy pasek boczny pokazuje link "Sygnatury" dla Twojej roli
 
@@ -150,3 +150,33 @@ Tak, lista archiwum obsługuje sortowanie według:
 - **Sygnatury Topograficznej** - sortowanie alfabetyczne tekstu sygnatury
 
 Kliknij nagłówek kolumny, aby sortować. Kliknij ponownie, aby przełączyć między porządkiem rosnącym a malejącym. Wskaźniki sortowania (strzałki) pokazują bieżący kierunek sortowania.
+
+### Czym jest "Drzewo sygnatur opisowych" na pasku bocznym? (#32)
+
+To **szybki filtr** dla strony Archiwum, który pozwala filtrować według sygnatury opisowej poprzez przeglądanie hierarchii, a nie wpisywanie ścieżki:
+
+1. Włącz pole wyboru przy drzewie na dole paska bocznego.
+2. Wybierz warunek: `Zaczyna się od`, `Zawiera Sekwencję` lub `Równa się`.
+3. Klikaj komponenty i elementy (schodząc do elementów podrzędnych w razie potrzeby), aby wybrać interesującą Cię ścieżkę.
+4. Wybrana ścieżka jest nakładana na kryteria z paska wyszukiwania i pokazywana jako rozwiązana ścieżka (z limitem 1000 wyników w drzewie).
+5. Kliknij wybrany element, aby wyczyścić filtr, a jeśli komponenty/elementy zostały zmienione gdzie indziej — użyj przycisku odświeżania.
+
+### Dlaczego wyniki wyszukiwania zmieniają się po wejściu do jednostki? (#33)
+
+Nawigacja w Archiwum jest hierarchiczna: będąc wewnątrz jednostki lista jest automatycznie ograniczana do jej dzieci przez pole `parentUnitArchiveDocumentId`, a pasek wyszukiwania pokazuje wstępnie nałożony filtr "Jednostka Nadrzędna". Opuść jednostkę (strzałka wstecz), aby ponownie przeszukiwać całe archiwum. Niektóre pola, takie jak **Typ**, są oferowane tylko w głównym widoku archiwum.
+
+### Jak długo trwa moje zalogowanie? (#34)
+
+Sesja jest ważna przez **24 godziny**, po czym następuje wylogowanie i konieczne jest ponowne zalogowanie. Próby logowania i rejestracji są również limitowane; po zbyt wielu próbach otrzymasz odpowiedź "zbyt wiele żądań" i musisz odczekać przed kolejną próbą.
+
+### Co widzi konto z ograniczoną rolą 'Użytkownik'? (#35)
+
+Użytkownik z rolą `użytkownik`:
+- Może się zalogować i otworzyć stronę Archiwum (pokazywaną jako "Szukaj w Archiwum").
+- Widzi tylko dokumenty mające **przynajmniej jeden** tag przypisany do tego konta przez administratora. Jeśli nie przypisano tagów, wyszukiwanie nic nie zwraca.
+- Nie widzi tagów, notatek, sygnatur ani sekcji administracyjnych i nigdy nie widzi pozycji usuniętych.
+- Jest automatycznie ograniczony filtrem tagów nakładanym na każde wyszukiwanie w archiwum.
+
+### Co się dzieje, gdy usunę pozycję archiwum? (#36)
+
+Usunięcie dokumentu lub jednostki to **miękkie usunięcie**: pozycja zostaje ukryta, ale nie wymazana, a administratorzy/pracownicy mogą ją odzyskać. Aby zobaczyć usunięte pozycje, ustaw filtr `Czy Usunięte` na `Prawda` (lub usuń domyślny filtr `Czy Usunięte = Fałsz`). Usunięte wiersze pokazują ikonę **Przywróć**, która przywraca pozycję. Użytkownicy z rolą `użytkownik` nigdy nie widzą usuniętych pozycji. Usunięcie **komponentu lub elementu** w Sygnaturach jest natomiast trwałe i dostępne tylko dla administratora.

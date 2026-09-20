@@ -1,8 +1,24 @@
 {
+  "name": "jezarch",
+  "private": true,
   "scripts": {
-    "frontend": "bun --cwd frontend dev",
-    "backend": "bun --cwd backend dev",
-    "dev": "bun --cwd backend dev & bun --cwd frontend dev"
+    "help": "bun scripts/run.ts help",
+    "update": "bun scripts/run.ts update",
+    "install": "bun scripts/run.ts install",
+    "start": "bun scripts/run.ts start:prod",
+    "start:dev": "bun scripts/run.ts start:dev",
+    "start:prod": "bun scripts/run.ts start:prod",
+    "build": "bun scripts/run.ts build:prod",
+    "build:dev": "bun scripts/run.ts build:dev",
+    "build:prod": "bun scripts/run.ts build:prod",
+    "seed": "bun scripts/run.ts seed:en",
+    "seed:pl": "bun scripts/run.ts seed:pl",
+    "seed:en": "bun scripts/run.ts seed:en",
+    "test": "bun scripts/run.ts test",
+    "test:code": "bun scripts/run.ts test:code",
+    "test:types": "bun scripts/run.ts test:types",
+    "clean": "bun scripts/run.ts clean",
+    "cleanup": "bun scripts/run.ts cleanup"
   },
   "dependencies": {
     "typescript": "^5.8.3"

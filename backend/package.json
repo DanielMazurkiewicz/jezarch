@@ -9,14 +9,14 @@
     "zod": "^3.22.4"
   },
   "devDependencies": {
-    "@types/bun": "latest",
+    "@types/bun": "1.2.19",
     "@types/bcryptjs": "^3"
   },
   "peerDependencies": {
     "typescript": "^5"
   },
   "scripts": {
-    "build": "bun build",
+    "build": "bun -e \"await Bun.build({ entrypoints: ['index.ts'], outdir: 'dist', format: 'esm', target: 'bun', sourcemap: 'linked', naming: 'server.js' })\"",
     "test": "bun test ../backend-tests/**/*.test.ts",
     "test:file": "bun test",
     "seed": "bun run ../scripts/seed-data.ts",

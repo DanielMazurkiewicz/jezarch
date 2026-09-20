@@ -39,21 +39,34 @@ const signaturePathSpecificSearchSchema = z.object({
     value: z.array(z.number().int().positive()), // Value is always a single path (array of numbers)
 });
 
+// 'EQ' on descriptiveSignature accepts an array value = exact signature-path match.
+// Kept as a separate (non-discriminated) union member because the discriminated
+// union's 'EQ' branch requires a primitive value.
+const signatureEqPathSearchSchema = z.object({
+    field: z.literal('descriptiveSignature'),
+    not: z.boolean().optional().default(false),
+    condition: z.literal('EQ'),
+    value: z.array(z.number().int().positive()),
+});
+
 
 // Discriminated union for a single search query element
-export const searchQueryElementSchema = z.discriminatedUnion("condition", [
+const searchQueryElementSchema = z.discriminatedUnion("condition", [
     primitiveSearchSchema, // Handles basic EQ, GT, LT etc.
     anyOfSearchSchema,     // Handles ANY_OF
     fragmentSearchSchema,  // Handles FRAGMENT (LIKE)
     signaturePathSpecificSearchSchema, // Handles path-specific STARTS_WITH, CONTAINS_SEQUENCE
 ]);
-// Note: An 'EQ' condition with an array value (for exact path match) will be validated
-// by primitiveSearchSchema (due to value: z.any()). The backend handler MUST check
-// the type of `value` when processing an 'EQ' condition on the 'descriptiveSignature' field.
+
+// Top-level element: signature-EQ (array value) or the generic element schema.
+const searchQueryElementWithSignatureEqSchema = z.union([
+    signatureEqPathSearchSchema,
+    searchQueryElementSchema,
+]);
 
 // Full Search Request Schema
 export const searchRequestSchema = z.object({
-    query: z.array(searchQueryElementSchema),
+    query: z.array(searchQueryElementWithSignatureEqSchema),
     page: z.number().int().positive().optional().default(1),
     pageSize: z.number().int().min(-1).optional().default(10),
     sortBy: z.string().min(1).optional(),

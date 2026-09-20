@@ -36,6 +36,17 @@ Parametry aplikacji (porty, ścieżka bazy danych, język, ustawienia HTTPS) są
 
 Ostateczne, obowiązujące parametry używane przez działającą aplikację są logowane do konsoli podczas uruchamiania serwera.
 
+### Zmienne Środowiskowe
+
+*   `JEZARCH_DB_PATH` — ścieżka bazy danych SQLite (domyślnie `./jezarch.sqlite.db`).
+*   `JEZARCH_HTTP_PORT` — port HTTP (domyślnie 8080).
+*   `JEZARCH_HTTPS_PORT` — port HTTPS (domyślnie 8443).
+*   `JEZARCH_HTTPS_KEY_PATH` / `JEZARCH_HTTPS_CERT_PATH` / `JEZARCH_HTTPS_CA_PATH` — ścieżki klucza, certyfikatu i łańcucha CA dla HTTPS (PEM). Nieistniejące ścieżki są ignorowane.
+*   `JEZARCH_DEFAULT_LANGUAGE` — domyślny język (`en`/`pl`).
+*   `JEZARCH_INITIAL_ADMIN_PASSWORD` — hasło początkowego konta `admin`; jeśli nieustawione, przy pierwszym starcie generowane jest losowe hasło wyświetlane jednorazowo.
+*   `JEZARCH_RATE_LIMIT_DISABLED` — ustawione usuwa limitowanie tempa logowania/rejestracji (tylko do testów).
+*   `SEED_ADMIN_PASSWORD` — hasło administratora używane przez skrypty danych demo, gdy nie podano argumentu pozycyjnego.
+
 ---
 
 ## Baza Danych
@@ -52,6 +63,7 @@ Ostateczne, obowiązujące parametry używane przez działającą aplikację są
 Backend udostępnia API RESTful pod prefiksem `/api`. Kluczowe punkty końcowe zasobów obejmują:
 
 *   `/api/user/...` (Uwierzytelnianie, Zarządzanie Użytkownikami)
+*   `/api/session/validate` (Walidacja Sesji)
 *   `/api/configs/...` (Konfiguracja Aplikacji)
 *   `/api/logs/...` (Logi Systemowe)
 *   `/api/tag/...`, `/api/tags` (Tagi Globalne)
@@ -61,6 +73,6 @@ Backend udostępnia API RESTful pod prefiksem `/api`. Kluczowe punkty końcowe z
 *   `/api/archive/document/...` (Dokumenty/Jednostki Archiwalne)
 *   `/api/admin/db/...` (Administracja Bazą Danych)
 
-Uwierzytelnianie odbywa się za pomocą tokena sesyjnego (UUID) przekazywanego w nagłówku `Authorization`. Tokeny sesyjne są uzyskiwane przez `POST /api/user/login` i wygasają po 24 godzinach. Konkretne punkty końcowe wymagają różnych ról użytkownika (`admin`, `employee` lub `user`) do uzyskania dostępu.
+Uwierzytelnianie odbywa się za pomocą tokena sesyjnego przekazywanego w nagłówku `Authorization` (bezpośrednio lub jako `Bearer <token>`). Tokeny sesyjne są uzyskiwane przez `POST /api/user/login` i wygasają po 24 godzinach; serwer przechowuje wyłącznie skrót SHA-256 tokena. Sesję można zweryfikować przez `GET /api/session/validate`. Konkretne punkty końcowe wymagają różnych ról użytkownika (`admin`, `employee` lub `user`) do uzyskania dostępu.
 
 Podczas pierwszego uruchomienia aplikacja tworzy początkowe konto `admin`: hasło pochodzi ze zmiennej `JEZARCH_INITIAL_ADMIN_PASSWORD`, jeśli jest ustawiona; w przeciwnym razie generowane jest silne losowe hasło i wyświetlane jednorazowo w konsoli.

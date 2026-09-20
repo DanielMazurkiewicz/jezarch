@@ -22,6 +22,7 @@ const archiveDocumentsTableDDL = (tableName: string) => `
         title TEXT NOT NULL,
         creator TEXT NOT NULL,
         creationDate TEXT NOT NULL,
+        creationPlace TEXT,
         numberOfPages TEXT,
         documentType TEXT,
         dimensions TEXT,
@@ -29,6 +30,7 @@ const archiveDocumentsTableDDL = (tableName: string) => `
         condition TEXT,
         documentLanguage TEXT,
         contentDescription TEXT,
+        seals TEXT,
         remarks TEXT,
         accessLevel TEXT,
         accessConditions TEXT,
@@ -94,10 +96,30 @@ async function migrateActiveToIsDeleted() {
     await Log.info(`Migration of archive_documents to 'isDeleted' completed.`, 'system', 'migrate');
 }
 
+// One-time migration: add columns added after the table first shipped. Both the
+// earlier 'active'->'isDeleted' rebuild and plain CREATE TABLE IF NOT EXISTS
+// leave pre-existing databases without them, so the schema is topped up with
+// ALTER TABLE ADD COLUMN when a column is missing.
+const ADDITIONAL_COLUMNS: [string, string][] = [
+    ['creationPlace', 'TEXT'],
+    ['seals', 'TEXT'],
+];
+
+async function ensureArchiveDocumentColumns() {
+    const columns: { name: string }[] = db.query<{ name: string }, any[]>('PRAGMA table_info(archive_documents)').all();
+    const existing = new Set(columns.map(col => col.name));
+    for (const [name, type] of ADDITIONAL_COLUMNS) {
+        if (existing.has(name)) continue;
+        await db.exec(`ALTER TABLE archive_documents ADD COLUMN ${name} ${type}`);
+        await Log.info(`Added missing column ${name} to archive_documents.`, 'system', 'migrate');
+    }
+}
+
 // Initialization function for the main archive documents table
 export async function initializeArchiveDocumentTable() {
     await migrateActiveToIsDeleted();
     await db.exec(archiveDocumentsTableDDL('archive_documents'));
+    await ensureArchiveDocumentColumns();
     // Removed index on ownerUserId
     await db.exec(`CREATE INDEX IF NOT EXISTS idx_ad_created_by ON archive_documents (createdBy);`); // Added index
     await db.exec(`CREATE INDEX IF NOT EXISTS idx_ad_updated_by ON archive_documents (updatedBy);`); // Added index
@@ -148,6 +170,7 @@ export const dbToArchiveDocument = async (row?: any): Promise<ArchiveDocument | 
             title: row.title,
             creator: row.creator,
             creationDate: row.creationDate,
+            creationPlace: row.creationPlace ?? null,
             numberOfPages: row.numberOfPages,
             documentType: row.documentType,
             dimensions: row.dimensions,
@@ -155,6 +178,7 @@ export const dbToArchiveDocument = async (row?: any): Promise<ArchiveDocument | 
             condition: row.condition,
             documentLanguage: row.documentLanguage,
             contentDescription: row.contentDescription,
+            seals: row.seals ?? null,
             remarks: row.remarks,
             accessLevel: row.accessLevel,
             accessConditions: row.accessConditions,
@@ -196,20 +220,23 @@ export async function createArchiveDocument(
         const statement = db.prepare(
             `INSERT INTO archive_documents (
                 parentUnitArchiveDocumentId, createdBy, updatedBy, type, topographicSignature,
-                descriptiveSignatureElementIds, title, creator, creationDate, numberOfPages, documentType,
-                dimensions, binding, condition, documentLanguage, contentDescription, remarks, accessLevel,
+                descriptiveSignatureElementIds, title, creator, creationDate, creationPlace,
+                numberOfPages, documentType,
+                dimensions, binding, condition, documentLanguage, contentDescription, seals,
+                remarks, accessLevel,
                 accessConditions, additionalInformation, relatedDocumentsReferences, recordChangeHistory,
                 isDigitized, digitizedVersionLink, createdOn, modifiedOn
-             ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+             ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
              RETURNING archiveDocumentId`
         );
         const result = statement.get(
             input.parentUnitArchiveDocumentId ?? null,
             input.createdBy, input.createdBy, // Set both createdBy and updatedBy on creation
             input.type, input.topographicSignature ?? null,
-            descriptiveJson, input.title, input.creator, input.creationDate, input.numberOfPages, input.documentType,
-            input.dimensions, input.binding, input.condition, input.documentLanguage, input.contentDescription, input.remarks ?? null,
-            input.accessLevel, input.accessConditions, input.additionalInformation ?? null, input.relatedDocumentsReferences ?? null,
+            descriptiveJson, input.title, input.creator, input.creationDate, input.creationPlace ?? null,
+            input.numberOfPages, input.documentType,
+            input.dimensions, input.binding, input.condition, input.documentLanguage, input.contentDescription, input.seals ?? null,
+            input.remarks ?? null, input.accessLevel, input.accessConditions, input.additionalInformation ?? null, input.relatedDocumentsReferences ?? null,
             input.recordChangeHistory ?? null, input.isDigitized ? 1 : 0, input.digitizedVersionLink ?? null,
             now ?? null, now ?? null
         ) as { archiveDocumentId: number };
@@ -442,9 +469,14 @@ export const archiveDocumentSignatureSearchHandler: (element: SearchQueryElement
 
     // Build JSON search patterns based on condition
     if (element.condition === 'EQ') { // Exact match of an entire signature path
-        const exactPathJsonString = JSON.stringify(signaturePath);
-        whereCondition = `EXISTS (SELECT 1 FROM json_each(${tableAlias}.descriptiveSignatureElementIds) je WHERE je.value = ?)`;
-        params.push(exactPathJsonString);
+        if (signaturePath.length === 0) {
+            // Empty path = "has no signature"
+            whereCondition = `json_array_length(COALESCE(${tableAlias}.descriptiveSignatureElementIds, '[]')) = 0`;
+        } else {
+            const exactPathJsonString = JSON.stringify(signaturePath);
+            whereCondition = `EXISTS (SELECT 1 FROM json_each(${tableAlias}.descriptiveSignatureElementIds) je WHERE je.value = ?)`;
+            params.push(exactPathJsonString);
+        }
     } else if (element.condition === 'STARTS_WITH') { // Path starts with the given sequence OR is an exact match
         const likePatternPrefix = '[' + signaturePath.join(',') + (signaturePath.length > 0 ? ',' : ''); // e.g., "[1,2," or "["
         const exactPathJsonString = JSON.stringify(signaturePath); // For exact match
@@ -455,7 +487,11 @@ export const archiveDocumentSignatureSearchHandler: (element: SearchQueryElement
         )`;
         params.push(likePatternPrefix + '%', exactPathJsonString);
     } else if (element.condition === 'CONTAINS_SEQUENCE') { // Path contains the given sequence ANYWHERE
-        const seqStart = `[${signaturePath.join(',')}`;
+        // Trailing comma after the last ID keeps it delimited: without it, a
+        // sequence ending in 2 would also match paths containing element 23
+        // (pattern "[...,2%" matches text "[...,23]"). The exact-match clause
+        // below still covers paths that end exactly at the sequence.
+        const seqStart = `[${signaturePath.join(',')},`;
         const seqMiddle = `,${signaturePath.join(',')},`;
         const seqEnd = `,${signaturePath.join(',')}]`;
         const seqExact = `[${signaturePath.join(',')}]`;
@@ -486,7 +522,7 @@ export async function getMatchingDocumentIds(searchRequest: SearchRequest): Prom
     try {
         const allowedDirectFields: (keyof ArchiveDocument)[] = [
             'archiveDocumentId', 'parentUnitArchiveDocumentId', 'createdBy', 'updatedBy', 'type', 'title', // Changed fields
-            'creator', 'creationDate', 'numberOfPages', 'documentType', 'dimensions', 'binding',
+            'creator', 'creationDate', 'creationPlace', 'seals', 'numberOfPages', 'documentType', 'dimensions', 'binding',
             'condition', 'documentLanguage', 'contentDescription', 'remarks', 'accessLevel',
             'accessConditions', 'additionalInformation', 'relatedDocumentsReferences',
             'isDigitized', 'digitizedVersionLink', 'createdOn', 'modifiedOn', 'isDeleted',

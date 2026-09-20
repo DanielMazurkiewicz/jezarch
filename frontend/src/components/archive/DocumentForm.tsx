@@ -67,7 +67,7 @@ const DocumentForm: React.FC<DocumentFormProps> = ({
     defaultValues: {
         parentUnitArchiveDocumentId: forcedParentId ?? null,
         type: forceType ?? "document",
-        title: '', creator: '', creationDate: '',
+        title: '', creator: '', creationDate: '', creationPlace: null, seals: null,
         numberOfPages: null, documentType: null, dimensions: null, binding: null, condition: null,
         documentLanguage: null, contentDescription: null, remarks: null, accessLevel: null,
         accessConditions: null, additionalInformation: null, relatedDocumentsReferences: null,
@@ -103,6 +103,8 @@ const DocumentForm: React.FC<DocumentFormProps> = ({
                     type: forceType ?? fullDoc.type ?? 'document',
                     title: fullDoc.title ?? '', creator: fullDoc.creator ?? '',
                     creationDate: fullDoc.creationDate ?? '',
+                    creationPlace: fullDoc.creationPlace ?? null,
+                    seals: fullDoc.seals ?? null,
                     numberOfPages: fullDoc.numberOfPages ?? null,
                     documentType: fullDoc.documentType ?? null,
                     dimensions: fullDoc.dimensions ?? null,
@@ -135,6 +137,8 @@ const DocumentForm: React.FC<DocumentFormProps> = ({
                     type: forceType ?? docToEdit.type ?? 'document',
                     title: docToEdit.title ?? '', creator: docToEdit.creator ?? '',
                     creationDate: docToEdit.creationDate ?? '',
+                    creationPlace: docToEdit.creationPlace ?? null,
+                    seals: docToEdit.seals ?? null,
                     tagIds: docToEdit.tags?.map(t => t.tagId!) ?? [],
                     topographicSignature: docToEdit.topographicSignature ?? null,
                     descriptiveSignatureElementIds: normalizeSignaturePaths(docToEdit.descriptiveSignatureElementIds),
@@ -149,6 +153,7 @@ const DocumentForm: React.FC<DocumentFormProps> = ({
                 parentUnitArchiveDocumentId: forcedParentId ?? null,
                 type: forceType ?? 'document',
                 title: '', creator: '', creationDate: '',
+                creationPlace: null, seals: null,
                 tagIds: [],
                 topographicSignature: null,
                 descriptiveSignatureElementIds: [],
@@ -190,6 +195,8 @@ const DocumentForm: React.FC<DocumentFormProps> = ({
                 title: coreData.title,
                 creator: coreData.creator,
                 creationDate: coreData.creationDate,
+                creationPlace: clearIfEmpty(coreData.creationPlace),
+                seals: clearIfEmpty(coreData.seals),
                 numberOfPages: clearIfEmpty(coreData.numberOfPages),
                 documentType: clearIfEmpty(coreData.documentType),
                 dimensions: clearIfEmpty(coreData.dimensions),
@@ -302,7 +309,7 @@ const DocumentForm: React.FC<DocumentFormProps> = ({
                             <Input id="doc-title" {...register('title')} aria-invalid={!!errors.title} className={cn(errors.title && "border-destructive")}/>
                             {errors.title && <p className="text-xs text-destructive">{errors.title.message}</p>}
                         </GridItem>
-                        <GridItem className="md:col-span-1">
+                        <GridItem className="md:col-span-2">
                             <Label htmlFor="doc-creator">{t('archiveFormCreatorLabel', preferredLanguage)}</Label>
                             <Input id="doc-creator" {...register('creator')} aria-invalid={!!errors.creator} className={cn(errors.creator && "border-destructive")}/>
                             {errors.creator && <p className="text-xs text-destructive">{errors.creator.message}</p>}
@@ -311,6 +318,11 @@ const DocumentForm: React.FC<DocumentFormProps> = ({
                             <Label htmlFor="doc-creationDate">{t('archiveFormCreationDateLabel', preferredLanguage)}</Label>
                             <Input id="doc-creationDate" {...register('creationDate')} placeholder={t('archiveFormCreationDatePlaceholder', preferredLanguage)} aria-invalid={!!errors.creationDate} className={cn(errors.creationDate && "border-destructive")}/>
                             {errors.creationDate && <p className="text-xs text-destructive">{errors.creationDate.message}</p>}
+                        </GridItem>
+                        <GridItem className="md:col-span-1">
+                            <Label htmlFor="doc-creationPlace">{t('archiveFormPlaceLabel', preferredLanguage)}</Label>
+                            <Input id="doc-creationPlace" {...register('creationPlace')} placeholder={t('archiveFormPlacePlaceholder', preferredLanguage)} aria-invalid={!!errors.creationPlace} className={cn(errors.creationPlace && "border-destructive")}/>
+                            {errors.creationPlace && <p className="text-xs text-destructive">{errors.creationPlace.message}</p>}
                         </GridItem>
                     </CardContent>
                 </Card>
@@ -341,6 +353,11 @@ const DocumentForm: React.FC<DocumentFormProps> = ({
                             <Label htmlFor="doc-remarks">{t('archiveFormRemarksLabel', preferredLanguage)}</Label>
                             <Textarea id="doc-remarks" {...register('remarks')} rows={2} placeholder={t('archiveFormRemarksPlaceholder', preferredLanguage)} aria-invalid={!!errors.remarks} className={cn(errors.remarks && "border-destructive")}/>
                             {errors.remarks && <p className="text-xs text-destructive">{errors.remarks.message}</p>}
+                        </GridItem>
+                        <GridItem>
+                            <Label htmlFor="doc-seals">{t('archiveFormSealsLabel', preferredLanguage)}</Label>
+                            <Textarea id="doc-seals" {...register('seals')} rows={4} placeholder={t('archiveFormSealsPlaceholder', preferredLanguage)} aria-invalid={!!errors.seals} className={cn(errors.seals && "border-destructive")}/>
+                            {errors.seals && <p className="text-xs text-destructive">{errors.seals.message}</p>}
                         </GridItem>
                         <GridItem>
                             <Label htmlFor="doc-related">{t('archiveFormRelatedDocsLabel', preferredLanguage)}</Label>

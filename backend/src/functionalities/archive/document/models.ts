@@ -26,6 +26,7 @@ export interface ArchiveDocument {
     title: string;
     creator: string;
     creationDate: string; // Flexible string format
+    creationPlace: string | null;
     numberOfPages: string | null;
     documentType: string | null;
     dimensions: string | null;
@@ -33,6 +34,7 @@ export interface ArchiveDocument {
     condition: string | null;
     documentLanguage: string | null;
     contentDescription: string | null;
+    seals: string | null;
 
     // Optional metadata fields
     remarks?: string | null;
@@ -67,6 +69,7 @@ const archiveDocumentBaseSchema = z.object({
     title: z.string().min(1, "Title cannot be empty"),
     creator: z.string().min(1, "Creator cannot be empty"),
     creationDate: z.string().min(1, "Creation date cannot be empty"),
+    creationPlace: z.string().max(255).optional().nullable(),
     numberOfPages: z.string().max(50).optional().nullable(),
     documentType: z.string().max(100).optional().nullable(),
     dimensions: z.string().max(100).optional().nullable(),
@@ -74,6 +77,7 @@ const archiveDocumentBaseSchema = z.object({
     condition: z.string().max(255).optional().nullable(),
     documentLanguage: z.string().max(50).optional().nullable(),
     contentDescription: z.string().max(10000).optional().nullable(),
+    seals: z.string().max(10000).optional().nullable(),
     remarks: z.string().optional().nullable(),
     accessLevel: z.string().max(50).optional().nullable(),
     accessConditions: z.string().max(255).optional().nullable(),

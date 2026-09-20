@@ -36,6 +36,17 @@ Application parameters (ports, database path, language, HTTPS settings) are dete
 
 The final, effective parameters used by the running application are logged to the console on server startup.
 
+### Environment Variables
+
+*   `JEZARCH_DB_PATH` — SQLite database path (default `./jezarch.sqlite.db`).
+*   `JEZARCH_HTTP_PORT` — HTTP port (default 8080).
+*   `JEZARCH_HTTPS_PORT` — HTTPS port (default 8443).
+*   `JEZARCH_HTTPS_KEY_PATH` / `JEZARCH_HTTPS_CERT_PATH` / `JEZARCH_HTTPS_CA_PATH` — HTTPS key, certificate, and CA chain paths (PEM). Non-existent paths are ignored.
+*   `JEZARCH_DEFAULT_LANGUAGE` — default language (`en`/`pl`).
+*   `JEZARCH_INITIAL_ADMIN_PASSWORD` — bootstrap `admin` password; if unset a random one is printed once on first start.
+*   `JEZARCH_RATE_LIMIT_DISABLED` — set to remove login/registration rate limiting (testing only).
+*   `SEED_ADMIN_PASSWORD` — admin password used by the demo-data seed scripts when no positional argument is given.
+
 ---
 
 ## Database
@@ -52,6 +63,7 @@ The final, effective parameters used by the running application are logged to th
 The backend exposes a RESTful API under the `/api` prefix. Key resource endpoints include:
 
 *   `/api/user/...` (Authentication, User Management)
+*   `/api/session/validate` (Session Validation)
 *   `/api/configs/...` (Application Configuration)
 *   `/api/logs/...` (System Logs)
 *   `/api/tag/...`, `/api/tags` (Global Tags)
@@ -61,6 +73,6 @@ The backend exposes a RESTful API under the `/api` prefix. Key resource endpoint
 *   `/api/archive/document/...` (Archive Documents/Units)
 *   `/api/admin/db/...` (Database Administration)
 
-Authentication is handled via a session token (UUID) passed in the `Authorization` header. Session tokens are obtained via `POST /api/user/login` and expire after 24 hours. Specific endpoints require different user roles (`admin`, `employee`, or `user`) for access.
+Authentication is handled via a session token passed in the `Authorization` header (either bare or as `Bearer <token>`). Tokens are obtained via `POST /api/user/login` and expire after 24 hours; the server stores only the SHA-256 hash of the token. Sessions can be checked with `GET /api/session/validate`. Specific endpoints require different user roles (`admin`, `employee`, or `user`) for access.
 
 On first start the application bootstraps an initial `admin` account: the password comes from `JEZARCH_INITIAL_ADMIN_PASSWORD` if set, otherwise a strong random password is generated and printed once to the console.

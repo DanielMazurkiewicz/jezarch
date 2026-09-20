@@ -1,6 +1,6 @@
 # Przewodnik Użytkownika JezArch
 
-Ten przewodnik opisuje podstawowe funkcjonalności aplikacji JezArch dla różnych ról użytkowników. Administratorzy powinni również zapoznać się z [Przewodnikiem Administratora](ADMIN_GUIDE.md) w celu uzyskania informacji o specyficznych zadaniach administracyjnych.
+Ten przewodnik opisuje podstawowe funkcjonalności aplikacji JezArch dla różnych ról użytkowników. Administratorzy powinni również zapoznać się z [Przewodnikiem Administratora](ADMIN_GUIDE.md) w celu uzyskania informacji o specyficznych zadaniach administracyjnych. Przykłady krok po kroku znajdziesz w [Przykładowych Scenariuszach](WORKFLOWS.md).
 
 ## Spis Treści
 
@@ -9,10 +9,12 @@ Ten przewodnik opisuje podstawowe funkcjonalności aplikacji JezArch dla różny
     *   [Nagłówek](#nagłówek)
     *   [Pasek Boczny](#pasek-boczny)
     *   [Główny Obszar Treści](#główny-obszar-treści)
+    *   [Wbudowana Pomoc](#wbudowana-pomoc)
 *   [Panel Główny](#panel-główny)
 *   [Zarządzanie Archiwum](#zarządzanie-archiwum)
     *   [Przeglądanie Jednostek i Dokumentów](#przeglądanie-jednostek-i-dokumentów)
     *   [Wyszukiwanie](#wyszukiwanie)
+    *   [Sortowanie i Paginacja](#sortowanie-i-paginacja)
     *   [Wyświetlanie Szczegółów](#wyświetlanie-szczegółów)
     *   [Tworzenie Jednostek/Dokumentów (Admin/Pracownik)](#tworzenie-jednostekdokumentów-adminpracownik)
     *   [Edytowanie Jednostek/Dokumentów (Admin/Pracownik)](#edytowanie-jednostekdokumentów-adminpracownik)
@@ -31,6 +33,7 @@ Ten przewodnik opisuje podstawowe funkcjonalności aplikacji JezArch dla różny
     *   [Zmiana Hasła](#zmiana-hasła)
     *   [Zmiana Języka](#zmiana-języka)
     *   [Wylogowywanie](#wylogowywanie)
+*   [Przykładowe Scenariusze](#przykładowe-scenariusze)
 
 ---
 
@@ -38,6 +41,8 @@ Ten przewodnik opisuje podstawowe funkcjonalności aplikacji JezArch dla różny
 
 *   **Logowanie:** Wejdź do aplikacji pod adresem URL podanym przez administratora (np. `http://localhost:8080`). Wprowadź swoją nazwę użytkownika i hasło na ekranie logowania.
 *   **Rejestracja:** Kliknij link "Zarejestruj się". Podaj nazwę użytkownika i silne hasło (minimum 8 znaków, w tym wielka litera, mała litera i cyfra). Potwierdź hasło. Po pomyślnej rejestracji zazwyczaj nie będziesz miał przypisanej żadnej roli ('null') i nie będziesz mógł się zalogować, dopóki Administrator nie przypisze Ci roli ('pracownik' lub 'użytkownik').
+*   **Sesje:** Sesja logowania jest ważna przez **24 godziny**. Po tym czasie nastąpi automatyczne wylogowanie i konieczne będzie ponowne zalogowanie.
+*   **Limitowanie prób:** Aby utrudnić ataki brute-force i spam, obowiązują limity częstotliwości prób logowania i rejestracji. Po ich przekroczeniu otrzymasz odpowiedź "zbyt wiele żądań" i musisz odczekać przed kolejną próbą.
 
 ---
 
@@ -61,10 +66,18 @@ Ten przewodnik opisuje podstawowe funkcjonalności aplikacji JezArch dla różny
     *   **Tagi (Admin/Pracownik):** Zarządzaj globalnymi tagami.
     *   **Notatki (Admin/Pracownik):** Dostęp do osobistych i udostępnionych notatek.
     *   **Admin (Tylko Admin):** Dostęp do funkcji administracyjnych.
+*   Pasek boczny pokazuje konto, jako które jesteś zalogowany, oraz ikonę wylogowania u góry.
+*   Szerokość paska bocznego można **przeciągać**, aby go zmienić.
+*   Na stronie **Archiwum** na dole paska bocznego pojawia się szybki filtr **"Drzewo sygnatur opisowych"** (zobacz [Wyszukiwanie](#wyszukiwanie)).
 
 ### Główny Obszar Treści
 
 *   Wyświetla zawartość wybranej sekcji (np. listę dokumentów, formularze, ustawienia).
+
+### Wbudowana Pomoc
+
+*   Każda główna strona (Panel Główny, Archiwum, Sygnatury, Tagi, Notatki, Admin) ma przycisk **Pomoc**, który otwiera wbudowany przewodnik dla tej strony.
+*   Przewodniki objaśniają cel sekcji, kluczowe pojęcia i uprawnienia poszczególnych ról.
 
 ---
 
@@ -83,43 +96,64 @@ Domyślna strona po zalogowaniu. Wyświetla wiadomość powitalną. Użytkownicy
 *   Pozycje oznaczone ikoną **Folderu** to **Jednostki**. Kliknięcie Jednostki przenosi do jej wnętrza, pokazując zawarte w niej dokumenty i podjednostki.
 *   Pozycje oznaczone ikoną **Pliku** to **Dokumenty**. Kliknięcie Dokumentu otwiera okno podglądu.
 *   Użyj przycisku **Strzałki Wstecz**, będąc wewnątrz jednostki, aby wrócić do poziomu nadrzędnego lub głównego widoku archiwum.
+*   Nagłówek pokazuje, ile pozycji pasuje do bieżącego widoku ("Znaleziono N pozycji.").
 
 ### Wyszukiwanie
 
 *   Użyj **Paska Wyszukiwania** na górze strony Archiwum, aby znaleźć pozycje.
-*   Kliknij **Dodaj Filtr**, aby dodać kryteria wyszukiwania.
-*   Wybierz **Pole** (np. Tytuł, Twórca, Tagi, Sygnatura Opisowa).
-*   Wybierz **Warunek** (np. Zawiera, Równa się, Ma którykolwiek z, Zaczyna się od ścieżki).
-*   Wprowadź **Wartość**.
-    *   Dla pól tekstowych (`Zawiera`): Wprowadź fragmenty tekstu.
-    *   Dla `Tagów`: Wybierz jeden lub więcej tagów z listy rozwijanej. `Ma którykolwiek z` znajduje pozycje z *przynajmniej jednym* z wybranych tagów.
-    *   Dla `Sygnatury Opisowej`: Użyj **Selektora Ścieżki Sygnatury** (`Równa się`, `Zaczyna się`, `Zawiera Sekwencję`), aby zbudować ścieżkę sygnatury, której chcesz szukać.
-    *   Dla pól `boolean` (Czy zdigitalizowano, Czy Usunięte): Wybierz `Prawda` lub `Fałsz`.
-*   Możesz zaznaczyć pole **NIE**, aby zanegować warunek (np. znaleźć pozycje *nie* pasujące).
-*   Dodaj wiele kryteriów, aby zawęzić wyniki (są łączone operatorem AND).
-*   Kliknij **Szukaj**, aby zastosować filtry. Kliknij **Resetuj**, aby wyczyścić filtry.
-*   **Rola 'Użytkownik':** Wyniki wyszukiwania są automatycznie filtrowane, aby pokazać tylko dokumenty pasujące do tagów przypisanych użytkownikowi przez administratora.
+*   Kliknij **Dodaj Filtr**, aby dodać kryterium wyszukiwania; każdy wiersz ma **Pole**, **Warunek** i **Wartość**.
+*   Wybierz **Pole** z listy:
+    *   **Wszystkie role:** Tytuł, Twórca, Data Utworzenia, Miejsce Utworzenia, Pieczęcie, Opis Treści, Sygnatura Topograficzna, Sygnatura Opisowa, Typ (tylko w widoku głównym archiwum), Czy Zdigitalizowano.
+    *   **Tylko Admin/Pracownik:** Tagi, Utworzone Przez, Zaktualizowane Przez, Czy Usunięte.
+    *   Gdy przeglądasz zawartość jednostki, lista jest automatycznie ograniczona do jej zawartości.
+*   Wybierz **Warunek** — dostępne warunki zależą od typu pola:
+    *   **Pola tekstowe** (Tytuł, Twórca, Data Utworzenia, Miejsce, Pieczęcie, Treść, Sygn. Topograficzna, Utworzone Przez, Zaktualizowane Przez): `Zawiera` (znajduje fragmenty) lub `Równa się`.
+    *   **Pola wyboru** (Typ): `Jest` lub `Jest jednym z` (wartości oddzielone przecinkami).
+    *   **Pola logiczne** (Czy Zdigitalizowano, Czy Usunięte): `Jest` → `Prawda` lub `Fałsz`.
+    *   **Tagi:** `Ma którykolwiek z` — wybierz jeden lub więcej tagów; dopasowuje pozycje z **przynajmniej jednym** z wybranych tagów.
+    *   **Sygnatura Opisowa:** `Zawiera Sekwencję`, `Zaczyna się` lub `Równa się` — użyj **Selektora Ścieżki Sygnatury**, aby zbudować ścieżkę elementów do dopasowania. (`Równa się` z pustą ścieżką dopasowuje pozycje bez sygnatury opisowej).
+*   Wprowadź **Wartość** dla wybranego pola (fragment tekstu, wartość, wartość logiczna, tagi lub ścieżka sygnatury).
+*   Zaznacz pole **NIE** w wierszu, aby zanegować warunek (np. `Czy Zdigitalizowano` + `NIE` znajduje pozycje, które *nie* są zdigitalizowane).
+*   Dodaj wiele kryteriów, aby zawęzić wyniki — są łączone operatorem **AND**, więc każdy wiersz dodatkowo ogranicza zbiór wyników.
+*   Kliknij **Szukaj**, aby zastosować filtry. Kliknij **Resetuj**, aby wyczyścić kryteria i wrócić do widoku domyślnego (pracownicy i admin wracają do ukrywania usuniętych).
+*   **Szybki filtr sygnatur ("Drzewo sygnatur opisowych"):** drzewo na dole paska bocznego to alternatywny sposób filtrowania według sygnatury opisowej. Włącz pole wyboru, wybierz warunek (`Zaczyna się` / `Zawiera Sekwencję` / `Równa się`) i klikaj w hierarchii sygnatur (komponenty → elementy → elementy podrzędne), aby wybrać ścieżkę. Wybrana ścieżka jest nakładana **na wierzch** kryteriów z paska wyszukiwania, a jej elementy są pokazywane jako rozwiązana ścieżka. Kliknij już wybrany element, aby wyczyścić filtr, a jeśli drzewo jest nieaktualne, użyj ikony odświeżania.
+*   **Rola 'Użytkownik':** filtr tagów jest zawsze aktywny — wyniki obejmują tylko dokumenty mające **przynajmniej jeden** z tagów przypisanych Ci przez administratora. Jeśli nie przypisano tagów, wyszukiwanie nic nie zwraca.
+
+### Sortowanie i Paginacja
+
+*   Kliknij nagłówek kolumny, aby posortować listę archiwum — sortowalne kolumny to **Typ**, **Tytuł** i **Sygn. Topograficzna**.
+*   Kliknij ten sam nagłówek ponownie, aby przełączyć między porządkiem rosnącym a malejącym; strzałki wskazują bieżący kierunek.
+*   Wyniki są podzielone na strony (10 pozycji na stronę). Użyj paska paginacji na dole listy, aby przechodzić między stronami.
 
 ### Wyświetlanie Szczegółów
 
 *   Kliknięcie wiersza **Dokumentu** na liście otwiera **Okno Podglądu**.
 *   Okno dialogowe pokazuje:
-    *   Podstawowe informacje (Tytuł, Twórca, Data, link do Jednostki Nadrzędnej).
-    *   Przypisane Tagi i Sygnatury (Topograficzną i rozwiązane Opisowe).
+    *   Podstawowe informacje (Tytuł, Twórca, Data, Miejsce Utworzenia, link do Jednostki Nadrzędnej, Typ).
+    *   Przypisane Tagi i Sygnatury (Topograficzną i rozwiązane ścieżki Opisowe).
     *   Informacje o tym, kto utworzył/zaktualizował pozycję wraz ze znacznikami czasu.
-    *   Opis Treści, Szczegóły Fizyczne, informacje o Dostępie, Uwagi itp.
-    *   Link do wersji cyfrowej, jeśli jest dostępna.
+    *   Opis Treści, Uwagi, Pieczęcie, Język Dokumentu.
+    *   Szczegóły Fizyczne dla **jednostek** (Strony, Typ Dokumentu, Wymiary, Oprawa, Stan).
+    *   Informacje o Dostępie (Poziom Dostępu, Warunki Dostępu) oraz Informacje Dodatkowe / Powiązane Dokumenty, jeśli podano.
+    *   Status digitalizacji ("Tak — Link:" otwiera wersję cyfrową, jeśli dostępna; w przeciwnym razie "Nie").
 *   Administratorzy/Pracownicy widzą przyciski **Edytuj** i **Usuń** w stopce okna dialogowego (oraz **Przywróć** dla usuniętych pozycji).
 
 ### Tworzenie Jednostek/Dokumentów (Admin/Pracownik)
 
 *   Kliknij przycisk **Utwórz Pozycję** (lub **Utwórz Dokument**, gdy jesteś wewnątrz jednostki).
-*   Pojawi się okno dialogowe z formularzem:
-    *   **Typ:** Wybierz 'Jednostka' lub 'Dokument'. Nie można zmienić po utworzeniu. Jeśli jesteś wewnątrz jednostki, domyślnie jest to 'Dokument' i nie można tego zmienić.
-    *   **Jednostka Nadrzędna:** (Tylko dla Dokumentów, podczas tworzenia w głównym widoku) Wybierz jednostkę, do której należy ten dokument, używając wyszukiwanej listy rozwijanej.
-    *   **Tytuł, Twórca, Data Utworzenia:** Pola wymagane.
-    *   **Sygnatury i Tagi:** Użyj dedykowanych selektorów, aby przypisać Sygnaturę Topograficzną (tekst), Sygnatury Opisowe (ścieżki) i Tagi.
-    *   **Inne Pola:** Wypełnij opcjonalne metadane (Opis Fizyczny, Treść, Dostęp, Digitalizacja itp.).
+*   Pojawi się okno dialogowe z formularzem podzielonym na sekcje:
+    *   **Podstawowe Informacje:**
+        *   **Typ:** Wybierz 'Jednostka' lub 'Dokument'. Nie można zmienić po utworzeniu. Jeśli jesteś wewnątrz jednostki, domyślnie jest to 'Dokument' i nie można tego zmienić.
+        *   **Jednostka Nadrzędna:** (Tylko dla Dokumentów, podczas tworzenia w głównym widoku) Wybierz jednostkę, do której należy ten dokument, używając wyszukiwanej listy rozwijanej.
+        *   **Tytuł, Twórca, Data Utworzenia:** Pola wymagane. Data Utworzenia to tekst dowolny (np. `2023-10-26` lub `ok. 1950`).
+        *   **Miejsce Utworzenia** i **Pieczęcie** (opcjonalne).
+    *   **Opis Fizyczny** *(pokazywany tylko dla Jednostek):* Liczba Stron, Typ Dokumentu, Wymiary, Oprawa, Stan.
+    *   **Treść i Kontekst:** Język Dokumentu, Opis Treści, Uwagi, Pieczęcie, Odwołania do Powiązanych Dokumentów, Informacje Dodatkowe.
+    *   **Dostęp i Digitalizacja:** Poziom Dostępu, Warunki Dostępu, pole **Czy Zdigitalizowano** (zaznaczenie odsłania **Link do Wersji Cyfrowej**, który musi być prawidłowym URL-em).
+    *   **Indeksowanie:**
+        *   **Sygnatura Topograficzna:** tekst dowolny dla fizycznej lokalizacji (np. `Pudło 1, Teczka 5, Pozycja 3`).
+        *   **Sygnatury Opisowe:** użyj **Selektora Ścieżki Sygnatury**, aby dodać jedną lub więcej ścieżek elementów.
+        *   **Tagi:** przypisz istniejące tagi **Selektorem Tagów** (najpierw utwórz tagi w sekcji Tagi).
     *   Kliknij **Utwórz Pozycję**.
 
 ### Edytowanie Jednostek/Dokumentów (Admin/Pracownik)
@@ -168,7 +202,7 @@ Zarządzaj elementami składowymi sygnatur opisowych.
 *   **Tworzenie:** Kliknij **Nowy Element**. Podaj Nazwę, opcjonalny Opis. Możesz opcjonalnie podać konkretny Indeks (tekst, np. "1a", "V"), w przeciwnym razie zostanie on wygenerowany automatycznie na podstawie licznika komponentu i typu indeksu. Użyj selektora **Elementy Nadrzędne**, aby połączyć ten element jako dziecko innych elementów (tworząc relacje hierarchiczne).
 *   **Edycja:** Kliknij ikonę **Edytuj** (ołówek). Zmodyfikuj Nazwę, Opis, Indeks lub Elementy Nadrzędne. Wyczyszczenie pola Indeks usuwa własną wartość (element zachowa bieżący indeks do czasu reindeksacji).
 *   **Usuwanie (Tylko Admin):** Kliknij ikonę **Usuń** (kosz). To trwale usuwa element i czyści odwołania do niego w ścieżkach sygnatur dokumentów.
-*   **Wyszukiwanie:** Użyj paska wyszukiwania, aby filtrować elementy w bieżącym komponencie według Nazwy, Opisu, Indeksu lub tego, czy mają elementy nadrzędne.
+*   **Wyszukiwanie:** Użyj paska wyszukiwania, aby filtrować elementy w bieżącym komponencie (filtr komponentu jest już nałożony). Dostępne pola: **Nazwa**, **Opis** i **Indeks** (wszystkie z warunkami `Zawiera` / `Równa się`) oraz **Ma Rodziców** (warunek logiczny `Jest` → Prawda/Fałsz, pokazujący tylko elementy będące dziećmi innych elementów). Wyniki są podzielone na strony (15 na stronę).
 
 ---
 
@@ -192,7 +226,7 @@ Twórz i zarządzaj osobistymi oraz udostępnionymi notatkami.
 
 *   Przejdź do sekcji **Notatki**.
 *   Lista wyświetla notatki utworzone przez Ciebie **LUB** notatki utworzone przez innych, które są oznaczone jako **Udostępnione**.
-*   Użyj **Paska Wyszukiwania**, aby filtrować notatki według Tytułu, Treści, statusu Udostępnienia, Tagów lub Autora (Tylko Admin).
+*   Użyj **Paska Wyszukiwania**, aby filtrować notatki. Dostępne pola: **Tytuł**, **Treść** (`Zawiera` / `Równa się`), **Udostępniona** (logiczne `Jest` → Prawda/Fałsz), **Tagi** (`Ma którykolwiek z`) oraz **Autor** (`Zawiera` / `Równa się`; widoczne tylko dla Admina). Wiele kryteriów łączonych jest operatorem **AND**, a każdy wiersz można zanegować polem **NIE**.
 *   Kliknij tytuł notatki lub ikonę **Podgląd** (oko), aby zobaczyć pełną treść w oknie dialogowym.
 
 ### Tworzenie i Edytowanie
@@ -238,3 +272,9 @@ Twórz i zarządzaj osobistymi oraz udostępnionymi notatkami.
 
 *   Wybierz "Wyloguj" z menu użytkownika.
 *   Twoja sesja zostanie zakończona.
+
+---
+
+## Przykładowe Scenariusze
+
+Pełne, krok po kroku przykłady — od pierwszego uruchomienia, przez budowę archiwum i wyszukiwanie, po przyznawanie ograniczonego dostępu i rutynową konserwację — znajdziesz w przewodniku [Przykładowe Scenariusze](WORKFLOWS.md).

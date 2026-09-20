@@ -1,6 +1,6 @@
 # JezArch Administrator Guide
 
-This guide details the functionalities available exclusively to users with the 'Admin' role in the JezArch application.
+This guide details the functionalities available exclusively to users with the 'Admin' role in the JezArch application. For task-oriented, step-by-step examples (creating users, granting tag-based access, backups, and more), see the [Example Workflows](WORKFLOWS.md) guide.
 
 ## Table of Contents
 
@@ -55,6 +55,7 @@ Navigate to the "User Management" tab within the Admin Panel.
 *   Use the dropdown menu in the "Role" column for a specific user.
 *   Select the desired role: 'Admin', 'Employee', 'User', or 'No Role / Disabled' (which effectively disables the account).
 *   **Important:** You cannot change your own role.
+*   **Important:** The **last remaining administrator account** cannot be demoted or disabled — the server rejects this with an error to prevent locking everyone out of the admin panel.
 *   Changing a user's role *away from* 'User' will automatically clear any tags previously assigned to them.
 *   Changing a user's role *to* 'User' allows you to subsequently assign tags. You might be prompted to assign tags immediately after changing the role to 'User'.
 
@@ -74,9 +75,10 @@ Navigate to the "User Management" tab within the Admin Panel.
 
 ### Setting Preferred Language
 
-*   Click the **Set Language** (languages icon) button for any user (including yourself, though usually done via header dropdown).
+*   Click the **Set Language** (languages icon) button for another user to set their interface language from the Admin panel.
 *   Select the desired language from the dropdown.
 *   Click **Save**. The user's interface preference will be updated.
+*   **Note:** This button is **not shown for your own account** — to change your own language, use the language selector in the header user menu instead.
 
 ---
 
@@ -120,7 +122,7 @@ Navigate to the "Database" tab.
 
 *   Click **Download Backup File**.
 *   This initiates a download of the current SQLite database file (e.g., `jezarch-backup-YYYY-MM-DDTHH-MM-SS-ZZZ.sqlite.db`).
-*   **Note:** Before backup, the system attempts a `PRAGMA wal_checkpoint(TRUNCATE)` to ensure data consistency if Write-Ahead Logging (WAL) is enabled (which is the default).
+*   **Note:** Before sending the file, the system creates a consistent snapshot of the live database using `VACUUM INTO`, so the download represents a point-in-time copy even while the server is running.
 *   Store the downloaded backup file securely in a separate location.
 
 ### Restore
@@ -140,12 +142,14 @@ Navigate to the "System Logs" tab.
 
 ### Searching Logs
 
-*   Use the search bar to filter logs by:
-    *   Level (Info, Warn, Error)
-    *   User ID (or 'system')
-    *   Category (e.g., 'auth', 'db', 'startup')
-    *   Message content (Contains)
-    *   Timestamp (Date range conditions)
+*   Use the search bar to filter logs. Available fields and their conditions:
+    *   **Level** (select): `Is` (single value) or `Is Any Of` (comma-separated, e.g. `error,warn`).
+    *   **User ID** (text): `Contains` or `Equals` (use `system` for entries not tied to a user).
+    *   **Category** (text): `Contains` or `Equals` (e.g., `auth`, `db`, `startup`).
+    *   **Message** (text): `Contains` or `Equals`.
+    *   **Created On** (date): `Is`, `After` / `On or After`, or `Before` / `On or Before` — enter a date (e.g. `2023-10-26`).
+*   Multiple criteria are combined with **AND**, and each row can be negated with the **NOT** checkbox.
+*   Click **Search** to apply, **Reset** to clear. Results are paginated (20 entries per page).
 
 ### Viewing Details
 
@@ -170,4 +174,4 @@ Beyond the dedicated Admin Panel, Administrators generally have elevated permiss
 *   **Can edit/delete any Note.**
 *   **Can edit/delete any Signature Component or Element.** *(Employees can create/edit components and elements and re-index them, but cannot delete.)*
 *   **Can bypass ownership checks** for viewing/editing/deleting most items (except changing their own role/password via admin routes).
-*   Can view deleted Archive items in searches (included by default; use the `Is Deleted` filter to narrow them down).
+*   **Can view deleted Archive items.** Deleted items are **hidden by default** (a default `Is Deleted = False` filter is applied); set the `Is Deleted` filter to `True`, or remove the default filter, to see them.

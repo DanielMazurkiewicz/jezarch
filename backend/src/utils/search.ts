@@ -84,6 +84,19 @@ interface BuildSearchQueriesResult {
     alias: string;
 }
 
+export // A date-shaped value like "2026-09-14" should be treated as a whole calendar
+// day. Returns the exclusive upper bound (the following day), or null when the
+// value is not a plain YYYY-MM-DD string.
+function getDateRangeUpperBound(value: unknown): string | null {
+    if (typeof value !== 'string') return null;
+    const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
+    if (!match) return null;
+    const date = new Date(Date.UTC(Number(match[1]), Number(match[2]) - 1, Number(match[3])));
+    if (Number.isNaN(date.getTime())) return null;
+    date.setUTCDate(date.getUTCDate() + 1);
+    return date.toISOString().slice(0, 10);
+}
+
 export async function buildSearchQueries<T extends Record<string, any>>(
     table: string,
     searchRequest: SearchRequest,
@@ -128,7 +141,8 @@ export async function buildSearchQueries<T extends Record<string, any>>(
         let baseCondition: string = '';
         let elementParams: any[] = [];
         let needsHandling = true;
-        const qualifiedField = `${mainTableAlias}.${field}`; // Assume field exists on main table unless handled
+        // Quote the column identifier so reserved words (e.g. `index`) work.
+        const qualifiedField = `${mainTableAlias}."${field}"`; // Assume field exists on main table unless handled
 
         switch (element.condition) {
             case "EQ":
@@ -140,8 +154,36 @@ export async function buildSearchQueries<T extends Record<string, any>>(
                  if (!operator) { await Log.warn(`Unsupported operator for condition`, 'system', 'search', { field, condition: element.condition, table }); needsHandling = false; break; }
                  let valueToUse = element.value;
                  if (typeof valueToUse === 'boolean') valueToUse = valueToUse ? 1 : 0;
-                 baseCondition = `${qualifiedField} ${operator} ?`;
-                 elementParams.push(valueToUse);
+                 const dateUpperBound = getDateRangeUpperBound(valueToUse);
+                 if (dateUpperBound) {
+                     // Date-shaped values span the whole calendar day, so narrow
+                     // single-instant comparisons to the matching [start, end) range.
+                     switch (element.condition) {
+                         case "EQ":
+                             baseCondition = `${qualifiedField} >= ? AND ${qualifiedField} < ?`;
+                             elementParams.push(valueToUse, dateUpperBound);
+                             break;
+                         case "GT":
+                             baseCondition = `${qualifiedField} >= ?`;
+                             elementParams.push(dateUpperBound);
+                             break;
+                         case "GTE":
+                             baseCondition = `${qualifiedField} >= ?`;
+                             elementParams.push(valueToUse);
+                             break;
+                         case "LT":
+                             baseCondition = `${qualifiedField} < ?`;
+                             elementParams.push(valueToUse);
+                             break;
+                         case "LTE":
+                             baseCondition = `${qualifiedField} < ?`;
+                             elementParams.push(dateUpperBound);
+                             break;
+                     }
+                 } else {
+                     baseCondition = `${qualifiedField} ${operator} ?`;
+                     elementParams.push(valueToUse);
+                 }
                  break;
             case "ANY_OF":
                 if (!Array.isArray(element.value)) { await Log.warn(`ANY_OF requires an array value`, 'system', 'search', { field, value: element.value, table }); needsHandling = false; break; }
@@ -149,7 +191,9 @@ export async function buildSearchQueries<T extends Record<string, any>>(
                 else {
                     const valuesToUse = element.value.map(v => typeof v === 'boolean' ? (v ? 1 : 0) : v);
                     const placeholders = valuesToUse.map(() => "?").join(", ");
-                    baseCondition = `${qualifiedField} ${element.not ? 'NOT ' : ''}IN (${placeholders})`;
+                    baseCondition = element.not
+                        ? `(${qualifiedField} IS NULL OR ${qualifiedField} NOT IN (${placeholders}))`
+                        : `${qualifiedField} IN (${placeholders})`;
                     elementParams.push(...valuesToUse);
                 }
                 element.not = false; // 'not' handled directly in the SQL IN operator part
@@ -173,7 +217,16 @@ export async function buildSearchQueries<T extends Record<string, any>>(
         }
 
         if (needsHandling && baseCondition) {
-            if (element.not) baseCondition = `NOT (${baseCondition})`;
+            if (element.not) {
+                // Include NULL rows for negated conditions on nullable columns.
+                // Exception: NOT(EQ null) = IS NOT NULL which already excludes NULLs.
+                const isNotEqNull = element.condition === "EQ" && element.value === null;
+                if (isNotEqNull) {
+                    baseCondition = `NOT (${baseCondition})`;
+                } else {
+                    baseCondition = `(${qualifiedField} IS NULL OR NOT (${baseCondition}))`;
+                }
+            }
             whereConditions.push(baseCondition);
             allParams.push(...elementParams);
         }
@@ -188,12 +241,12 @@ export async function buildSearchQueries<T extends Record<string, any>>(
     let orderBy: string;
     if (primaryOrderBy) {
         const orderClauses: string[] = [primaryOrderBy];
-        if (hasExplicitSort) orderClauses.push(`${mainTableAlias}.${searchRequest.sortBy} ${sortDirection}`);
-        orderClauses.push(`${mainTableAlias}.${primaryKeyField} DESC`);
+        if (hasExplicitSort) orderClauses.push(`${mainTableAlias}."${searchRequest.sortBy}" ${sortDirection}`);
+        orderClauses.push(`${mainTableAlias}."${primaryKeyField}" DESC`);
         orderBy = `ORDER BY ${orderClauses.join(', ')}`;
     } else {
         const orderByField = hasExplicitSort ? searchRequest.sortBy : primaryKeyField;
-        orderBy = `ORDER BY ${mainTableAlias}.${orderByField} ${sortDirection}`;
+        orderBy = `ORDER BY ${mainTableAlias}."${orderByField}" ${sortDirection}`;
     }
 
     // Adjust SELECT columns based on potential JOINs (only ownerLogin handled explicitly for now)

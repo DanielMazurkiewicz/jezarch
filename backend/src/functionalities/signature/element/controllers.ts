@@ -272,10 +272,12 @@ export const searchElementsController = async (req: BunRequest) => {
             'componentName': (element, tableAlias): SearchOnCustomFieldHandlerResult => {
                 const joinClause = `LEFT JOIN signature_components sc ON ${tableAlias}.signatureComponentId = sc.signatureComponentId`;
                 if (element.condition === 'FRAGMENT' && typeof element.value === 'string') {
-                     return { joinClause, whereCondition: `sc.name LIKE ?`, params: [`%${element.value}%`] };
+                     const likeClause = element.not ? `sc.name IS NULL OR NOT (sc.name LIKE ?)` : `sc.name LIKE ?`;
+                     return { joinClause, whereCondition: likeClause, params: [`%${element.value}%`] };
                  }
                  if (element.condition === 'EQ' && typeof element.value === 'string') {
-                      return { joinClause, whereCondition: `sc.name = ?`, params: [element.value] };
+                     const eqClause = element.not ? `sc.name IS NULL OR NOT (sc.name = ?)` : `sc.name = ?`;
+                     return { joinClause, whereCondition: eqClause, params: [element.value] };
                  }
                  return null;
             },

@@ -31,109 +31,98 @@ This guide provides instructions for installing and running the JezArch applicat
     cd jezarch-project-directory # Navigate into the project directory
     ```
 
-2.  **Install Dependencies:** Navigate to the `backend` and `frontend` directories separately and install dependencies using Bun.
+2.  **Install Dependencies:** From the repository root, run the cross-platform `install` command — it installs dependencies for the root, `backend`, and `frontend`:
 
-    *   **Backend:**
-        ```bash
-        cd backend
-        bun install
-        cd ..
-        ```
+    ```bash
+    bun run install
+    ```
 
-    *   **Frontend:**
-        ```bash
-        cd frontend
-        bun install
-        cd ..
-        ```
+    (Alternatively, `cd backend && bun install`, then `cd ../frontend && bun install`.)
 
 ---
 
 ### Windows
 
 1.  **Install Bun:** Follow the Windows installation guide on the [Bun website](https://bun.sh/docs/installation#windows). Typically involves running a command in PowerShell.
-2.  **Install Dependencies:** Open your terminal (like PowerShell or Command Prompt), navigate to the project directory, and run the `bun install` commands for `backend` and `frontend` as shown above.
+2.  **Install Dependencies:** Open your terminal (like PowerShell or Command Prompt), navigate to the project directory, and run `bun run install`.
 
 ### macOS
 
 1.  **Install Bun:** Follow the macOS installation guide on the [Bun website](https://bun.sh/docs/installation#macos). Usually a single command in the Terminal.
-2.  **Install Dependencies:** Open Terminal, navigate to the project directory, and run the `bun install` commands for `backend` and `frontend` as shown above.
+2.  **Install Dependencies:** Open Terminal, navigate to the project directory, and run `bun run install`.
 
 ### Linux
 
 1.  **Install Bun:** Follow the Linux installation guide on the [Bun website](https://bun.sh/docs/installation#linux). Usually involves `curl` or another package manager. Make sure unzip is installed (`sudo apt install unzip` or similar).
-2.  **Install Dependencies:** Open your terminal, navigate to the project directory, and run the `bun install` commands for `backend` and `frontend` as shown above.
+2.  **Install Dependencies:** Open your terminal, navigate to the project directory, and run `bun run install`.
 
 ---
 
 ## Running the Application
 
-You can either start both servers with one command from the repository root, or run them individually.
+All commands below are run from the repository root and work identically on Windows (cmd.exe/PowerShell), macOS, and Linux.
 
 ### Quick Start (Development)
 
 From the repository root:
 
 ```bash
-bun run dev
+bun run start:dev
 ```
 
-This starts the **backend** API server and the **frontend** development server concurrently. Check the console output for the URLs (backend defaults to HTTP 8080; the frontend dev server prints its own address and proxies/builds on the fly).
+This builds the **frontend** once (unminified, with source maps) into `frontend/dist` and then starts the **backend** server from source (`src/main.ts`), which serves both the API and the frontend files. Check the console output for the URLs (default: HTTP 8080, HTTPS 8443).
+
+> **Note:** There is no file watcher / live reload. After changing frontend or backend code you must restart `bun run start:dev` to see the changes.
 
 ### Backend Only (Development)
 
-This mode uses Bun's built-in file watcher for hot reloading (frontend might require manual refresh depending on changes).
+This runs the backend from source (`src/main.ts`) without the frontend build step.
 
-1.  Navigate to the `backend` directory:
+1.  Start only the backend, from inside the `backend` directory:
     ```bash
     cd backend
-    ```
-2.  Start the backend server:
-    ```bash
     bun run dev
     ```
-    *   This typically runs the `src/main.ts` script.
-    *   The server will listen on the configured HTTP/HTTPS ports (default: HTTP 8080, HTTPS 8443). Check the console output for the exact URLs.
-    *   The backend serves the frontend files from the `frontend/dist` directory (the frontend build script places files there).
+2.  The server listens on the configured HTTP/HTTPS ports (default: HTTP 8080, HTTPS 8443). The backend serves the frontend files from the `frontend/dist` directory.
 
 3.  Access the application in your browser at `http://localhost:8080` (or the configured port).
 
-> **Note:** In this mode you need to build the frontend at least once (`cd frontend && bun run build`) so that `frontend/dist` exists, otherwise only the API will be available.
+> **Note:** In this mode you need to build the frontend at least once so that `frontend/dist` exists — run `bun run build:dev` from the repository root. Otherwise only the API will be available.
 
 ### Production Mode
 
-For production, you typically build optimized frontend assets and run the backend server directly.
+For production, you typically build optimized frontend assets and the backend bundle, then run the bundle.
 
-1.  **Build Frontend:** Navigate to the `frontend` directory and run the build script:
+1.  **Build everything** from the repository root:
     ```bash
-    cd frontend
-    bun run build # Or your specific build command if different
-    cd ..
+    bun run build:prod
     ```
-    *   This creates optimized static files in `frontend/dist`.
+    *   Removes previous build outputs (clean build).
+    *   Builds the frontend (minified) into `frontend/dist`.
+    *   Bundles the backend into a single file `backend/dist/server.js`.
 
-2.  **Build Backend (Optional but Recommended):** Bundle the backend into a single file for potentially better performance. Navigate to the `backend` directory:
+2.  **Run the production bundle:**
     ```bash
-    cd backend
-    bun run build
-    cd ..
+    bun run start:prod [-- <optional --arguments>]
     ```
-    *   This uses `Bunfile.js` and creates `backend/dist/server.js`.
+    *   If `backend/dist/server.js` does not exist yet, `start:prod` builds everything first.
+    *   Replace `<optional --arguments>` with any backend command-line arguments (e.g. `--http-port 80`, `--https-key-path /path/to/key`). The full list is documented in the "Command Line Arguments" section of the root [REQUIREMENTS.md](../../REQUIREMENTS.md).
+    *   Running from source instead: `cd backend && bun run src/main.ts [args]`.
 
-3.  **Run Backend:**
-    *   **If you built the backend:**
-        ```bash
-        cd backend
-        bun run dist/server.js [optional --arguments]
-        ```
-    *   **If you skip the backend build:**
-        ```bash
-        cd backend
-        bun run src/main.ts [optional --arguments]
-        ```
-    *   Replace `[optional --arguments]` with any command-line arguments needed (e.g., `--http-port 80`, `--https-key-path /path/to/key`). The full list is documented in the "Command Line Arguments" section of the root [REQUIREMENTS.md](../../REQUIREMENTS.md).
+3.  Access the application in your browser at the configured production URL and port.
 
-4.  Access the application in your browser at the configured production URL and port.
+### Testing & Maintenance
+
+From the repository root (works on all platforms):
+
+```bash
+bun run test          # type checks (test:types) + frontend/backend tests (test:code)
+bun run test:types    # tsc --noEmit for the frontend and the backend
+bun run test:code     # bun test over the frontend (if any tests exist) and the backend
+bun run clean         # remove build outputs (frontend/dist, backend/dist); `cleanup` is an alias
+```
+
+Other root commands: `bun run help` (runner help) and `bun run update` (`git pull` + install + dependency bump). The complete command table is in the [root README](../../README.md).
 
 ---
 
@@ -147,12 +136,12 @@ For production, you typically build optimized frontend assets and run the backen
 
 ### Seeding Demo Data (Optional)
 
-The backend provides scripts that populate a freshly installed instance with demo content via the API (the server must be running):
+From the repository root, the cross-platform seed commands populate a freshly installed instance with demo content via the API (the server must be running):
 
 ```bash
-cd backend
-SEED_ADMIN_PASSWORD=<admin-password> bun run seed      # English demo data
-SEED_ADMIN_PASSWORD=<admin-password> bun run seed:pl   # Polish demo data
+bun run seed [server-url] [admin-password]    # comprehensive English demo data (= seed:en)
+bun run seed:en [server-url] [admin-password] # comprehensive English demo data
+bun run seed:pl [server-url] [admin-password] # Polish demo data
 ```
 
-The admin password is read from `SEED_ADMIN_PASSWORD`, from the CLI argument after the optional server URL (`bun run seed [url] [admin-password]`), or falls back to `JEZARCH_INITIAL_ADMIN_PASSWORD` if the server was started with it.
+The admin password is read from `SEED_ADMIN_PASSWORD`, from the CLI argument after the optional server URL, or falls back to `JEZARCH_INITIAL_ADMIN_PASSWORD` if the server was started with it. The positional form above works on all platforms (PowerShell/cmd do not support the inline `SEED_ADMIN_PASSWORD=...` syntax).

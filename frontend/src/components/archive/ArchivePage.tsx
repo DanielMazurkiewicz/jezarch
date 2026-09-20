@@ -23,6 +23,7 @@ import DocumentPreviewDialog from './DocumentPreviewDialog';
 import { cn } from '@/lib/utils';
 import { t } from '@/translations/utils'; // Import translation utility
 import { useQuickFilterContext } from '@/context/QuickFilterContext';
+import { DEFAULT_DELETED_FILTER, mergeQuickFilter as mergeQuickFilterHelper } from '@/lib/mergeQuickFilter';
 
 const ARCHIVE_PAGE_SIZE = 10;
 
@@ -47,8 +48,7 @@ const ArchivePage: React.FC = () => {
   const [previewingDoc, setPreviewingDoc] = useState<ArchiveDocument | null>(null);
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
 
-  const defaultDeletedFilter: SearchRequest['query'] = [{ field: 'isDeleted', condition: 'EQ', value: false, not: false }];
-  const [searchQuery, setSearchQuery] = useState<SearchRequest['query']>(defaultDeletedFilter);
+  const [searchQuery, setSearchQuery] = useState<SearchRequest['query']>(DEFAULT_DELETED_FILTER);
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(ARCHIVE_PAGE_SIZE);
   const [totalDocs, setTotalDocs] = useState(0);
@@ -79,20 +79,11 @@ const ArchivePage: React.FC = () => {
   const quickFilterRef = useRef<SearchQueryElement | null>(null);
   const { setOnFilterChange } = useQuickFilterContext();
 
+  // An active sidebar filter takes precedence over the search bar's own
+  // signature criterion; when it is inactive that criterion passes through
+  // untouched (see lib/mergeQuickFilter for the full semantics).
   const mergeQuickFilter = useCallback((quickFilter: SearchQueryElement | null, searchBarQuery: SearchQuery): SearchQuery => {
-    const base = searchBarQuery.filter(q => q.field !== 'descriptiveSignature');
-    // Staff default: keep soft-deleted documents hidden unless the search bar
-    // carries an explicit isDeleted criterion of its own. Without this, a
-    // quick-filter change built from an empty search-bar baseline would drop
-    // the default filter and reveal deleted rows.
-    const hasExplicitDeletedFilter = base.some(q => q.field === 'isDeleted');
-    if ((isAdmin || isEmployee) && !hasExplicitDeletedFilter) {
-      base.push(...defaultDeletedFilter);
-    }
-    if (quickFilter) {
-      return [...base, quickFilter];
-    }
-    return base;
+    return mergeQuickFilterHelper(quickFilter, searchBarQuery, isAdmin || isEmployee);
   }, [isAdmin, isEmployee]);
 
   useEffect(() => {
@@ -345,9 +336,11 @@ const ArchivePage: React.FC = () => {
    const searchFields: SearchFieldOption[] = useMemo(() => {
        const baseFields: SearchFieldOption[] = [
            { value: 'title', label: t('titleLabel', preferredLanguage), type: 'text' },
-           { value: 'creator', label: t('archiveCreatorLabel', preferredLanguage), type: 'text' },
-           { value: 'creationDate', label: t('archiveCreationDateLabel', preferredLanguage), type: 'text' },
-           { value: 'contentDescription', label: t('descriptionLabel', preferredLanguage), type: 'text'},
+{ value: 'creator', label: t('archiveCreatorLabel', preferredLanguage), type: 'text' },
+            { value: 'creationDate', label: t('archiveCreationDateLabel', preferredLanguage), type: 'text' },
+            { value: 'creationPlace', label: t('archiveFormPlaceLabel', preferredLanguage), type: 'text' },
+            { value: 'seals', label: t('archiveFormSealsLabel', preferredLanguage), type: 'text' },
+            { value: 'contentDescription', label: t('descriptionLabel', preferredLanguage), type: 'text'},
            { value: 'topographicSignature', label: t('archiveTopoSigLabel', preferredLanguage), type: 'text' },
            { value: 'descriptiveSignature', label: t('archiveDescSigLabel', preferredLanguage), type: 'signaturePath' },
            ...(!parentUnitId ? [{ value: 'type', label: t('typeLabel', preferredLanguage), type: 'select', options: [{value: 'unit', label: t('archiveUnitLabel', preferredLanguage)}, {value:'document', label: t('archiveDocumentLabel', preferredLanguage)}]}] as SearchFieldOption[] : []),
@@ -463,7 +456,7 @@ const ArchivePage: React.FC = () => {
             fields={searchFields}
             onSearch={handleSearch}
             isLoading={isLoading || isBatchTagLoading}
-            defaultQuery={canFilterDeleted ? defaultDeletedFilter : undefined}
+            defaultQuery={canFilterDeleted ? DEFAULT_DELETED_FILTER : undefined}
         />
        {/* --------------------------------------------- */}
 

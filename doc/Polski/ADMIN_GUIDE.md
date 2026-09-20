@@ -1,6 +1,6 @@
 # Przewodnik Administratora JezArch
 
-Ten przewodnik szczegółowo opisuje funkcjonalności dostępne wyłącznie dla użytkowników z rolą 'Admin' w aplikacji JezArch.
+Ten przewodnik szczegółowo opisuje funkcjonalności dostępne wyłącznie dla użytkowników z rolą 'Admin' w aplikacji JezArch. Przykłady zorientowane na zadania (tworzenie użytkowników, przyznawanie dostępu na podstawie tagów, kopie zapasowe itd.) znajdziesz w przewodniku [Przykładowe Scenariusze](WORKFLOWS.md).
 
 ## Spis Treści
 
@@ -53,6 +53,7 @@ Ten przewodnik szczegółowo opisuje funkcjonalności dostępne wyłącznie dla 
 *   Użyj menu rozwijanego w kolumnie "Rola" dla konkretnego użytkownika.
 *   Wybierz pożądaną rolę: 'Admin', 'Pracownik', 'Użytkownik' lub 'Brak Roli / Wyłączony' (co skutecznie wyłącza konto).
 *   **Ważne:** Nie możesz zmienić własnej roli.
+*   **Ważne:** **Ostatnie pozostałe konto administratora** nie może zostać zdegradowane ani wyłączone — serwer odrzuca taką próbę błędem, aby zapobiec zablokowaniu wszystkim dostępu do panelu administratora.
 *   Zmiana roli użytkownika *z* 'Użytkownik' na inną automatycznie wyczyści wszelkie tagi wcześniej mu przypisane.
 *   Zmiana roli użytkownika *na* 'Użytkownik' pozwala na późniejsze przypisanie tagów. Możesz zostać poproszony o przypisanie tagów natychmiast po zmianie roli na 'Użytkownik'.
 
@@ -72,9 +73,10 @@ Ten przewodnik szczegółowo opisuje funkcjonalności dostępne wyłącznie dla 
 
 ### Ustawianie Preferowanego Języka
 
-*   Kliknij przycisk **Ustaw Język** (ikona języków) dla dowolnego użytkownika (w tym siebie, chociaż zazwyczaj robi się to przez menu w nagłówku).
+*   Kliknij przycisk **Ustaw Język** (ikona języków) przy innym użytkowniku, aby ustawić jego język interfejsu z panelu administratora.
 *   Wybierz pożądany język z listy rozwijanej.
 *   Kliknij **Zapisz**. Preferencje językowe interfejsu użytkownika zostaną zaktualizowane.
+*   **Uwaga:** Ten przycisk **nie jest pokazywany dla Twojego własnego konta** — aby zmienić własny język, użyj selektora języka w menu użytkownika w nagłówku.
 
 ---
 
@@ -114,7 +116,7 @@ Ten przewodnik szczegółowo opisuje funkcjonalności dostępne wyłącznie dla 
 
 *   Kliknij **Pobierz Plik Kopii Zapasowej**.
 *   Rozpocznie to pobieranie bieżącego pliku bazy danych SQLite (np. `jezarch-backup-RRRR-MM-DDTHH-MM-SS-ZZZ.sqlite.db`).
-*   **Uwaga:** Przed utworzeniem kopii zapasowej system próbuje wykonać `PRAGMA wal_checkpoint(TRUNCATE)`, aby zapewnić spójność danych, jeśli włączone jest logowanie z wyprzedzeniem zapisu (WAL) (co jest domyślne).
+*   **Uwaga:** Przed wysłaniem pliku system tworzy spójną kopię (snapshot) aktywnej bazy danych za pomocą `VACUUM INTO`, więc pobrany plik reprezentuje stan bazy w danym momencie, nawet gdy serwer działa.
 *   Przechowuj pobrany plik kopii zapasowej bezpiecznie w oddzielnej lokalizacji.
 
 ### Przywracanie
@@ -132,12 +134,14 @@ Ten przewodnik szczegółowo opisuje funkcjonalności dostępne wyłącznie dla 
 
 ### Wyszukiwanie Logów
 
-*   Użyj paska wyszukiwania, aby filtrować logi według:
-    *   Poziomu (Info, Ostrzeż., Błąd)
-    *   ID Użytkownika (lub 'system')
-    *   Kategorii (np. 'auth', 'db', 'startup')
-    *   Treści wiadomości (Zawiera)
-    *   Znacznika czasu (Warunki zakresu dat)
+*   Użyj paska wyszukiwania, aby filtrować logi. Dostępne pola i ich warunki:
+    *   **Poziom** (pole wyboru): `Jest` (pojedyncza wartość) lub `Jest jednym z` (oddzielone przecinkami, np. `error,warn`).
+    *   **ID Użytkownika** (tekst): `Zawiera` lub `Równa się` (użyj `system` dla wpisów niezwiązanych z użytkownikiem).
+    *   **Kategoria** (tekst): `Zawiera` lub `Równa się` (np. `auth`, `db`, `startup`).
+    *   **Wiadomość** (tekst): `Zawiera` lub `Równa się`.
+    *   **Data Utworzenia** (data): `Jest`, `Po` / `W dniu lub po`, lub `Przed` / `W dniu lub przed` — wpisz datę (np. `2023-10-26`).
+*   Wiele kryteriów łączonych jest operatorem **AND**, a każdy wiersz można zanegować polem **NIE**.
+*   Kliknij **Szukaj**, aby zastosować, **Resetuj**, aby wyczyścić. Wyniki są podzielone na strony (20 wpisów na stronę).
 
 ### Wyświetlanie Szczegółów
 
@@ -162,4 +166,4 @@ Poza dedykowanym Panelem Administratora, Administratorzy generalnie mają podwy�
 *   **Mogą edytować/usuwać dowolną Notatkę.**
 *   **Mogą edytować/usuwać dowolny Komponent lub Element Sygnatury.** *(Pracownicy mogą tworzyć/edytować komponenty i elementy oraz je reindeksować, ale nie mogą ich usuwać.)*
 *   **Mogą omijać kontrole własności** przy przeglądaniu/edycji/usuwaniu większości elementów (z wyjątkiem zmiany własnej roli/hasła przez ścieżki administracyjne).
-*   Mogą wyświetlać usunięte pozycje Archiwum w wyszukiwaniach (domyślnie uwzględniane; zawęź wyniki filtrem `Czy Usunięte`).
+*   **Mogą przeglądać usunięte pozycje Archiwum.** Usunięte pozycje są **domyślnie ukryte** (nakładany jest domyślny filtr `Czy Usunięte = Fałsz`); ustaw filtr `Czy Usunięte` na `Prawda` lub usuń domyślny filtr, aby je zobaczyć.

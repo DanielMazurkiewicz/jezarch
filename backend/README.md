@@ -6,25 +6,32 @@
 # Install dependencies
 bun install
 
-# Run development server (watches for changes)
+# Run the server from source (no live reload - this is a build & run setup)
 bun run dev
 
-# Build and run production bundle
+# Build the production bundle and run it
 bun run build
-bun run ./dist/server.js
+bun ./dist/server.js
 ```
 
+The `bun run dev` script runs `src/main.ts` directly and does **not** watch for changes; restart the process after edits. Similarly, the frontend is a one-shot `Bun.build` (no dev server/watcher), so `bun run start:dev` from the repository root first builds the frontend once and then starts the backend.
+
 On first start the SQLite database is created and an initial `admin` account is bootstrapped: the password comes from `JEZARCH_INITIAL_ADMIN_PASSWORD` if set, otherwise a strong random password is printed once to the console.
+
+> Tip: from the repository root you can use the cross-platform commands `bun run start:dev`, `bun run build:prod`, `bun run start:prod`, `bun run test`, etc. — they work identically on Windows and Linux (see the root README).
 
 ### Seeding Demo Data (Optional)
 
 With a running server, populate the instance with demo content (users, tags, signatures, documents, notes):
 
+From the repository root (works on all platforms):
+
 ```bash
-SEED_ADMIN_PASSWORD=<admin-password> bun run seed      # English demo data
-SEED_ADMIN_PASSWORD=<admin-password> bun run seed:pl   # Polish demo data
-# or: bun run seed [server-url] [admin-password]
+bun run seed [server-url] [admin-password]    # comprehensive English demo data (= seed:en)
+bun run seed:pl [server-url] [admin-password] # Polish demo data
 ```
+
+Or from this directory, where the inline env form works on Linux/macOS shells: `SEED_ADMIN_PASSWORD=<admin-password> bun run seed:en` / `bun run seed:pl`.
 
 ---
 
@@ -56,13 +63,28 @@ This document describes the available API endpoints for the JezArch backend.
 
 ## Authentication
 
-Most endpoints require authentication via a session token (UUID). Include the token in the `Authorization` header:
+Most endpoints require authentication via a session token. Include the token in the `Authorization` header. Both forms are accepted:
 
 ```
 Authorization: <your_session_token>
+Authorization: Bearer <your_session_token>
 ```
 
 Tokens are obtained via `POST /api/user/login` and expire after 24 hours.
+
+**`GET /api/session/validate`** — Validate the current session token. Requires authentication (any role).
+
+Response `200 OK`:
+```json
+{
+  "login": "admin",
+  "role": "admin",
+  "userId": 1,
+  "preferredLanguage": "en"
+}
+```
+
+Response `401 Unauthorized` when the token is missing, invalid, expired, or belongs to a disabled (`null` role) account. The frontend uses this endpoint on startup to restore a logged-in session.
 
 ## Roles
 
@@ -119,7 +141,7 @@ Endpoints supporting search (`POST /api/notes/search`, `POST /api/logs/search`, 
 | `LT` | Less than (`<`) | `number` |
 | `LTE` | Less than or equal to (`<=`) | `number` |
 | `ANY_OF` | Value must be one of the items in the array (`IN (...)`) | `array` |
-| `FRAGMENT` | Case-sensitive substring match (`LIKE %...%`) | `string` |
+| `FRAGMENT` | Substring match (`LIKE %...%`; SQLite LIKE is case-insensitive for ASCII letters, case-sensitive for other characters) | `string` |
 | `STARTS_WITH` | Signature path starts with given element ID sequence | `number[]` |
 | `CONTAINS_SEQUENCE` | Signature path contains given element ID sequence | `number[]` |
 
@@ -269,7 +291,7 @@ Request body:
 }
 ```
 
-`role` must be `"admin"`, `"employee"`, `"user"`, or `null`. Changing away from `"user"` automatically clears assigned tags.
+`role` must be `"admin"`, `"employee"`, `"user"`, or `null`. Changing away from `"user"` automatically clears assigned tags. You cannot change your own role, and the last remaining `admin` account can never be demoted (returns `400 Bad Request`).
 
 Response `200 OK`:
 ```json
@@ -809,6 +831,6 @@ Response `200 OK`:
 
 **`GET /api/admin/db/backup`** — Download the SQLite database file. Requires authentication (admin only).
 
-The server performs a WAL checkpoint before sending the file for consistency.
+The server creates a consistent snapshot of the live database with `VACUUM INTO` before sending the file.
 
 Response `200 OK`: Binary SQLite database file with `Content-Disposition: attachment` header. Filename format: `jezarch-backup-YYYY-MM-DDTHH-MM-SS-ZZZ.sqlite.db`.

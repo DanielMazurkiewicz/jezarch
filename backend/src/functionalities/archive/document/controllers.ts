@@ -385,7 +385,7 @@ export const searchArchiveDocumentsController = async (req: BunRequest) => {
         // Updated allowed fields
         const allowedDirectFields: (keyof ArchiveDocument)[] = [
             'archiveDocumentId', 'parentUnitArchiveDocumentId', 'createdBy', 'updatedBy', 'type', // Changed fields
-            'title', 'creator', 'creationDate', 'numberOfPages', 'documentType',
+            'title', 'creator', 'creationDate', 'creationPlace', 'seals', 'numberOfPages', 'documentType',
             'dimensions', 'binding', 'condition', 'documentLanguage', 'contentDescription',
             'remarks', 'accessLevel', 'accessConditions', 'additionalInformation',
             'relatedDocumentsReferences', 'isDigitized', 'digitizedVersionLink',

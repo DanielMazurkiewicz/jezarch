@@ -1,6 +1,6 @@
 # JezArch Usage Guide
 
-This guide covers the core functionalities of the JezArch application for different user roles. Administrators should also consult the [Admin Guide](ADMIN_GUIDE.md) for specific administrative tasks.
+This guide covers the core functionalities of the JezArch application for different user roles. Administrators should also consult the [Admin Guide](ADMIN_GUIDE.md) for specific administrative tasks. For step-by-step end-to-end examples, see [Example Workflows](WORKFLOWS.md).
 
 ## Table of Contents
 
@@ -9,10 +9,12 @@ This guide covers the core functionalities of the JezArch application for differ
     *   [Header](#header)
     *   [Sidebar](#sidebar)
     *   [Main Content Area](#main-content-area)
+    *   [Built-in Help](#built-in-help)
 *   [Dashboard](#dashboard)
 *   [Archive Management](#archive-management)
     *   [Browsing Units & Documents](#browsing-units--documents)
     *   [Searching](#searching)
+    *   [Sorting & Pagination](#sorting--pagination)
     *   [Viewing Details](#viewing-details)
     *   [Creating Units/Documents (Admin/Employee)](#creating-unitsdocuments-adminemployee)
     *   [Editing Units/Documents (Admin/Employee)](#editing-unitsdocuments-adminemployee)
@@ -31,6 +33,7 @@ This guide covers the core functionalities of the JezArch application for differ
     *   [Changing Password](#changing-password)
     *   [Changing Language](#changing-language)
     *   [Logging Out](#logging-out)
+*   [Example Workflows](#example-workflows)
 
 ---
 
@@ -38,6 +41,8 @@ This guide covers the core functionalities of the JezArch application for differ
 
 *   **Login:** Access the application via the URL provided by your administrator (e.g., `http://localhost:8080`). Enter your username and password on the login screen.
 *   **Registration:** Click the "Register" link. Provide a username and a strong password (minimum 8 characters, including uppercase, lowercase, and a number). Confirm your password. After successful registration, you will typically have no assigned role ('null') and cannot log in until an Administrator assigns you a role ('employee' or 'user').
+*   **Sessions:** A login session is valid for **24 hours**. After that you are logged out automatically and must log in again.
+*   **Rate limiting:** To deter brute-force and spam, there are limits on how often you can attempt to log in or register. If you exceed them, you will get a "too many requests" response and need to wait before trying again.
 
 ---
 
@@ -61,10 +66,18 @@ This guide covers the core functionalities of the JezArch application for differ
     *   **Tags (Admin/Employee):** Manage global tags.
     *   **Notes (Admin/Employee):** Access personal and shared notes.
     *   **Admin (Admin only):** Access administrative functions.
+*   The sidebar shows the account you are logged in as and a logout icon at the top.
+*   The sidebar width can be **dragged** to resize it.
+*   While on the **Archive** page, a **"Descriptive signature tree"** quick filter appears at the bottom of the sidebar (see [Searching](#searching)).
 
 ### Main Content Area
 
 *   Displays the content for the selected section (e.g., list of documents, forms, settings).
+
+### Built-in Help
+
+*   Every main page (Dashboard, Archive, Signatures, Tags, Notes, Admin) has a **Help** button that opens a built-in guide for that page.
+*   The guides explain the purpose of the section, its key concepts, and the permissions of each role.
 
 ---
 
@@ -84,43 +97,64 @@ Accessible via the "Archive" / "Search Archive" link in the sidebar.
 *   Items marked with a **Folder** icon are **Units**. Clicking a Unit navigates into it, showing its child documents and sub-units.
 *   Items marked with a **File** icon are **Documents**. Clicking a Document opens a preview dialog.
 *   Use the **Back Arrow** button when inside a unit to return to the parent level or archive root.
+*   The header shows how many items match the current view ("Found N item(s).").
 
 ### Searching
 
 *   Use the **Search Bar** at the top of the Archive page to find items.
-*   Click **Add Filter** to add search criteria.
-*   Select a **Field** (e.g., Title, Creator, Tags, Descriptive Signature).
-*   Choose a **Condition** (e.g., Contains, Equals, Has Any Of, Starts With Path).
-*   Enter a **Value**.
-    *   For text fields (`Contains`): Enter text fragments.
-    *   For `Tags`: Select one or more tags from the dropdown. `Has Any Of` finds items with *at least one* of the selected tags.
-    *   For `Descriptive Signature`: Use the **Signature Path Picker** (`Equals`, `Starts With`, `Contains Sequence`) to build the signature path you want to search for.
-    *   For `boolean` fields (Is Digitized, Is Deleted): Select `True` or `False`.
-*   You can check the **NOT** box to negate a condition (e.g., find items *not* matching).
-*   Add multiple criteria to narrow down results (they are combined with AND).
-*   Click **Search** to apply filters. Click **Reset** to clear filters.
-*   **'User' role:** Search results are automatically filtered to show only documents matching tags assigned to the user by an administrator.
+*   Click **Add Filter** to add a search criterion; each row has a **Field**, a **Condition**, and a **Value**.
+*   Select a **Field** from:
+    *   **All roles:** Title, Creator, Creation Date, Place of Creation, Seals, Content Description, Topographic Signature, Descriptive Signature, Type (only at the archive root), Is Digitized.
+    *   **Admin/Employee only:** Tags, Created By, Updated By, Is Deleted.
+    *   When you are browsing inside a unit, the list is automatically limited to that unit's contents.
+*   Choose a **Condition** — the available conditions depend on the field type:
+    *   **Text fields** (Title, Creator, Creation Date, Place, Seals, Content, Topo Signature, Created By, Updated By): `Contains` (finds fragments) or `Equals`.
+    *   **Select fields** (Type): `Is` or `Is Any Of` (comma-separated values).
+    *   **Boolean fields** (Is Digitized, Is Deleted): `Is` → `True` or `False`.
+    *   **Tags:** `Has Any Of` — select one or more tags; matches items carrying **at least one** of the selected tags.
+    *   **Descriptive Signature:** `Contains Sequence`, `Starts With`, or `Equals` — use the **Signature Path Picker** to build the element path you want to match. (`Equals` with an empty path matches items that have no descriptive signature.)
+*   Enter the **Value** for the selected field (text fragment, typed value, boolean, tags, or signature path).
+*   Tick the **NOT** box on a row to negate that condition (e.g. `Is Digitized` + `NOT` finds items that are *not* digitized; empty results or `[0]` arrays become "none of these").
+*   Add multiple criteria to narrow the results — they are combined with **AND**, so each row further reduces the result set.
+*   Click **Search** to apply the filters. Click **Reset** to clear your criteria and return to the default view (staff go back to hiding deleted items).
+*   **Quick Signature Filter ("Descriptive signature tree"):** the tree at the bottom of the sidebar is an alternative way to filter by descriptive signature. Enable the checkbox, pick a condition (`Starts With` / `Contains Sequence` / `Equals`), and click through the signature hierarchy (components → elements → child elements) to select a path. The chosen path is applied **on top of** the search-bar criteria and its elements are shown as a resolved path. Click an already-selected element to clear the filter, and use the refresh icon if the tree is out of date.
+*   **'User' role:** the automatic tag filter is always active — results only include documents carrying **at least one** of the tags assigned to you by an administrator. If no tags are assigned, the search returns no results.
+
+### Sorting & Pagination
+
+*   Click a table column header to sort the archive list — sortable columns are **Type**, **Title**, and **Topographic Sig.**
+*   Click the same header again to toggle between ascending and descending order; arrows indicate the current direction.
+*   Results are paginated (10 items per page). Use the pagination bar at the bottom of the list to move between pages.
 
 ### Viewing Details
 
 *   Clicking a **Document** row in the list opens a **Preview Dialog**.
 *   The dialog shows:
-    *   Basic info (Title, Creator, Date, Parent Unit link).
-    *   Assigned Tags and Signatures (Topographic and resolved Descriptive).
+    *   Basic info (Title, Creator, Date, Place of Creation, Parent Unit link, Type).
+    *   Assigned Tags and Signatures (Topographic and resolved Descriptive paths).
     *   Created By/Updated By information with timestamps.
-    *   Content Description, Physical Details, Access info, Remarks, etc.
-    *   A link to the digitized version if available.
+    *   Content Description, Remarks, Seals, Document Language.
+    *   Physical Details for **units** (Pages, Document Type, Dimensions, Binding, Condition).
+    *   Access info (Access Level, Access Conditions) and Additional Info / Related Docs if present.
+    *   Digitization status ("Yes — Link:" opens the digitized version if available, otherwise "No").
 *   Admins/Employees see **Edit** and **Delete** buttons in the dialog footer (or **Restore** for deleted items).
 
 ### Creating Units/Documents (Admin/Employee)
 
 *   Click the **Create Item** button (or **Create Document** when inside a unit).
-*   A dialog appears with a form:
-    *   **Type:** Select 'Unit' or 'Document'. Cannot be changed after creation. If inside a unit, this defaults to 'Document' and cannot be changed.
-    *   **Parent Unit:** (Only for Documents, when creating at root) Select the unit this document belongs to using the dropdown search.
-    *   **Title, Creator, Creation Date:** Required fields.
-    *   **Signatures & Tags:** Use the dedicated pickers to assign Topographic Signature (text), Descriptive Signatures (paths), and Tags.
-    *   **Other Fields:** Fill in optional metadata (Physical Description, Content, Access, Digitization, etc.).
+*   A dialog appears with a form organized into sections:
+    *   **Basic Information:**
+        *   **Type:** Select 'Unit' or 'Document'. Cannot be changed after creation. If inside a unit, this defaults to 'Document' and cannot be changed.
+        *   **Parent Unit:** (Only for Documents, when creating at root) Select the unit this document belongs to using the dropdown search.
+        *   **Title, Creator, Creation Date:** Required fields. Creation Date is free text (e.g., `2023-10-26` or `ca. 1950`).
+        *   **Place of Creation** and **Seals** (optional).
+    *   **Physical Description** *(shown for Units only):* Number of Pages, Document Type, Dimensions, Binding, Condition.
+    *   **Content & Context:** Document Language, Content Description, Remarks, Seals, Related Documents References, Additional Information.
+    *   **Access & Digitization:** Access Level, Access Conditions, the **Is Digitized** checkbox (ticking it reveals the **Digitized Version Link**, which must be a valid URL).
+    *   **Indexing:**
+        *   **Topographic Signature:** free text for the physical location (e.g., `Box 1, Folder 5, Item 3`).
+        *   **Descriptive Signatures:** use the **Signature Path Picker** to add one or more element paths.
+        *   **Tags:** assign existing tags with the **Tag Selector** (create tags first in the Tags section).
     *   Click **Create Item**.
 
 ### Editing Units/Documents (Admin/Employee)
@@ -169,7 +203,7 @@ Manage the building blocks for descriptive signatures.
 *   **Create:** Click **New Element**. Provide a Name, optional Description. You can optionally provide a specific Index override (text, e.g., "1a", "V"), otherwise it will be auto-generated based on the component's counter and index type. Use the **Parent Elements** selector to link this element as a child of other elements (creating hierarchical relationships).
 *   **Edit:** Click the **Edit** (pencil) icon. Modify Name, Description, Index override, or Parent Elements. Clearing the Index override removes it (the element keeps its current index until a re-index).
 *   **Delete (Admin only):** Click the **Delete** (trash can) icon. This permanently removes the element and cleans up any references to it in document signature paths.
-*   **Search:** Use the search bar to filter elements within the current component by Name, Description, Index, or whether they have parents.
+*   **Search:** Use the search bar to filter elements within the current component (the component filter is pre-applied). Available fields: **Name**, **Description**, and **Index** (all with `Contains` / `Equals` conditions) and **Has Parents** (a boolean `Is` → True/False condition that shows only elements that are children of other elements). Results are paginated (15 per page).
 
 ---
 
@@ -193,7 +227,7 @@ Create and manage personal or shared notes.
 
 *   Navigate to **Notes**.
 *   The list displays notes you created **OR** notes created by others that are marked as **Shared**.
-*   Use the **Search Bar** to filter notes by Title, Content, Shared status, Tags, or Author (Admin only).
+*   Use the **Search Bar** to filter notes. Available fields: **Title**, **Content** (`Contains` / `Equals`), **Shared** (boolean `Is` → True/False), **Tags** (`Has Any Of`), and **Author** (`Contains` / `Equals`; visible to Admins only). Multiple criteria are combined with **AND**, and each row can be negated with **NOT**.
 *   Click a note title or the **Preview** (eye) icon to view its full content in a dialog.
 
 ### Creating & Editing
@@ -241,3 +275,9 @@ Accessible via the user icon dropdown in the header.
 
 *   Select "Logout" from the user menu.
 *   Your session will be terminated.
+
+---
+
+## Example Workflows
+
+For complete, step-by-step walkthroughs — from first run through building an archive, searching, granting restricted access, and routine maintenance — see the [Example Workflows](WORKFLOWS.md) guide.
