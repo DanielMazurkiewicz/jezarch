@@ -171,5 +171,6 @@ export const archiveTranslationsPL: ArchiveTranslationSet = {
   archiveHelpPermissions: 'Administratorzy i pracownicy mogą tworzyć, edytować, usuwać (miękkie usuwanie), przywracać i masowo tagować pozycje. Ograniczona rola użytkownika może jedynie przeglądać i wyszukiwać dokumenty zgodne z tagami przypisanymi przez administratora.',
   archiveHelpDeleted: 'Usunięcie pozycji ukrywa ją zamiast trwale ją kasować (miękkie usuwanie). Pracownicy mogą później przywrócić ukryte pozycje.',
   quickFilterEnableLabel: 'Drzewo sygnatur opisowych',
+  quickFilterMainOnlyLabel: 'Tylko komponenty główne',
   quickFilterRefreshTreeTooltip: 'Odśwież drzewo',
 };

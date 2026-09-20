@@ -13,6 +13,7 @@ export const signatureTranslationsEN: SignatureTranslationSet = {
   componentNameLabel: 'Component Name',
   componentDescriptionLabel: 'Description',
   componentIndexTypeLabel: 'Index Formatting',
+  componentMainLabel: 'Main component',
   indexTypeDecimal: 'Decimal (1, 2, 3...)',
   indexTypeRoman: 'Roman (I, II, III...)',
   indexTypeLowerLetter: 'Lowercase Letters (a, b, c...)',

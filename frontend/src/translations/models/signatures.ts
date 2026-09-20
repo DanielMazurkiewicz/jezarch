@@ -13,6 +13,7 @@ export type SignatureTranslationKey =
   | 'componentNameLabel'
   | 'componentDescriptionLabel'
   | 'componentIndexTypeLabel'
+  | 'componentMainLabel'
   | 'indexTypeDecimal'
   | 'indexTypeRoman'
   | 'indexTypeLowerLetter'

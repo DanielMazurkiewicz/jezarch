@@ -9,6 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import LoadingSpinner from './LoadingSpinner';
 import { useAuth } from '@/hooks/useAuth';
 import api from '@/lib/api';
+import { compareSignatureComponents } from '@/lib/signatureComponentSort';
 import type { SignatureComponent } from '../../../../backend/src/functionalities/signature/component/models';
 import type { SignatureElement, CreateSignatureElementInput } from '../../../../backend/src/functionalities/signature/element/models';
 import { cn } from '@/lib/utils';
@@ -105,7 +106,7 @@ const ElementBrowserDialogContent: React.FC<ElementBrowserDialogContentProps> = 
             setIsLoadingComponents(true);
             setError(null);
             try {
-                setComponents((await api.getAllSignatureComponents(token)).sort((a,b) => a.name.localeCompare(b.name)));
+                setComponents((await api.getAllSignatureComponents(token)).sort(compareSignatureComponents));
             } catch (err: any) {
                  const msg = err.message || t('componentLoadFailedError', preferredLanguage);
                 setError(msg);

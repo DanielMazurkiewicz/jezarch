@@ -3,6 +3,7 @@ import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { createSignatureComponentFormSchema, CreateSignatureComponentFormData } from '@/lib/zodSchemas';
 import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
@@ -29,7 +30,7 @@ const ComponentForm: React.FC<ComponentFormProps> = ({ componentToEdit, onSave }
 
   const { register, handleSubmit, reset, control, formState: { errors } } = useForm<CreateSignatureComponentFormData>({
     resolver: zodResolver(createSignatureComponentFormSchema),
-    defaultValues: { name: '', description: '', index_type: 'dec', },
+    defaultValues: { name: '', description: '', index_type: 'dec', is_main: false, },
   });
 
   useEffect(() => {
@@ -38,9 +39,10 @@ const ComponentForm: React.FC<ComponentFormProps> = ({ componentToEdit, onSave }
         name: componentToEdit.name || '',
         description: componentToEdit.description || '',
         index_type: componentToEdit.index_type || 'dec',
+        is_main: componentToEdit.is_main ?? false,
       });
     } else {
-      reset({ name: '', description: '', index_type: 'dec' });
+      reset({ name: '', description: '', index_type: 'dec', is_main: false });
     }
   }, [componentToEdit, reset]);
 
@@ -55,6 +57,7 @@ const ComponentForm: React.FC<ComponentFormProps> = ({ componentToEdit, onSave }
         if (data.name !== componentToEdit.name) updatePayload.name = data.name;
         if (data.description !== componentToEdit.description) updatePayload.description = data.description ?? null;
         if (data.index_type !== componentToEdit.index_type) updatePayload.index_type = data.index_type;
+        if ((data.is_main ?? false) !== (componentToEdit.is_main ?? false)) updatePayload.is_main = data.is_main ?? false;
 
         if (Object.keys(updatePayload).length > 0) {
              await api.updateSignatureComponent(componentToEdit.signatureComponentId, updatePayload, token);
@@ -69,7 +72,8 @@ const ComponentForm: React.FC<ComponentFormProps> = ({ componentToEdit, onSave }
         const createPayload: CreateSignatureComponentInput = {
             name: data.name,
             description: data.description ?? undefined, // Backend expects string | undefined
-            index_type: data.index_type
+            index_type: data.index_type,
+            is_main: data.is_main ?? false,
         };
         await api.createSignatureComponent(createPayload, token);
       }
@@ -123,6 +127,22 @@ const ComponentForm: React.FC<ComponentFormProps> = ({ componentToEdit, onSave }
              )}
           />
           {errors.index_type && <p className="text-xs text-destructive">{errors.index_type.message}</p>}
+       </div>
+       <div className="grid gap-1.5">
+          <Controller
+             control={control}
+             name="is_main"
+             render={({ field }) => (
+                <div className="flex items-center gap-2 pt-1">
+                   <Checkbox
+                      id="comp-is-main"
+                      checked={field.value}
+                      onCheckedChange={(checked) => field.onChange(!!checked)}
+                   />
+                   <Label htmlFor="comp-is-main" className="cursor-pointer">{t('componentMainLabel', preferredLanguage)}</Label>
+                </div>
+             )}
+          />
        </div>
         {/* Use translated button text */}
        <Button type="submit" disabled={isLoading} className="mt-2 justify-self-start"> {/* Align left */}

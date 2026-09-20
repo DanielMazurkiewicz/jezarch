@@ -100,6 +100,9 @@ export const createSignatureComponentFormSchema = z.object({
     name: z.string().min(1, "Name cannot be empty").max(100),
     description: z.string().max(500).optional().nullable(),
     index_type: z.enum(["dec", "roman", "small_char", "capital_char"]),
+    // No .default() here: react-hook-form's zodResolver requires the schema's
+    // input and output types to match for useForm<TFieldValues>.
+    is_main: z.boolean().optional(),
 });
 export type CreateSignatureComponentFormData = z.infer<typeof createSignatureComponentFormSchema>;
 

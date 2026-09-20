@@ -6,6 +6,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from '@/hooks/useAuth';
 import api from '@/lib/api';
+import { compareSignatureComponents } from '@/lib/signatureComponentSort';
 import type { SignatureComponent } from '../../../../backend/src/functionalities/signature/component/models';
 import type { SignatureElement } from '../../../../backend/src/functionalities/signature/element/models';
 import { cn } from '@/lib/utils';
@@ -51,7 +52,7 @@ const ElementSelector: React.FC<ElementSelectorProps> = ({
             setError(null);
             try {
                 const comps = await api.getAllSignatureComponents(token);
-                setAvailableComponents(comps.sort((a,b) => a.name.localeCompare(b.name))); // Sort components
+                setAvailableComponents(comps.sort(compareSignatureComponents)); // Sort components (main first, then by name)
             } catch (err: any) {
                 setError(err.message || t('componentLoadFailedError', preferredLanguage));
             } finally {

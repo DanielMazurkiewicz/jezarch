@@ -104,3 +104,46 @@ test('Components require authentication', async () => {
   const res = await api(B, 'GET', '/api/signature/components');
   await expectStatus(res, 401);
 });
+
+// --- is_main (main component flag) ---
+
+test('PUT /api/signature/component with is_main: true stores the flag', async () => {
+  const res = await api(B, 'PUT', '/api/signature/component', { name: 'MainComp', is_main: true }, adminToken);
+  await expectStatus(res, 201);
+  const body = await res.json();
+  expect(body.is_main).toBeTrue();
+});
+
+test('PUT /api/signature/component defaults is_main to false', async () => {
+  const res = await api(B, 'PUT', '/api/signature/component', { name: 'PlainComp' }, adminToken);
+  await expectStatus(res, 201);
+  expect((await res.json()).is_main).toBeFalse();
+});
+
+test('PATCH /api/signature/component/:id toggles is_main both ways', async () => {
+  const list = await (await api(B, 'GET', '/api/signature/components', undefined, adminToken)).json();
+  const id = list.find((c: any) => c.name === 'MainComp')!.signatureComponentId;
+
+  const off = await api(B, 'PATCH', `/api/signature/component/${id}`, { is_main: false }, adminToken);
+  await expectStatus(off, 200);
+  expect((await off.json()).is_main).toBeFalse();
+
+  const on = await api(B, 'PATCH', `/api/signature/component/${id}`, { is_main: true }, adminToken);
+  await expectStatus(on, 200);
+  expect((await on.json()).is_main).toBeTrue();
+});
+
+test('GET /api/signature/components lists include is_main', async () => {
+  const res = await api(B, 'GET', '/api/signature/components', undefined, adminToken);
+  await expectStatus(res, 200);
+  const body = await res.json();
+  for (const c of body) {
+    expect(typeof c.is_main).toBe('boolean');
+  }
+  expect(body.find((c: any) => c.name === 'MainComp').is_main).toBeTrue();
+});
+
+test('PUT /api/signature/component rejects non-boolean is_main', async () => {
+  const res = await api(B, 'PUT', '/api/signature/component', { name: 'BadMainFlag', is_main: 'yes' }, adminToken);
+  await expectStatus(res, 400);
+});

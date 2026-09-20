@@ -2,10 +2,11 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogTrigger } from '@/components/ui/dialog';
-import { PlusCircle, ArrowLeft, HelpCircle } from 'lucide-react';
+import { PlusCircle, ArrowLeft, HelpCircle, Edit, ListRestart } from 'lucide-react';
 import HelpDialog, { HelpSection } from '@/components/shared/HelpDialog';
 import ElementList from './ElementList';
 import ElementForm from './ElementForm';
+import ComponentForm from './ComponentForm';
 import ElementPreviewDialog from './ElementPreviewDialog';
 import SearchBar, { type SearchFieldOption } from '@/components/shared/SearchBar';
 import Pagination from '@/components/shared/Pagination';
@@ -19,6 +20,7 @@ import type { SearchRequest, SearchResponse, SearchQueryElement } from '../../..
 import { toast } from "sonner";
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge'; // Import Badge
+import { cn } from '@/lib/utils';
 import { t } from '@/translations/utils'; // Import translation utility
 
 const ELEMENTS_PAGE_SIZE = 15;
@@ -43,6 +45,8 @@ const ElementsPage: React.FC = () => {
     const [elementsError, setElementsError] = useState<string | null>(null);
     const [editingElement, setEditingElement] = useState<SignatureElement | null>(null);
     const [isElementFormOpen, setIsElementFormOpen] = useState(false);
+    const [isComponentFormOpen, setIsComponentFormOpen] = useState(false);
+    const [isReindexing, setIsReindexing] = useState(false);
     const [previewingElement, setPreviewingElement] = useState<SignatureElement | null>(null);
     const [isPreviewOpen, setIsPreviewOpen] = useState(false);
     const [helpOpen, setHelpOpen] = useState(false);
@@ -205,6 +209,35 @@ const ElementsPage: React.FC = () => {
     }, [parentComponent?.signatureComponentId, currentElementPage, elementSearchQuery, fetchElements, token, editingElement, preferredLanguage]); // Add editingElement, preferredLanguage
 
 
+    // --- Parent Component Edit & Re-index ---
+    const handleComponentSaveSuccess = useCallback(() => {
+        setIsComponentFormOpen(false);
+        if (!parentComponent || !token) return;
+        api.getSignatureComponentById(parentComponent.signatureComponentId!, token)
+            .then(updatedParent => setParentComponent(updatedParent))
+            .catch(() => toast.warning(t('parentComponentRefreshError', preferredLanguage)));
+    }, [parentComponent, token, preferredLanguage]);
+
+    const handleReindexComponent = useCallback(async () => {
+        if (!canModify || !parentComponent || !token) return;
+        const id = parentComponent.signatureComponentId!;
+        if (!window.confirm(t('confirmReindexComponentMessage', preferredLanguage, { componentId: id }))) return;
+
+        setIsReindexing(true);
+        try {
+            await api.reindexComponentElements(id, token);
+            toast.success(t('componentReindexedSuccess', preferredLanguage));
+            const updatedParent = await api.getSignatureComponentById(id, token);
+            setParentComponent(updatedParent);
+            await fetchElements(currentElementPage, elementSearchQuery);
+        } catch (e: any) {
+            const msg = e.message || "Failed";
+            toast.error(t('errorMessageTemplate', preferredLanguage, { message: t('componentReindexFailedError', preferredLanguage) + `: ${msg}` }));
+        } finally {
+            setIsReindexing(false);
+        }
+    }, [canModify, parentComponent, token, currentElementPage, elementSearchQuery, fetchElements, preferredLanguage]);
+
     // Element Search & Pagination Handlers
     const handleElementSearch = useCallback((newQuery: SearchRequest['query']) => {
         setElementSearchQuery(newQuery);
@@ -233,9 +266,21 @@ const ElementsPage: React.FC = () => {
                     <ArrowLeft className="h-4 w-4" />
                 </Button>
                 <div>
-                    <h1 className="text-2xl font-bold">
-                         {t('elementsForComponentTitle', preferredLanguage, { componentName: parentComponent.name })}
-                    </h1>
+                    <div className="flex items-center gap-2">
+                        <h1 className="text-2xl font-bold">
+                             {t('elementsForComponentTitle', preferredLanguage, { componentName: parentComponent.name })}
+                        </h1>
+                        {canModify && (
+                            <>
+                                <Button variant="ghost" size="icon" onClick={() => setIsComponentFormOpen(true)} title={t('editComponentButtonTooltip', preferredLanguage)}>
+                                    <Edit className="h-4 w-4" />
+                                </Button>
+                                <Button variant="ghost" size="icon" onClick={() => void handleReindexComponent()} disabled={isReindexing} title={t('reindexElementsButtonTooltip', preferredLanguage)}>
+                                    <ListRestart className={cn("h-4 w-4", isReindexing && "animate-spin")} />
+                                </Button>
+                            </>
+                        )}
+                    </div>
                     <div className='mt-2 flex flex-wrap gap-2'>
                         <Badge variant="secondary">{t('componentBadgeIndexType', preferredLanguage, { type: parentComponent.index_type })}</Badge>
                         <Badge variant="outline">{t('componentBadgeElementsCount', preferredLanguage, { count: parentComponent.index_count ?? t('notAvailableAbbr', preferredLanguage) })}</Badge>
@@ -323,6 +368,22 @@ const ElementsPage: React.FC = () => {
                 onEdit={handleEditElement}
                 onDelete={handleDeleteElement}
             />
+
+            <Dialog open={isComponentFormOpen} onOpenChange={setIsComponentFormOpen}>
+                <DialogContent className="sm:max-w-[600px]">
+                    <DialogHeader>
+                        <DialogTitle>{t('editComponentDialogTitle', preferredLanguage)}</DialogTitle>
+                        <DialogDescription className="sr-only">{t('editComponentDialogTitle', preferredLanguage)}</DialogDescription>
+                    </DialogHeader>
+                    {parentComponent && (
+                        <ComponentForm
+                            key={parentComponent.signatureComponentId}
+                            componentToEdit={parentComponent}
+                            onSave={handleComponentSaveSuccess}
+                        />
+                    )}
+                </DialogContent>
+            </Dialog>
 
             <HelpDialog
                 isOpen={helpOpen}

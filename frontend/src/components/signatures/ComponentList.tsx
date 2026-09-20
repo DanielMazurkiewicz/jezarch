@@ -81,7 +81,15 @@ const ComponentList: React.FC<ComponentListProps> = React.memo(({
                             )}
                         >
                             <TableCell className="font-medium flex items-center gap-2">
-                                <FolderOpen className="h-4 w-4 text-muted-foreground shrink-0" />
+                                <span
+                                    className="inline-flex shrink-0"
+                                    title={component.is_main ? t('componentMainLabel', preferredLanguage) : undefined}
+                                >
+                                    <FolderOpen
+                                        strokeWidth={component.is_main ? 2.75 : 2}
+                                        className={cn("h-4 w-4", component.is_main ? "text-primary" : "text-muted-foreground")}
+                                    />
+                                </span>
                                 {component.name}
                             </TableCell>
                              {/* Use translated placeholder */}

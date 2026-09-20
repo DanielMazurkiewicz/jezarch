@@ -35,9 +35,9 @@ export const createComponentController = async (req: BunRequest) => {
         if (!validation.success) {
             return new Response(JSON.stringify({ message: "Invalid input", errors: validation.error.format() }), { status: 400 });
         }
-        const { name, description, index_type } = validation.data;
+        const { name, description, index_type, is_main } = validation.data;
 
-        const newComponent = await createComponent(name, description, index_type);
+        const newComponent = await createComponent(name, description, index_type, is_main);
         await Log.info(`Component created: ${name} (ID: ${newComponent.signatureComponentId})`, sessionAndUser.user.login, COMPONENT_AREA);
         return new Response(JSON.stringify(newComponent), { status: 201 });
 

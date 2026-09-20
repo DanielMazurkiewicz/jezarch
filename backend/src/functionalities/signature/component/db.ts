@@ -4,6 +4,23 @@ import type { SignatureComponent, SignatureComponentIndexType } from './models';
 import { Log } from '../../log/db';
 import { sqliteNow } from '../../../utils/sqlite';
 
+// One-time migration: add columns added after the table first shipped.
+// CREATE TABLE IF NOT EXISTS leaves pre-existing databases without them, so the
+// schema is topped up with ALTER TABLE ADD COLUMN when a column is missing.
+const ADDITIONAL_COLUMNS: [string, string][] = [
+    ['is_main', 'BOOLEAN NOT NULL DEFAULT 0'],
+];
+
+async function ensureSignatureComponentColumns() {
+    const columns: { name: string }[] = db.query<{ name: string }, any[]>('PRAGMA table_info(signature_components)').all();
+    const existing = new Set(columns.map(col => col.name));
+    for (const [name, type] of ADDITIONAL_COLUMNS) {
+        if (existing.has(name)) continue;
+        await db.exec(`ALTER TABLE signature_components ADD COLUMN ${name} ${type}`);
+        await Log.info(`Added missing column ${name} to signature_components.`, 'system', 'migrate');
+    }
+}
+
 // Initialization function (called in initializeDatabase)
 export async function initializeSignatureComponentTable() {
     await db.exec(`
@@ -13,11 +30,13 @@ export async function initializeSignatureComponentTable() {
             description TEXT,
             index_count INTEGER NOT NULL DEFAULT 0, -- Added field
             index_type TEXT NOT NULL DEFAULT 'dec' CHECK(index_type IN ('dec', 'roman', 'small_char', 'capital_char')), -- Added field with constraint
+            is_main BOOLEAN NOT NULL DEFAULT 0, -- Marks a component as part of the main signature system
             createdOn DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
             modifiedOn DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
             -- isDeleted BOOLEAN NOT NULL DEFAULT FALSE -- For soft deletes
         )
     `);
+    await ensureSignatureComponentColumns();
     // Optional: Index on name if lookups are frequent
     await db.exec(`CREATE UNIQUE INDEX IF NOT EXISTS idx_signature_component_name ON signature_components (name);`);
 }
@@ -31,6 +50,7 @@ export const dbToComponent = (data: any): SignatureComponent | undefined => {
         description: data.description,
         index_count: data.index_count, // Map new field
         index_type: data.index_type as SignatureComponentIndexType, // Map new field with type assertion
+        is_main: Boolean(data.is_main), // Map main component flag
         createdOn: new Date(data.createdOn),
         modifiedOn: new Date(data.modifiedOn),
         // isDeleted: Boolean(data.isDeleted), // If soft delete added
@@ -39,17 +59,17 @@ export const dbToComponent = (data: any): SignatureComponent | undefined => {
 
 // --- Operations ---
 
-// Updated createComponent to handle index_type
-export async function createComponent(name: string, description?: string, index_type: SignatureComponentIndexType = 'dec'): Promise<SignatureComponent> {
+// Updated createComponent to handle index_type and is_main
+export async function createComponent(name: string, description?: string, index_type: SignatureComponentIndexType = 'dec', is_main: boolean = false): Promise<SignatureComponent> {
     try {
         const now = sqliteNow();
         const statement = db.prepare(
-            `INSERT INTO signature_components (name, description, index_type, createdOn, modifiedOn) -- index_count uses DEFAULT 0
-             VALUES (?, ?, ?, ?, ?)
+            `INSERT INTO signature_components (name, description, index_type, is_main, createdOn, modifiedOn) -- index_count uses DEFAULT 0
+             VALUES (?, ?, ?, ?, ?, ?)
              RETURNING *`
         );
         // Use null for undefined description to store SQL NULL
-        const newComponent = statement.get(name, description ?? null, index_type, now ?? null, now ?? null);
+        const newComponent = statement.get(name, description ?? null, index_type, is_main, now ?? null, now ?? null);
         return dbToComponent(newComponent) as SignatureComponent; // Known to exist
     } catch (error: any) {
         await Log.error('Failed to create signature component', 'system', 'database', { name, error });
@@ -81,12 +101,13 @@ export async function getAllComponents(): Promise<SignatureComponent[]> {
 
 export async function updateComponent(
     id: number,
-    data: Partial<{ name: string; description: string | null; index_type: SignatureComponentIndexType }>
+    data: Partial<{ name: string; description: string | null; index_type: SignatureComponentIndexType; is_main: boolean }>
 ): Promise<SignatureComponent | undefined> {
     const { sets, params } = buildUpdateFields({
         name: data.name,
         description: data.description,
         index_type: data.index_type,
+        is_main: data.is_main,
     });
 
     if (sets.length === 0) return getComponentById(id);

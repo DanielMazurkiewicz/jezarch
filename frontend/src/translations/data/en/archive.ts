@@ -169,5 +169,6 @@ export const archiveTranslationsEN: ArchiveTranslationSet = {
   archiveHelpPermissions: 'Admins and employees can create, edit, delete (soft delete), restore, and batch-tag items. The restricted user role can only view and search documents that match the tags an admin assigned to them.',
   archiveHelpDeleted: 'Deleting an item hides it instead of removing it permanently (soft delete). Staff can restore hidden items later.',
   quickFilterEnableLabel: 'Descriptive signature tree',
+  quickFilterMainOnlyLabel: 'Main components only',
   quickFilterRefreshTreeTooltip: 'Refresh tree',
 };

@@ -106,9 +106,9 @@ async function main() {
   // 5. Create signature components
   console.log('\n--- Tworzenie komponentów sygnatury ---');
   const components = [
-    { name: 'Zespół', description: 'Najwyższy poziom grupowania archiwalnego', index_type: 'dec' },
-    { name: 'Seria', description: 'Grupa powiązanych ze sobą rekordów', index_type: 'roman' },
-    { name: 'Podseria', description: 'Podział w obrębie serii', index_type: 'small_char' },
+    { name: 'Zespół', description: 'Najwyższy poziom grupowania archiwalnego', index_type: 'dec', is_main: true },
+    { name: 'Seria', description: 'Grupa powiązanych ze sobą rekordów', index_type: 'roman', is_main: true },
+    { name: 'Podseria', description: 'Podział w obrębie serii', index_type: 'small_char', is_main: true },
     { name: 'Rok', description: 'Rok powstania lub wydania dokumentu', index_type: 'dec' },
     { name: 'Miejscowość', description: 'Miejsce powstania lub przechowywania', index_type: 'small_char' },
   ];

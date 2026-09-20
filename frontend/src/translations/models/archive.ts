@@ -168,6 +168,7 @@ export type ArchiveTranslationKey =
   | 'archiveHelpPermissions'
   | 'archiveHelpDeleted'
   | 'quickFilterEnableLabel'
+  | 'quickFilterMainOnlyLabel'
   ;
 
 export type ArchiveTranslationSet = TranslationSet<ArchiveTranslationKey>;

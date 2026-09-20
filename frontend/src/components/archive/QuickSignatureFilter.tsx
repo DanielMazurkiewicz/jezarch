@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { cn } from '@/lib/utils';
 import api from '@/lib/api';
+import { compareSignatureComponents } from '@/lib/signatureComponentSort';
 import { useQuickFilterContext } from '@/context/QuickFilterContext';
 import type { SignatureComponent } from '../../../../backend/src/functionalities/signature/component/models';
 import type { SignatureElementSearchResult } from '../../../../backend/src/functionalities/signature/element/models';
@@ -195,8 +196,8 @@ const ComponentNode: React.FC<ComponentNodeProps> = ({
       >
         {isExpanded ? <ChevronDown className="h-3 w-3 shrink-0" /> : <ChevronRight className="h-3 w-3 shrink-0" />}
         {isExpanded
-          ? <FolderOpen className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
-          : <Folder className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />}
+          ? <FolderOpen strokeWidth={comp.is_main ? 2.75 : 2} className={cn("h-3.5 w-3.5 shrink-0", comp.is_main ? "text-primary" : "text-muted-foreground")} />
+          : <Folder strokeWidth={comp.is_main ? 2.75 : 2} className={cn("h-3.5 w-3.5 shrink-0", comp.is_main ? "text-primary" : "text-muted-foreground")} />}
         <span>{comp.name}</span>
         {isExpanded && isLoading && <LoadingSpinner size="sm" className="ml-1" />}
       </div>
@@ -252,12 +253,20 @@ const QuickSignatureFilter: React.FC<QuickSignatureFilterProps> = ({
   const [isLoadingComponents, setIsLoadingComponents] = useState(false);
   const [previewElements, setPreviewElements] = useState<SignatureElementSearchResult[]>([]);
   const [isLoadingPreview, setIsLoadingPreview] = useState(false);
+  // "Main components only" filter — on by default; hides non-main components
+  // from the tree's top level (their elements stay reachable as children).
+  const [mainOnly, setMainOnly] = useState(true);
+
+  const visibleComponents = useMemo(
+    () => (mainOnly ? components.filter(c => c.is_main) : components),
+    [components, mainOnly],
+  );
 
   useEffect(() => {
     if (!token) return;
     setIsLoadingComponents(true);
     api.getAllSignatureComponents(token)
-      .then(comps => setComponents(comps.sort((a, b) => a.name.localeCompare(b.name))))
+      .then(comps => setComponents(comps.sort(compareSignatureComponents)))
       .catch(console.error)
       .finally(() => setIsLoadingComponents(false));
   }, [token]);
@@ -358,6 +367,17 @@ const QuickSignatureFilter: React.FC<QuickSignatureFilterProps> = ({
         </Button>
       </div>
 
+      <div className={cn("flex items-center gap-2", !enabled && "pointer-events-none opacity-40")}>
+        <Checkbox
+          id="quick-filter-main-only"
+          checked={mainOnly}
+          onCheckedChange={(checked) => setMainOnly(!!checked)}
+        />
+        <Label htmlFor="quick-filter-main-only" className="text-xs cursor-pointer">
+          {t('quickFilterMainOnlyLabel', preferredLanguage)}
+        </Label>
+      </div>
+
       <div className={cn("flex items-center gap-1", !enabled && "pointer-events-none opacity-40")}>
         <Select value={condition} onValueChange={handleConditionChange}>
           <SelectTrigger className="h-7 text-xs" style={{ minWidth: `calc(${longestLabel.length}ch + 3rem)` }}>
@@ -405,10 +425,10 @@ const QuickSignatureFilter: React.FC<QuickSignatureFilterProps> = ({
           <div className="flex items-center justify-center py-2">
             <LoadingSpinner size="sm" />
           </div>
-        ) : components.length === 0 ? (
+        ) : visibleComponents.length === 0 ? (
           <div className="text-[10px] text-muted-foreground py-1 text-center italic">-</div>
         ) : (
-          components.map(comp => (
+          visibleComponents.map(comp => (
             <ComponentNode
               key={comp.signatureComponentId!}
               comp={comp}

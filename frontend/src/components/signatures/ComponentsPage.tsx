@@ -5,6 +5,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { PlusCircle } from 'lucide-react';
 import ComponentList from './ComponentList';
 import ComponentForm from './ComponentForm';
+import { compareSignatureComponents } from '@/lib/signatureComponentSort';
 import ComponentPreviewDialog from './ComponentPreviewDialog';
 import LoadingSpinner from '@/components/shared/LoadingSpinner';
 import ErrorDisplay from '@/components/shared/ErrorDisplay';
@@ -47,7 +48,7 @@ const ComponentsPage: React.FC = () => {
         setComponentsError(null);
         try {
             const fetchedComponents = (await api.getAllSignatureComponents(token))
-                                        .sort((a, b) => a.name.localeCompare(b.name));
+                                        .sort(compareSignatureComponents);
             setComponents(fetchedComponents);
         } catch (err: any) {
             const msg = err.message || t('componentLoadFailedError', preferredLanguage); // Use translated error

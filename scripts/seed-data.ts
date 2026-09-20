@@ -102,9 +102,9 @@ async function main() {
   // 5. Create signature components
   console.log('\n--- Creating signature components ---');
   const components = [
-    { name: 'Fonds', description: 'Highest level archival grouping', index_type: 'dec' },
-    { name: 'Series', description: 'Group of related records', index_type: 'roman' },
-    { name: 'Subseries', description: 'Subdivision within a series', index_type: 'small_char' },
+    { name: 'Fonds', description: 'Highest level archival grouping', index_type: 'dec', is_main: true },
+    { name: 'Series', description: 'Group of related records', index_type: 'roman', is_main: true },
+    { name: 'Subseries', description: 'Subdivision within a series', index_type: 'small_char', is_main: true },
   ];
 
   const componentIds: Record<string, number> = {};
