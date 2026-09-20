@@ -26,6 +26,8 @@ Każdy komponent ma **typ indeksu**, który określa, jak numerowane są jego el
 - Małe litery (a, b, c...)
 - Duże litery (A, B, C...)
 
+Komponenty mogą być dodatkowo oznaczone jako **komponenty główne** (pole wyboru w formularzu komponentu). Komponenty główne są sortowane na początku — przed kolejnością alfabetyczną — w każdej liście i selektorze komponentów, a ich ikona folderu jest wyróżniona. Szybkie drzewo sygnatur na pasku bocznym Archiwum domyślnie pokazuje tylko komponenty główne.
+
 ### Jaka jest różnica między komponentem a elementem? (#25)
 
 | Komponent | Element |
@@ -157,7 +159,7 @@ To **szybki filtr** dla strony Archiwum, który pozwala filtrować według sygna
 
 1. Włącz pole wyboru przy drzewie na dole paska bocznego.
 2. Wybierz warunek: `Zaczyna się od`, `Zawiera Sekwencję` lub `Równa się`.
-3. Klikaj komponenty i elementy (schodząc do elementów podrzędnych w razie potrzeby), aby wybrać interesującą Cię ścieżkę.
+3. Klikaj komponenty i elementy (schodząc do elementów podrzędnych w razie potrzeby), aby wybrać interesującą Cię ścieżkę. Domyślnie na najwyższym poziomie widoczne są tylko **komponenty główne**; odznacz **Tylko komponenty główne**, aby pokazać wszystkie komponenty (elementy ukrytych komponentów pozostają dostępne jako dzieci).
 4. Wybrana ścieżka jest nakładana na kryteria z paska wyszukiwania i pokazywana jako rozwiązana ścieżka (z limitem 1000 wyników w drzewie).
 5. Kliknij wybrany element, aby wyczyścić filtr, a jeśli komponenty/elementy zostały zmienione gdzie indziej — użyj przycisku odświeżania.
 

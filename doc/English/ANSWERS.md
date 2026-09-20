@@ -26,6 +26,8 @@ Each component has an **index type** that determines how its elements are number
 - Lowercase letters (a, b, c...)
 - Uppercase letters (A, B, C...)
 
+Components can also be marked as **main components** (a checkbox in the component form). Main components are listed first — before alphabetical order — in every component list and picker, and their folder icon is highlighted. The quick signature tree in the Archive sidebar shows only main components by default.
+
 ### What is the difference between a component and an element? (#25)
 
 | Component | Element |
@@ -157,7 +159,7 @@ It is a **quick filter** for the Archive page that lets you filter by descriptiv
 
 1. Enable the checkbox on the tree at the bottom of the sidebar.
 2. Pick a condition: `Starts With`, `Contains Sequence`, or `Equals`.
-3. Click through components and elements (drilling into child elements as needed) to select the path you want.
+3. Click through components and elements (drilling into child elements as needed) to select the path you want. By default only **main components** appear at the top level; untick **Main components only** to show every component (elements of hidden components stay reachable as children).
 4. The selected path is applied on top of any criteria in the search bar and shown as a resolved path (with a limit of 1000 results in the tree).
 5. Click a selected element to clear the filter, and use the refresh button if components/elements were changed elsewhere.
 

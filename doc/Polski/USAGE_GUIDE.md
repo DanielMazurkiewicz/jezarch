@@ -116,7 +116,7 @@ Domyślna strona po zalogowaniu. Wyświetla wiadomość powitalną. Użytkownicy
 *   Zaznacz pole **NIE** w wierszu, aby zanegować warunek (np. `Czy Zdigitalizowano` + `NIE` znajduje pozycje, które *nie* są zdigitalizowane).
 *   Dodaj wiele kryteriów, aby zawęzić wyniki — są łączone operatorem **AND**, więc każdy wiersz dodatkowo ogranicza zbiór wyników.
 *   Kliknij **Szukaj**, aby zastosować filtry. Kliknij **Resetuj**, aby wyczyścić kryteria i wrócić do widoku domyślnego (pracownicy i admin wracają do ukrywania usuniętych).
-*   **Szybki filtr sygnatur ("Drzewo sygnatur opisowych"):** drzewo na dole paska bocznego to alternatywny sposób filtrowania według sygnatury opisowej. Włącz pole wyboru, wybierz warunek (`Zaczyna się` / `Zawiera Sekwencję` / `Równa się`) i klikaj w hierarchii sygnatur (komponenty → elementy → elementy podrzędne), aby wybrać ścieżkę. Wybrana ścieżka jest nakładana **na wierzch** kryteriów z paska wyszukiwania, a jej elementy są pokazywane jako rozwiązana ścieżka. Kliknij już wybrany element, aby wyczyścić filtr, a jeśli drzewo jest nieaktualne, użyj ikony odświeżania.
+*   **Szybki filtr sygnatur ("Drzewo sygnatur opisowych"):** drzewo na dole paska bocznego to alternatywny sposób filtrowania według sygnatury opisowej. Włącz pole wyboru, wybierz warunek (`Zaczyna się` / `Zawiera Sekwencję` / `Równa się`) i klikaj w hierarchii sygnatur (komponenty → elementy → elementy podrzędne), aby wybrać ścieżkę. Wybrana ścieżka jest nakładana **na wierzch** kryteriów z paska wyszukiwania, a jej elementy są pokazywane jako rozwiązana ścieżka. Kliknij już wybrany element, aby wyczyścić filtr, a jeśli drzewo jest nieaktualne, użyj ikony odświeżania. Domyślnie na najwyższym poziomie drzewa widoczne są tylko **komponenty główne**; odznacz **Tylko komponenty główne**, aby pokazać wszystkie komponenty (elementy ukrytych komponentów pozostają dostępne jako dzieci).
 *   **Rola 'Użytkownik':** filtr tagów jest zawsze aktywny — wyniki obejmują tylko dokumenty mające **przynajmniej jeden** z tagów przypisanych Ci przez administratora. Jeśli nie przypisano tagów, wyszukiwanie nic nie zwraca.
 
 ### Sortowanie i Paginacja
@@ -188,9 +188,9 @@ Zarządzaj elementami składowymi sygnatur opisowych.
 ### Komponenty
 
 *   Przejdź do sekcji **Sygnatury**.
-*   Wyświetl istniejące komponenty, ich opis, typ indeksowania i liczbę elementów.
-*   **Tworzenie:** Kliknij **Nowy Komponent**. Podaj unikalną Nazwę, opcjonalny Opis i wybierz Typ Formatowania Indeksu (jak będą wyświetlane indeksy elementów w tym komponencie - Dziesiętny, Rzymski itp.).
-*   **Edycja:** Kliknij ikonę **Edytuj** (ołówek). Zmodyfikuj Nazwę, Opis lub Typ Indeksu.
+*   Wyświetl istniejące komponenty, ich opis, typ indeksowania i liczbę elementów. Komponenty są sortowane z **komponentami głównymi na początku**, a następnie alfabetycznie; komponenty główne mają wyróżnioną (kolorową) ikonę folderu.
+*   **Tworzenie:** Kliknij **Nowy Komponent**. Podaj unikalną Nazwę, opcjonalny Opis, wybierz Typ Formatowania Indeksu (jak będą wyświetlane indeksy elementów w tym komponencie - Dziesiętny, Rzymski itp.) i zaznacz **Komponent główny**, jeśli ten poziom należy do głównej struktury sygnatur.
+*   **Edycja:** Kliknij ikonę **Edytuj** (ołówek). Zmodyfikuj Nazwę, Opis, Typ Indeksu lub flagę **Komponent główny**.
 *   **Usuwanie (Tylko Admin):** Kliknij ikonę **Usuń** (kosz). **Ostrzeżenie:** To trwale usuwa komponent ORAZ wszystkie jego elementy.
 *   **Reindeksacja (Admin/Pracownik):** Kliknij ikonę **Reindeksuj** (lista restart). Przelicza i aktualizuje pole `index` dla wszystkich elementów w tym komponencie w oparciu o ich kolejność alfabetyczną i typ indeksu komponentu. Przydatne po dodaniu/usunięciu/zmianie nazwy wielu elementów. Uwaga: własne indeksy elementów zostaną nadpisane.
 *   **Otwórz:** Kliknij wiersz komponentu, aby przejść do strony jego Elementów.
@@ -199,6 +199,8 @@ Zarządzaj elementami składowymi sygnatur opisowych.
 
 *   Przejdź na tę stronę, klikając wiersz komponentu na stronie Sygnatury.
 *   Wyświetl elementy należące do wybranego komponentu nadrzędnego.
+*   **Edycja komponentu nadrzędnego:** Kliknij ikonę **Edytuj** (ołówek) obok tytułu strony, aby zmodyfikować Nazwę, Opis, Typ Indeksu lub flagę Główny komponent bez opuszczania strony Elementów.
+*   **Reindeksacja komponentu nadrzędnego:** Kliknij ikonę **Reindeksuj** (lista restart) obok tytułu strony, aby ponumerować wszystkie elementy w tym komponencie — to samo działanie co Reindeksacja na liście Komponentów (własne wartości indeksów zostaną nadpisane).
 *   **Tworzenie:** Kliknij **Nowy Element**. Podaj Nazwę, opcjonalny Opis. Możesz opcjonalnie podać konkretny Indeks (tekst, np. "1a", "V"), w przeciwnym razie zostanie on wygenerowany automatycznie na podstawie licznika komponentu i typu indeksu. Użyj selektora **Elementy Nadrzędne**, aby połączyć ten element jako dziecko innych elementów (tworząc relacje hierarchiczne).
 *   **Edycja:** Kliknij ikonę **Edytuj** (ołówek). Zmodyfikuj Nazwę, Opis, Indeks lub Elementy Nadrzędne. Wyczyszczenie pola Indeks usuwa własną wartość (element zachowa bieżący indeks do czasu reindeksacji).
 *   **Usuwanie (Tylko Admin):** Kliknij ikonę **Usuń** (kosz). To trwale usuwa element i czyści odwołania do niego w ścieżkach sygnatur dokumentów.

@@ -117,7 +117,7 @@ Accessible via the "Archive" / "Search Archive" link in the sidebar.
 *   Tick the **NOT** box on a row to negate that condition (e.g. `Is Digitized` + `NOT` finds items that are *not* digitized; empty results or `[0]` arrays become "none of these").
 *   Add multiple criteria to narrow the results — they are combined with **AND**, so each row further reduces the result set.
 *   Click **Search** to apply the filters. Click **Reset** to clear your criteria and return to the default view (staff go back to hiding deleted items).
-*   **Quick Signature Filter ("Descriptive signature tree"):** the tree at the bottom of the sidebar is an alternative way to filter by descriptive signature. Enable the checkbox, pick a condition (`Starts With` / `Contains Sequence` / `Equals`), and click through the signature hierarchy (components → elements → child elements) to select a path. The chosen path is applied **on top of** the search-bar criteria and its elements are shown as a resolved path. Click an already-selected element to clear the filter, and use the refresh icon if the tree is out of date.
+*   **Quick Signature Filter ("Descriptive signature tree"):** the tree at the bottom of the sidebar is an alternative way to filter by descriptive signature. Enable the checkbox, pick a condition (`Starts With` / `Contains Sequence` / `Equals`), and click through the signature hierarchy (components → elements → child elements) to select a path. The chosen path is applied **on top of** the search-bar criteria and its elements are shown as a resolved path. Click an already-selected element to clear the filter, and use the refresh icon if the tree is out of date. By default only **main components** appear at the top level of the tree; untick **Main components only** to show every component (elements of hidden components stay reachable as children).
 *   **'User' role:** the automatic tag filter is always active — results only include documents carrying **at least one** of the tags assigned to you by an administrator. If no tags are assigned, the search returns no results.
 
 ### Sorting & Pagination
@@ -189,9 +189,9 @@ Manage the building blocks for descriptive signatures.
 ### Components
 
 *   Navigate to **Signatures**.
-*   View existing components, their description, index type, and element count.
-*   **Create:** Click **New Component**. Provide a unique Name, optional Description, and choose the Index Formatting type (how element indices within this component will be displayed - Decimal, Roman, etc.).
-*   **Edit:** Click the **Edit** (pencil) icon. Modify Name, Description, or Index Type.
+*   View existing components, their description, index type, and element count. Components are listed with **main components first**, then alphabetically; main components show a highlighted (colored) folder icon.
+*   **Create:** Click **New Component**. Provide a unique Name, optional Description, choose the Index Formatting type (how element indices within this component will be displayed - Decimal, Roman, etc.), and tick **Main component** if this level is part of your main signature system.
+*   **Edit:** Click the **Edit** (pencil) icon. Modify Name, Description, Index Type, or the **Main component** flag.
 *   **Delete (Admin only):** Click the **Delete** (trash can) icon. **Warning:** This permanently deletes the component AND all its elements.
 *   **Re-index (Admin/Employee):** Click the **Re-index** (list restart) icon. This recalculates and updates the `index` field for all elements within that component based on their alphabetical order and the component's index type. Useful after adding/deleting/renaming multiple elements. Note that custom index overrides are overwritten.
 *   **Open:** Click a component row to navigate to its Elements page.
@@ -200,6 +200,8 @@ Manage the building blocks for descriptive signatures.
 
 *   Access this page by clicking a component row on the Signatures page.
 *   View elements belonging to the selected parent component.
+*   **Edit the parent component:** Click the **Edit** (pencil) icon next to the page title to modify the component's Name, Description, Index Type, or Main flag without leaving the Elements page.
+*   **Re-index the parent component:** Click the **Re-index** (list restart) icon next to the page title to renumber all elements in this component — the same action as the Re-index on the Components list (custom index overrides are overwritten).
 *   **Create:** Click **New Element**. Provide a Name, optional Description. You can optionally provide a specific Index override (text, e.g., "1a", "V"), otherwise it will be auto-generated based on the component's counter and index type. Use the **Parent Elements** selector to link this element as a child of other elements (creating hierarchical relationships).
 *   **Edit:** Click the **Edit** (pencil) icon. Modify Name, Description, Index override, or Parent Elements. Clearing the Index override removes it (the element keeps its current index until a re-index).
 *   **Delete (Admin only):** Click the **Delete** (trash can) icon. This permanently removes the element and cleans up any references to it in document signature paths.
