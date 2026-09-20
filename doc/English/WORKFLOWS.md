@@ -72,7 +72,7 @@ Start with the descriptive-signature taxonomy, because documents reference it.
     *   **Sub-series** with index type *Lowercase letters* (a, b, c...).
     Tick **Main component** for the levels that make up your main signature system — main components are listed first everywhere and shown by default in the archive's quick signature tree (the demo seed data marks all three of these as main).
 3.  Click a component row to open its Elements page.
-4.  Click **New Element** to add instances, e.g. under *Series* add "Series A", "Series B". Use the **Parent Elements** selector if an element belongs under another element (e.g. a Sub-series under a Series). Leave the **Index** field empty to auto-number the element.
+4.  Click **New Element** to add instances, e.g. under *Series* add "Series A", "Series B". Leave the **Index** field empty to auto-number the element. To create a child of an existing element, either use the **Parent Elements** selector in the dialog, or click the element's name on the Elements page and use **New Element** on its Child Elements page — there the parent is pre-filled (read-only) and you only choose the component.
 5.  If you later rename, add, or delete many elements, click the **Re-index** icon — on the Components list or next to the title on a component's Elements page — to renumber everything consistently (custom index values are overwritten).
 
 ### Step 2: Create units (containers)

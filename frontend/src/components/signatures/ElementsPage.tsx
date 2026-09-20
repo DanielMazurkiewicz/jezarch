@@ -238,6 +238,12 @@ const ElementsPage: React.FC = () => {
         }
     }, [canModify, parentComponent, token, currentElementPage, elementSearchQuery, fetchElements, preferredLanguage]);
 
+    // Drill into an element's children (starts the breadcrumb path at this element)
+    const handleViewChildren = useCallback((element: SignatureElement) => {
+        const id = element.signatureElementId!;
+        navigate(`/signatures/${componentId}/elements/${id}?path=${id}`);
+    }, [navigate, componentId]);
+
     // Element Search & Pagination Handlers
     const handleElementSearch = useCallback((newQuery: SearchRequest['query']) => {
         setElementSearchQuery(newQuery);
@@ -343,6 +349,7 @@ const ElementsPage: React.FC = () => {
                                 onEdit={handleEditElement}
                                 onDelete={handleDeleteElement}
                                 onPreview={handlePreviewElement}
+                                onViewChildren={handleViewChildren}
                              />
                             {totalElementPages > 1 && (
                                 <div className="mt-4 flex justify-center">

@@ -48,6 +48,8 @@ W oknie **Selektora Ścieżki Sygnatury** (używanym podczas tworzenia/edycji do
 
 Podczas tworzenia lub edycji elementu możesz przypisać elementy nadrzędne z innych komponentów, aby zbudować drzewo klasyfikacji. System zapobiega ustawieniu samego siebie jako rodzica, ale nie wymusza ścisłego drzewa z jednym rodzicem — elementy mogą należeć do wielu gałęzi.
 
+Hierarchię można też przeglądać bezpośrednio w sekcji Sygnatury: kliknij nazwę elementu na stronie Elementów, aby otworzyć jego widok Elementów Podrzędnych (z okruszkami pokrywającymi klikniętą ścieżkę) i tworzyć tam elementy podrzędne z automatycznie wybranym rodzicem.
+
 ## Relacja Archiwum i Sygnatur
 
 ### Jaka jest relacja między Archiwum a Sygnaturami? (#22)

@@ -72,7 +72,7 @@ Zacznij od taksonomii sygnatur opisowych, ponieważ dokumenty się do niej odwo�
     *   **Podseria** z typem indeksu *Małe litery* (a, b, c...).
     Zaznacz **Komponent główny** dla poziomów tworzących główną strukturę sygnatur — komponenty główne są sortowane na początku w każdej liście i domyślnie widoczne w szybkim drzewie sygnatur archiwum (dane demo oznaczają wszystkie te trzy poziomy jako główne).
 3.  Kliknij wiersz komponentu, aby otworzyć jego stronę Elementów.
-4.  Kliknij **Nowy Element**, aby dodać instancje, np. pod *Seria* dodaj "Seria A", "Seria B". Użyj selektora **Elementy Nadrzędne**, jeśli element należy pod inny element (np. Podseria pod Serią). Pozostaw pole **Indeks** puste, aby ponumerować element automatycznie.
+4.  Kliknij **Nowy Element**, aby dodać instancje, np. pod *Seria* dodaj "Seria A", "Seria B". Pozostaw pole **Indeks** puste, aby ponumerować element automatycznie. Aby utworzyć element podrzędny istniejącego elementu, użyj selektora **Elementy Nadrzędne** w oknie dialogowym albo kliknij nazwę elementu na stronie Elementów i użyj **Nowy Element** na jego stronie Elementów Podrzędnych — tam element nadrzędny jest wypełniony automatycznie (tylko do odczytu) i wybierasz jedynie komponent.
 5.  Jeśli później zmienisz nazwy, dodasz lub usuniesz wiele elementów, kliknij ikonę **Reindeksuj** — na liście Komponentów lub obok tytułu na stronie Elementów danego komponentu — aby spójnie przenumerować wszystko (własne wartości indeksów zostaną nadpisane).
 
 ### Krok 2: Utwórz jednostki (kontenery)

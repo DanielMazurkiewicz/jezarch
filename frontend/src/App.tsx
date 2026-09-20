@@ -10,6 +10,7 @@ import NotesPage from '@/components/notes/NotesPage';
 import TagsPage from '@/components/tags/TagsPage';
 import ComponentsPage from '@/components/signatures/ComponentsPage';
 import ElementsPage from '@/components/signatures/ElementsPage';
+import ElementChildrenPage from '@/components/signatures/ElementChildrenPage';
 import ArchivePage from '@/components/archive/ArchivePage';
 import AdminPage from '@/components/admin/AdminPage';
 import ProtectedRoute from '@/components/auth/ProtectedRoute';
@@ -78,6 +79,7 @@ function AppContent() {
                     <Route element={<ProtectedRoute allowedRoles={['admin', 'employee']} />}>
                         <Route path="signatures" element={<ComponentsPage />} />
                         <Route path="signatures/:componentId/elements" element={<ElementsPage />} />
+                        <Route path="signatures/:componentId/elements/:elementId" element={<ElementChildrenPage />} />
                         <Route path="tags" element={<TagsPage />} />
                         <Route path="notes" element={<NotesPage />} />
                     </Route>

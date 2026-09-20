@@ -23,6 +23,7 @@ Ten przewodnik opisuje podstawowe funkcjonalności aplikacji JezArch dla różny
 *   [Sygnatury (Admin/Pracownik)](#sygnatury-adminpracownik)
     *   [Komponenty](#komponenty)
     *   [Elementy](#elementy)
+    *   [Elementy Podrzędne](#elementy-podrzędne)
 *   [Tagi (Admin/Pracownik)](#tagi-adminpracownik)
 *   [Notatki (Admin/Pracownik)](#notatki-adminpracownik)
     *   [Przeglądanie i Wyszukiwanie](#przeglądanie-i-wyszukiwanie)
@@ -205,6 +206,18 @@ Zarządzaj elementami składowymi sygnatur opisowych.
 *   **Edycja:** Kliknij ikonę **Edytuj** (ołówek). Zmodyfikuj Nazwę, Opis, Indeks lub Elementy Nadrzędne. Wyczyszczenie pola Indeks usuwa własną wartość (element zachowa bieżący indeks do czasu reindeksacji).
 *   **Usuwanie (Tylko Admin):** Kliknij ikonę **Usuń** (kosz). To trwale usuwa element i czyści odwołania do niego w ścieżkach sygnatur dokumentów.
 *   **Wyszukiwanie:** Użyj paska wyszukiwania, aby filtrować elementy w bieżącym komponencie (filtr komponentu jest już nałożony). Dostępne pola: **Nazwa**, **Opis** i **Indeks** (wszystkie z warunkami `Zawiera` / `Równa się`) oraz **Ma Rodziców** (warunek logiczny `Jest` → Prawda/Fałsz, pokazujący tylko elementy będące dziećmi innych elementów). Wyniki są podzielone na strony (15 na stronę).
+*   **Przejście do elementów podrzędnych:** Kliknij **nazwę** elementu, aby otworzyć jego stronę Elementów Podrzędnych. Mała odznaka obok nazwy pokazuje liczbę elementów podrzędnych.
+
+### Elementy Podrzędne
+
+*   Przejdź na tę stronę, klikając nazwę elementu na stronie Elementów komponentu — lub na stronie Elementów Podrzędnych innego elementu, dzięki czemu możesz schodzić po hierarchii tak głęboko, jak potrzeba.
+*   **Okruszki (ścieżka):** Pod tytułem strony widzisz ścieżkę klikniętych elementów, zaczynając od komponentu początkowego. Kliknij dowolny okruszek, aby wrócić do tego poziomu, lub użyj przycisku strzałki, aby przejść poziom wyżej.
+*   Lista pokazuje wszystkie **bezpośrednie elementy podrzędne** wybranego elementu. Ponieważ hierarchia może przekraczać komponenty, kolumna **Komponent** pokazuje, do którego komponentu należy każdy element podrzędny.
+*   Każdy wiersz ma te same akcje co na stronie Elementów: **Podgląd**, **Edytuj** i **Usuń (Tylko Admin)**.
+*   **Wyszukiwanie:** Te same pola co na stronie Elementów (**Nazwa**, **Opis**, **Indeks**, **Ma Rodziców**), wyniki podzielone na strony (15 na stronę).
+*   **Tworzenie elementu podrzędnego:** Kliknij **Nowy Element**. Okno dialogowe jest nieco inne niż na stronie Elementów:
+    *   Pole **Element Nadrzędny** jest wypełnione automatycznie obserwowanym elementem i pokazane **tylko do odczytu** — nowy element będzie jego dzieckiem.
+    *   **Komponent** wybierasz za pomocą selektora (nowy element może należeć do innego komponentu niż jego rodzic). Selektor domyślnie wskazuje komponent pierwszego istniejącego elementu podrzędnego; jeśli element nie ma jeszcze dzieci, domyślnie wskazuje własny komponent tego elementu.
 
 ---
 

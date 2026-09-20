@@ -139,6 +139,14 @@ export type SignatureTranslationKey =
   | 'elementsHelpPermissions'
   | 'elementFetchFailedError'
   | 'componentNotFoundError'
+  | 'invalidElementIdError'
+  | 'elementNotFoundError'
+  | 'childrenOfElementTitle' // e.g., "Child elements of: {name}"
+  | 'elementChildrenListHeader'
+  | 'elementChildrenDescription'
+  | 'noChildrenFoundInElement'
+  | 'viewChildrenTooltip'
+  | 'fixedParentHint'
   ;
 
 

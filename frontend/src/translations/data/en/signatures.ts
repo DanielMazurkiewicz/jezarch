@@ -139,4 +139,12 @@ export const signatureTranslationsEN: SignatureTranslationSet = {
   elementsHelpPermissions: 'Admins and employees can create and edit elements and re-index their component. Only administrators can delete elements.',
   elementFetchFailedError: 'Failed to fetch elements',
   componentNotFoundError: 'Component with ID {id} not found.',
+  invalidElementIdError: 'Invalid element ID.',
+  elementNotFoundError: 'Element with ID {id} not found.',
+  childrenOfElementTitle: 'Child elements of: {name}',
+  elementChildrenListHeader: 'Child Elements',
+  elementChildrenDescription: 'Elements that have the selected element as a direct parent.',
+  noChildrenFoundInElement: 'No child elements found for this element.',
+  viewChildrenTooltip: 'View child elements',
+  fixedParentHint: 'The parent is set automatically to the element you are viewing and cannot be changed here.',
 };

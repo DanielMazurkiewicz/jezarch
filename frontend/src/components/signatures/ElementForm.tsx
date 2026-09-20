@@ -9,6 +9,8 @@ import { Textarea } from '@/components/ui/textarea';
 import LoadingSpinner from '@/components/shared/LoadingSpinner';
 import ErrorDisplay from '@/components/shared/ErrorDisplay';
 import ElementSelector from './ElementSelector'; // Corrected import path
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'; // For component picker
+import { compareSignatureComponents } from '@/lib/signatureComponentSort';
 import { useAuth } from '@/hooks/useAuth';
 import api from '@/lib/api';
 import type { SignatureElement, CreateSignatureElementInput, UpdateSignatureElementInput } from '../../../../backend/src/functionalities/signature/element/models'; // Import backend input types
@@ -27,14 +29,47 @@ interface ElementFormProps {
     currentComponent: SignatureComponent;
     // Modified onSave signature to pass back the saved element or null
     onSave: (savedElement: SignatureElement | null) => void;
+    // When set (create mode only), the parent is locked to this element and shown read-only
+    fixedParent?: SignatureElement | null;
+    // When true (create mode only), a component picker replaces the static component display
+    allowComponentPicker?: boolean;
 }
 
-const ElementForm: React.FC<ElementFormProps> = ({ elementToEdit, currentComponent, onSave }) => {
+const ElementForm: React.FC<ElementFormProps> = ({ elementToEdit, currentComponent, onSave, fixedParent, allowComponentPicker }) => {
     const { token, preferredLanguage } = useAuth(); // Get preferredLanguage
     const [isLoading, setIsLoading] = useState(false); // For save operation
     const [isFetchingDetails, setIsFetchingDetails] = useState(false); // For loading parents
     const [error, setError] = useState<string | null>(null);
     const [selectedParentIds, setSelectedParentIds] = useState<number[]>([]);
+
+    // --- Component picker (create mode only) ---
+    const showComponentPicker = !!allowComponentPicker && !elementToEdit;
+    const [availableComponents, setAvailableComponents] = useState<SignatureComponent[]>([]);
+    const [isComponentsLoading, setIsComponentsLoading] = useState(showComponentPicker);
+    const [selectedComponentId, setSelectedComponentId] = useState<number>(currentComponent.signatureComponentId!);
+
+    // Fetch components for the picker
+    useEffect(() => {
+        if (!showComponentPicker || !token) return;
+        let cancelled = false;
+        setIsComponentsLoading(true);
+        api.getAllSignatureComponents(token)
+            .then(comps => {
+                if (cancelled) return;
+                setAvailableComponents(comps.sort(compareSignatureComponents)); // Sort components (main first, then by name)
+            })
+            .catch((err: any) => console.error('Failed to load components for picker', err))
+            .finally(() => { if (!cancelled) setIsComponentsLoading(false); });
+        return () => { cancelled = true; };
+    }, [showComponentPicker, token]);
+
+    // The component actually used for the index type hint and the create payload
+    const activeComponent: SignatureComponent = showComponentPicker
+        ? (availableComponents.find(c => c.signatureComponentId === selectedComponentId) ?? currentComponent)
+        : currentComponent;
+
+    // Parent locked to a fixed element (create mode only)
+    const effectiveFixedParent = !elementToEdit ? (fixedParent ?? null) : null;
 
 
     const { register, handleSubmit, reset, control, setValue, formState: { errors } } = useForm({ // Remove explicit type here
@@ -82,12 +117,13 @@ const ElementForm: React.FC<ElementFormProps> = ({ elementToEdit, currentCompone
                 }
 
             } else {
-                reset({ name: '', description: '', index: '', parentIds: [] });
-                setSelectedParentIds([]); setError(null); setIsFetchingDetails(false);
+                const fixedParentId = effectiveFixedParent?.signatureElementId;
+                reset({ name: '', description: '', index: '', parentIds: fixedParentId ? [fixedParentId] : [] });
+                setSelectedParentIds(fixedParentId ? [fixedParentId] : []); setError(null); setIsFetchingDetails(false);
             }
         };
         fetchParentsAndPopulate();
-     }, [elementToEdit, reset, token]); // preferredLanguage intentionally omitted: re-populating on locale switch would wipe unsaved input
+     }, [elementToEdit, reset, token, effectiveFixedParent]); // preferredLanguage intentionally omitted: re-populating on locale switch would wipe unsaved input
 
 
      // Update RHF's parentIds when the selector state changes (for validation)
@@ -107,17 +143,21 @@ const ElementForm: React.FC<ElementFormProps> = ({ elementToEdit, currentCompone
         let savedElementResult: SignatureElement | null = null; // To store the result
 
         // Prepare payloads based on backend input types
+        const finalParentIds = effectiveFixedParent?.signatureElementId
+            ? [effectiveFixedParent.signatureElementId] // Locked parent from the children view
+            : selectedParentIds;
+
         const basePayload = {
              name: data.name,
              description: data.description ?? undefined, // Send undefined if null/empty
              // Send index only if it's not an empty string, otherwise let backend auto-generate
              index: data.index?.trim() ? data.index.trim() : undefined,
-             parentIds: selectedParentIds,
+             parentIds: finalParentIds,
         };
 
         const createPayload: CreateSignatureElementInput = {
             ...basePayload,
-            signatureComponentId: currentComponent.signatureComponentId!,
+            signatureComponentId: activeComponent.signatureComponentId!,
         };
 
         const updatePayload: UpdateSignatureElementInput = {
@@ -183,8 +223,29 @@ const ElementForm: React.FC<ElementFormProps> = ({ elementToEdit, currentCompone
 
                  {/* Actual form fields */}
                  <div className="grid gap-4">
-                     {/* Display Current Component Info */}
-                     <div className='text-sm p-2 bg-muted rounded border'> {t('elementListComponentHeader', preferredLanguage)}: <Badge variant="secondary">{currentComponent.name}</Badge> ({t('componentBadgeIndexType', preferredLanguage, { type: currentComponent.index_type })}) </div>
+                     {/* Component: picker (create mode with allowComponentPicker) or static display */}
+                     {showComponentPicker ? (
+                         <div className="grid gap-1.5">
+                             <Label htmlFor="elem-component">{t('elementListComponentHeader', preferredLanguage)} {t('requiredFieldIndicator', preferredLanguage)}</Label>
+                             <Select value={String(selectedComponentId)} onValueChange={(value) => setSelectedComponentId(parseInt(value, 10))} disabled={isLoading}>
+                                 <SelectTrigger id="elem-component" className='h-9 text-sm'>
+                                     <SelectValue placeholder={t('elementBrowserPopoverSelectComponentPlaceholder', preferredLanguage)} />
+                                 </SelectTrigger>
+                                 <SelectContent>
+                                     {isComponentsLoading && <SelectItem value="loading" disabled><div className='flex items-center'><LoadingSpinner size='sm' className='mr-2'/>{t('loadingText', preferredLanguage)}...</div></SelectItem>}
+                                     {availableComponents.map(comp => (
+                                         <SelectItem key={comp.signatureComponentId} value={String(comp.signatureComponentId)}>
+                                             {comp.name}
+                                         </SelectItem>
+                                     ))}
+                                     {!isComponentsLoading && availableComponents.length === 0 && <SelectItem value="no-comps" disabled>{t('componentNoComponentsFound', preferredLanguage)}</SelectItem>}
+                                 </SelectContent>
+                             </Select>
+                         </div>
+                     ) : (
+                         /* Display Current Component Info */
+                         <div className='text-sm p-2 bg-muted rounded border'> {t('elementListComponentHeader', preferredLanguage)}: <Badge variant="secondary">{currentComponent.name}</Badge> ({t('componentBadgeIndexType', preferredLanguage, { type: currentComponent.index_type })}) </div>
+                     )}
 
                      {/* Form Fields */}
                      <div className="grid gap-1.5">
@@ -199,18 +260,30 @@ const ElementForm: React.FC<ElementFormProps> = ({ elementToEdit, currentCompone
                      </div>
                      <div className="grid gap-1.5">
                          <Label htmlFor="elem-index">{t('elementIndexLabel', preferredLanguage)}</Label>
-                         <Input id="elem-index" {...register('index')} placeholder={t('elementIndexPlaceholder', preferredLanguage, { type: currentComponent.index_type })} aria-invalid={!!errors.index} className={cn(errors.index && "border-destructive")} />
+                         <Input id="elem-index" {...register('index')} placeholder={t('elementIndexPlaceholder', preferredLanguage, { type: activeComponent.index_type })} aria-invalid={!!errors.index} className={cn(errors.index && "border-destructive")} />
                          <p className='text-xs text-muted-foreground'>{t('elementIndexHint', preferredLanguage)}</p>
                          {errors.index && <p className="text-xs text-destructive">{errors.index.message}</p>}
                      </div>
                      <div className="grid gap-1.5">
-                         <ElementSelector
-                             selectedElementIds={selectedParentIds}
-                             onChange={setSelectedParentIds}
-                             currentElementId={elementToEdit?.signatureElementId}
-                             currentComponentId={currentComponent?.signatureComponentId}
-                             label={t('elementParentElementsLabel', preferredLanguage)}
-                         />
+                         {effectiveFixedParent ? (
+                             // Parent locked to the element being viewed (children view) — read-only
+                             <>
+                                 <Label>{t('elementParentElementsLabel', preferredLanguage)}</Label>
+                                 <div className='flex items-center gap-2 p-3 border rounded bg-muted/30'>
+                                     <Badge variant="secondary">{effectiveFixedParent.index ? `[${effectiveFixedParent.index}] ` : ''}{effectiveFixedParent.name}</Badge>
+                                     <span className="text-xs text-muted-foreground">{t('readOnly', preferredLanguage)}</span>
+                                 </div>
+                                 <p className='text-xs text-muted-foreground'>{t('fixedParentHint', preferredLanguage)}</p>
+                             </>
+                         ) : (
+                             <ElementSelector
+                                 selectedElementIds={selectedParentIds}
+                                 onChange={setSelectedParentIds}
+                                 currentElementId={elementToEdit?.signatureElementId}
+                                 currentComponentId={currentComponent?.signatureComponentId}
+                                 label={t('elementParentElementsLabel', preferredLanguage)}
+                             />
+                         )}
                          <input type="hidden" {...register('parentIds')} />
                          {errors.parentIds && <p className="text-xs text-destructive">{typeof errors.parentIds.message === 'string' ? errors.parentIds.message : 'Invalid parent selection'}</p>}
                      </div>

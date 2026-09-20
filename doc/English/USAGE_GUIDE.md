@@ -23,6 +23,7 @@ This guide covers the core functionalities of the JezArch application for differ
 *   [Signatures (Admin/Employee)](#signatures-adminemployee)
     *   [Components](#components)
     *   [Elements](#elements)
+    *   [Child Elements](#child-elements)
 *   [Tags (Admin/Employee)](#tags-adminemployee)
 *   [Notes (Admin/Employee)](#notes-adminemployee)
     *   [Viewing & Searching](#viewing--searching)
@@ -206,6 +207,18 @@ Manage the building blocks for descriptive signatures.
 *   **Edit:** Click the **Edit** (pencil) icon. Modify Name, Description, Index override, or Parent Elements. Clearing the Index override removes it (the element keeps its current index until a re-index).
 *   **Delete (Admin only):** Click the **Delete** (trash can) icon. This permanently removes the element and cleans up any references to it in document signature paths.
 *   **Search:** Use the search bar to filter elements within the current component (the component filter is pre-applied). Available fields: **Name**, **Description**, and **Index** (all with `Contains` / `Equals` conditions) and **Has Parents** (a boolean `Is` → True/False condition that shows only elements that are children of other elements). Results are paginated (15 per page).
+*   **Drill down into children:** Click an element's **name** to open its Child Elements page. A small badge next to the name shows how many children it has.
+
+### Child Elements
+
+*   Access this page by clicking an element name on a component's Elements page — or on another element's Child Elements page, so you can drill down through the hierarchy as deep as needed.
+*   **Breadcrumbs:** Below the page title you see the path of elements you clicked to get here (starting from the root component). Click any crumb to jump back to that level, or use the arrow button to go up one level.
+*   The list shows all **direct children** of the selected element. Because hierarchies can span components, a **Component** column shows which component each child belongs to.
+*   Each row has the same actions as the Elements page: **Preview**, **Edit**, and **Delete (Admin only)**.
+*   **Search:** Same fields as the Elements page (**Name**, **Description**, **Index**, **Has Parents**), paginated 15 per page.
+*   **Create a child element:** Click **New Element**. The dialog is slightly different from the one on the Elements page:
+    *   The **Parent** is pre-filled with the element you are viewing and shown **read-only** — the new element will be its child.
+    *   You choose the **Component** with a picker (a new element may belong to a different component than its parent). The picker defaults to the component of the first existing sibling; if the element has no children yet, it defaults to the element's own component.
 
 ---
 

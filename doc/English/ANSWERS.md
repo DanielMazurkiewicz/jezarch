@@ -48,6 +48,8 @@ In the **Signature Path Selector** dialog (used when creating/editing archive do
 
 When creating or editing an element, you can assign parent elements from other components to build the classification tree. The system prevents self-parenting but does not enforce a strict single-parent tree — elements can belong to multiple branches.
 
+You can also browse the hierarchy directly in the Signatures section: click an element's name on the Elements page to open its Child Elements view (with a breadcrumb of the clicked path), and create children there with the parent pre-selected automatically.
+
 ## Archive & Signatures Relationship
 
 ### What is the relationship between Archive and Signatures? (#22)

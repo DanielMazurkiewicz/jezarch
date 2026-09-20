@@ -139,4 +139,12 @@ export const signatureTranslationsPL: SignatureTranslationSet = {
   elementsHelpPermissions: 'Administratorzy i pracownicy mogą tworzyć i edytować elementy oraz reindeksować ich komponent. Tylko administratorzy mogą usuwać elementy.',
   elementFetchFailedError: 'Nie udało się pobrać elementów',
   componentNotFoundError: 'Komponent o ID {id} nie został znaleziony.',
+  invalidElementIdError: 'Nieprawidłowe ID elementu.',
+  elementNotFoundError: 'Element o ID {id} nie został znaleziony.',
+  childrenOfElementTitle: 'Elementy podrzędne: {name}',
+  elementChildrenListHeader: 'Elementy podrzędne',
+  elementChildrenDescription: 'Elementy, które mają wybrany element jako bezpośredniego rodzica.',
+  noChildrenFoundInElement: 'Nie znaleziono elementów podrzędnych dla tego elementu.',
+  viewChildrenTooltip: 'Pokaż elementy podrzędne',
+  fixedParentHint: 'Element nadrzędny jest automatycznie ustawiany na obserwowany element i nie może zostać tutaj zmieniony.',
 };
