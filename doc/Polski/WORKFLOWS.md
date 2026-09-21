@@ -99,7 +99,7 @@ Przy otwartym formularzu dokumentu:
 
 1.  **Sygnatura Topograficzna:** wpisz jej fizyczną lokalizację jako tekst, np. `Pudło 1, Teczka 5, Pozycja 3`.
 2.  **Sygnatury Opisowe:** kliknij **Dodaj Ścieżkę Sygnatury** i skorzystaj z selektora:
-    *   Wybierz **komponent**, a następnie przeglądaj **Hierarchicznie** (schodząc od elementów głównych) lub wybierz dowolny element w trybie **Wolnym**.
+    *   W trybie **Drzewo** (domyślnym) rozwijaj komponenty i elementy, a następnie kliknij wybrany element — jego pełna ścieżka zostanie wybrana automatycznie. Możesz też wybrać **komponent** i przeglądać **Hierarchicznie** (schodząc od elementów głównych) lub wybrać dowolny element w trybie **Wolnym**.
     *   Każdy dodany element rozszerza bieżącą ścieżkę; kliknij **Dodaj Tę Ścieżkę**, aby ją przypisać. Do jednego dokumentu możesz przypisać kilka ścieżek.
 3.  **Tagi:** użyj **Selektora Tagów**, aby przypisać istniejące tagi. Brakujące tagi utwórz najpierw w sekcji **Tagi** (zobacz Scenariusz 4).
 

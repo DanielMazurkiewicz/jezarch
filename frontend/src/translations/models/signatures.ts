@@ -79,10 +79,15 @@ export type SignatureTranslationKey =
   | 'elementBrowserPopoverLoadingComponents'
   | 'elementBrowserPopoverNoComponentsFound'
   | 'elementBrowserSelectionModeLabel'
+  | 'elementBrowserModeTree'
   | 'elementBrowserModeHierarchical'
   | 'elementBrowserModeFree'
+  | 'elementBrowserModeTreeHint'
   | 'elementBrowserModeHierarchicalHint'
   | 'elementBrowserModeFreeHint'
+  | 'elementBrowserSelectFromTreeHint'
+  | 'elementBrowserAddChildToElement'
+  | 'elementBrowserAddChildToComponent'
   | 'elementBrowserAddToPathTooltip' // e.g., Add to path
   | 'elementBrowserCreateElementButtonHint' // e.g., Create New Element in "{componentName}"...
   | 'cannotCreateElementError' // e.g., Cannot create element: Select a valid component first.

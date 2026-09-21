@@ -99,7 +99,7 @@ With a document form open:
 
 1.  **Topographic Signature:** enter its physical location as free text, e.g. `Box 1, Folder 5, Item 3`.
 2.  **Descriptive Signatures:** click **Add Signature Path** and use the picker:
-    *   Select a **component**, then either browse **Hierarchically** (drill down from root elements) or pick any element in **Free** mode.
+    *   In **Tree mode** (default), expand components and elements and click the one you want — its full path is selected automatically. Alternatively, select a **component** and either browse **Hierarchically** (drill down from root elements) or pick any element in **Free** mode.
     *   Each element you add extends the current path; click **Add This Path** to attach it. You can attach several paths to one document.
 3.  **Tags:** use the **Tag Selector** to attach existing tags. Create missing tags first in the **Tags** section (see Workflow 4).
 

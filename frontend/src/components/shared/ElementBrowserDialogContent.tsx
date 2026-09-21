@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react'; // Added useRef
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
-import { Plus, ArrowRight, Network, Ban, PlusCircle, ArrowLeft } from 'lucide-react';
+import { Plus, ArrowRight, Network, Ban, PlusCircle, ArrowLeft, ListTree } from 'lucide-react';
 
 import { Badge } from '@/components/ui/badge';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
@@ -19,10 +19,11 @@ import type { SearchRequest, SearchQueryElement } from '../../../../backend/src/
 import { toast } from "sonner";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'; // Keep Dialog imports for internal create dialog
 import ElementForm from '@/components/signatures/ElementForm';
+import SignatureTreePicker from './SignatureTreePicker';
 import useDebounce from './useDebounce';
 import { t } from '@/translations/utils'; // Import translation utility
 
-type SelectionMode = "free" | "hierarchical";
+type SelectionMode = "tree" | "free" | "hierarchical";
 
 interface ElementBrowserDialogContentProps { // Renamed interface
     onSelectSignature: (signature: number[]) => void;
@@ -48,7 +49,7 @@ const ElementBrowserDialogContent: React.FC<ElementBrowserDialogContentProps> = 
     onCloseDialog, // Use renamed prop
     initialPath = [],
 }) => {
-    const { token, preferredLanguage } = useAuth(); // Get preferredLanguage
+    const { token, user, preferredLanguage } = useAuth(); // Get preferredLanguage
     const [components, setComponents] = useState<SignatureComponent[]>([]);
     const [selectedComponentId, setSelectedComponentId] = useState<string>('');
     const [elements, setElements] = useState<SignatureElement[]>([]);
@@ -56,7 +57,7 @@ const ElementBrowserDialogContent: React.FC<ElementBrowserDialogContentProps> = 
     const [isLoadingComponents, setIsLoadingComponents] = useState(false);
     const [isLoadingElements, setIsLoadingElements] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
-    const [mode, setMode] = useState<SelectionMode>("hierarchical");
+    const [mode, setMode] = useState<SelectionMode>("tree");
     const [error, setError] = useState<string | null>(null);
     const [isCreateElementDialogOpen, setIsCreateElementDialogOpen] = useState(false);
     const [componentForCreate, setComponentForCreate] = useState<SignatureComponent | null>(null);
@@ -231,13 +232,19 @@ const ElementBrowserDialogContent: React.FC<ElementBrowserDialogContentProps> = 
     }, [preferredLanguage]); // Add preferredLanguage
 
     const handleModeChange = useCallback((value: string) => {
-        if (value === 'hierarchical' || value === 'free') {
+        if (value === 'tree' || value === 'hierarchical' || value === 'free') {
             setMode(value);
             setCurrentSignatureElements([]);
             setSelectedComponentId('');
             setSearchTerm('');
             setError(null);
         }
+    }, []);
+
+    // Tree mode: clicking an element selects its full root-to-element path.
+    const handleSelectPathFromTree = useCallback((elements: SignatureElement[]) => {
+        setCurrentSignatureElements(elements);
+        setSearchTerm('');
     }, []);
 
 
@@ -251,8 +258,16 @@ const ElementBrowserDialogContent: React.FC<ElementBrowserDialogContentProps> = 
 
     const selectedComponentName = useMemo(() => components.find(c => String(c.signatureComponentId) === selectedComponentId)?.name, [components, selectedComponentId]);
 
+    // Tree mode: who may edit/add, and which element is the active (last) one in the path.
+    const canModify = user?.role === 'admin' || user?.role === 'employee';
+    const activeElementId = currentSignatureElements.length > 0
+        ? (currentSignatureElements[currentSignatureElements.length - 1]?.signatureElementId ?? null)
+        : null;
+
     const getNextStepPrompt = useCallback((): string => {
-        if (mode === 'hierarchical') {
+        if (mode === 'tree') {
+            return t('elementBrowserSelectFromTreeHint', preferredLanguage);
+        } else if (mode === 'hierarchical') {
             if (currentSignatureElements.length === 0) return t('elementBrowserSelectComponentFirst', preferredLanguage);
             return t('elementBrowserSelectChildOf', preferredLanguage, { name: currentSignatureElements[currentSignatureElements.length - 1].name });
         } else {
@@ -272,11 +287,12 @@ const ElementBrowserDialogContent: React.FC<ElementBrowserDialogContentProps> = 
             <div className="flex flex-col gap-3 shrink-0"> {/* Non-scrolling part */}
                 <div className='flex flex-col gap-1.5'>
                     <Label className='text-xs font-medium'>{t('elementBrowserSelectionModeLabel', preferredLanguage)}</Label>
-                    <ToggleGroup type="single" value={mode} defaultValue="hierarchical" onValueChange={handleModeChange} aria-label={t('elementBrowserSelectionModeLabel', preferredLanguage)} size="sm">
+                    <ToggleGroup type="single" value={mode} defaultValue="tree" onValueChange={handleModeChange} aria-label={t('elementBrowserSelectionModeLabel', preferredLanguage)} size="sm">
+                        <ToggleGroupItem value="tree" aria-label={t('elementBrowserModeTree', preferredLanguage)} className='flex-1 gap-1'><ListTree className='h-4 w-4'/><span className={cn(mode === 'tree' && 'font-bold')}>{t('elementBrowserModeTree', preferredLanguage)}</span></ToggleGroupItem>
                         <ToggleGroupItem value="hierarchical" aria-label={t('elementBrowserModeHierarchical', preferredLanguage)} className='flex-1 gap-1'><Network className='h-4 w-4'/><span className={cn(mode === 'hierarchical' && 'font-bold')}>{t('elementBrowserModeHierarchical', preferredLanguage)}</span></ToggleGroupItem>
                         <ToggleGroupItem value="free" aria-label={t('elementBrowserModeFree', preferredLanguage)} className='flex-1 gap-1'><ArrowRight className='h-4 w-4'/><span className={cn(mode === 'free' && 'font-bold')}>{t('elementBrowserModeFree', preferredLanguage)}</span></ToggleGroupItem>
                     </ToggleGroup>
-                    <p className='text-xs text-muted-foreground px-1'>{mode === 'hierarchical' ? t('elementBrowserModeHierarchicalHint', preferredLanguage) : t('elementBrowserModeFreeHint', preferredLanguage)}</p>
+                    <p className='text-xs text-muted-foreground px-1'>{mode === 'tree' ? t('elementBrowserModeTreeHint', preferredLanguage) : mode === 'hierarchical' ? t('elementBrowserModeHierarchicalHint', preferredLanguage) : t('elementBrowserModeFreeHint', preferredLanguage)}</p>
                 </div>
 
                 <div className="flex flex-wrap items-center gap-1 border rounded p-2 bg-muted min-h-[40px]">
@@ -295,7 +311,7 @@ const ElementBrowserDialogContent: React.FC<ElementBrowserDialogContentProps> = 
                     </div>
                 </div>
 
-                {(currentSignatureElements.length === 0 || mode === 'free') && (
+                {mode !== 'tree' && (currentSignatureElements.length === 0 || mode === 'free') && (
                     <div className="flex gap-2 items-center">
                         <Select value={selectedComponentId} onValueChange={setSelectedComponentId} disabled={isLoadingComponents || (mode === 'hierarchical' && currentSignatureElements.length > 0)}>
                             <SelectTrigger className='flex-1 text-sm h-9'><SelectValue placeholder={t('elementBrowserPopoverSelectComponentPlaceholder', preferredLanguage)} /></SelectTrigger>
@@ -315,10 +331,22 @@ const ElementBrowserDialogContent: React.FC<ElementBrowserDialogContentProps> = 
             </div>
 
              {/* --- Scrollable Element List Area --- */}
-             {(
-                (mode === 'hierarchical' && (currentSignatureElements.length > 0 || selectedComponentId)) ||
-                (mode === 'free' && (selectedComponentId || debouncedSearchTerm.trim()))
-             ) && (
+             {mode === 'tree' ? (
+                 <div className="flex-1 min-h-0 overflow-hidden flex flex-col gap-2 mt-3">
+                     <Label className='text-xs mb-1 block shrink-0'>{getNextStepPrompt()}</Label>
+                     <SignatureTreePicker
+                         token={token ?? ''}
+                         preferredLanguage={preferredLanguage}
+                         canModify={canModify}
+                         activeElementId={activeElementId}
+                         onSelectPath={handleSelectPathFromTree}
+                     />
+                 </div>
+             ) : (
+                (
+                    (mode === 'hierarchical' && (currentSignatureElements.length > 0 || selectedComponentId)) ||
+                    (mode === 'free' && (selectedComponentId || debouncedSearchTerm.trim()))
+                ) && (
                  <div className="flex-1 min-h-0 overflow-hidden flex flex-col gap-2 mt-3"> {/* Added mt-3 */}
                      <Label className='text-xs mb-1 block shrink-0'>
                          {getNextStepPrompt()}
@@ -352,7 +380,8 @@ const ElementBrowserDialogContent: React.FC<ElementBrowserDialogContentProps> = 
                         </CommandList>
                       </Command>
                  </div>
-            )}
+                )
+             )}
              {/* --- End Scrollable Area --- */}
 
               {/* --- Dialog Footer --- */}

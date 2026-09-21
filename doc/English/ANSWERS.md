@@ -43,6 +43,7 @@ Elements can have **parent-child relationships** with other elements, even acros
 
 In the **Signature Path Selector** dialog (used when creating/editing archive documents):
 
+- **Tree mode** (default): Shows the same tree as the Archive sidebar — components at the top, their root elements beneath, and children as you expand. Click an element to select its full path; hovering an item reveals **Preview**, **Edit**, and **Add child** actions.
 - **Hierarchical mode**: Shows root-level elements (those without parents) first. Selecting an element reveals its children, allowing you to drill down level by level.
 - **Free mode**: Shows all elements from a selected component at once, letting you pick any element regardless of parent relationships.
 
@@ -122,11 +123,10 @@ The backend controllers and frontend routes both correctly allow `admin` and `em
 
 The signature path picker (`ElementBrowserDialogContent`) loads components and elements from the API. If elements don't appear:
 
-1. Ensure components and elements have been created in the Signatures section
-2. Select a component from the dropdown first
-3. In **Hierarchical mode**: elements without parents are shown first, then children of selected elements
-4. In **Free mode**: all elements from the selected component are shown
-5. Use the search field to filter elements by name or index
+1. Ensure components and elements have been created in the Signatures section.
+2. In **Tree mode** (default): expand a component to reveal its root elements, then expand an element to reveal its children — no component dropdown is needed. Toggle **"Main components only"** off to also see non-main components.
+3. In **Hierarchical** or **Free mode**: select a component from the dropdown first. Hierarchical shows parentless elements first, then their children; Free shows all elements of the selected component at once.
+4. Use the search field to filter elements by name or index (Hierarchical/Free modes).
 
 The remarks field in document forms accepts unlimited characters (uses a `Textarea` component with no character limit in the frontend or backend).
 
