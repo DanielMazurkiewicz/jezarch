@@ -13,7 +13,7 @@ import api from '@/lib/api';
 import type { Tag } from '../../../../backend/src/functionalities/tag/models';
 import type { ArchiveDocument, ArchiveDocumentSearchResult, ArchiveDocumentType } from '../../../../backend/src/functionalities/archive/document/models';
 import type { SearchRequest, SearchResponse, SearchQuery, SearchQueryElement } from '../../../../backend/src/utils/search';
-import { PlusCircle, ArrowLeft, Folder, FileText, Tags, MinusCircle, Archive as ArchiveIcon, FileSearch } from 'lucide-react';
+import { PlusCircle, ArrowLeft, Folder, FileText, Tags, MinusCircle, Archive as ArchiveIcon, FileSearch, SlidersHorizontal } from 'lucide-react';
 import Pagination from '@/components/shared/Pagination';
 import { toast } from "sonner";
 import { Card, CardContent, CardHeader, CardDescription } from '@/components/ui/card';
@@ -60,6 +60,7 @@ const ArchivePage: React.FC = () => {
   const [batchTagAction, setBatchTagAction] = useState<'add' | 'remove'>('add');
   const [isBatchTagLoading, setIsBatchTagLoading] = useState(false);
   const [helpOpen, setHelpOpen] = useState(false);
+  const [showFilters, setShowFilters] = useState(false);
 
   const isAdmin = user?.role === 'admin';
   const isEmployee = user?.role === 'employee';
@@ -380,6 +381,14 @@ const ArchivePage: React.FC = () => {
                 </div>
            </div>
            <div className='flex items-center gap-2 flex-wrap justify-end'>
+                 <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setShowFilters(v => !v)}
+                    title={t(showFilters ? 'hideFiltersButton' : 'showFiltersButton', preferredLanguage)}
+                 >
+                    <SlidersHorizontal className="mr-2 h-4 w-4" /> {t(showFilters ? 'hideFiltersButton' : 'showFiltersButton', preferredLanguage)}
+                 </Button>
                  {(isAdmin || isEmployee) && (
                       <>
                           <Button
@@ -451,13 +460,15 @@ const ArchivePage: React.FC = () => {
             ] as HelpSection[]}
          />
 
-         {/* --- SearchBar uses the updated searchFields --- */}
-        <SearchBar
-            fields={searchFields}
-            onSearch={handleSearch}
-            isLoading={isLoading || isBatchTagLoading}
-            defaultQuery={canFilterDeleted ? DEFAULT_DELETED_FILTER : undefined}
-        />
+         {/* --- SearchBar uses the updated searchFields (hidden by default, toggled from the top row) --- */}
+        <div className={showFilters ? '' : 'hidden'}>
+            <SearchBar
+                fields={searchFields}
+                onSearch={handleSearch}
+                isLoading={isLoading || isBatchTagLoading}
+                defaultQuery={canFilterDeleted ? DEFAULT_DELETED_FILTER : undefined}
+            />
+        </div>
        {/* --------------------------------------------- */}
 
         <Card>

@@ -123,7 +123,7 @@ With a document form open:
 **Goal:** find a precise subset of documents (and keep it as a reusable idea).
 
 1.  Open **Archive**. Staff see non-deleted items by default through an automatic `Is Deleted = False` filter.
-2.  Use the **Search Bar** to add criteria:
+2.  Click **Show filters** in the top button row (the search bar is hidden by default), then use the **Search Bar** to add criteria:
     *   **Add Filter** for each field you want to constrain. Available fields include Title, Creator, Creation Date, Place of Creation, Seals, Content Description, Topographic Signature, Descriptive Signature, Type (at root) and Is Digitized; staff additionally see Tags, Created By, Updated By, and Is Deleted.
     *   Pick a **Condition** for each field:
         *   Text fields: **Contains** (fragment match) or **Equals**.

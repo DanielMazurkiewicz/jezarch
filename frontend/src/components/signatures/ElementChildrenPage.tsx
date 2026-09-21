@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { useParams, useNavigate, Link, useSearchParams } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogTrigger } from '@/components/ui/dialog';
-import { PlusCircle, ArrowLeft, ChevronRight } from 'lucide-react';
+import { PlusCircle, ArrowLeft, ChevronRight, SlidersHorizontal } from 'lucide-react';
 import ElementList from './ElementList';
 import ElementForm from './ElementForm';
 import ElementPreviewDialog from './ElementPreviewDialog';
@@ -63,6 +63,7 @@ const ElementChildrenPage: React.FC = () => {
     const [isElementFormOpen, setIsElementFormOpen] = useState(false);
     const [previewingElement, setPreviewingElement] = useState<SignatureElement | null>(null);
     const [isPreviewOpen, setIsPreviewOpen] = useState(false);
+    const [showFilters, setShowFilters] = useState(false);
     const [elementSearchQuery, setElementSearchQuery] = useState<SearchRequest['query']>([]);
     const [currentChildrenPage, setCurrentChildrenPage] = useState(1);
     const [totalChildren, setTotalChildren] = useState(0);
@@ -336,6 +337,9 @@ const ElementChildrenPage: React.FC = () => {
                               <CardDescription>{t('elementChildrenDescription', preferredLanguage)}</CardDescription>
                            </div>
                           <div className='flex items-center gap-2 flex-wrap justify-end'>
+                          <Button variant="ghost" size="sm" onClick={() => setShowFilters(v => !v)} title={t(showFilters ? 'hideFiltersButton' : 'showFiltersButton', preferredLanguage)}>
+                              <SlidersHorizontal className="mr-2 h-4 w-4" /> {t(showFilters ? 'hideFiltersButton' : 'showFiltersButton', preferredLanguage)}
+                          </Button>
                           <Dialog open={isElementFormOpen} onOpenChange={setIsElementFormOpen}>
                              <DialogTrigger asChild>
                                  <Button onClick={handleCreateElement} size="sm" className='shrink-0' disabled={!canModify || isInitialChildrenLoad} title={!canModify ? t('insufficientPermissionsError', preferredLanguage) : ''}>
@@ -369,17 +373,19 @@ const ElementChildrenPage: React.FC = () => {
                  </CardHeader>
                  <CardContent className='space-y-4'>
                     {elementsError && <ErrorDisplay message={elementsError} />}
-                    {/* Search Bar for Children */}
-                     <SearchBar
-                        fields={[ // Use translated labels
-                            { value: 'name', label: t('elementNameLabel', preferredLanguage), type: 'text' as const },
-                            { value: 'description', label: t('elementDescriptionLabel', preferredLanguage), type: 'text' as const},
-                            { value: 'index', label: t('elementIndexShortLabel', preferredLanguage), type: 'text' as const},
-                            { value: 'hasParents', label: t('elementHasParentsLabel', preferredLanguage), type: 'boolean' as const},
-                         ]}
-                        onSearch={handleElementSearch}
-                        isLoading={isElementsLoading}
-                     />
+                    {/* Search Bar for Children (hidden by default, toggled from the card header row) */}
+                     <div className={showFilters ? '' : 'hidden'}>
+                        <SearchBar
+                            fields={[ // Use translated labels
+                                { value: 'name', label: t('elementNameLabel', preferredLanguage), type: 'text' as const },
+                                { value: 'description', label: t('elementDescriptionLabel', preferredLanguage), type: 'text' as const},
+                                { value: 'index', label: t('elementIndexShortLabel', preferredLanguage), type: 'text' as const},
+                                { value: 'hasParents', label: t('elementHasParentsLabel', preferredLanguage), type: 'boolean' as const},
+                             ]}
+                            onSearch={handleElementSearch}
+                            isLoading={isElementsLoading}
+                        />
+                     </div>
                     {/* Children List */}
                     {isElementsLoading && <div className='flex justify-center py-10'><LoadingSpinner /></div>}
                     {!isElementsLoading && !elementsError && (

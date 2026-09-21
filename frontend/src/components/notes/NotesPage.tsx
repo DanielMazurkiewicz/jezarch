@@ -12,7 +12,7 @@ import api from '@/lib/api';
 import type { NoteInput, NoteWithDetails } from '../../../../backend/src/functionalities/note/models';
 import type { Tag } from '../../../../backend/src/functionalities/tag/models';
 import type { SearchRequest, SearchResponse, SearchQueryElement } from '../../../../backend/src/utils/search';
-import { PlusCircle, HelpCircle } from 'lucide-react'; // Removed unused X icon
+import { PlusCircle, HelpCircle, SlidersHorizontal } from 'lucide-react'; // Removed unused X icon
 import HelpDialog, { HelpSection } from '@/components/shared/HelpDialog';
 import { toast } from "sonner";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -31,6 +31,7 @@ const NotesPage: React.FC = () => {
   const [editingNote, setEditingNote] = useState<NoteWithDetails | null>(null);
   const [isEditorOpen, setIsEditorOpen] = useState(false);
   const [helpOpen, setHelpOpen] = useState(false);
+  const [showFilters, setShowFilters] = useState(false);
 
   // --- State for Preview ---
   const [previewingNote, setPreviewingNote] = useState<NoteWithDetails | null>(null);
@@ -192,6 +193,9 @@ const NotesPage: React.FC = () => {
                  <h1 className="text-2xl font-bold">{t('notesTitle', preferredLanguage)}</h1>
             </div>
             <div className='flex items-center gap-2 flex-wrap justify-end'>
+            <Button variant="ghost" size="sm" onClick={() => setShowFilters(v => !v)} title={t(showFilters ? 'hideFiltersButton' : 'showFiltersButton', preferredLanguage)}>
+                <SlidersHorizontal className="mr-2 h-4 w-4" /> {t(showFilters ? 'hideFiltersButton' : 'showFiltersButton', preferredLanguage)}
+            </Button>
             <Dialog open={isEditorOpen} onOpenChange={setIsEditorOpen}>
             <DialogTrigger asChild>
                 <Button onClick={handleCreateNew} className='shrink-0'>
@@ -212,12 +216,14 @@ const NotesPage: React.FC = () => {
             </div>
         </div>
 
-       {/* Search Bar Section */}
-       <SearchBar
-           fields={searchFields}
-           onSearch={handleSearch}
-           isLoading={isLoading || isAuthLoading}
-       />
+       {/* Search Bar Section (hidden by default, toggled from the top row) */}
+       <div className={showFilters ? '' : 'hidden'}>
+           <SearchBar
+               fields={searchFields}
+               onSearch={handleSearch}
+               isLoading={isLoading || isAuthLoading}
+           />
+       </div>
 
         {/* Notes List Section */}
         <Card>

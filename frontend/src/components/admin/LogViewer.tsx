@@ -6,7 +6,7 @@ import LoadingSpinner from '@/components/shared/LoadingSpinner';
 import ErrorDisplay from '@/components/shared/ErrorDisplay';
 import SearchBar from '@/components/shared/SearchBar';
 import Pagination from '@/components/shared/Pagination';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"; // Import Card components
+import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"; // Import Card components
 import { useAuth } from '@/hooks/useAuth';
 import api from '@/lib/api';
 import type { LogEntry } from '../../../../backend/src/functionalities/log/models';
@@ -16,7 +16,7 @@ import { Button } from '@/components/ui/button'; // Added Button
 import { Input } from '@/components/ui/input'; // Added Input
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog"; // Added AlertDialog
 import { toast } from "sonner"; // Added toast
-import { Trash2, Info } from 'lucide-react'; // Removed ChevronsDownUp, kept others
+import { Trash2, Info, SlidersHorizontal } from 'lucide-react'; // Removed ChevronsDownUp, kept others
 // --- Import ScrollArea ---
 import { ScrollArea } from "@/components/ui/scroll-area";
 // -------------------------
@@ -32,6 +32,7 @@ const LogViewer: React.FC = () => {
     const [logs, setLogs] = useState<LogEntry[]>([]);
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [showFilters, setShowFilters] = useState(false);
 
     // Search & Pagination State
     const [searchQuery, setSearchQuery] = useState<SearchRequest['query']>([]);
@@ -179,20 +180,27 @@ const LogViewer: React.FC = () => {
             <CardHeader>
                  <CardTitle>{t('logViewerTitle', preferredLanguage)}</CardTitle>
                  <CardDescription>{t('logViewerDescription', preferredLanguage)}</CardDescription>
+                 <CardAction>
+                     <Button variant="ghost" size="sm" onClick={() => setShowFilters(v => !v)} title={t(showFilters ? 'hideFiltersButton' : 'showFiltersButton', preferredLanguage)}>
+                         <SlidersHorizontal className="mr-2 h-4 w-4" /> {t(showFilters ? 'hideFiltersButton' : 'showFiltersButton', preferredLanguage)}
+                     </Button>
+                 </CardAction>
             </CardHeader>
             <CardContent className='space-y-4'> {/* Add spacing inside content */}
-                 {/* Log Search Bar - forced white */}
-                 <SearchBar
-                     fields={[ // Define searchable fields with translated labels
-                         { value: 'level', label: t('logsLevelColumn', preferredLanguage), type: 'select', options: [{value: 'info', label: t('logLevelInfo', preferredLanguage)}, {value: 'warn', label: t('logLevelWarn', preferredLanguage)}, {value: 'error', label: t('logLevelError', preferredLanguage)}]},
-                         { value: 'userId', label: t('logsUserColumn', preferredLanguage), type: 'text'},
-                         { value: 'category', label: t('logsCategoryColumn', preferredLanguage), type: 'text'},
-                         { value: 'message', label: t('logsMessageColumn', preferredLanguage), type: 'text'},
-                         { value: 'createdOn', label: t('logsTimestampColumn', preferredLanguage), type: 'date'},
-                     ]}
-                     onSearch={handleSearch}
-                     isLoading={isLoading || isPurging}
-                 />
+                 {/* Log Search Bar - forced white (hidden by default, toggled from the card header) */}
+                 <div className={showFilters ? '' : 'hidden'}>
+                     <SearchBar
+                         fields={[ // Define searchable fields with translated labels
+                             { value: 'level', label: t('logsLevelColumn', preferredLanguage), type: 'select', options: [{value: 'info', label: t('logLevelInfo', preferredLanguage)}, {value: 'warn', label: t('logLevelWarn', preferredLanguage)}, {value: 'error', label: t('logLevelError', preferredLanguage)}]},
+                             { value: 'userId', label: t('logsUserColumn', preferredLanguage), type: 'text'},
+                             { value: 'category', label: t('logsCategoryColumn', preferredLanguage), type: 'text'},
+                             { value: 'message', label: t('logsMessageColumn', preferredLanguage), type: 'text'},
+                             { value: 'createdOn', label: t('logsTimestampColumn', preferredLanguage), type: 'date'},
+                         ]}
+                         onSearch={handleSearch}
+                         isLoading={isLoading || isPurging}
+                     />
+                 </div>
 
                  {/* --- Purge Controls - Use light gray bg --- */}
                   <div className="flex flex-wrap items-center justify-end gap-2 p-2 border rounded-lg bg-neutral-50"> {/* Changed bg-muted to bg-neutral-50 */}

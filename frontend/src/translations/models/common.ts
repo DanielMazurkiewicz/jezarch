@@ -94,6 +94,8 @@ export type CommonTranslationKey =
   | 'addFilterButton'
   | 'removeFilterButton'
   | 'resetFiltersButton'
+  | 'showFiltersButton'
+  | 'hideFiltersButton'
   | 'searchPlaceholder'
   | 'noResultsFound'
   | 'errorMessageTemplate' // e.g., "Error: {message}"

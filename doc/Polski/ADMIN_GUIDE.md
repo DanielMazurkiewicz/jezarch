@@ -134,7 +134,7 @@ Ten przewodnik szczegółowo opisuje funkcjonalności dostępne wyłącznie dla 
 
 ### Wyszukiwanie Logów
 
-*   Użyj paska wyszukiwania, aby filtrować logi. Dostępne pola i ich warunki:
+*   Pasek wyszukiwania jest domyślnie ukryty — kliknij przycisk **Pokaż filtry** w prawym górnym rogu karty Przeglądarka Logów, aby go wyświetlić, a następnie użyj go do filtrowania logów. Dostępne pola i ich warunki:
     *   **Poziom** (pole wyboru): `Jest` (pojedyncza wartość) lub `Jest jednym z` (oddzielone przecinkami, np. `error,warn`).
     *   **ID Użytkownika** (tekst): `Zawiera` lub `Równa się` (użyj `system` dla wpisów niezwiązanych z użytkownikiem).
     *   **Kategoria** (tekst): `Zawiera` lub `Równa się` (np. `auth`, `db`, `startup`).

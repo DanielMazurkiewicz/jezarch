@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogTrigger } from '@/components/ui/dialog';
-import { PlusCircle, ArrowLeft, HelpCircle, Edit, ListRestart } from 'lucide-react';
+import { PlusCircle, ArrowLeft, HelpCircle, Edit, ListRestart, SlidersHorizontal } from 'lucide-react';
 import HelpDialog, { HelpSection } from '@/components/shared/HelpDialog';
 import ElementList from './ElementList';
 import ElementForm from './ElementForm';
@@ -50,6 +50,7 @@ const ElementsPage: React.FC = () => {
     const [previewingElement, setPreviewingElement] = useState<SignatureElement | null>(null);
     const [isPreviewOpen, setIsPreviewOpen] = useState(false);
     const [helpOpen, setHelpOpen] = useState(false);
+    const [showFilters, setShowFilters] = useState(false);
     const [elementSearchQuery, setElementSearchQuery] = useState<SearchRequest['query']>([]);
     const [currentElementPage, setCurrentElementPage] = useState(1);
     const [totalElements, setTotalElements] = useState(0);
@@ -303,6 +304,9 @@ const ElementsPage: React.FC = () => {
                               <CardDescription>{t('elementsDescription', preferredLanguage)}</CardDescription>
                            </div>
                           <div className='flex items-center gap-2 flex-wrap justify-end'>
+                          <Button variant="ghost" size="sm" onClick={() => setShowFilters(v => !v)} title={t(showFilters ? 'hideFiltersButton' : 'showFiltersButton', preferredLanguage)}>
+                              <SlidersHorizontal className="mr-2 h-4 w-4" /> {t(showFilters ? 'hideFiltersButton' : 'showFiltersButton', preferredLanguage)}
+                          </Button>
                           <Dialog open={isElementFormOpen} onOpenChange={setIsElementFormOpen}>
                              <DialogTrigger asChild>
                                  <Button onClick={handleCreateElement} size="sm" className='shrink-0' disabled={!canModify} title={!canModify ? t('insufficientPermissionsError', preferredLanguage) : ''}>
@@ -329,17 +333,19 @@ const ElementsPage: React.FC = () => {
                  </CardHeader>
                  <CardContent className='space-y-4'>
                     {elementsError && <ErrorDisplay message={elementsError} />}
-                    {/* Search Bar for Elements */}
-                     <SearchBar
-                        fields={[ // Use translated labels
-                            { value: 'name', label: t('elementNameLabel', preferredLanguage), type: 'text' as const },
-                            { value: 'description', label: t('elementDescriptionLabel', preferredLanguage), type: 'text' as const},
-                            { value: 'index', label: t('elementIndexShortLabel', preferredLanguage), type: 'text' as const},
-                            { value: 'hasParents', label: t('elementHasParentsLabel', preferredLanguage), type: 'boolean' as const },
-                         ]}
-                        onSearch={handleElementSearch}
-                        isLoading={isElementsLoading}
-                     />
+                    {/* Search Bar for Elements (hidden by default, toggled from the card header row) */}
+                     <div className={showFilters ? '' : 'hidden'}>
+                        <SearchBar
+                            fields={[ // Use translated labels
+                                { value: 'name', label: t('elementNameLabel', preferredLanguage), type: 'text' as const },
+                                { value: 'description', label: t('elementDescriptionLabel', preferredLanguage), type: 'text' as const},
+                                { value: 'index', label: t('elementIndexShortLabel', preferredLanguage), type: 'text' as const},
+                                { value: 'hasParents', label: t('elementHasParentsLabel', preferredLanguage), type: 'boolean' as const },
+                             ]}
+                            onSearch={handleElementSearch}
+                            isLoading={isElementsLoading}
+                        />
+                     </div>
                     {/* Element List */}
                     {isElementsLoading && <div className='flex justify-center py-10'><LoadingSpinner /></div>}
                     {!isElementsLoading && !elementsError && (

@@ -78,6 +78,8 @@ export const commonTranslationsPL: CommonTranslationSet = {
   addFilterButton: 'Dodaj Filtr',
   removeFilterButton: 'Usuń Filtr',
   resetFiltersButton: 'Resetuj Filtry',
+  showFiltersButton: 'Pokaż filtry',
+  hideFiltersButton: 'Ukryj filtry',
   searchPlaceholder: 'Szukaj...',
   noResultsFound: 'Nie znaleziono wyników.',
   errorMessageTemplate: 'Błąd: {message}',

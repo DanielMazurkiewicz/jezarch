@@ -142,7 +142,7 @@ Navigate to the "System Logs" tab.
 
 ### Searching Logs
 
-*   Use the search bar to filter logs. Available fields and their conditions:
+*   The search bar is hidden by default — click the **Show filters** button in the top-right of the Log Viewer card to reveal it, then use it to filter logs. Available fields and their conditions:
     *   **Level** (select): `Is` (single value) or `Is Any Of` (comma-separated, e.g. `error,warn`).
     *   **User ID** (text): `Contains` or `Equals` (use `system` for entries not tied to a user).
     *   **Category** (text): `Contains` or `Equals` (e.g., `auth`, `db`, `startup`).

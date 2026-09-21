@@ -102,6 +102,7 @@ Accessible via the "Archive" / "Search Archive" link in the sidebar.
 
 ### Searching
 
+*   The filter section is hidden by default. Click the **Show filters** button in the top button row (next to Create / Help) to reveal the **Search Bar**; it then reads **Hide filters** to collapse it again. Criteria you have entered are preserved while the panel is hidden.
 *   Use the **Search Bar** at the top of the Archive page to find items.
 *   Click **Add Filter** to add a search criterion; each row has a **Field**, a **Condition**, and a **Value**.
 *   Select a **Field** from:
@@ -206,7 +207,7 @@ Manage the building blocks for descriptive signatures.
 *   **Create:** Click **New Element**. Provide a Name, optional Description. You can optionally provide a specific Index override (text, e.g., "1a", "V"), otherwise it will be auto-generated based on the component's counter and index type. Use the **Parent Elements** selector to link this element as a child of other elements (creating hierarchical relationships).
 *   **Edit:** Click the **Edit** (pencil) icon. Modify Name, Description, Index override, or Parent Elements. Clearing the Index override removes it (the element keeps its current index until a re-index).
 *   **Delete (Admin only):** Click the **Delete** (trash can) icon. This permanently removes the element and cleans up any references to it in document signature paths.
-*   **Search:** Use the search bar to filter elements within the current component (the component filter is pre-applied). Available fields: **Name**, **Description**, and **Index** (all with `Contains` / `Equals` conditions) and **Has Parents** (a boolean `Is` → True/False condition that shows only elements that are children of other elements). Results are paginated (15 per page).
+*   **Search:** The search bar is hidden by default — click the **Show filters** button in the card's top button row (next to New Element / Help) to reveal it. Use it to filter elements within the current component (the component filter is pre-applied). Available fields: **Name**, **Description**, and **Index** (all with `Contains` / `Equals` conditions) and **Has Parents** (a boolean `Is` → True/False condition that shows only elements that are children of other elements). Results are paginated (15 per page).
 *   **Drill down into children:** Click an element's **name** to open its Child Elements page. A small badge next to the name shows how many children it has.
 
 ### Child Elements
@@ -215,7 +216,7 @@ Manage the building blocks for descriptive signatures.
 *   **Breadcrumbs:** Below the page title you see the path of elements you clicked to get here (starting from the root component). Click any crumb to jump back to that level, or use the arrow button to go up one level.
 *   The list shows all **direct children** of the selected element. Because hierarchies can span components, a **Component** column shows which component each child belongs to.
 *   Each row has the same actions as the Elements page: **Preview**, **Edit**, and **Delete (Admin only)**.
-*   **Search:** Same fields as the Elements page (**Name**, **Description**, **Index**, **Has Parents**), paginated 15 per page.
+*   **Search:** Same fields as the Elements page (**Name**, **Description**, **Index**, **Has Parents**), paginated 15 per page. The search bar is hidden by default — use the **Show filters** button in the card's top button row to reveal it.
 *   **Create a child element:** Click **New Element**. The dialog is slightly different from the one on the Elements page:
     *   The **Parent** is pre-filled with the element you are viewing and shown **read-only** — the new element will be its child.
     *   You choose the **Component** with a picker (a new element may belong to a different component than its parent). The picker defaults to the component of the first existing sibling; if the element has no children yet, it defaults to the element's own component.
@@ -242,7 +243,7 @@ Create and manage personal or shared notes.
 
 *   Navigate to **Notes**.
 *   The list displays notes you created **OR** notes created by others that are marked as **Shared**.
-*   Use the **Search Bar** to filter notes. Available fields: **Title**, **Content** (`Contains` / `Equals`), **Shared** (boolean `Is` → True/False), **Tags** (`Has Any Of`), and **Author** (`Contains` / `Equals`; visible to Admins only). Multiple criteria are combined with **AND**, and each row can be negated with **NOT**.
+*   The search bar is hidden by default — click the **Show filters** button in the top button row (next to Create / Help) to reveal it, then use it to filter notes. Available fields: **Title**, **Content** (`Contains` / `Equals`), **Shared** (boolean `Is` → True/False), **Tags** (`Has Any Of`), and **Author** (`Contains` / `Equals`; visible to Admins only). Multiple criteria are combined with **AND**, and each row can be negated with **NOT**.
 *   Click a note title or the **Preview** (eye) icon to view its full content in a dialog.
 
 ### Creating & Editing

@@ -123,7 +123,7 @@ Przy otwartym formularzu dokumentu:
 **Cel:** Znalezienie dokładnego podzbioru dokumentów.
 
 1.  Otwórz **Archiwum**. Pracownicy i administratorzy domyślnie widzą pozycje nieusunięte dzięki automatycznemu filtrowi `Czy Usunięte = Fałsz`.
-2.  Użyj **Paska Wyszukiwania**, aby dodawać kryteria:
+2.  Kliknij **Pokaż filtry** w górnej linii przycisków (pasek wyszukiwania jest domyślnie ukryty), a następnie użyj **Paska Wyszukiwania**, aby dodawać kryteria:
     *   **Dodaj Filtr** dla każdego pola, które chcesz ograniczyć. Dostępne pola to m.in. Tytuł, Twórca, Data Utworzenia, Miejsce Utworzenia, Pieczęcie, Opis Treści, Sygnatura Topograficzna, Sygnatura Opisowa, Typ (w widoku głównym) i Czy Zdigitalizowano; admin/pracownik widzą dodatkowo Tagi, Utworzone Przez, Zaktualizowane Przez oraz Czy Usunięte.
     *   Wybierz **Warunek** dla każdego pola:
         *   Pola tekstowe: **Zawiera** (dopasowanie fragmentu) lub **Równa się**.

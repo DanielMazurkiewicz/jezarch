@@ -101,6 +101,7 @@ Domyślna strona po zalogowaniu. Wyświetla wiadomość powitalną. Użytkownicy
 
 ### Wyszukiwanie
 
+*   Sekcja filtrów jest domyślnie ukryta. Kliknij przycisk **Pokaż filtry** w górnej linii przycisków (obok Utwórz / Pomoc), aby wyświetlić **Pasek Wyszukiwania**; po rozwinięciu czyta się **Ukryj filtry** i zwija panel. Wpisane kryteria są zachowane, gdy panel jest ukryty.
 *   Użyj **Paska Wyszukiwania** na górze strony Archiwum, aby znaleźć pozycje.
 *   Kliknij **Dodaj Filtr**, aby dodać kryterium wyszukiwania; każdy wiersz ma **Pole**, **Warunek** i **Wartość**.
 *   Wybierz **Pole** z listy:
@@ -205,7 +206,7 @@ Zarządzaj elementami składowymi sygnatur opisowych.
 *   **Tworzenie:** Kliknij **Nowy Element**. Podaj Nazwę, opcjonalny Opis. Możesz opcjonalnie podać konkretny Indeks (tekst, np. "1a", "V"), w przeciwnym razie zostanie on wygenerowany automatycznie na podstawie licznika komponentu i typu indeksu. Użyj selektora **Elementy Nadrzędne**, aby połączyć ten element jako dziecko innych elementów (tworząc relacje hierarchiczne).
 *   **Edycja:** Kliknij ikonę **Edytuj** (ołówek). Zmodyfikuj Nazwę, Opis, Indeks lub Elementy Nadrzędne. Wyczyszczenie pola Indeks usuwa własną wartość (element zachowa bieżący indeks do czasu reindeksacji).
 *   **Usuwanie (Tylko Admin):** Kliknij ikonę **Usuń** (kosz). To trwale usuwa element i czyści odwołania do niego w ścieżkach sygnatur dokumentów.
-*   **Wyszukiwanie:** Użyj paska wyszukiwania, aby filtrować elementy w bieżącym komponencie (filtr komponentu jest już nałożony). Dostępne pola: **Nazwa**, **Opis** i **Indeks** (wszystkie z warunkami `Zawiera` / `Równa się`) oraz **Ma Rodziców** (warunek logiczny `Jest` → Prawda/Fałsz, pokazujący tylko elementy będące dziećmi innych elementów). Wyniki są podzielone na strony (15 na stronę).
+*   **Wyszukiwanie:** Pasek wyszukiwania jest domyślnie ukryty — kliknij przycisk **Pokaż filtry** w górnej linii przycisków karty (obok Nowy Element / Pomoc), aby go wyświetlić. Użyj go, aby filtrować elementy w bieżącym komponencie (filtr komponentu jest już nałożony). Dostępne pola: **Nazwa**, **Opis** i **Indeks** (wszystkie z warunkami `Zawiera` / `Równa się`) oraz **Ma Rodziców** (warunek logiczny `Jest` → Prawda/Fałsz, pokazujący tylko elementy będące dziećmi innych elementów). Wyniki są podzielone na strony (15 na stronę).
 *   **Przejście do elementów podrzędnych:** Kliknij **nazwę** elementu, aby otworzyć jego stronę Elementów Podrzędnych. Mała odznaka obok nazwy pokazuje liczbę elementów podrzędnych.
 
 ### Elementy Podrzędne
@@ -214,7 +215,7 @@ Zarządzaj elementami składowymi sygnatur opisowych.
 *   **Okruszki (ścieżka):** Pod tytułem strony widzisz ścieżkę klikniętych elementów, zaczynając od komponentu początkowego. Kliknij dowolny okruszek, aby wrócić do tego poziomu, lub użyj przycisku strzałki, aby przejść poziom wyżej.
 *   Lista pokazuje wszystkie **bezpośrednie elementy podrzędne** wybranego elementu. Ponieważ hierarchia może przekraczać komponenty, kolumna **Komponent** pokazuje, do którego komponentu należy każdy element podrzędny.
 *   Każdy wiersz ma te same akcje co na stronie Elementów: **Podgląd**, **Edytuj** i **Usuń (Tylko Admin)**.
-*   **Wyszukiwanie:** Te same pola co na stronie Elementów (**Nazwa**, **Opis**, **Indeks**, **Ma Rodziców**), wyniki podzielone na strony (15 na stronę).
+*   **Wyszukiwanie:** Te same pola co na stronie Elementów (**Nazwa**, **Opis**, **Indeks**, **Ma Rodziców**), wyniki podzielone na strony (15 na stronę). Pasek wyszukiwania jest domyślnie ukryty — użyj przycisku **Pokaż filtry** w górnej linii przycisków karty, aby go wyświetlić.
 *   **Tworzenie elementu podrzędnego:** Kliknij **Nowy Element**. Okno dialogowe jest nieco inne niż na stronie Elementów:
     *   Pole **Element Nadrzędny** jest wypełnione automatycznie obserwowanym elementem i pokazane **tylko do odczytu** — nowy element będzie jego dzieckiem.
     *   **Komponent** wybierasz za pomocą selektora (nowy element może należeć do innego komponentu niż jego rodzic). Selektor domyślnie wskazuje komponent pierwszego istniejącego elementu podrzędnego; jeśli element nie ma jeszcze dzieci, domyślnie wskazuje własny komponent tego elementu.
@@ -241,7 +242,7 @@ Twórz i zarządzaj osobistymi oraz udostępnionymi notatkami.
 
 *   Przejdź do sekcji **Notatki**.
 *   Lista wyświetla notatki utworzone przez Ciebie **LUB** notatki utworzone przez innych, które są oznaczone jako **Udostępnione**.
-*   Użyj **Paska Wyszukiwania**, aby filtrować notatki. Dostępne pola: **Tytuł**, **Treść** (`Zawiera` / `Równa się`), **Udostępniona** (logiczne `Jest` → Prawda/Fałsz), **Tagi** (`Ma którykolwiek z`) oraz **Autor** (`Zawiera` / `Równa się`; widoczne tylko dla Admina). Wiele kryteriów łączonych jest operatorem **AND**, a każdy wiersz można zanegować polem **NIE**.
+*   Pasek wyszukiwania jest domyślnie ukryty — kliknij przycisk **Pokaż filtry** w górnej linii przycisków (obok Utwórz / Pomoc), aby go wyświetlić, a następnie użyj go do filtrowania notatek. Dostępne pola: **Tytuł**, **Treść** (`Zawiera` / `Równa się`), **Udostępniona** (logiczne `Jest` → Prawda/Fałsz), **Tagi** (`Ma którykolwiek z`) oraz **Autor** (`Zawiera` / `Równa się`; widoczne tylko dla Admina). Wiele kryteriów łączonych jest operatorem **AND**, a każdy wiersz można zanegować polem **NIE**.
 *   Kliknij tytuł notatki lub ikonę **Podgląd** (oko), aby zobaczyć pełną treść w oknie dialogowym.
 
 ### Tworzenie i Edytowanie
