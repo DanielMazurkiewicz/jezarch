@@ -134,6 +134,10 @@ export const archiveTranslationsEN: ArchiveTranslationSet = {
   archiveFormTopoSigPlaceholder: 'e.g., Box 1, Folder 5, Item 3',
   archiveFormDescSigLabel: 'Descriptive Signatures',
   archiveFormTagsLabel: 'Tags',
+  archiveFormImportFromParentTooltip: 'Import value of "{field}" from parent unit',
+  archiveFormImportReplaceTitle: 'Replace value of "{field}"?',
+  archiveFormImportReplaceDescription: 'This field already has a value. Do you want to replace it with the value from the parent unit?',
+  archiveFormImportReplaceAction: 'Replace',
   archiveFormUpdateItemButton: 'Update Item',
   archiveFormCreateItemButton: 'Create Item', // This is for the FORM button
   archiveFormNoChangesDetected: 'No changes detected.',

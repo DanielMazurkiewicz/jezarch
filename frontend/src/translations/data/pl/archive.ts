@@ -134,6 +134,10 @@ export const archiveTranslationsPL: ArchiveTranslationSet = {
   archiveFormTopoSigPlaceholder: 'np. Pudełko 1, Teczka 5, Poz. 3',
   archiveFormDescSigLabel: 'Sygnatury Opisowe',
   archiveFormTagsLabel: 'Tagi',
+  archiveFormImportFromParentTooltip: 'Zaimportuj wartość pola "{field}" z jednostki nadrzędnej',
+  archiveFormImportReplaceTitle: 'Zastąpić wartość pola "{field}"?',
+  archiveFormImportReplaceDescription: 'To pole ma już wartość. Czy chcesz zastąpić ją wartością z jednostki nadrzędnej?',
+  archiveFormImportReplaceAction: 'Zastąp',
   archiveFormUpdateItemButton: 'Aktualizuj Pozycję',
   archiveFormCreateItemButton: 'Utwórz Pozycję', // This is for the FORM button
   archiveFormNoChangesDetected: 'Nie wykryto żadnych zmian.',

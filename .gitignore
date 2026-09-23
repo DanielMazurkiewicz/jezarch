@@ -5,6 +5,12 @@
 *.db-shm
 *.db-wal
 
+# JezArch initial data import — source material and AI-converted results stay local
+data/source/
+data/processed/
+data/units.json
+data/.load-state.json
+
 
 
 # Logs

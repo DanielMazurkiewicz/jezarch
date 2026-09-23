@@ -32,6 +32,8 @@ interface SignaturePathSelectorProps {
   signatures: number[][]; // Array of paths, e.g., [[1, 5], [1, 8, 3]]
   onChange: (newSignatures: number[][]) => void;
   className?: string;
+  /** Optional element rendered next to the label (e.g., an import-from-parent button). */
+  labelAccessory?: React.ReactNode;
 }
 
 const SignaturePathSelector: React.FC<SignaturePathSelectorProps> = ({
@@ -39,6 +41,7 @@ const SignaturePathSelector: React.FC<SignaturePathSelectorProps> = ({
     signatures,
     onChange,
     className,
+    labelAccessory,
 }) => {
   const { token, preferredLanguage } = useAuth(); // Get preferredLanguage
   const [resolvedSignatures, setResolvedSignatures] = useState<ResolvedSignature[]>([]);
@@ -103,8 +106,11 @@ const SignaturePathSelector: React.FC<SignaturePathSelectorProps> = ({
   return (
     <div className={cn("flex flex-col space-y-2 rounded border p-3 bg-white dark:bg-white", className)}> {/* Changed bg-muted to bg-white */}
       <div className="flex justify-between items-center mb-1">
-         {/* Use the passed label prop */}
-         <Label className='text-sm font-medium text-neutral-700'>{label}</Label> {/* Adjusted color for white bg */}
+         <div className="flex items-center gap-1">
+            {/* Use the passed label prop */}
+            <Label className='text-sm font-medium text-neutral-700'>{label}</Label> {/* Adjusted color for white bg */}
+            {labelAccessory}
+         </div>
          {/* Use Dialog instead of Popover */}
          <Dialog open={isBrowserOpen} onOpenChange={setIsBrowserOpen}>
              <DialogTrigger asChild>

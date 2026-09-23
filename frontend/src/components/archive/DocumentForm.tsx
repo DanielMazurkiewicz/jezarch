@@ -9,13 +9,20 @@ import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { TooltipProvider } from '@/components/ui/tooltip';
+import {
+    AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+    AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import LoadingSpinner from '@/components/shared/LoadingSpinner';
 import ErrorDisplay from '@/components/shared/ErrorDisplay';
 import TagSelector from '@/components/shared/TagSelector';
 import SignaturePathSelector from '@/components/shared/SignaturePathSelector';
 import UnitSelector from './UnitSelector';
+import ImportFromParentButton from './ImportFromParentButton';
 import { useAuth } from '@/hooks/useAuth';
 import api from '@/lib/api';
+import { getParentImportPreviewText, getParentImportValue, hasImportValue, type ParentImportField } from '@/lib/parentImport';
 // Updated type imports (no ownerUserId/ownerLogin)
 import type { ArchiveDocument, ArchiveDocumentType } from '../../../../backend/src/functionalities/archive/document/models';
 import type { CreateArchiveDocumentInput, UpdateArchiveDocumentInput } from '../../../../backend/src/functionalities/archive/document/models';
@@ -62,7 +69,7 @@ const DocumentForm: React.FC<DocumentFormProps> = ({
   const [descriptiveSignatures, setDescriptiveSignatures] = useState<number[][]>([]);
   const [selectedParentUnitId, setSelectedParentUnitId] = useState<number | null>(forcedParentId ?? null);
 
-  const { register, handleSubmit, reset, control, setValue, watch, formState: { errors } } = useForm({
+  const { register, handleSubmit, reset, control, setValue, watch, getValues, formState: { errors } } = useForm({
     resolver: zodResolver(createArchiveDocumentFormSchema),
     defaultValues: {
         parentUnitArchiveDocumentId: forcedParentId ?? null,
@@ -80,11 +87,74 @@ const DocumentForm: React.FC<DocumentFormProps> = ({
 
   const watchedType = watch('type');
 
+  // --- Import from parent unit (document mode; works for both create and edit) ---
+  const effectiveParentUnitId = forcedParentId !== undefined ? forcedParentId : selectedParentUnitId;
+  const [parentUnit, setParentUnit] = useState<ArchiveDocument | null>(null);
+  const [pendingImport, setPendingImport] = useState<{ field: ParentImportField; label: string } | null>(null);
+
   useEffect(() => {
     if (forcedParentId === undefined) {
         setValue('parentUnitArchiveDocumentId', selectedParentUnitId);
     }
   }, [selectedParentUnitId, setValue, forcedParentId]);
+
+  // Load the parent unit's values so each importable field can offer its value.
+  useEffect(() => {
+      const loadParentUnit = async () => {
+          if (!token || effectiveParentUnitId == null) { setParentUnit(null); return; }
+          try {
+              const unit = await api.getArchiveDocumentById(effectiveParentUnitId, token);
+              setParentUnit(unit.type === 'unit' ? unit : null);
+          } catch (err) {
+              console.error("Failed to load parent unit for import:", err);
+              setParentUnit(null);
+          }
+      };
+      loadParentUnit();
+  }, [token, effectiveParentUnitId]);
+
+  const formatBooleanPreview = (value: boolean) => t(value ? 'archivePreviewDigitizedYes' : 'archivePreviewDigitizedNo', preferredLanguage);
+
+  // Renders the small import icon next to a field label, or null when there is
+  // no parent unit (or the parent has no value for this field).
+  const importButtonFor = (field: ParentImportField, fieldLabel: string): React.ReactNode => {
+      if (watchedType !== 'document' || effectiveParentUnitId == null || !parentUnit) return null;
+      const previewText = getParentImportPreviewText(parentUnit, field, formatBooleanPreview);
+      if (!previewText) return null;
+      return (
+          <ImportFromParentButton
+              fieldLabel={fieldLabel}
+              parentValueText={previewText}
+              onImport={() => handleImportClick(field, fieldLabel)}
+          />
+      );
+  };
+
+  const handleImportClick = (field: ParentImportField, fieldLabel: string) => {
+      // Ask before replacing an existing value; import directly otherwise.
+      if (hasImportValue(field, getValues(field))) {
+          setPendingImport({ field, label: fieldLabel });
+      } else {
+          applyParentImport(field);
+      }
+  };
+
+  const applyParentImport = (field: ParentImportField) => {
+      if (!parentUnit) return;
+      switch (field) {
+          case 'descriptiveSignatureElementIds':
+              setDescriptiveSignatures(parentUnit.descriptiveSignatureElementIds ?? []);
+              break;
+          case 'tagIds':
+              setSelectedTagIds(getParentImportValue(parentUnit, 'tagIds') as number[]);
+              break;
+          case 'isDigitized':
+              setValue('isDigitized', parentUnit.isDigitized === true);
+              break;
+          default:
+              setValue(field, getParentImportValue(parentUnit, field) as string | null);
+      }
+  };
 
   useEffect(() => {
     const populateForm = async () => {
@@ -261,6 +331,7 @@ const DocumentForm: React.FC<DocumentFormProps> = ({
   }
 
   return (
+    <TooltipProvider delayDuration={150}>
     <form
         onSubmit={handleSubmit(onSubmit)}
         className="flex flex-col h-full overflow-hidden"
@@ -305,22 +376,34 @@ const DocumentForm: React.FC<DocumentFormProps> = ({
                         )}
                         {watchedType !== 'document' && <div className="md:col-span-1"></div>}
                         <GridItem className="md:col-span-2">
-                            <Label htmlFor="doc-title">{t('archiveFormTitleLabel', preferredLanguage)}</Label>
+                            <div className="flex items-center gap-1">
+                                <Label htmlFor="doc-title">{t('archiveFormTitleLabel', preferredLanguage)}</Label>
+                                {importButtonFor('title', t('archiveFormTitleLabel', preferredLanguage))}
+                            </div>
                             <Input id="doc-title" {...register('title')} aria-invalid={!!errors.title} className={cn(errors.title && "border-destructive")}/>
                             {errors.title && <p className="text-xs text-destructive">{errors.title.message}</p>}
                         </GridItem>
                         <GridItem className="md:col-span-2">
-                            <Label htmlFor="doc-creator">{t('archiveFormCreatorLabel', preferredLanguage)}</Label>
+                            <div className="flex items-center gap-1">
+                                <Label htmlFor="doc-creator">{t('archiveFormCreatorLabel', preferredLanguage)}</Label>
+                                {importButtonFor('creator', t('archiveFormCreatorLabel', preferredLanguage))}
+                            </div>
                             <Input id="doc-creator" {...register('creator')} aria-invalid={!!errors.creator} className={cn(errors.creator && "border-destructive")}/>
                             {errors.creator && <p className="text-xs text-destructive">{errors.creator.message}</p>}
                         </GridItem>
                         <GridItem className="md:col-span-1">
-                            <Label htmlFor="doc-creationDate">{t('archiveFormCreationDateLabel', preferredLanguage)}</Label>
+                            <div className="flex items-center gap-1">
+                                <Label htmlFor="doc-creationDate">{t('archiveFormCreationDateLabel', preferredLanguage)}</Label>
+                                {importButtonFor('creationDate', t('archiveFormCreationDateLabel', preferredLanguage))}
+                            </div>
                             <Input id="doc-creationDate" {...register('creationDate')} placeholder={t('archiveFormCreationDatePlaceholder', preferredLanguage)} aria-invalid={!!errors.creationDate} className={cn(errors.creationDate && "border-destructive")}/>
                             {errors.creationDate && <p className="text-xs text-destructive">{errors.creationDate.message}</p>}
                         </GridItem>
                         <GridItem className="md:col-span-1">
-                            <Label htmlFor="doc-creationPlace">{t('archiveFormPlaceLabel', preferredLanguage)}</Label>
+                            <div className="flex items-center gap-1">
+                                <Label htmlFor="doc-creationPlace">{t('archiveFormPlaceLabel', preferredLanguage)}</Label>
+                                {importButtonFor('creationPlace', t('archiveFormPlaceLabel', preferredLanguage))}
+                            </div>
                             <Input id="doc-creationPlace" {...register('creationPlace')} placeholder={t('archiveFormPlacePlaceholder', preferredLanguage)} aria-invalid={!!errors.creationPlace} className={cn(errors.creationPlace && "border-destructive")}/>
                             {errors.creationPlace && <p className="text-xs text-destructive">{errors.creationPlace.message}</p>}
                         </GridItem>
@@ -343,29 +426,50 @@ const DocumentForm: React.FC<DocumentFormProps> = ({
                 <Card className="lg:col-span-1">
                     <CardHeader><CardTitle className='text-lg'>{t('archiveFormContentContextTitle', preferredLanguage)}</CardTitle></CardHeader>
                     <CardContent className="grid grid-cols-1 gap-4">
-                        <GridItem><Label htmlFor="doc-language">{t('archiveFormLanguageLabel', preferredLanguage)}</Label><Input id="doc-language" {...register('documentLanguage')} placeholder={t('archiveFormLanguagePlaceholder', preferredLanguage)} /></GridItem>
                         <GridItem>
-                            <Label htmlFor="doc-contentDesc">{t('archiveFormContentDescLabel', preferredLanguage)}</Label>
+                            <div className="flex items-center gap-1">
+                                <Label htmlFor="doc-language">{t('archiveFormLanguageLabel', preferredLanguage)}</Label>
+                                {importButtonFor('documentLanguage', t('archiveFormLanguageLabel', preferredLanguage))}
+                            </div>
+                            <Input id="doc-language" {...register('documentLanguage')} placeholder={t('archiveFormLanguagePlaceholder', preferredLanguage)} />
+                        </GridItem>
+                        <GridItem>
+                            <div className="flex items-center gap-1">
+                                <Label htmlFor="doc-contentDesc">{t('archiveFormContentDescLabel', preferredLanguage)}</Label>
+                                {importButtonFor('contentDescription', t('archiveFormContentDescLabel', preferredLanguage))}
+                            </div>
                             <Textarea id="doc-contentDesc" {...register('contentDescription')} rows={4} placeholder={t('archiveFormContentDescPlaceholder', preferredLanguage)} aria-invalid={!!errors.contentDescription} className={cn(errors.contentDescription && "border-destructive")}/>
                             {errors.contentDescription && <p className="text-xs text-destructive">{errors.contentDescription.message}</p>}
                         </GridItem>
                         <GridItem>
-                            <Label htmlFor="doc-remarks">{t('archiveFormRemarksLabel', preferredLanguage)}</Label>
+                            <div className="flex items-center gap-1">
+                                <Label htmlFor="doc-remarks">{t('archiveFormRemarksLabel', preferredLanguage)}</Label>
+                                {importButtonFor('remarks', t('archiveFormRemarksLabel', preferredLanguage))}
+                            </div>
                             <Textarea id="doc-remarks" {...register('remarks')} rows={2} placeholder={t('archiveFormRemarksPlaceholder', preferredLanguage)} aria-invalid={!!errors.remarks} className={cn(errors.remarks && "border-destructive")}/>
                             {errors.remarks && <p className="text-xs text-destructive">{errors.remarks.message}</p>}
                         </GridItem>
                         <GridItem>
-                            <Label htmlFor="doc-seals">{t('archiveFormSealsLabel', preferredLanguage)}</Label>
+                            <div className="flex items-center gap-1">
+                                <Label htmlFor="doc-seals">{t('archiveFormSealsLabel', preferredLanguage)}</Label>
+                                {importButtonFor('seals', t('archiveFormSealsLabel', preferredLanguage))}
+                            </div>
                             <Textarea id="doc-seals" {...register('seals')} rows={4} placeholder={t('archiveFormSealsPlaceholder', preferredLanguage)} aria-invalid={!!errors.seals} className={cn(errors.seals && "border-destructive")}/>
                             {errors.seals && <p className="text-xs text-destructive">{errors.seals.message}</p>}
                         </GridItem>
                         <GridItem>
-                            <Label htmlFor="doc-related">{t('archiveFormRelatedDocsLabel', preferredLanguage)}</Label>
+                            <div className="flex items-center gap-1">
+                                <Label htmlFor="doc-related">{t('archiveFormRelatedDocsLabel', preferredLanguage)}</Label>
+                                {importButtonFor('relatedDocumentsReferences', t('archiveFormRelatedDocsLabel', preferredLanguage))}
+                            </div>
                             <Textarea id="doc-related" {...register('relatedDocumentsReferences')} rows={2} placeholder={t('archiveFormRelatedDocsPlaceholder', preferredLanguage)} aria-invalid={!!errors.relatedDocumentsReferences} className={cn(errors.relatedDocumentsReferences && "border-destructive")}/>
                             {errors.relatedDocumentsReferences && <p className="text-xs text-destructive">{errors.relatedDocumentsReferences.message}</p>}
                         </GridItem>
                         <GridItem>
-                            <Label htmlFor="doc-additionalInfo">{t('archiveFormAdditionalInfoLabel', preferredLanguage)}</Label>
+                            <div className="flex items-center gap-1">
+                                <Label htmlFor="doc-additionalInfo">{t('archiveFormAdditionalInfoLabel', preferredLanguage)}</Label>
+                                {importButtonFor('additionalInformation', t('archiveFormAdditionalInfoLabel', preferredLanguage))}
+                            </div>
                             <Textarea id="doc-additionalInfo" {...register('additionalInformation')} rows={2} placeholder={t('archiveFormAdditionalInfoPlaceholder', preferredLanguage)} aria-invalid={!!errors.additionalInformation} className={cn(errors.additionalInformation && "border-destructive")}/>
                             {errors.additionalInformation && <p className="text-xs text-destructive">{errors.additionalInformation.message}</p>}
                         </GridItem>
@@ -375,15 +479,31 @@ const DocumentForm: React.FC<DocumentFormProps> = ({
                  <Card className="lg:col-span-1">
                     <CardHeader><CardTitle className='text-lg'>{t('archiveFormAccessDigitizationTitle', preferredLanguage)}</CardTitle></CardHeader>
                     <CardContent className="grid grid-cols-1 gap-x-6 gap-y-4">
-                        <GridItem><Label htmlFor="doc-accessLevel">{t('archiveFormAccessLevelLabel', preferredLanguage)}</Label><Input id="doc-accessLevel" {...register('accessLevel')} placeholder={t('archiveFormAccessLevelPlaceholder', preferredLanguage)} /></GridItem>
-                        <GridItem><Label htmlFor="doc-accessCond">{t('archiveFormAccessConditionsLabel', preferredLanguage)}</Label><Input id="doc-accessCond" {...register('accessConditions')} placeholder={t('archiveFormAccessConditionsPlaceholder', preferredLanguage)} /></GridItem>
+                        <GridItem>
+                            <div className="flex items-center gap-1">
+                                <Label htmlFor="doc-accessLevel">{t('archiveFormAccessLevelLabel', preferredLanguage)}</Label>
+                                {importButtonFor('accessLevel', t('archiveFormAccessLevelLabel', preferredLanguage))}
+                            </div>
+                            <Input id="doc-accessLevel" {...register('accessLevel')} placeholder={t('archiveFormAccessLevelPlaceholder', preferredLanguage)} />
+                        </GridItem>
+                        <GridItem>
+                            <div className="flex items-center gap-1">
+                                <Label htmlFor="doc-accessCond">{t('archiveFormAccessConditionsLabel', preferredLanguage)}</Label>
+                                {importButtonFor('accessConditions', t('archiveFormAccessConditionsLabel', preferredLanguage))}
+                            </div>
+                            <Input id="doc-accessCond" {...register('accessConditions')} placeholder={t('archiveFormAccessConditionsPlaceholder', preferredLanguage)} />
+                        </GridItem>
                         <GridItem className="flex items-center space-x-2 pt-1">
                             <Controller control={control} name="isDigitized" render={({ field }) => ( <Checkbox id="doc-digitized" checked={field.value} onCheckedChange={field.onChange} /> )} />
                             <Label htmlFor="doc-digitized" className='cursor-pointer font-normal'>{t('archiveFormIsDigitizedLabel', preferredLanguage)}</Label>
+                            {importButtonFor('isDigitized', t('archiveFormIsDigitizedLabel', preferredLanguage))}
                         </GridItem>
                         {watch('isDigitized') && (
                             <GridItem>
-                                <Label htmlFor="doc-digitizedLink">{t('archiveFormDigitizedLinkLabel', preferredLanguage)}</Label>
+                                <div className="flex items-center gap-1">
+                                    <Label htmlFor="doc-digitizedLink">{t('archiveFormDigitizedLinkLabel', preferredLanguage)}</Label>
+                                    {importButtonFor('digitizedVersionLink', t('archiveFormDigitizedLinkLabel', preferredLanguage))}
+                                </div>
                                 <Input id="doc-digitizedLink" {...register('digitizedVersionLink')} type="url" placeholder={t('archiveFormDigitizedLinkPlaceholder', preferredLanguage)} aria-invalid={!!errors.digitizedVersionLink} className={cn(errors.digitizedVersionLink && "border-destructive")}/>
                                 {errors.digitizedVersionLink && <p className="text-xs text-destructive">{errors.digitizedVersionLink.message}</p>}
                             </GridItem>
@@ -395,12 +515,16 @@ const DocumentForm: React.FC<DocumentFormProps> = ({
                     <CardHeader><CardTitle className='text-lg'>{t('archiveFormIndexingTitle', preferredLanguage)}</CardTitle></CardHeader>
                     <CardContent className="grid grid-cols-1 gap-4 items-start">
                         <GridItem>
-                            <Label htmlFor="doc-topo-sig">{t('archiveFormTopoSigLabel', preferredLanguage)}</Label>
+                            <div className="flex items-center gap-1">
+                                <Label htmlFor="doc-topo-sig">{t('archiveFormTopoSigLabel', preferredLanguage)}</Label>
+                                {importButtonFor('topographicSignature', t('archiveFormTopoSigLabel', preferredLanguage))}
+                            </div>
                             <Input id="doc-topo-sig" {...register('topographicSignature')} placeholder={t('archiveFormTopoSigPlaceholder', preferredLanguage)} aria-invalid={!!errors.topographicSignature} className={cn(errors.topographicSignature && "border-destructive")} />
                             {errors.topographicSignature && <p className="text-xs text-destructive">{errors.topographicSignature.message}</p>}
                         </GridItem>
                         <SignaturePathSelector
                             label={t('archiveFormDescSigLabel', preferredLanguage)}
+                            labelAccessory={importButtonFor('descriptiveSignatureElementIds', t('archiveFormDescSigLabel', preferredLanguage))}
                             signatures={descriptiveSignatures}
                             onChange={setDescriptiveSignatures}
                             className="min-w-0"
@@ -408,7 +532,10 @@ const DocumentForm: React.FC<DocumentFormProps> = ({
                         <input type="hidden" {...register('descriptiveSignatureElementIds')} />
                         {errors.descriptiveSignatureElementIds && <p className="text-xs text-destructive">{errors.descriptiveSignatureElementIds.message}</p>}
                         <div className="grid gap-1.5">
-                            <Label>{t('archiveFormTagsLabel', preferredLanguage)}</Label>
+                            <div className="flex items-center gap-1">
+                                <Label>{t('archiveFormTagsLabel', preferredLanguage)}</Label>
+                                {importButtonFor('tagIds', t('archiveFormTagsLabel', preferredLanguage))}
+                            </div>
                             <TagSelector selectedTagIds={selectedTagIds} onChange={setSelectedTagIds} />
                             <input type="hidden" {...register('tagIds')} />
                             {errors.tagIds && <p className="text-xs text-destructive">{typeof errors.tagIds.message === 'string' ? errors.tagIds.message : 'Invalid tag selection'}</p>}
@@ -422,7 +549,23 @@ const DocumentForm: React.FC<DocumentFormProps> = ({
                 {isLoading ? <LoadingSpinner size="sm" className='mr-2' /> : (docToEdit ? t('archiveFormUpdateItemButton', preferredLanguage) : t('archiveFormCreateItemButton', preferredLanguage))}
             </Button>
         </div>
+        {/* Ask before replacing a field that already has a value */}
+        <AlertDialog open={pendingImport !== null} onOpenChange={(open) => { if (!open) setPendingImport(null); }}>
+            <AlertDialogContent>
+                <AlertDialogHeader>
+                    <AlertDialogTitle>{t('archiveFormImportReplaceTitle', preferredLanguage, { field: pendingImport?.label ?? '' })}</AlertDialogTitle>
+                    <AlertDialogDescription>{t('archiveFormImportReplaceDescription', preferredLanguage)}</AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                    <AlertDialogCancel onClick={() => setPendingImport(null)}>{t('cancelButton', preferredLanguage)}</AlertDialogCancel>
+                    <AlertDialogAction onClick={() => { if (pendingImport) applyParentImport(pendingImport.field); setPendingImport(null); }}>
+                        {t('archiveFormImportReplaceAction', preferredLanguage)}
+                    </AlertDialogAction>
+                </AlertDialogFooter>
+            </AlertDialogContent>
+        </AlertDialog>
     </form>
+    </TooltipProvider>
 
   );
 };
