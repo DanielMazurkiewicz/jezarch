@@ -27,8 +27,8 @@ Ten przewodnik zawiera instrukcje dotyczące instalacji i uruchamiania aplikacji
 
 1.  **Sklonuj Repozytorium:** Pobierz kod źródłowy JezArch, zazwyczaj klonując repozytorium Git:
     ```bash
-    git clone <adres_repozytorium>
-    cd katalog-projektu-jezarch # Przejdź do katalogu projektu
+    git clone https://github.com/DanielMazurkiewicz/jezarch.git
+    cd jezarch # Przejdź do katalogu projektu
     ```
 
 2.  **Zainstaluj Zależności:** Z katalogu głównego repozytorium uruchom wieloplatformowe polecenie `install` — zainstaluje zależności dla katalogów głównego, `backend` i `frontend`:

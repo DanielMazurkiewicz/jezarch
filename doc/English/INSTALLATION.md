@@ -27,8 +27,8 @@ This guide provides instructions for installing and running the JezArch applicat
 
 1.  **Clone the Repository:** Obtain the JezArch source code, typically by cloning the Git repository:
     ```bash
-    git clone <repository_url>
-    cd jezarch-project-directory # Navigate into the project directory
+    git clone https://github.com/DanielMazurkiewicz/jezarch.git
+    cd jezarch # Navigate into the project directory
     ```
 
 2.  **Install Dependencies:** From the repository root, run the cross-platform `install` command — it installs dependencies for the root, `backend`, and `frontend`:

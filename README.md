@@ -18,6 +18,30 @@ JezArch is a full-stack web application designed for managing archival documents
 *   **Localization:** User interface available in English and Polish, with user-specific language preferences.
 *   **Modern Tech Stack:** Built with Bun, React, TypeScript, SQLite, and Tailwind CSS.
 
+## ⚡ Quick Start
+
+**Prerequisite:** [Bun](https://bun.sh/) installed on your system.
+
+### Install (copy & paste)
+
+```bash
+git clone https://github.com/DanielMazurkiewicz/jezarch.git
+cd jezarch
+bun run install
+bun run start:dev
+```
+
+Then open [http://localhost:8080](http://localhost:8080) in your browser.
+
+### Update (copy & paste)
+
+```bash
+cd jezarch
+bun run update
+```
+
+`bun run update` pulls the latest code from GitHub, installs and bumps dependencies for the root, backend, and frontend. Restart the app if it is currently running to pick up the changes.
+
 ## 🚀 Getting Started
 
 1.  **Installation:** Follow the instructions in the Installation Guide to set up the application on your system (Windows, macOS, or Linux):
