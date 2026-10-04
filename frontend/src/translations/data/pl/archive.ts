@@ -177,4 +177,8 @@ export const archiveTranslationsPL: ArchiveTranslationSet = {
   quickFilterEnableLabel: 'Drzewo sygnatur opisowych',
   quickFilterMainOnlyLabel: 'Tylko komponenty główne',
   quickFilterRefreshTreeTooltip: 'Odśwież drzewo',
+  archiveTabUnits: 'Jednostki',
+  archiveTabUnitsAndMainDocs: 'Jednostki i dokumenty główne',
+  archiveTabMainDocs: 'Dokumenty główne',
+  archiveTabEverything: 'Wszystko',
 };

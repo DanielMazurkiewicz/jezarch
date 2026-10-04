@@ -47,7 +47,7 @@ const BatchTagDialog: React.FC<BatchTagDialogProps> = ({
     };
 
     const title = t(action === 'add' ? 'archiveBatchTagsAddTitle' : 'archiveBatchTagsRemoveTitle', preferredLanguage);
-    const description = t('archiveBatchTagsDescription', preferredLanguage, { action: t(action === 'add' ? 'addButton' : 'removeButton', preferredLanguage).toLowerCase(), count: itemCount.toLocaleString() });
+    const description = t('archiveBatchTagsDescription', preferredLanguage, { action: t(action === 'add' ? 'addButton' : 'removeButton', preferredLanguage).toLowerCase(), count: itemCount });
     const confirmText = t(action === 'add' ? 'archiveBatchTagsConfirmAdd' : 'archiveBatchTagsConfirmRemove', preferredLanguage, { count: selectedTagIds.length });
     const icon = action === 'add' ? <Tags className='h-4 w-4' /> : <MinusCircle className='h-4 w-4'/>;
 
@@ -64,7 +64,7 @@ const BatchTagDialog: React.FC<BatchTagDialogProps> = ({
                      <AlertTriangle className="h-4 w-4" />
                      <AlertTitle>{t('archiveBatchTagsWarningTitle', preferredLanguage)}</AlertTitle>
                      <AlertDescription>
-                         {t('archiveBatchTagsWarningText', preferredLanguage, { count: itemCount.toLocaleString() })}
+                         {t('archiveBatchTagsWarningText', preferredLanguage, { count: itemCount })}
                      </AlertDescription>
                  </Alert>
 

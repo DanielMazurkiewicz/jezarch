@@ -20,6 +20,7 @@ import { Card, CardContent, CardHeader, CardDescription } from '@/components/ui/
 import { HelpCircle } from 'lucide-react';
 import HelpDialog, { HelpSection } from '@/components/shared/HelpDialog';
 import DocumentPreviewDialog from './DocumentPreviewDialog';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { cn } from '@/lib/utils';
 import { t } from '@/translations/utils'; // Import translation utility
 import { useQuickFilterContext } from '@/context/QuickFilterContext';
@@ -27,11 +28,19 @@ import { DEFAULT_DELETED_FILTER, mergeQuickFilter as mergeQuickFilterHelper } fr
 
 const ARCHIVE_PAGE_SIZE = 10;
 
+// Archive page tabs. All tabs share the same filters (search bar + sidebar
+// quick signature filter); each tab only adds its own base query modifier.
+const ARCHIVE_TABS = ['units', 'unitsAndMainDocs', 'mainDocs', 'everything'] as const;
+type ArchiveTab = (typeof ARCHIVE_TABS)[number];
+
 const ArchivePage: React.FC = () => {
   const { token, user, preferredLanguage } = useAuth();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const parentUnitId = searchParams.get('unitId') ? Number(searchParams.get('unitId')) : null;
+
+  const rawTab = searchParams.get('tab');
+  const activeTab: ArchiveTab = (ARCHIVE_TABS as readonly string[]).includes(rawTab ?? '') ? (rawTab as ArchiveTab) : 'everything';
 
   const [documents, setDocuments] = useState<ArchiveDocumentSearchResult[]>([]);
   const [parentUnit, setParentUnit] = useState<ArchiveDocument | null>(null);
@@ -49,6 +58,33 @@ const ArchivePage: React.FC = () => {
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
 
   const [searchQuery, setSearchQuery] = useState<SearchRequest['query']>(DEFAULT_DELETED_FILTER);
+
+  // Base query modifier applied on top of the shared filters for each tab.
+  // 'isUnitOrMainDocument' is a synthetic backend field expressing
+  // "unit OR document without a parent unit" (see db.ts).
+  const tabQueryModifier = useMemo<SearchQuery>(() => {
+      switch (activeTab) {
+          case 'units':
+              return [{ field: 'type', condition: 'EQ', value: 'unit', not: false }];
+          case 'unitsAndMainDocs':
+              return [{ field: 'isUnitOrMainDocument', condition: 'EQ', value: true, not: false }];
+          case 'mainDocs':
+              return [
+                  { field: 'type', condition: 'EQ', value: 'document', not: false },
+                  { field: 'parentUnitArchiveDocumentId', condition: 'EQ', value: null, not: false },
+              ];
+          default:
+              return [];
+      }
+  }, [activeTab]);
+
+  // The query actually sent to the backend: shared filters + tab modifier.
+  // Inside a unit (drill-down) the tab modifier does not apply — the list is
+  // already scoped to that unit's items.
+  const effectiveQuery = useMemo<SearchQuery>(() =>
+      parentUnitId ? searchQuery : [...searchQuery, ...tabQueryModifier],
+  [searchQuery, tabQueryModifier, parentUnitId]);
+
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(ARCHIVE_PAGE_SIZE);
   const [totalDocs, setTotalDocs] = useState(0);
@@ -68,11 +104,11 @@ const ArchivePage: React.FC = () => {
   const canFilterDeleted = isAdmin || isEmployee;
 
   const currentPageRef = useRef(currentPage);
-  const searchQueryRef = useRef(searchQuery);
+  const effectiveQueryRef = useRef(effectiveQuery);
   const sortByRef = useRef(sortBy);
   const sortOrderRef = useRef(sortOrder);
   useEffect(() => { currentPageRef.current = currentPage; }, [currentPage]);
-  useEffect(() => { searchQueryRef.current = searchQuery; }, [searchQuery]);
+  useEffect(() => { effectiveQueryRef.current = effectiveQuery; }, [effectiveQuery]);
   useEffect(() => { sortByRef.current = sortBy; }, [sortBy]);
   useEffect(() => { sortOrderRef.current = sortOrder; }, [sortOrder]);
 
@@ -96,7 +132,7 @@ const ArchivePage: React.FC = () => {
     });
   }, [setOnFilterChange, mergeQuickFilter]);
 
-  const isSearchActive = useMemo(() => searchQuery.length > 0, [searchQuery]);
+  const isSearchActive = useMemo(() => effectiveQuery.length > 0, [effectiveQuery]);
 
   const headerIcon = useMemo(() => {
       if (parentUnitId) return Folder;
@@ -144,7 +180,7 @@ const ArchivePage: React.FC = () => {
   }, [token, isAdmin, isEmployee]);
 
    const fetchSeqRef = useRef(0);
-   const fetchDocuments = useCallback(async (page = currentPageRef.current, query = searchQueryRef.current, currentSortBy = sortByRef.current, currentSortOrder = sortOrderRef.current) => {
+   const fetchDocuments = useCallback(async (page = currentPageRef.current, query = effectiveQueryRef.current, currentSortBy = sortByRef.current, currentSortOrder = sortOrderRef.current) => {
        if (!token) return;
        const seq = ++fetchSeqRef.current;
        setIsLoading(true); setError(null);
@@ -178,8 +214,8 @@ const ArchivePage: React.FC = () => {
            setIsLoading(false);
            return;
        }
-       fetchDocuments(currentPage, searchQuery);
-   }, [fetchDocuments, currentPage, searchQuery, parentUnitId, parentUnit]);
+       fetchDocuments(currentPage, effectiveQuery);
+   }, [fetchDocuments, currentPage, effectiveQuery, parentUnitId, parentUnit]);
 
 
     const handleEdit = (doc: ArchiveDocument) => {
@@ -215,7 +251,7 @@ const ArchivePage: React.FC = () => {
             toast.success(t('archiveDeleteSuccess', preferredLanguage));
             const newTotalPages = Math.ceil((totalDocs - 1) / pageSize);
             const newCurrentPage = (currentPage > newTotalPages) ? Math.max(1, newTotalPages) : currentPage;
-            await fetchDocuments(newCurrentPage, searchQuery);
+            await fetchDocuments(newCurrentPage, effectiveQuery);
             if (currentPage !== newCurrentPage) setCurrentPage(newCurrentPage);
             if (previewingDoc?.archiveDocumentId === docId) setIsPreviewOpen(false);
         } catch (err: any) {
@@ -240,7 +276,7 @@ const ArchivePage: React.FC = () => {
             toast.success(t('archiveRestoreSuccess', preferredLanguage));
             const newTotalPages = Math.ceil((totalDocs + 1) / pageSize);
             const newCurrentPage = (currentPage > newTotalPages) ? Math.max(1, newTotalPages) : currentPage;
-            await fetchDocuments(newCurrentPage, searchQuery);
+            await fetchDocuments(newCurrentPage, effectiveQuery);
             if (currentPage !== newCurrentPage) setCurrentPage(newCurrentPage);
             if (previewingDoc?.archiveDocumentId === docId) setIsPreviewOpen(false);
         } catch (err: any) {
@@ -257,7 +293,7 @@ const ArchivePage: React.FC = () => {
         const wasEditing = !!editingDoc;
         setEditingDoc(null);
         toast.success(t(wasEditing ? 'archiveSavedUpdated' : 'archiveSavedCreated', preferredLanguage));
-        await fetchDocuments(currentPage, searchQuery);
+        await fetchDocuments(currentPage, effectiveQuery);
     };
 
    const handleSearch = (newQuery: SearchRequest['query']) => {
@@ -267,6 +303,13 @@ const ArchivePage: React.FC = () => {
      setCurrentPage(1);
    };
    const handlePageChange = (newPage: number) => { setCurrentPage(newPage); };
+   const handleTabChange = useCallback((value: string) => {
+       if (!(ARCHIVE_TABS as readonly string[]).includes(value)) return;
+       setCurrentPage(1); // a tab switch always restarts pagination
+       const nextParams = new URLSearchParams(searchParams.toString());
+       nextParams.set('tab', value);
+       navigate({ pathname: '/archive', search: `?${nextParams.toString()}` }, { replace: true });
+   }, [navigate, searchParams]);
    const handleSort = useCallback((field: string) => {
        const currentSortBy = sortByRef.current;
        const currentSortOrder = sortOrderRef.current;
@@ -275,7 +318,7 @@ const ArchivePage: React.FC = () => {
             : (currentSortBy === field && currentSortOrder === 'DESC') ? 'ASC' : 'DESC';
        setSortBy(field);
        setSortOrder(newSortOrder);
-       fetchDocuments(currentPageRef.current, searchQueryRef.current, field, newSortOrder);
+       fetchDocuments(currentPageRef.current, effectiveQueryRef.current, field, newSortOrder);
    }, [fetchDocuments]);
 
     const handlePreview = useCallback(async (doc: ArchiveDocumentSearchResult) => {
@@ -294,8 +337,9 @@ const ArchivePage: React.FC = () => {
     }, [token, preferredLanguage]);
 
     const handleOpenUnit = useCallback((unit: ArchiveDocumentSearchResult) => {
-        navigate(`/archive?unitId=${unit.archiveDocumentId}`);
-    }, [navigate]);
+        // Keep the active tab in the URL so "back" returns to the same tab.
+        navigate(`/archive?unitId=${unit.archiveDocumentId}&tab=${activeTab}`);
+    }, [navigate, activeTab]);
 
    const openBatchTagDialog = (action: 'add' | 'remove') => {
        if (!isAdmin && !isEmployee) {
@@ -315,14 +359,14 @@ const ArchivePage: React.FC = () => {
        setIsBatchTagLoading(true);
        try {
            const response = await api.batchTagArchiveDocuments({
-               searchQuery: searchQuery,
+               searchQuery: effectiveQuery,
                tagIds: tagIds,
                action: batchTagAction,
            }, token);
            const actionText = t(batchTagAction === 'add' ? 'added' : 'removed', preferredLanguage);
            toast.success(response.message || t('archiveBatchTagsSuccess', preferredLanguage, { action: actionText, count: response.count }));
            setIsBatchTagDialogOpen(false);
-           await fetchDocuments(currentPage, searchQuery);
+           await fetchDocuments(currentPage, effectiveQuery);
        } catch (err: any) {
            const msg = err.message || t('unknownError', preferredLanguage);
            toast.error(t('errorMessageTemplate', preferredLanguage, { message: t('archiveBatchTagsFailed', preferredLanguage, { message: msg }) }));
@@ -369,7 +413,7 @@ const ArchivePage: React.FC = () => {
        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
            <div className='flex items-center gap-4'>
                {parentUnitId && (
-                  <Button variant="outline" size="icon" onClick={() => navigate('/archive')} title={t('backToArchiveButton', preferredLanguage)}>
+                  <Button variant="outline" size="icon" onClick={() => navigate(`/archive?tab=${activeTab}`)} title={t('backToArchiveButton', preferredLanguage)}>
                       <ArrowLeft className="h-4 w-4" />
                   </Button>
                 )}
@@ -446,6 +490,19 @@ const ArchivePage: React.FC = () => {
               </div>
          </div>
 
+         {/* --- Tabs: all share the filters below; each tab only adds its own base query modifier.
+             Hidden inside a unit (drill-down) where the list is already scoped to that unit. --- */}
+        {!parentUnitId && (
+            <Tabs value={activeTab} onValueChange={handleTabChange}>
+                <TabsList className="w-full">
+                    <TabsTrigger value="units">{t('archiveTabUnits', preferredLanguage)}</TabsTrigger>
+                    <TabsTrigger value="unitsAndMainDocs">{t('archiveTabUnitsAndMainDocs', preferredLanguage)}</TabsTrigger>
+                    <TabsTrigger value="mainDocs">{t('archiveTabMainDocs', preferredLanguage)}</TabsTrigger>
+                    <TabsTrigger value="everything">{t('archiveTabEverything', preferredLanguage)}</TabsTrigger>
+                </TabsList>
+            </Tabs>
+        )}
+
          <HelpDialog
             isOpen={helpOpen}
             onOpenChange={setHelpOpen}
@@ -475,13 +532,13 @@ const ArchivePage: React.FC = () => {
              <CardHeader>
                   <CardDescription>
                        {totalDocs > 0 && !isLoading && (
-                           <span>{t('archiveFoundItems', preferredLanguage, { count: totalDocs.toLocaleString() })} </span>
+                           <span>{t('archiveFoundItems', preferredLanguage, { count: totalDocs })} </span>
                        )}
                        {(isAdmin || isEmployee) && documents.length > 0 && (
                             <span className="text-xs italic">
                                 {isSearchActive
-                                    ? t('archiveBatchActionWarning', preferredLanguage, { count: totalDocs.toLocaleString() })
-                                    : t('archiveBatchActionNoFilterWarning', preferredLanguage, { count: totalDocs.toLocaleString() })
+                                    ? t('archiveBatchActionWarning', preferredLanguage, { count: totalDocs })
+                                    : t('archiveBatchActionNoFilterWarning', preferredLanguage, { count: totalDocs })
                                 }
                             </span>
                        )}
@@ -513,7 +570,7 @@ const ArchivePage: React.FC = () => {
                       )}
                        {documents.length === 0 && (
                          <p className="text-center text-muted-foreground pt-6">
-                             {searchQuery.length > 0 ? t('noResultsFound', preferredLanguage) :
+                             {effectiveQuery.length > 0 ? t('noResultsFound', preferredLanguage) :
                               parentUnitId ? t('archiveNoItemsInUnit', preferredLanguage, { unitTitle: parentUnit?.title || t('thisUnit', preferredLanguage) }) :
                               isUserRole ? t('archiveNoItemsForUserTags', preferredLanguage) :
                               t('archiveIsEmpty', preferredLanguage)}

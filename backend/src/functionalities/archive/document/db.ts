@@ -515,38 +515,66 @@ export const archiveDocumentSignatureSearchHandler: (element: SearchQueryElement
     return { whereCondition: `(${whereCondition})`, params };
 };
 
+// Synthetic search field used by the archive page tabs: matches units and
+// "main" documents (documents without a parent unit). The query engine ANDs
+// individual criteria, so this handler provides the OR expression that the
+// "Units and main documents" tab needs.
+export const isUnitOrMainDocumentSearchHandler: (element: SearchQueryElement, tableAlias: string) => SearchOnCustomFieldHandlerResult = (
+    element, tableAlias
+): SearchOnCustomFieldHandlerResult => {
+    if (element.field !== 'isUnitOrMainDocument' || element.condition !== 'EQ') return null;
+    // Parentheses are required: AND binds tighter than OR in SQL, so without
+    // them a combined query like "title LIKE ? AND <this>" would parse as
+    // "(title LIKE ? AND type='unit') OR parent IS NULL".
+    const condition = `(${tableAlias}.type = 'unit' OR ${tableAlias}.parentUnitArchiveDocumentId IS NULL)`;
+    return { whereCondition: element.not ? `NOT (${condition})` : condition, params: [] };
+};
+
+// Tags handler shared by the search endpoint and the batch-tagging flow.
+const archiveDocumentTagSearchHandler: (element: SearchQueryElement, tableAlias: string) => SearchOnCustomFieldHandlerResult = (
+    element, tableAlias
+): SearchOnCustomFieldHandlerResult => {
+    if (element.field === 'tags' && element.condition === 'ANY_OF' && Array.isArray(element.value)) {
+        const tagIds = element.value.filter((id): id is number => typeof id === 'number' && Number.isInteger(id) && id > 0);
+        if (tagIds.length === 0) return { whereCondition: element.not ? '1=1' : '1=0', params: [] };
+        const placeholders = tagIds.map(() => '?').join(', ');
+        const whereCondition = `${element.not ? 'NOT ' : ''}EXISTS ( SELECT 1 FROM archive_document_tags adt WHERE adt.archiveDocumentId = ${tableAlias}.archiveDocumentId AND adt.tagId IN (${placeholders}) )`;
+        return { whereCondition, params: tagIds };
+    }
+    return null;
+};
+
+// Direct fields that may be interpolated into archive document searches.
+export const archiveDocumentAllowedSearchFields: (keyof ArchiveDocument)[] = [
+    'archiveDocumentId', 'parentUnitArchiveDocumentId', 'createdBy', 'updatedBy', 'type',
+    'title', 'creator', 'creationDate', 'creationPlace', 'seals', 'numberOfPages', 'documentType',
+    'dimensions', 'binding', 'condition', 'documentLanguage', 'contentDescription',
+    'remarks', 'accessLevel', 'accessConditions', 'additionalInformation',
+    'relatedDocumentsReferences', 'isDigitized', 'digitizedVersionLink',
+    'createdOn', 'modifiedOn', 'isDeleted',
+    'topographicSignature'
+];
+
+// Field handlers shared by the search endpoint and the batch-tagging flow so
+// both always interpret the same query language.
+export const archiveDocumentFieldHandlers: Record<string, (element: SearchQueryElement, tableAlias: string) => SearchOnCustomFieldHandlerResult> = {
+    'tags': archiveDocumentTagSearchHandler,
+    'descriptiveSignature': archiveDocumentSignatureSearchHandler,
+    // No special handler needed for createdBy/updatedBy (handled by default text search)
+    'isUnitOrMainDocument': isUnitOrMainDocumentSearchHandler,
+};
+
 
 // --- Batch Tagging DB Functions ---
 // Updated allowedFields
 export async function getMatchingDocumentIds(searchRequest: SearchRequest): Promise<number[]> {
     try {
-        const allowedDirectFields: (keyof ArchiveDocument)[] = [
-            'archiveDocumentId', 'parentUnitArchiveDocumentId', 'createdBy', 'updatedBy', 'type', 'title', // Changed fields
-            'creator', 'creationDate', 'creationPlace', 'seals', 'numberOfPages', 'documentType', 'dimensions', 'binding',
-            'condition', 'documentLanguage', 'contentDescription', 'remarks', 'accessLevel',
-            'accessConditions', 'additionalInformation', 'relatedDocumentsReferences',
-            'isDigitized', 'digitizedVersionLink', 'createdOn', 'modifiedOn', 'isDeleted',
-            'topographicSignature'
-        ];
         const primaryKey = 'archiveDocumentId';
         const { countQuery, alias } = await buildSearchQueries<ArchiveDocumentSearchResult>(
             'archive_documents',
             { ...searchRequest, page: 1, pageSize: -1 },
-            allowedDirectFields,
-            {
-                'tags': (element, tableAlias) => {
-                    if (element.field === 'tags' && element.condition === 'ANY_OF' && Array.isArray(element.value)) {
-                        const tagIds = element.value.filter((id): id is number => typeof id === 'number' && Number.isInteger(id) && id > 0);
-                        if (tagIds.length === 0) return { whereCondition: element.not ? '1=1' : '1=0', params: [] };
-                        const placeholders = tagIds.map(() => '?').join(', ');
-                        const whereCondition = `${element.not ? 'NOT ' : ''}EXISTS ( SELECT 1 FROM archive_document_tags adt WHERE adt.archiveDocumentId = ${tableAlias}.archiveDocumentId AND adt.tagId IN (${placeholders}) )`;
-                        return { whereCondition, params: tagIds };
-                    }
-                    return null;
-                },
-                'descriptiveSignature': archiveDocumentSignatureSearchHandler,
-                // No handler needed for createdBy/updatedBy as they are direct fields
-            },
+            archiveDocumentAllowedSearchFields,
+            archiveDocumentFieldHandlers,
             primaryKey
         );
         const idSelectQuery = countQuery.sql.replace(`SELECT COUNT(DISTINCT ${alias}.${primaryKey}) as total`, `SELECT DISTINCT ${alias}.${primaryKey} as id`);

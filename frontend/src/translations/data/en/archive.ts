@@ -175,4 +175,8 @@ export const archiveTranslationsEN: ArchiveTranslationSet = {
   quickFilterEnableLabel: 'Descriptive signature tree',
   quickFilterMainOnlyLabel: 'Main components only',
   quickFilterRefreshTreeTooltip: 'Refresh tree',
+  archiveTabUnits: 'Units',
+  archiveTabUnitsAndMainDocs: 'Units and main documents',
+  archiveTabMainDocs: 'Main documents',
+  archiveTabEverything: 'Everything',
 };

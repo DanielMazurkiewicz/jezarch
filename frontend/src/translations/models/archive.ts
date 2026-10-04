@@ -173,6 +173,10 @@ export type ArchiveTranslationKey =
   | 'archiveHelpDeleted'
   | 'quickFilterEnableLabel'
   | 'quickFilterMainOnlyLabel'
+  | 'archiveTabUnits'
+  | 'archiveTabUnitsAndMainDocs'
+  | 'archiveTabMainDocs'
+  | 'archiveTabEverything'
   ;
 
 export type ArchiveTranslationSet = TranslationSet<ArchiveTranslationKey>;

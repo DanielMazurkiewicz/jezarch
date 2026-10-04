@@ -188,6 +188,79 @@ test('POST /api/archive/documents/search with type filter', async () => {
   expect(body.data.every((d: any) => d.type === 'unit')).toBeTrue();
 });
 
+test('POST /api/archive/documents/search isUnitOrMainDocument matches units and main documents only', async () => {
+  const unit = await (await api(B, 'PUT', '/api/archive/document', { type: 'unit', title: 'TabA Unit', creator: 'C', creationDate: '2024' }, adminToken)).json();
+  const mainDoc = await (await api(B, 'PUT', '/api/archive/document', { type: 'document', title: 'TabA Main Doc', creator: 'C', creationDate: '2024' }, adminToken)).json();
+  await (await api(B, 'PUT', '/api/archive/document', { type: 'document', title: 'TabA Child Doc', creator: 'C', creationDate: '2024', parentUnitArchiveDocumentId: unit.archiveDocumentId }, adminToken)).json();
+
+  const res = await api(B, 'POST', '/api/archive/documents/search', {
+    query: [
+      { field: 'title', condition: 'FRAGMENT', value: 'TabA', not: false },
+      { field: 'isUnitOrMainDocument', condition: 'EQ', value: true, not: false },
+    ],
+    page: 1, pageSize: 100,
+  }, adminToken);
+  await expectStatus(res, 200);
+  const body = await res.json();
+  const ids = body.data.map((x: any) => x.archiveDocumentId).sort((a: number, b: number) => a - b);
+  expect(ids).toEqual([unit.archiveDocumentId, mainDoc.archiveDocumentId].sort((a: number, b: number) => a - b));
+});
+
+test('POST /api/archive/documents/search isUnitOrMainDocument with not=true matches only documents with a parent', async () => {
+  const unit = await (await api(B, 'PUT', '/api/archive/document', { type: 'unit', title: 'TabB Unit', creator: 'C', creationDate: '2024' }, adminToken)).json();
+  await (await api(B, 'PUT', '/api/archive/document', { type: 'document', title: 'TabB Main Doc', creator: 'C', creationDate: '2024' }, adminToken)).json();
+  const childDoc = await (await api(B, 'PUT', '/api/archive/document', { type: 'document', title: 'TabB Child Doc', creator: 'C', creationDate: '2024', parentUnitArchiveDocumentId: unit.archiveDocumentId }, adminToken)).json();
+
+  const res = await api(B, 'POST', '/api/archive/documents/search', {
+    query: [
+      { field: 'title', condition: 'FRAGMENT', value: 'TabB', not: false },
+      { field: 'isUnitOrMainDocument', condition: 'EQ', value: true, not: true },
+    ],
+    page: 1, pageSize: 100,
+  }, adminToken);
+  await expectStatus(res, 200);
+  const body = await res.json();
+  expect(body.data.map((x: any) => x.archiveDocumentId)).toEqual([childDoc.archiveDocumentId]);
+});
+
+test('POST /api/archive/documents/search main-documents tab query matches only parentless documents', async () => {
+  const unit = await (await api(B, 'PUT', '/api/archive/document', { type: 'unit', title: 'TabC Unit', creator: 'C', creationDate: '2024' }, adminToken)).json();
+  const mainDoc = await (await api(B, 'PUT', '/api/archive/document', { type: 'document', title: 'TabC Main Doc', creator: 'C', creationDate: '2024' }, adminToken)).json();
+  await (await api(B, 'PUT', '/api/archive/document', { type: 'document', title: 'TabC Child Doc', creator: 'C', creationDate: '2024', parentUnitArchiveDocumentId: unit.archiveDocumentId }, adminToken)).json();
+
+  const res = await api(B, 'POST', '/api/archive/documents/search', {
+    query: [
+      { field: 'title', condition: 'FRAGMENT', value: 'TabC', not: false },
+      { field: 'type', condition: 'EQ', value: 'document', not: false },
+      { field: 'parentUnitArchiveDocumentId', condition: 'EQ', value: null, not: false },
+    ],
+    page: 1, pageSize: 100,
+  }, adminToken);
+  await expectStatus(res, 200);
+  const body = await res.json();
+  expect(body.data.map((x: any) => x.archiveDocumentId)).toEqual([mainDoc.archiveDocumentId]);
+});
+
+test('POST /api/archive/documents/batch-tag honors isUnitOrMainDocument', async () => {
+  const unit = await (await api(B, 'PUT', '/api/archive/document', { type: 'unit', title: 'TabD Unit', creator: 'C', creationDate: '2024' }, adminToken)).json();
+  await (await api(B, 'PUT', '/api/archive/document', { type: 'document', title: 'TabD Main Doc', creator: 'C', creationDate: '2024' }, adminToken)).json();
+  const childDoc = await (await api(B, 'PUT', '/api/archive/document', { type: 'document', title: 'TabD Child Doc', creator: 'C', creationDate: '2024', parentUnitArchiveDocumentId: unit.archiveDocumentId }, adminToken)).json();
+
+  const res = await api(B, 'POST', '/api/archive/documents/batch-tag', {
+    searchQuery: [
+      { field: 'title', condition: 'FRAGMENT', value: 'TabD', not: false },
+      { field: 'isUnitOrMainDocument', condition: 'EQ', value: true, not: false },
+    ],
+    tagIds: [tagId2], action: 'add',
+  }, adminToken);
+  await expectStatus(res, 200);
+  // Only the unit and the main document match — the child document must be skipped.
+  expect((await res.json()).count).toBe(2);
+
+  const child = await (await api(B, 'GET', `/api/archive/document/id/${childDoc.archiveDocumentId}`, undefined, adminToken)).json();
+  expect(child.tags.some((t: any) => t.tagId === tagId2)).toBeFalse();
+});
+
 test('POST /api/archive/documents/search user role is filtered by tags', async () => {
   const res = await api(B, 'POST', '/api/archive/documents/search', { query: [], page: 1, pageSize: 10 }, userToken);
   await expectStatus(res, 200);

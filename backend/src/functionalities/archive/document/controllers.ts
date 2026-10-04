@@ -7,8 +7,9 @@ import {
     restoreArchiveDocument,
     setTagsForArchiveDocument,
     getTagsForArchiveDocument,
-    archiveDocumentSignatureSearchHandler,
     getArchiveDocumentByIdInternal,
+    archiveDocumentAllowedSearchFields,
+    archiveDocumentFieldHandlers,
     getTagsForArchiveDocumentByIds,
     getMatchingDocumentIds,
     addTagsToDocuments,
@@ -382,16 +383,9 @@ export const searchArchiveDocumentsController = async (req: BunRequest) => {
         const isEmployee = isAllowedRole(sessionAndUser, 'employee');
         const isUserRole = sessionAndUser.user.role === 'user';
 
-        // Updated allowed fields
-        const allowedDirectFields: (keyof ArchiveDocument)[] = [
-            'archiveDocumentId', 'parentUnitArchiveDocumentId', 'createdBy', 'updatedBy', 'type', // Changed fields
-            'title', 'creator', 'creationDate', 'creationPlace', 'seals', 'numberOfPages', 'documentType',
-            'dimensions', 'binding', 'condition', 'documentLanguage', 'contentDescription',
-            'remarks', 'accessLevel', 'accessConditions', 'additionalInformation',
-            'relatedDocumentsReferences', 'isDigitized', 'digitizedVersionLink',
-            'createdOn', 'modifiedOn', 'isDeleted',
-            'topographicSignature'
-        ];
+        // Allowed fields and field handlers are shared with the batch-tagging
+        // flow (see db.ts) so both interpret the same query language.
+        const allowedDirectFields = archiveDocumentAllowedSearchFields;
         const primaryKey = 'archiveDocumentId';
 
         let queryClone = searchRequest.query ? [...searchRequest.query] : [];
@@ -439,22 +433,7 @@ export const searchArchiveDocumentsController = async (req: BunRequest) => {
             'archive_documents',
             finalSearchRequest,
             allowedDirectFields,
-            {
-                // Tag handler remains the same
-                'tags': (element, tableAlias) => {
-                    if (element.field === 'tags' && element.condition === 'ANY_OF' && Array.isArray(element.value)) {
-                        const tagIds = element.value.filter((id): id is number => typeof id === 'number' && Number.isInteger(id) && id > 0);
-                        if (tagIds.length === 0) return { whereCondition: element.not ? '1=1' : '1=0', params: [] };
-                        const placeholders = tagIds.map(() => '?').join(', ');
-                        const whereCondition = `${element.not ? 'NOT ' : ''}EXISTS ( SELECT 1 FROM archive_document_tags adt WHERE adt.archiveDocumentId = ${tableAlias}.archiveDocumentId AND adt.tagId IN (${placeholders}) )`;
-                        return { whereCondition, params: tagIds };
-                    }
-                    return null;
-                },
-                // Signature handler remains the same
-                'descriptiveSignature': archiveDocumentSignatureSearchHandler,
-                // No special handler needed for createdBy/updatedBy (handled by default text search)
-            },
+            archiveDocumentFieldHandlers,
             primaryKey,
             primaryOrderBy
         );
