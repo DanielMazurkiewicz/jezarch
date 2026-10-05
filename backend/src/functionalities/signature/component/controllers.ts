@@ -4,6 +4,7 @@ import {
     createComponent,
     getAllComponents,
     getComponentById,
+    getComponentByElementId,
     updateComponent,
     deleteComponent,
     getComponentByName,
@@ -13,12 +14,13 @@ import {
 import {
     getElementsByComponentId, // Need element DB access
     updateElementIndex,         // Need element index update function
+    deleteElementWithTree,      // Tree-aware element deletion
 } from '../element/db';
 import { getSessionAndUser, isAllowedRole } from '../../session/controllers';
 import { Log } from '../../log/db';
 import { formatIndex } from '../../../utils/formatIndex'; // Import formatter
 import { removeSignatureElementIdsFromDocuments } from '../../archive/document/db';
-import { createSignatureComponentSchema, updateSignatureComponentSchema, CreateSignatureComponentInput, UpdateSignatureComponentInput } from './models';
+import { createSignatureComponentSchema, updateSignatureComponentSchema, CreateSignatureComponentInput, UpdateSignatureComponentInput, effectiveComponentType } from './models';
 
 const COMPONENT_AREA = 'signature_component';
 
@@ -35,10 +37,10 @@ export const createComponentController = async (req: BunRequest) => {
         if (!validation.success) {
             return new Response(JSON.stringify({ message: "Invalid input", errors: validation.error.format() }), { status: 400 });
         }
-        const { name, description, index_type, is_main } = validation.data;
+        const { name, description, index_type, is_main, type } = validation.data;
 
-        const newComponent = await createComponent(name, description, index_type, is_main);
-        await Log.info(`Component created: ${name} (ID: ${newComponent.signatureComponentId})`, sessionAndUser.user.login, COMPONENT_AREA);
+        const newComponent = await createComponent(name, description, index_type, is_main, type);
+        await Log.info(`Component created: ${name} (ID: ${newComponent.signatureComponentId}, type: ${type})`, sessionAndUser.user.login, COMPONENT_AREA);
         return new Response(JSON.stringify(newComponent), { status: 201 });
 
     } catch (error: any) {
@@ -91,6 +93,32 @@ export const getComponentByIdController = async (req: BunRequest<":id">) => {
 
     } catch (error) {
         await Log.error('Error fetching component by ID', sessionAndUser.user.login, COMPONENT_AREA, error);
+        return new Response(JSON.stringify({ message: 'Failed to get component' }), { status: 500 });
+    }
+};
+
+// --- Read Paired Component By Element ---
+// Returns the internal ELEMENT component mirroring the given element (if any).
+// Used by the frontend for TREE/ELEMENT element forms and re-indexing.
+export const getComponentByElementIdController = async (req: BunRequest<":elementId">) => {
+    const sessionAndUser = await getSessionAndUser(req);
+    if (!sessionAndUser) return new Response("Unauthorized", { status: 401 });
+    if (!isAllowedRole(sessionAndUser, 'admin', 'employee')) return new Response("Forbidden", { status: 403 });
+
+    try {
+        const elementId = parseInt(req.params.elementId);
+        if (isNaN(elementId)) {
+            return new Response(JSON.stringify({ message: 'Invalid element ID' }), { status: 400 });
+        }
+
+        const component = await getComponentByElementId(elementId);
+        if (!component) {
+            return new Response(JSON.stringify({ message: 'No paired component for this element' }), { status: 404 });
+        }
+        return new Response(JSON.stringify(component), { status: 200 });
+
+    } catch (error) {
+        await Log.error('Error fetching component by element ID', sessionAndUser.user.login, COMPONENT_AREA, error);
         return new Response(JSON.stringify({ message: 'Failed to get component' }), { status: 500 });
     }
 };
@@ -155,28 +183,38 @@ export const deleteComponentController = async (req: BunRequest<":id">) => {
              return new Response(JSON.stringify({ message: 'Component not found' }), { status: 404 });
          }
 
-        // Collect the component's elements first: deleting the component
-        // cascades to its elements, whose IDs may be referenced inside
-        // archive documents' signature paths.
-        const ownedElements = await getElementsByComponentId(id);
+        // Deleting a component removes its elements and, for TREE/ELEMENT
+        // hierarchies, the whole subtree of each element (stored in the
+        // elements' paired ELEMENT components). Collect every deleted element
+        // id so document signature references can be cleaned up.
+        const deletedElementIds: number[] = [];
 
-        const deleted = await deleteComponent(id); // DB handles cascade to elements
-
-        if (deleted) {
-            // Strip now-dangling references from stored document signatures
-            const elementIds = ownedElements.map(e => e.signatureElementId!).filter(v => typeof v === 'number');
-            if (elementIds.length > 0) {
-                try {
-                    await removeSignatureElementIdsFromDocuments(elementIds);
-                } catch (cleanupError) {
-                    await Log.error('Failed to clean document signatures after component delete', sessionAndUser.user.login, COMPONENT_AREA, cleanupError);
+        if (effectiveComponentType(existing) === 'ELEMENT' && existing.element_id) {
+            // An ELEMENT mirror is removed together with the element it mirrors.
+            deletedElementIds.push(...await deleteElementWithTree(existing.element_id));
+        } else {
+            const ownedElements = await getElementsByComponentId(id);
+            for (const element of ownedElements) {
+                if (typeof element.signatureElementId === 'number') {
+                    deletedElementIds.push(...await deleteElementWithTree(element.signatureElementId));
                 }
             }
-            await Log.info(`Component deleted: ID ${id}`, sessionAndUser.user.login, COMPONENT_AREA);
-             return new Response(null, { status: 204 });
-        } else {
-             return new Response(JSON.stringify({ message: 'Component not found' }), { status: 404 });
+            const deleted = await deleteComponent(id); // DB handles cascade to elements
+            if (!deleted) {
+                 return new Response(JSON.stringify({ message: 'Component not found' }), { status: 404 });
+            }
         }
+
+        // Strip now-dangling references from stored document signatures
+        if (deletedElementIds.length > 0) {
+            try {
+                await removeSignatureElementIdsFromDocuments(deletedElementIds);
+            } catch (cleanupError) {
+                await Log.error('Failed to clean document signatures after component delete', sessionAndUser.user.login, COMPONENT_AREA, cleanupError);
+            }
+        }
+        await Log.info(`Component deleted: ID ${id} (${deletedElementIds.length} elements total)`, sessionAndUser.user.login, COMPONENT_AREA);
+         return new Response(null, { status: 204 });
     } catch (error) {
         await Log.error('Failed to delete component', sessionAndUser.user.login, COMPONENT_AREA, error);
         return new Response(JSON.stringify({ message: 'Failed to delete component' }), { status: 500 });

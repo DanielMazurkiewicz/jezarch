@@ -205,6 +205,8 @@ const searchNotes = (searchRequest: SearchRequest, token: string) => fetchApi<Se
 const createSignatureComponent = (data: CreateSignatureComponentInput, token: string) => fetchApi<SignatureComponent>('/signature/component', 'PUT', data, token);
 const getAllSignatureComponents = (token: string) => fetchApi<SignatureComponent[]>('/signature/components', 'GET', null, token);
 const getSignatureComponentById = (id: number, token: string) => fetchApi<SignatureComponent>(`/signature/component/${id}`, 'GET', null, token);
+// Paired ELEMENT component mirroring the given element (TREE/ELEMENT hierarchies)
+const getSignatureComponentByElementId = (elementId: number, token: string) => fetchApi<SignatureComponent>(`/signature/component/by-element/${elementId}`, 'GET', null, token);
 const updateSignatureComponent = (id: number, data: UpdateSignatureComponentInput, token: string) => fetchApi<SignatureComponent>(`/signature/component/${id}`, 'PATCH', data, token);
 const deleteSignatureComponent = (id: number, token: string) => fetchApi<void>(`/signature/component/${id}`, 'DELETE', null, token);
 const reindexComponentElements = (id: number, token: string) => fetchApi<{ message: string, finalCount: number }>(`/signature/components/id/${id}/reindex`, 'POST', null, token);
@@ -234,6 +236,7 @@ export default {
     createTag, getAllTags, updateTag, deleteTag,
     createNote, getNoteById, updateNote, deleteNote, searchNotes,
     createSignatureComponent, getAllSignatureComponents, getSignatureComponentById,
+    getSignatureComponentByElementId,
     updateSignatureComponent, deleteSignatureComponent, reindexComponentElements,
     createSignatureElement, getSignatureElementById, updateSignatureElement,
     deleteSignatureElement, getElementsByComponent, searchSignatureElements,

@@ -9,6 +9,7 @@ export const signatureTranslationsPL: SignatureTranslationSet = {
   elementsTitle: 'Elementy',
   elementsDescription: 'Zarządzaj indywidualnymi elementami w ramach komponentu sygnatury.',
   newComponentButton: 'Nowy Komponent',
+  newTreeButton: 'Nowe Drzewo',
   newElementButton: 'Nowy Element',
   componentNameLabel: 'Nazwa Komponentu',
   componentDescriptionLabel: 'Opis',

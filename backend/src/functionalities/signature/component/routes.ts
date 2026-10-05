@@ -3,6 +3,7 @@ import {
     createComponentController,
     getAllComponentsController,
     getComponentByIdController,
+    getComponentByElementIdController,
     updateComponentController,
     deleteComponentController,
     reindexComponentElementsController // Import new controller
@@ -16,6 +17,10 @@ export const signatureComponentRoutes = {
         GET: getComponentByIdController,    // Get component by ID
         PATCH: updateComponentController,  // Update component (use PATCH for partial updates)
         DELETE: deleteComponentController, // Delete component
+    },
+    // Paired ELEMENT component of a given element (TREE/ELEMENT hierarchies)
+    '/api/signature/component/by-element/:elementId': {
+        GET: getComponentByElementIdController,
     },
      // New route for re-indexing elements of a specific component
     '/api/signature/components/id/:id/reindex': {

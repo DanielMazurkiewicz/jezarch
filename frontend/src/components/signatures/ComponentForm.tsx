@@ -21,9 +21,13 @@ import { toast } from "sonner"; // Import toast
 interface ComponentFormProps {
   componentToEdit: SignatureComponent | null;
   onSave: () => void;
+  // Kind stored for newly created components. The type itself is not shown in
+  // the form — it is decided by which button opened the dialog
+  // ("Nowy Komponent" -> FLAT, "Nowe Drzewo" -> TREE).
+  defaultType?: 'FLAT' | 'TREE';
 }
 
-const ComponentForm: React.FC<ComponentFormProps> = ({ componentToEdit, onSave }) => {
+const ComponentForm: React.FC<ComponentFormProps> = ({ componentToEdit, onSave, defaultType }) => {
   const { token, preferredLanguage } = useAuth(); // Get preferredLanguage
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -74,6 +78,7 @@ const ComponentForm: React.FC<ComponentFormProps> = ({ componentToEdit, onSave }
             description: data.description ?? undefined, // Backend expects string | undefined
             index_type: data.index_type,
             is_main: data.is_main ?? false,
+            type: defaultType ?? 'FLAT',
         };
         await api.createSignatureComponent(createPayload, token);
       }

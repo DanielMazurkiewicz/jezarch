@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom'; // Import useNavigate
 import { Button } from '@/components/ui/button';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogTrigger } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { PlusCircle } from 'lucide-react';
 import ComponentList from './ComponentList';
 import ComponentForm from './ComponentForm';
@@ -31,6 +31,8 @@ const ComponentsPage: React.FC = () => {
     const [componentsError, setComponentsError] = useState<string | null>(null);
     const [editingComponent, setEditingComponent] = useState<SignatureComponent | null>(null);
     const [isComponentFormOpen, setIsComponentFormOpen] = useState(false);
+    // Kind of the component being created: FLAT ("Nowy Komponent") or TREE ("Nowe Drzewo").
+    const [creatingKind, setCreatingKind] = useState<'FLAT' | 'TREE'>('FLAT');
     const [previewingComponent, setPreviewingComponent] = useState<SignatureComponent | null>(null);
     const [isPreviewOpen, setIsPreviewOpen] = useState(false);
     const [helpOpen, setHelpOpen] = useState(false);
@@ -78,7 +80,8 @@ const ComponentsPage: React.FC = () => {
         setIsPreviewOpen(true);
     }, []);
 
-    const handleCreateComponent = useCallback(() => {
+    const handleCreateComponent = useCallback((kind: 'FLAT' | 'TREE') => {
+        setCreatingKind(kind);
         setEditingComponent(null);
         setIsComponentFormOpen(true);
     }, []);
@@ -125,6 +128,7 @@ const ComponentsPage: React.FC = () => {
     const handleComponentSaveSuccess = useCallback(() => {
         setIsComponentFormOpen(false);
         setEditingComponent(null);
+        setCreatingKind('FLAT');
         toast.success(editingComponent ? t('componentUpdatedSuccess', preferredLanguage) : t('componentCreatedSuccess', preferredLanguage));
         fetchComponents(); // Refetch list after saving
     }, [fetchComponents, editingComponent, preferredLanguage]); // Add preferredLanguage
@@ -154,25 +158,13 @@ const ComponentsPage: React.FC = () => {
                              <CardDescription>{t('clickComponentToViewElements', preferredLanguage)}</CardDescription>
                          </div>
                           <div className='flex items-center gap-2 flex-wrap justify-end'>
-                           {canModify ? (
-                               <Dialog open={isComponentFormOpen} onOpenChange={setIsComponentFormOpen}>
-                                   <DialogTrigger asChild>
-                                       {/* Use translated button text */}
-                                       <Button onClick={handleCreateComponent} size="sm" className='shrink-0'>
-                                           <PlusCircle className="mr-2 h-4 w-4" /> {t('newComponentButton', preferredLanguage)}
-                                       </Button>
-                                   </DialogTrigger>
-                                   <DialogContent className="sm:max-w-[500px]">
-                                        {/* Use translated dialog title */}
-                                        <DialogHeader><DialogTitle>{editingComponent ? t('editComponentDialogTitle', preferredLanguage) : t('createComponentDialogTitle', preferredLanguage)}</DialogTitle><DialogDescription className="sr-only">{editingComponent ? t('editComponentDialogTitle', preferredLanguage) : t('createComponentDialogTitle', preferredLanguage)}</DialogDescription></DialogHeader>
-                                       <ComponentForm componentToEdit={editingComponent} onSave={handleComponentSaveSuccess} />
-                                   </DialogContent>
-                               </Dialog>
-                           ) : (
-                               <Button size="sm" className='shrink-0' disabled title={t('insufficientPermissionsError', preferredLanguage)}>
-                                  <PlusCircle className="mr-2 h-4 w-4" /> {t('newComponentButton', preferredLanguage)}
-                               </Button>
-                           )}
+                           {/* Both buttons open the same dialog; the stored kind differs (FLAT vs TREE) */}
+                           <Button onClick={() => handleCreateComponent('FLAT')} size="sm" className='shrink-0' disabled={!canModify} title={canModify ? undefined : t('insufficientPermissionsError', preferredLanguage)}>
+                               <PlusCircle className="mr-2 h-4 w-4" /> {t('newComponentButton', preferredLanguage)}
+                           </Button>
+                           <Button onClick={() => handleCreateComponent('TREE')} size="sm" className='shrink-0' disabled={!canModify} title={canModify ? undefined : t('insufficientPermissionsError', preferredLanguage)}>
+                               <PlusCircle className="mr-2 h-4 w-4" /> {t('newTreeButton', preferredLanguage)}
+                           </Button>
                            <Button variant="ghost" size="sm" onClick={() => setHelpOpen(true)} title={t('helpButton', preferredLanguage)}>
                                <HelpCircle className="mr-2 h-4 w-4" /> {t('helpButton', preferredLanguage)}
                            </Button>
@@ -199,6 +191,15 @@ const ComponentsPage: React.FC = () => {
                     )}
                 </CardContent>
             </Card>
+
+            {/* Component create/edit dialog (opened by "Nowy Komponent" or "Nowe Drzewo") */}
+            <Dialog open={isComponentFormOpen} onOpenChange={(open) => { setIsComponentFormOpen(open); if (!open) setCreatingKind('FLAT'); }}>
+                <DialogContent className="sm:max-w-[500px]">
+                    {/* Use translated dialog title */}
+                    <DialogHeader><DialogTitle>{editingComponent ? t('editComponentDialogTitle', preferredLanguage) : t('createComponentDialogTitle', preferredLanguage)}</DialogTitle><DialogDescription className="sr-only">{editingComponent ? t('editComponentDialogTitle', preferredLanguage) : t('createComponentDialogTitle', preferredLanguage)}</DialogDescription></DialogHeader>
+                    <ComponentForm componentToEdit={editingComponent} onSave={handleComponentSaveSuccess} defaultType={creatingKind} />
+                </DialogContent>
+            </Dialog>
 
             {/* Element section is removed from this page */}
 

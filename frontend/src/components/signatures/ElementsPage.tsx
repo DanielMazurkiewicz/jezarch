@@ -15,6 +15,7 @@ import ErrorDisplay from '@/components/shared/ErrorDisplay';
 import { useAuth } from '@/hooks/useAuth';
 import api from '@/lib/api';
 import type { SignatureComponent } from '../../../../backend/src/functionalities/signature/component/models';
+import { effectiveComponentType } from '../../../../backend/src/functionalities/signature/component/models';
 import type { SignatureElement, SignatureElementSearchResult } from '../../../../backend/src/functionalities/signature/element/models';
 import type { SearchRequest, SearchResponse, SearchQueryElement } from '../../../../backend/src/utils/search';
 import { toast } from "sonner";
@@ -325,6 +326,12 @@ const ElementsPage: React.FC = () => {
                                  )}
                              </DialogContent>
                           </Dialog>
+                          {/* Re-index the elements currently listed here (TREE/ELEMENT components) */}
+                          {canModify && parentComponent && effectiveComponentType(parentComponent) !== 'FLAT' && (
+                              <Button variant="ghost" size="sm" onClick={() => void handleReindexComponent()} disabled={isReindexing || isElementsLoading} title={t('reindexElementsButtonTooltip', preferredLanguage)}>
+                                  <ListRestart className="mr-2 h-4 w-4" /> {t('reindexButton', preferredLanguage)}
+                              </Button>
+                          )}
                           <Button variant="ghost" size="sm" onClick={() => setHelpOpen(true)} title={t('helpButton', preferredLanguage)}>
                               <HelpCircle className="mr-2 h-4 w-4" /> {t('helpButton', preferredLanguage)}
                           </Button>

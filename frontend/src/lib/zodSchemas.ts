@@ -112,6 +112,8 @@ export const elementFormSchema = z.object({
     description: z.string().max(500).optional().nullable(),
     index: z.string().max(20, "Index override too long").optional().nullable(),
     parentIds: z.array(z.number().int().positive()).optional().default([]),
+    // Index formatting for the element's paired component (TREE/ELEMENT components only)
+    index_type: z.enum(["dec", "roman", "small_char", "capital_char"]).optional(),
 });
 export type ElementFormData = z.infer<typeof elementFormSchema>;
 

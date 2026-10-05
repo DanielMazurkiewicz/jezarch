@@ -26,6 +26,27 @@ export const actualDbPath = CmdParams.dbPath
 // imports this binding directly. All consumers share this single connection.
 export const db = new Database(actualDbPath);
 
+/**
+ * Runs an async function inside an explicit transaction.
+ * bun's `db.transaction()` does not await async callbacks, so this helper
+ * provides real BEGIN/COMMIT/ROLLBACK semantics for awaited work.
+ */
+export async function runInTransaction<T>(fn: () => Promise<T>): Promise<T> {
+    await db.run('BEGIN');
+    try {
+        const result = await fn();
+        await db.run('COMMIT');
+        return result;
+    } catch (error) {
+        try {
+            await db.run('ROLLBACK');
+        } catch (rollbackError) {
+            console.error('Failed to roll back transaction:', rollbackError);
+        }
+        throw error;
+    }
+}
+
 /** Close the shared connection (used by graceful shutdown). */
 export function closeDatabase() {
     try {

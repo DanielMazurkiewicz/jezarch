@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { SignatureComponent } from '../component/models'; // Import component model
+import { SignatureComponent, SignatureComponentIndexType } from '../component/models'; // Import component model
 
 export interface SignatureElement {
     signatureElementId?: number;
@@ -25,6 +25,7 @@ export const createSignatureElementSchema = z.object({
     description: z.string().max(500, "Description too long").optional(),
     index: z.string().max(255, "Index too long").optional(), // Max length for index
     parentIds: z.array(z.number().int().positive()).optional().default([]), // Array of parent element IDs
+    index_type: SignatureComponentIndexType.optional(), // Index formatting for the paired component (TREE/ELEMENT)
 });
 
 // Schema for update input (componentId usually shouldn't change, parents can)
@@ -33,6 +34,7 @@ export const updateSignatureElementSchema = z.object({
     description: z.string().max(500, "Description too long").optional().nullable(), // Allow setting to null
     index: z.string().max(255, "Index too long").optional().nullable(), // Allow setting index to null
     parentIds: z.array(z.number().int().positive()).optional(), // Allow updating parents
+    index_type: SignatureComponentIndexType.optional(), // Index formatting for the paired component (TREE/ELEMENT)
     // isDeleted: z.boolean().optional(), // If soft delete is added
 });
 

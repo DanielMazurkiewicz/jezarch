@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { useParams, useNavigate, Link, useSearchParams } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogTrigger } from '@/components/ui/dialog';
-import { PlusCircle, ArrowLeft, ChevronRight, SlidersHorizontal } from 'lucide-react';
+import { PlusCircle, ArrowLeft, ChevronRight, SlidersHorizontal, ListRestart } from 'lucide-react';
 import ElementList from './ElementList';
 import ElementForm from './ElementForm';
 import ElementPreviewDialog from './ElementPreviewDialog';
@@ -14,6 +14,7 @@ import { useAuth } from '@/hooks/useAuth';
 import api from '@/lib/api';
 import { parseElementPath, elementPathQuery } from '@/lib/elementPath';
 import type { SignatureComponent } from '../../../../backend/src/functionalities/signature/component/models';
+import { effectiveComponentType } from '../../../../backend/src/functionalities/signature/component/models';
 import type { SignatureElement, SignatureElementSearchResult } from '../../../../backend/src/functionalities/signature/element/models';
 import type { SearchRequest, SearchQueryElement } from '../../../../backend/src/utils/search';
 import { toast } from "sonner";
@@ -54,6 +55,14 @@ const ElementChildrenPage: React.FC = () => {
     // All components (for the component column and the create-form picker)
     const [componentsById, setComponentsById] = useState<Map<number, SignatureComponent>>(new Map());
 
+    // The current element's own component — may be an internal ELEMENT mirror
+    // that is not part of the public component list, so it needs resolving.
+    const [currentElementComponent, setCurrentElementComponent] = useState<SignatureComponent | null>(null);
+    // The paired ELEMENT component mirroring the current element (TREE/ELEMENT
+    // hierarchies): its elements are exactly the children shown on this page.
+    const [correspondingComponent, setCorrespondingComponent] = useState<SignatureComponent | null>(null);
+    const [isReindexing, setIsReindexing] = useState(false);
+
     // --- Children State ---
     const [elements, setElements] = useState<SignatureElementSearchResult[]>([]);
     const [isElementsLoading, setIsElementsLoading] = useState(false);
@@ -68,6 +77,55 @@ const ElementChildrenPage: React.FC = () => {
     const [currentChildrenPage, setCurrentChildrenPage] = useState(1);
     const [totalChildren, setTotalChildren] = useState(0);
     const [totalChildrenPages, setTotalChildrenPages] = useState(1);
+
+    // Resolve the component that owns the current element — paired ELEMENT
+    // components are absent from the public list, so fetch them by id.
+    useEffect(() => {
+        let cancelled = false;
+        const id = currentElement?.signatureComponentId;
+        if (id === undefined) {
+            setCurrentElementComponent(null);
+            return;
+        }
+        const existing = componentsById.get(id);
+        if (existing) {
+            setCurrentElementComponent(existing);
+            return;
+        }
+        if (!token) return;
+        api.getSignatureComponentById(id, token)
+            .then(comp => { if (!cancelled) setCurrentElementComponent(comp); })
+            .catch(() => { if (!cancelled) setCurrentElementComponent(null); });
+        return () => { cancelled = true; };
+    }, [currentElement?.signatureComponentId, componentsById, token]);
+
+    const isTreeChildren = currentElementComponent ? effectiveComponentType(currentElementComponent) !== 'FLAT' : false;
+
+    // The paired ELEMENT component mirroring the current element: its elements
+    // are exactly the children shown on this page.
+    useEffect(() => {
+        let cancelled = false;
+        const elId = currentElement?.signatureElementId;
+        if (!isTreeChildren || elId === undefined || !token) {
+            setCorrespondingComponent(null);
+            return;
+        }
+        api.getSignatureComponentByElementId(elId, token)
+            .then(comp => { if (!cancelled) setCorrespondingComponent(comp); })
+            .catch(() => { if (!cancelled) setCorrespondingComponent(null); });
+        return () => { cancelled = true; };
+    }, [isTreeChildren, currentElement?.signatureElementId, token]);
+
+    // Make the paired component available in the map so the component column renders it.
+    useEffect(() => {
+        if (!correspondingComponent || correspondingComponent.signatureComponentId === undefined) return;
+        setComponentsById(prev => {
+            if (prev.get(correspondingComponent.signatureComponentId!)) return prev;
+            const next = new Map(prev);
+            next.set(correspondingComponent.signatureComponentId!, correspondingComponent);
+            return next;
+        });
+    }, [correspondingComponent]);
 
     // Fetch all components (for the component column + create-form picker)
     useEffect(() => {
@@ -188,14 +246,22 @@ const ElementChildrenPage: React.FC = () => {
     }, [handleBreadcrumbNavigate, pathIds.length, navigate, componentId]);
 
     // --- Element CRUD Callbacks ---
-    const handleEditElement = useCallback((element: SignatureElement) => {
+    const handleEditElement = useCallback(async (element: SignatureElement) => {
         if (!canModify) { toast.error(t('insufficientPermissionsError', preferredLanguage)); return; }
-        const comp = componentsById.get(element.signatureComponentId);
+        let comp = componentsById.get(element.signatureComponentId);
+        // Paired ELEMENT components are not part of the standard list — resolve by id.
+        if (!comp && element.signatureComponentId !== undefined && token) {
+            try {
+                comp = await api.getSignatureComponentById(element.signatureComponentId, token);
+            } catch (err) {
+                console.error('Failed to load element component:', err);
+            }
+        }
         if (!comp) { toast.error(t('componentContextMissingError', preferredLanguage)); return; }
         setEditingElement(element);
         setEditingComponent(comp);
         setIsElementFormOpen(true);
-    }, [canModify, componentsById, preferredLanguage]);
+    }, [canModify, componentsById, token, preferredLanguage]);
 
     const handlePreviewElement = useCallback((element: SignatureElement) => {
         setPreviewingElement(element);
@@ -205,10 +271,30 @@ const ElementChildrenPage: React.FC = () => {
     const handleCreateElement = useCallback(() => {
         if (!canModify) { toast.error(t('insufficientPermissionsError', preferredLanguage)); return; }
         if (!currentElement) { toast.warning(t('parentComponentNotLoadedWarning', preferredLanguage)); return; }
+        if (isTreeChildren && !correspondingComponent) {
+            toast.warning(t('componentContextMissingError', preferredLanguage));
+            return;
+        }
         setEditingElement(null);
-        setEditingComponent(null);
+        setEditingComponent(isTreeChildren ? correspondingComponent : null);
         setIsElementFormOpen(true);
-    }, [canModify, currentElement, preferredLanguage]);
+    }, [canModify, currentElement, isTreeChildren, correspondingComponent, preferredLanguage]);
+
+    const handleReindexChildren = useCallback(async () => {
+        if (!correspondingComponent?.signatureComponentId || !token) return;
+        if (!window.confirm(t('confirmReindexComponentMessage', preferredLanguage, { componentId: correspondingComponent.signatureComponentId }))) return;
+        setIsReindexing(true);
+        try {
+            await api.reindexComponentElements(correspondingComponent.signatureComponentId, token);
+            toast.success(t('componentReindexedSuccess', preferredLanguage));
+            await fetchChildren(currentChildrenPage, elementSearchQuery);
+        } catch (err: any) {
+            const msg = err.message || t('componentReindexFailedError', preferredLanguage);
+            toast.error(t('errorMessageTemplate', preferredLanguage, { message: msg }));
+        } finally {
+            setIsReindexing(false);
+        }
+    }, [correspondingComponent, token, preferredLanguage, currentChildrenPage, elementSearchQuery, fetchChildren]);
 
     const handleDeleteElement = useCallback(async (elementIdToDelete: number) => {
         if (!canModify) { toast.error(t('insufficientPermissionsError', preferredLanguage)); return; }
@@ -261,12 +347,16 @@ const ElementChildrenPage: React.FC = () => {
         setCurrentChildrenPage(newPage);
     }, []);
 
-    // Default component for the create form: when sibling elements already exist,
-    // follow the first one so the new element lands with its siblings; otherwise
-    // fall back to the current element's own component.
-    const firstSibling = elements.length > 0 ? elements[0] : undefined;
-    const defaultComponentId = firstSibling?.signatureComponentId ?? currentElement?.signatureComponentId;
-    const createComponent = defaultComponentId !== undefined ? (componentsById.get(defaultComponentId) ?? null) : null;
+    // Create-form component: in TREE/ELEMENT hierarchies children belong to the
+    // paired ELEMENT component (its index format applies); otherwise follow the
+    // first sibling's component, falling back to the current element's own one.
+    const createComponent = isTreeChildren
+        ? correspondingComponent
+        : (() => {
+            const firstSibling = elements.length > 0 ? elements[0] : undefined;
+            const defaultComponentId = firstSibling?.signatureComponentId ?? currentElement?.signatureComponentId;
+            return defaultComponentId !== undefined ? (componentsById.get(defaultComponentId) ?? null) : null;
+        })();
     // While the initial children fetch is in flight no siblings are known yet —
     // keep the create button disabled so the default component never falls back
     // to the parent's one prematurely.
@@ -342,7 +432,7 @@ const ElementChildrenPage: React.FC = () => {
                           </Button>
                           <Dialog open={isElementFormOpen} onOpenChange={setIsElementFormOpen}>
                              <DialogTrigger asChild>
-                                 <Button onClick={handleCreateElement} size="sm" className='shrink-0' disabled={!canModify || isInitialChildrenLoad} title={!canModify ? t('insufficientPermissionsError', preferredLanguage) : ''}>
+                                 <Button onClick={handleCreateElement} size="sm" className='shrink-0' disabled={!canModify || isInitialChildrenLoad || (isTreeChildren && !correspondingComponent)} title={!canModify ? t('insufficientPermissionsError', preferredLanguage) : ''}>
                                      <PlusCircle className="mr-2 h-4 w-4" /> {t('newElementButton', preferredLanguage)}
                                  </Button>
                              </DialogTrigger>
@@ -356,18 +446,38 @@ const ElementChildrenPage: React.FC = () => {
                                          onSave={handleElementSaveSuccess}
                                        />
                                  )}
-                                 {/* Create form: extended with component picker + read-only fixed parent */}
+                                 {/* Create form: in tree mode the paired component is fixed (no picker, no parents);
+                                     in flat mode keep the component picker + read-only fixed parent */}
                                  {isElementFormOpen && !editingElement && currentElement && createComponent && (
-                                      <ElementForm
-                                         elementToEdit={null}
-                                         currentComponent={createComponent}
-                                         fixedParent={currentElement}
-                                         allowComponentPicker
-                                         onSave={handleElementSaveSuccess}
-                                       />
+                                      isTreeChildren ? (
+                                          <ElementForm
+                                             elementToEdit={null}
+                                             currentComponent={createComponent}
+                                             onSave={handleElementSaveSuccess}
+                                           />
+                                      ) : (
+                                          <ElementForm
+                                             elementToEdit={null}
+                                             currentComponent={createComponent}
+                                             fixedParent={currentElement}
+                                             allowComponentPicker
+                                             onSave={handleElementSaveSuccess}
+                                           />
+                                      )
                                  )}
                              </DialogContent>
                           </Dialog>
+                          {isTreeChildren && correspondingComponent?.signatureComponentId !== undefined && (
+                              <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={handleReindexChildren}
+                                  disabled={!canModify || isReindexing}
+                                  title={t('reindexElementsButtonTooltip', preferredLanguage)}
+                              >
+                                  <ListRestart className="mr-2 h-4 w-4" /> {t('reindexButton', preferredLanguage)}
+                              </Button>
+                          )}
                           </div>
                        </div>
                  </CardHeader>

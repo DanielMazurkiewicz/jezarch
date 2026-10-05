@@ -5,7 +5,7 @@ import { Log } from '../../log/db';
 import { buildUpdateFields } from '../../../utils/sql';
 import { sqliteNow } from '../../../utils/sqlite';
 import { SearchOnCustomFieldHandlerResult, SearchQueryElement } from '../../../utils/search';
-import { dbToComponent } from '../component/db';
+import { dbToComponent, getComponentByElementId, deleteComponent } from '../component/db';
 import type { ArchiveDocumentSearchResult } from '../../archive/document/models'; // IMPORT CORRECT TYPE
 
 // Initialization function (called in initializeDatabase)
@@ -224,6 +224,41 @@ export async function deleteElement(id: number): Promise<boolean> {
          await Log.error('Failed to delete signature element', 'system', 'database', { id, error });
          throw error;
     }
+}
+
+/**
+ * Deletes an element together with its whole tree: the element's paired
+ * ELEMENT component (which holds the element's children in TREE/ELEMENT
+ * hierarchies) and all descendants. Returns the ids of every deleted element,
+ * including the root — callers use them to clean up document references.
+ * Plain FLAT elements simply return their own id.
+ */
+export async function deleteElementWithTree(elementId: number): Promise<number[]> {
+    const deletedIds: number[] = [];
+
+    // Children of a tree node live inside its paired ELEMENT component; remove
+    // their subtrees first, then the paired component itself.
+    const pairedComponent = await getComponentByElementId(elementId);
+    if (pairedComponent?.signatureComponentId !== undefined) {
+        const children = db.prepare(
+            `SELECT signatureElementId FROM signature_elements WHERE signatureComponentId = ?`
+        ).all(pairedComponent.signatureComponentId) as { signatureElementId: number }[];
+        for (const child of children) {
+            deletedIds.push(...await deleteElementWithTree(child.signatureElementId));
+        }
+        const pairedDeleted = await deleteComponent(pairedComponent.signatureComponentId);
+        if (!pairedDeleted) {
+            throw new Error(`Paired element component ${pairedComponent.signatureComponentId} could not be deleted.`);
+        }
+    }
+
+    // Finally remove the element itself.
+    const deleted = await deleteElement(elementId);
+    if (!deleted) {
+        throw new Error(`Element with ID ${elementId} not found during tree deletion.`);
+    }
+    deletedIds.push(elementId);
+    return deletedIds;
 }
 
 // --- Parent Relationship Management ---

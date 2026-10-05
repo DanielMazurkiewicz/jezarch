@@ -9,6 +9,8 @@ import { sqliteNow } from '../../../utils/sqlite';
 // schema is topped up with ALTER TABLE ADD COLUMN when a column is missing.
 const ADDITIONAL_COLUMNS: [string, string][] = [
     ['is_main', 'BOOLEAN NOT NULL DEFAULT 0'],
+    ['type', "TEXT NOT NULL DEFAULT 'FLAT' CHECK(type IN ('FLAT','TREE','ELEMENT'))"],
+    ['element_id', 'INTEGER'],
 ];
 
 async function ensureSignatureComponentColumns() {
@@ -23,22 +25,30 @@ async function ensureSignatureComponentColumns() {
 
 // Initialization function (called in initializeDatabase)
 export async function initializeSignatureComponentTable() {
+    // Name uniqueness is enforced only for non-ELEMENT components (see the partial
+    // index below): ELEMENT components are internal mirrors of elements and may
+    // share names with each other or with regular components.
     await db.exec(`
         CREATE TABLE IF NOT EXISTS signature_components (
             signatureComponentId INTEGER PRIMARY KEY AUTOINCREMENT,
-            name TEXT NOT NULL UNIQUE,
+            name TEXT NOT NULL,
             description TEXT,
             index_count INTEGER NOT NULL DEFAULT 0, -- Added field
             index_type TEXT NOT NULL DEFAULT 'dec' CHECK(index_type IN ('dec', 'roman', 'small_char', 'capital_char')), -- Added field with constraint
             is_main BOOLEAN NOT NULL DEFAULT 0, -- Marks a component as part of the main signature system
+            type TEXT NOT NULL DEFAULT 'FLAT' CHECK(type IN ('FLAT','TREE','ELEMENT')), -- Component kind
+            element_id INTEGER, -- For type ELEMENT: id of the mirrored element
             createdOn DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
             modifiedOn DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
             -- isDeleted BOOLEAN NOT NULL DEFAULT FALSE -- For soft deletes
         )
     `);
     await ensureSignatureComponentColumns();
-    // Optional: Index on name if lookups are frequent
-    await db.exec(`CREATE UNIQUE INDEX IF NOT EXISTS idx_signature_component_name ON signature_components (name);`);
+    // Replace the legacy global unique index on name (either the named index or an
+    // autoindex from the original inline UNIQUE constraint) with a partial one.
+    await db.exec(`DROP INDEX IF EXISTS idx_signature_component_name;`);
+    await db.exec(`DROP INDEX IF EXISTS sqlite_autoindex_signature_components_1;`);
+    await db.exec(`CREATE UNIQUE INDEX IF NOT EXISTS idx_signature_component_name_non_element ON signature_components (name) WHERE type != 'ELEMENT';`);
 }
 
 // --- Helper ---
@@ -51,6 +61,8 @@ export const dbToComponent = (data: any): SignatureComponent | undefined => {
         index_count: data.index_count, // Map new field
         index_type: data.index_type as SignatureComponentIndexType, // Map new field with type assertion
         is_main: Boolean(data.is_main), // Map main component flag
+        type: (data.type ?? 'FLAT') as SignatureComponent['type'], // Missing values are treated as FLAT
+        element_id: data.element_id ?? null,
         createdOn: new Date(data.createdOn),
         modifiedOn: new Date(data.modifiedOn),
         // isDeleted: Boolean(data.isDeleted), // If soft delete added
@@ -59,21 +71,30 @@ export const dbToComponent = (data: any): SignatureComponent | undefined => {
 
 // --- Operations ---
 
-// Updated createComponent to handle index_type and is_main
-export async function createComponent(name: string, description?: string, index_type: SignatureComponentIndexType = 'dec', is_main: boolean = false): Promise<SignatureComponent> {
+// Updated createComponent to handle index_type, is_main and the component kind.
+// `type`/`element_id` are mostly used internally (ELEMENT mirrors created by the
+// element endpoints); public callers pass FLAT or TREE with element_id null.
+export async function createComponent(
+    name: string,
+    description?: string,
+    index_type: SignatureComponentIndexType = 'dec',
+    is_main: boolean = false,
+    type: SignatureComponent['type'] = 'FLAT',
+    element_id: number | null = null
+): Promise<SignatureComponent> {
     try {
         const now = sqliteNow();
         const statement = db.prepare(
-            `INSERT INTO signature_components (name, description, index_type, is_main, createdOn, modifiedOn) -- index_count uses DEFAULT 0
-             VALUES (?, ?, ?, ?, ?, ?)
+            `INSERT INTO signature_components (name, description, index_type, is_main, type, element_id, createdOn, modifiedOn) -- index_count uses DEFAULT 0
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?)
              RETURNING *`
         );
         // Use null for undefined description to store SQL NULL
-        const newComponent = statement.get(name, description ?? null, index_type, is_main, now ?? null, now ?? null);
+        const newComponent = statement.get(name, description ?? null, index_type, is_main, type ?? 'FLAT', element_id, now ?? null, now ?? null);
         return dbToComponent(newComponent) as SignatureComponent; // Known to exist
     } catch (error: any) {
         await Log.error('Failed to create signature component', 'system', 'database', { name, error });
-        if (error.message?.includes('UNIQUE constraint failed: signature_components.name')) {
+        if (error.message?.includes('UNIQUE constraint failed')) {
              throw new Error(`Component name '${name}' already exists.`);
         }
         throw error; // Re-throw for controller
@@ -94,9 +115,47 @@ export async function getComponentByName(name: string): Promise<SignatureCompone
 
 export async function getAllComponents(): Promise<SignatureComponent[]> {
      // Add "WHERE isDeleted = FALSE" if using soft deletes
-    const statement = db.prepare(`SELECT * FROM signature_components ORDER BY name`);
+    // Internal ELEMENT mirrors must never appear in component lists.
+    const statement = db.prepare(`SELECT * FROM signature_components WHERE type != 'ELEMENT' ORDER BY name`);
     const results = statement.all();
     return results.map(dbToComponent).filter(c => c !== undefined) as SignatureComponent[];
+}
+
+// Gets the internal ELEMENT component that mirrors the given element, if any.
+export async function getComponentByElementId(elementId: number): Promise<SignatureComponent | undefined> {
+    const statement = db.prepare(`SELECT * FROM signature_components WHERE element_id = ?`);
+    return dbToComponent(statement.get(elementId));
+}
+
+// Creates or updates the internal ELEMENT component mirroring an element.
+// The mirror always keeps the same name as the element and stores its id;
+// `index_type` is only applied when provided (on update it may be kept).
+export async function upsertElementComponent(
+    elementId: number,
+    name: string,
+    index_type?: SignatureComponentIndexType
+): Promise<SignatureComponent> {
+    const existing = await getComponentByElementId(elementId);
+    if (existing) {
+        const now = sqliteNow();
+        const statement = db.prepare(
+            `UPDATE signature_components
+             SET name = ?, index_type = ?, modifiedOn = ?
+             WHERE element_id = ?
+             RETURNING *`
+        );
+        const updated = statement.get(name, index_type ?? existing.index_type, now ?? null, elementId);
+        if (!updated) throw new Error(`Element component for element ${elementId} could not be updated.`);
+        return dbToComponent(updated) as SignatureComponent;
+    }
+    return createComponent(name, undefined, index_type ?? 'dec', false, 'ELEMENT', elementId);
+}
+
+// Deletes the internal ELEMENT component mirroring the given element (if any).
+export async function deleteComponentByElementId(elementId: number): Promise<boolean> {
+    const existing = await getComponentByElementId(elementId);
+    if (!existing?.signatureComponentId) return false;
+    return deleteComponent(existing.signatureComponentId);
 }
 
 export async function updateComponent(

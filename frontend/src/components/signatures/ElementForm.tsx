@@ -15,6 +15,7 @@ import { useAuth } from '@/hooks/useAuth';
 import api from '@/lib/api';
 import type { SignatureElement, CreateSignatureElementInput, UpdateSignatureElementInput } from '../../../../backend/src/functionalities/signature/element/models'; // Import backend input types
 import type { SignatureComponent } from '../../../../backend/src/functionalities/signature/component/models';
+import { effectiveComponentType } from '../../../../backend/src/functionalities/signature/component/models';
 import { toast } from "sonner";
 import { cn } from '@/lib/utils'; // Import cn
 import { Badge } from '@/components/ui/badge'; // Import Badge
@@ -68,6 +69,15 @@ const ElementForm: React.FC<ElementFormProps> = ({ elementToEdit, currentCompone
         ? (availableComponents.find(c => c.signatureComponentId === selectedComponentId) ?? currentComponent)
         : currentComponent;
 
+    // TREE/ELEMENT mode: the component and parent fields are hidden (the backend
+    // derives them from the component kind), and an index-formatting field is
+    // shown instead — its value is stored on the element's paired ELEMENT component.
+    const activeType = effectiveComponentType(activeComponent);
+    const isTreeMode = activeType === 'TREE' || activeType === 'ELEMENT';
+
+    // The internal ELEMENT component mirroring the element being edited (tree mode only).
+    const [correspondingComponent, setCorrespondingComponent] = useState<SignatureComponent | null>(null);
+
     // Parent locked to a fixed element (create mode only)
     const effectiveFixedParent = !elementToEdit ? (fixedParent ?? null) : null;
 
@@ -79,27 +89,48 @@ const ElementForm: React.FC<ElementFormProps> = ({ elementToEdit, currentCompone
             description: '',
             index: '', // Use empty string as default for nullable string
             parentIds: [],
+            index_type: undefined, // Paired-component index formatting (tree mode only)
         },
     });
 
-     // Fetch parent IDs and populate form when editing
+     // Fetch details and populate the form when editing; reset when creating.
      useEffect(() => {
-        const fetchParentsAndPopulate = async () => {
+        const populateForm = async () => {
             if (elementToEdit?.signatureElementId && token) {
                  setIsFetchingDetails(true);
                  setError(null);
                 try {
-                    // Fetch element details including parent IDs
-                    const fullElement = await api.getSignatureElementById(elementToEdit.signatureElementId, ['parents'], token);
-                    const parentIds = fullElement.parentElements?.map(p => p.signatureElementId!) ?? [];
+                    if (isTreeMode) {
+                        // Tree mode: parents are derived by the backend from the
+                        // component kind; fetch the paired component for the
+                        // index-formatting field instead.
+                        const fullElement = await api.getSignatureElementById(elementToEdit.signatureElementId, [], token);
+                        const paired = await api.getSignatureComponentByElementId(elementToEdit.signatureElementId, token)
+                            .catch((err: any) => { console.error('Failed to load paired component', err); return null; });
+                        setCorrespondingComponent(paired);
+                        reset({
+                             name: fullElement.name || '',
+                             description: fullElement.description || '',
+                             index: fullElement.index || '', // Use fetched index
+                             parentIds: [], // Not editable in tree mode
+                             index_type: paired?.index_type ?? activeComponent.index_type,
+                        });
+                        setSelectedParentIds([]);
+                    } else {
+                        // Fetch element details including parent IDs
+                        const fullElement = await api.getSignatureElementById(elementToEdit.signatureElementId, ['parents'], token);
+                        const parentIds = fullElement.parentElements?.map(p => p.signatureElementId!) ?? [];
 
-                    reset({
-                         name: fullElement.name || '',
-                         description: fullElement.description || '',
-                         index: fullElement.index || '', // Use fetched index
-                         parentIds: parentIds, // Populate RHF state too
-                     });
-                    setSelectedParentIds(parentIds); // Sync local state for selector
+                        setCorrespondingComponent(null);
+                        reset({
+                             name: fullElement.name || '',
+                             description: fullElement.description || '',
+                             index: fullElement.index || '', // Use fetched index
+                             parentIds: parentIds, // Populate RHF state too
+                             index_type: undefined,
+                        });
+                        setSelectedParentIds(parentIds); // Sync local state for selector
+                    }
                 } catch (err: any) {
                     const msg = err.message || t('elementLoadDetailsError', preferredLanguage); // Use translated error
                     setError(msg);
@@ -110,6 +141,7 @@ const ElementForm: React.FC<ElementFormProps> = ({ elementToEdit, currentCompone
                          description: elementToEdit?.description || '',
                          index: elementToEdit?.index || '',
                          parentIds: [],
+                         index_type: isTreeMode ? activeComponent.index_type : undefined,
                      });
                      setSelectedParentIds([]);
                 } finally {
@@ -118,12 +150,18 @@ const ElementForm: React.FC<ElementFormProps> = ({ elementToEdit, currentCompone
 
             } else {
                 const fixedParentId = effectiveFixedParent?.signatureElementId;
-                reset({ name: '', description: '', index: '', parentIds: fixedParentId ? [fixedParentId] : [] });
+                setCorrespondingComponent(null);
+                reset({
+                    name: '', description: '', index: '',
+                    parentIds: fixedParentId ? [fixedParentId] : [],
+                    // New tree elements inherit the owning component's formatting as the default.
+                    index_type: isTreeMode ? activeComponent.index_type : undefined,
+                });
                 setSelectedParentIds(fixedParentId ? [fixedParentId] : []); setError(null); setIsFetchingDetails(false);
             }
         };
-        fetchParentsAndPopulate();
-     }, [elementToEdit, reset, token, effectiveFixedParent]); // preferredLanguage intentionally omitted: re-populating on locale switch would wipe unsaved input
+        populateForm();
+     }, [elementToEdit, reset, token, effectiveFixedParent, isTreeMode, activeComponent.signatureComponentId]); // preferredLanguage intentionally omitted: re-populating on locale switch would wipe unsaved input
 
 
      // Update RHF's parentIds when the selector state changes (for validation)
@@ -132,7 +170,6 @@ const ElementForm: React.FC<ElementFormProps> = ({ elementToEdit, currentCompone
      }, [selectedParentIds, setValue]);
 
     // Use the inferred type for 'data'
-    // Renamed from onSubmit to avoid conflict with form prop, though not strictly necessary here
     const handleFormSubmit: SubmitHandler<ElementFormData> = async (data) => {
         if (!token || !currentComponent.signatureComponentId) {
             setError(t('componentContextMissingError', preferredLanguage)); // Use translated error
@@ -142,57 +179,91 @@ const ElementForm: React.FC<ElementFormProps> = ({ elementToEdit, currentCompone
         setError(null);
         let savedElementResult: SignatureElement | null = null; // To store the result
 
-        // Prepare payloads based on backend input types
-        const finalParentIds = effectiveFixedParent?.signatureElementId
-            ? [effectiveFixedParent.signatureElementId] // Locked parent from the children view
-            : selectedParentIds;
-
-        const basePayload = {
-             name: data.name,
-             description: data.description ?? undefined, // Send undefined if null/empty
-             // Send index only if it's not an empty string, otherwise let backend auto-generate
-             index: data.index?.trim() ? data.index.trim() : undefined,
-             parentIds: finalParentIds,
-        };
-
-        const createPayload: CreateSignatureElementInput = {
-            ...basePayload,
-            signatureComponentId: activeComponent.signatureComponentId!,
-        };
-
-        const updatePayload: UpdateSignatureElementInput = {
-            // Only send fields that might have changed
-            ...(data.name !== elementToEdit?.name && { name: data.name }),
-            ...(data.description !== elementToEdit?.description && { description: data.description ?? null }), // send null to clear
-            ...(data.index !== elementToEdit?.index && { index: data.index?.trim() ? data.index.trim() : null }), // send null to clear override
-            // parentIds are always sent for update to handle additions/removals
-            parentIds: selectedParentIds,
-        };
-
+        const trimmedIndex = data.index?.trim() ? data.index.trim() : undefined;
 
         try {
-            if (elementToEdit?.signatureElementId) {
-                 // Check if there are any actual changes to update (excluding parentIds which are always sent)
-                 const hasCoreChanges = Object.keys(updatePayload).some(key => key !== 'parentIds');
-                 // Fetch original parent IDs to compare accurately - ensure this await is inside the try block
-                 let originalParentIds: number[] = [];
-                 if (token) { // Check token before API call
-                    originalParentIds = elementToEdit.parentElements?.map(p => p.signatureElementId!) ??
-                                            (await api.getSignatureElementById(elementToEdit.signatureElementId, ['parents'], token))
-                                             .parentElements?.map(p => p.signatureElementId!) ?? [];
-                 }
-
-
-                 if (hasCoreChanges || JSON.stringify([...selectedParentIds].sort()) !== JSON.stringify([...originalParentIds].sort())) {
-                     savedElementResult = await api.updateSignatureElement(elementToEdit.signatureElementId, updatePayload, token);
-                 } else {
-                     console.log("No changes detected for element update.");
-                     toast.info(t('elementNoChangesDetected', preferredLanguage)); // Use translated info message
-                     // Pass back the original element if no changes were made but save was clicked
-                     savedElementResult = elementToEdit;
-                 }
+            if (isTreeMode) {
+                // Tree mode: the backend derives parents from the component kind and
+                // stores name + index_type on the paired ELEMENT component.
+                if (elementToEdit?.signatureElementId) {
+                    const updatePayload: UpdateSignatureElementInput = {
+                        ...(data.name !== elementToEdit.name && { name: data.name }),
+                        ...(data.description !== elementToEdit.description && { description: data.description ?? null }), // send null to clear
+                        ...(data.index !== elementToEdit.index && { index: trimmedIndex ?? null }), // send null to clear override
+                        // Sync the paired component's formatting when it changed
+                        ...(data.index_type !== undefined
+                            && data.index_type !== (correspondingComponent?.index_type ?? activeComponent.index_type)
+                            && { index_type: data.index_type }),
+                    };
+                    if (Object.keys(updatePayload).length > 0) {
+                        savedElementResult = await api.updateSignatureElement(elementToEdit.signatureElementId, updatePayload, token);
+                    } else {
+                        console.log("No changes detected for element update.");
+                        toast.info(t('elementNoChangesDetected', preferredLanguage)); // Use translated info message
+                        savedElementResult = elementToEdit;
+                    }
+                } else {
+                    const createPayload: CreateSignatureElementInput = {
+                        signatureComponentId: activeComponent.signatureComponentId!,
+                        name: data.name,
+                        description: data.description ?? undefined, // Send undefined if null/empty
+                        index: trimmedIndex, // Let backend auto-generate when empty
+                        parentIds: [], // Parents are derived server-side for TREE/ELEMENT
+                        index_type: data.index_type, // Stored on the paired ELEMENT component
+                    };
+                    savedElementResult = await api.createSignatureElement(createPayload, token);
+                }
             } else {
-                 savedElementResult = await api.createSignatureElement(createPayload, token);
+                // FLAT mode — unchanged legacy behavior.
+                const finalParentIds = effectiveFixedParent?.signatureElementId
+                    ? [effectiveFixedParent.signatureElementId] // Locked parent from the children view
+                    : selectedParentIds;
+
+                const basePayload = {
+                     name: data.name,
+                     description: data.description ?? undefined, // Send undefined if null/empty
+                     // Send index only if it's not an empty string, otherwise let backend auto-generate
+                     index: trimmedIndex,
+                     parentIds: finalParentIds,
+                };
+
+                const createPayload: CreateSignatureElementInput = {
+                    ...basePayload,
+                    signatureComponentId: activeComponent.signatureComponentId!,
+                };
+
+                const updatePayload: UpdateSignatureElementInput = {
+                    // Only send fields that might have changed
+                    ...(data.name !== elementToEdit?.name && { name: data.name }),
+                    ...(data.description !== elementToEdit?.description && { description: data.description ?? null }), // send null to clear
+                    ...(data.index !== elementToEdit?.index && { index: trimmedIndex ?? null }), // send null to clear override
+                    // parentIds are always sent for update to handle additions/removals
+                    parentIds: selectedParentIds,
+                };
+
+                if (elementToEdit?.signatureElementId) {
+                     // Check if there are any actual changes to update (excluding parentIds which are always sent)
+                     const hasCoreChanges = Object.keys(updatePayload).some(key => key !== 'parentIds');
+                     // Fetch original parent IDs to compare accurately - ensure this await is inside the try block
+                     let originalParentIds: number[] = [];
+                     if (token) { // Check token before API call
+                        originalParentIds = elementToEdit.parentElements?.map(p => p.signatureElementId!) ??
+                                                (await api.getSignatureElementById(elementToEdit.signatureElementId, ['parents'], token))
+                                                 .parentElements?.map(p => p.signatureElementId!) ?? [];
+                     }
+
+
+                     if (hasCoreChanges || JSON.stringify([...selectedParentIds].sort()) !== JSON.stringify([...originalParentIds].sort())) {
+                         savedElementResult = await api.updateSignatureElement(elementToEdit.signatureElementId, updatePayload, token);
+                     } else {
+                         console.log("No changes detected for element update.");
+                         toast.info(t('elementNoChangesDetected', preferredLanguage)); // Use translated info message
+                         // Pass back the original element if no changes were made but save was clicked
+                         savedElementResult = elementToEdit;
+                     }
+                } else {
+                     savedElementResult = await api.createSignatureElement(createPayload, token);
+                }
             }
             onSave(savedElementResult); // Trigger success callback with the result
         } catch (err: any) {
@@ -223,8 +294,9 @@ const ElementForm: React.FC<ElementFormProps> = ({ elementToEdit, currentCompone
 
                  {/* Actual form fields */}
                  <div className="grid gap-4">
-                     {/* Component: picker (create mode with allowComponentPicker) or static display */}
-                     {showComponentPicker ? (
+                     {/* Component: hidden in tree mode (derived by the backend);
+                         otherwise picker (create mode with allowComponentPicker) or static display */}
+                     {!isTreeMode && (showComponentPicker ? (
                          <div className="grid gap-1.5">
                              <Label htmlFor="elem-component">{t('elementListComponentHeader', preferredLanguage)} {t('requiredFieldIndicator', preferredLanguage)}</Label>
                              <Select value={String(selectedComponentId)} onValueChange={(value) => setSelectedComponentId(parseInt(value, 10))} disabled={isLoading}>
@@ -245,7 +317,7 @@ const ElementForm: React.FC<ElementFormProps> = ({ elementToEdit, currentCompone
                      ) : (
                          /* Display Current Component Info */
                          <div className='text-sm p-2 bg-muted rounded border'> {t('elementListComponentHeader', preferredLanguage)}: <Badge variant="secondary">{currentComponent.name}</Badge> ({t('componentBadgeIndexType', preferredLanguage, { type: currentComponent.index_type })}) </div>
-                     )}
+                     ))}
 
                      {/* Form Fields */}
                      <div className="grid gap-1.5">
@@ -264,31 +336,60 @@ const ElementForm: React.FC<ElementFormProps> = ({ elementToEdit, currentCompone
                          <p className='text-xs text-muted-foreground'>{t('elementIndexHint', preferredLanguage)}</p>
                          {errors.index && <p className="text-xs text-destructive">{errors.index.message}</p>}
                      </div>
-                     <div className="grid gap-1.5">
-                         {effectiveFixedParent ? (
-                             // Parent locked to the element being viewed (children view) — read-only
-                             <>
-                                 <Label>{t('elementParentElementsLabel', preferredLanguage)}</Label>
-                                 <div className='flex items-center gap-2 p-3 border rounded bg-muted/30'>
-                                     <Badge variant="secondary">{effectiveFixedParent.index ? `[${effectiveFixedParent.index}] ` : ''}{effectiveFixedParent.name}</Badge>
-                                     <span className="text-xs text-muted-foreground">{t('readOnly', preferredLanguage)}</span>
-                                 </div>
-                                 <p className='text-xs text-muted-foreground'>{t('fixedParentHint', preferredLanguage)}</p>
-                             </>
-                         ) : (
-                             <ElementSelector
-                                 selectedElementIds={selectedParentIds}
-                                 onChange={setSelectedParentIds}
-                                 currentElementId={elementToEdit?.signatureElementId}
-                                 currentComponentId={currentComponent?.signatureComponentId}
-                                 label={t('elementParentElementsLabel', preferredLanguage)}
+
+                     {/* Index formatting (tree mode only): stored on the element's paired ELEMENT component */}
+                     {isTreeMode && (
+                         <div className="grid gap-1.5">
+                             <Label htmlFor="elem-index-type">{t('componentIndexTypeLabel', preferredLanguage)} {t('requiredFieldIndicator', preferredLanguage)}</Label>
+                             <Controller
+                                control={control}
+                                name="index_type"
+                                render={({ field }) => (
+                                   <Select onValueChange={field.onChange} value={field.value ?? activeComponent.index_type}>
+                                      <SelectTrigger id='elem-index-type' aria-invalid={!!errors.index_type} className={cn(errors.index_type && "border-destructive")}>
+                                        <SelectValue placeholder={t('selectPlaceholder', preferredLanguage)} />
+                                      </SelectTrigger>
+                                      <SelectContent>
+                                         <SelectItem value="dec">{t('indexTypeDecimal', preferredLanguage)}</SelectItem>
+                                         <SelectItem value="roman">{t('indexTypeRoman', preferredLanguage)}</SelectItem>
+                                         <SelectItem value="small_char">{t('indexTypeLowerLetter', preferredLanguage)}</SelectItem>
+                                         <SelectItem value="capital_char">{t('indexTypeUpperLetter', preferredLanguage)}</SelectItem>
+                                      </SelectContent>
+                                   </Select>
+                                )}
                              />
-                         )}
-                         <input type="hidden" {...register('parentIds')} />
-                         {errors.parentIds && <p className="text-xs text-destructive">{typeof errors.parentIds.message === 'string' ? errors.parentIds.message : 'Invalid parent selection'}</p>}
-                     </div>
+                             {errors.index_type && <p className="text-xs text-destructive">{errors.index_type.message}</p>}
+                         </div>
+                     )}
+
+                     {/* Parent elements: hidden in tree mode (derived by the backend) */}
+                     {!isTreeMode && (
+                         <div className="grid gap-1.5">
+                             {effectiveFixedParent ? (
+                                 // Parent locked to the element being viewed (children view) — read-only
+                                 <>
+                                     <Label>{t('elementParentElementsLabel', preferredLanguage)}</Label>
+                                     <div className='flex items-center gap-2 p-3 border rounded bg-muted/30'>
+                                         <Badge variant="secondary">{effectiveFixedParent.index ? `[${effectiveFixedParent.index}] ` : ''}{effectiveFixedParent.name}</Badge>
+                                         <span className="text-xs text-muted-foreground">{t('readOnly', preferredLanguage)}</span>
+                                     </div>
+                                     <p className='text-xs text-muted-foreground'>{t('fixedParentHint', preferredLanguage)}</p>
+                                 </>
+                             ) : (
+                                 <ElementSelector
+                                     selectedElementIds={selectedParentIds}
+                                     onChange={setSelectedParentIds}
+                                     currentElementId={elementToEdit?.signatureElementId}
+                                     currentComponentId={currentComponent?.signatureComponentId}
+                                     label={t('elementParentElementsLabel', preferredLanguage)}
+                                 />
+                             )}
+                         </div>
+                     )}
+                     <input type="hidden" {...register('parentIds')} />
+                     {errors.parentIds && <p className="text-xs text-destructive">{typeof errors.parentIds.message === 'string' ? errors.parentIds.message : 'Invalid parent selection'}</p>}
                  </div>
-            </div>
+             </div>
              {/* Fixed Footer Area */}
              <div className="pt-4 pb-1 px-1 border-t flex justify-start shrink-0">
                  <Button
@@ -296,7 +397,7 @@ const ElementForm: React.FC<ElementFormProps> = ({ elementToEdit, currentCompone
                      onClick={handleSubmit(handleFormSubmit)}
                      disabled={isLoading || isFetchingDetails}
                  >
-                      {isLoading ? <LoadingSpinner size="sm" className='mr-2' /> : (elementToEdit ? t('saveButton', preferredLanguage) : <>{t('createButton', preferredLanguage)} {t('elementSingularLabel', preferredLanguage)}</>)}
+                      {isLoading ? <LoadingSpinner size='sm' className='mr-2' /> : (elementToEdit ? t('saveButton', preferredLanguage) : <>{t('createButton', preferredLanguage)} {t('elementSingularLabel', preferredLanguage)}</>)}
                  </Button>
              </div>
         </div>

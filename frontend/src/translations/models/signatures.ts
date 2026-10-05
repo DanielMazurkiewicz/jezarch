@@ -9,6 +9,7 @@ export type SignatureTranslationKey =
   | 'elementsTitle'
   | 'elementsDescription'
   | 'newComponentButton'
+  | 'newTreeButton'
   | 'newElementButton'
   | 'componentNameLabel'
   | 'componentDescriptionLabel'
