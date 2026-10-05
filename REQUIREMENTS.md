@@ -21,7 +21,7 @@ This document outlines the requirements for a web application designed to facili
 *   **Core Functionalities (Main Screen):** The main screen provides access to the following functionalities via a left-side navigation menu with icons and labels:
     *   **Dashboard:** Overview page with welcome message and quick navigation prompts.
     *   **Archive:** Browse, search, create, edit, and disable archival units and documents. Supports batch tagging, topographic/descriptive signature assignment, and tag-based filtering.
-    *   **Signatures:** Define and manage signature components (classification categories like Fonds, Series) and elements (individual items within components). Supports hierarchical parent-child relationships between elements and re-indexing of element indices.
+    *   **Signatures:** Define and manage signature components (classification categories like Fonds, Series) and elements (individual items within components). Supports hierarchical parent-child relationships between elements and re-indexing of element indices. Components come in two user-facing types — flat and tree; in trees each element mirrors its own internal component and parent links are derived automatically.
     *   **Tags:** Create and manage global tags used for organizing documents and notes.
     *   **Notes:** Create, read, update, and delete personal notes. Notes can be shared with other users. Supports tag assignment.
     *   **Users Management:** (Admin Only) — Manage user accounts, roles, tags, passwords, and language preferences.

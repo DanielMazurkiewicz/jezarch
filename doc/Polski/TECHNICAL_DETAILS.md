@@ -58,6 +58,16 @@ Ostateczne, obowiązujące parametry używane przez działającą aplikację są
 
 ---
 
+## Model Danych Sygnatur
+
+*   Komponenty sygnatur mają pole `type`: `FLAT`, `TREE` lub `ELEMENT`. Starsze wiersze bez typu traktowane są jako `FLAT`.
+*   Komponenty `ELEMENT` to wewnętrzne lustra pojedynczych elementów w hierarchiach drzewa: przechowują identyfikator elementu (`element_id`) oraz jego formatowanie indeksu, nigdy nie są zwracane na listach komponentów i są tworzone/aktualizowane wyłącznie przez punkty końcowe elementów.
+*   Unikalność nazw komponentów obowiązuje dla komponentów innych niż `ELEMENT` (częściowy indeks unikalny), dzięki czemu lustra mogą mieć te same nazwy co ich elementy.
+*   Powiązania elementów nadrzędnych przechowywane są w tabeli `signature_element_parents`. Wyprowadzanie rodziców odbywa się po stronie serwera: dla komponentu nadrzędnego typu `TREE` nie są zapisywane żadne rodzice; dla typu `ELEMENT` rodzicem jest element wskazany przez `element_id` lustra; komponenty `FLAT` zapisują żądanych rodziców bez zmian.
+*   Wieloetapowe operacje na sygnaturach (tworzenie/aktualizacja elementu z synchronizacją lustra, usuwania uwzględniające drzewa) wykonują się w jawnych transakcjach SQLite przez pomocniczą funkcję `runInTransaction`, ponieważ asynchroniczna otoczka `db.transaction` Bun'a zatwierdza transakcję przy pierwszym zawieszeniu i nie jest atomowa.
+
+---
+
 ## Przegląd API
 
 Backend udostępnia API RESTful pod prefiksem `/api`. Kluczowe punkty końcowe zasobów obejmują:
@@ -68,7 +78,7 @@ Backend udostępnia API RESTful pod prefiksem `/api`. Kluczowe punkty końcowe z
 *   `/api/logs/...` (Logi Systemowe)
 *   `/api/tag/...`, `/api/tags` (Tagi Globalne)
 *   `/api/note/...` (Notatki)
-*   `/api/signature/component/...` (Komponenty Sygnatur)
+*   `/api/signature/component/...` (Komponenty Sygnatur; `GET /api/signature/component/by-element/:elementId` zwraca wewnętrzny komponent-lustro typu ELEMENT danego elementu)
 *   `/api/signature/element/...` (Elementy Sygnatur)
 *   `/api/archive/document/...` (Dokumenty/Jednostki Archiwalne)
 *   `/api/admin/db/...` (Administracja Bazą Danych)

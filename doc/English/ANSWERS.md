@@ -28,6 +28,12 @@ Each component has an **index type** that determines how its elements are number
 
 Components can also be marked as **main components** (a checkbox in the component form). Main components are listed first — before alphabetical order — in every component list and picker, and their folder icon is highlighted. The quick signature tree in the Archive sidebar shows only main components by default.
 
+Components have a **type**:
+
+- **Flat** (default) — the classic component; its elements can reference parent elements from any component. Existing components are flat.
+- **Tree** — created with the **New Tree** button on the Signatures page; forms a self-contained hierarchy in which every element automatically mirrors its own internal component and children are linked to their parent automatically.
+- **Element** — an internal mirror of a single element inside a tree hierarchy. These components are managed by the system: they never appear in component lists and cannot be created or deleted directly (deleting the mirrored element removes them).
+
 ### What is the difference between a component and an element? (#25)
 
 | Component | Element |
@@ -50,6 +56,18 @@ In the **Signature Path Selector** dialog (used when creating/editing archive do
 When creating or editing an element, you can assign parent elements from other components to build the classification tree. The system prevents self-parenting but does not enforce a strict single-parent tree — elements can belong to multiple branches.
 
 You can also browse the hierarchy directly in the Signatures section: click an element's name on the Elements page to open its Child Elements view (with a breadcrumb of the clicked path), and create children there with the parent pre-selected automatically.
+
+### How do tree components work? (#37)
+
+A **tree component** is created with the **New Tree** button on the Signatures page (same dialog as **New Component**, which creates a flat component). A tree is a self-contained hierarchy:
+
+- Elements created directly in the tree component are its top level and have no parent elements.
+- Each element automatically gets an internal **ELEMENT**-type mirror component (same id, same name). Children you create under that element belong to this mirror component and get the element as their parent automatically — no parent selection is needed.
+- The element dialog for tree components hides the Component and Parent Elements fields and shows an **Index Formatting** field instead; it controls how the element's own children are numbered (stored on its mirror component).
+- Renaming an element or changing its index formatting updates the mirror component at the same time; deleting an element removes its whole subtree (all descendants and their mirrors), and deleting a tree component removes all of its elements' subtrees.
+- A **Re-index** button next to **New Element** on both element pages renumbers exactly the elements currently listed there.
+
+Flat components keep the classic behavior: elements can have parent elements from any component, chosen with the Parent Elements selector in the dialog.
 
 ## Archive & Signatures Relationship
 

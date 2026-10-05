@@ -9,7 +9,7 @@ JezArch is a full-stack web application designed for managing archival documents
 *   **User Roles:** Supports 'Admin', 'Employee', and 'User' roles with distinct permissions.
 *   **Tagging System:** Create and manage global tags, assign them to documents and notes, and restrict 'User' role access based on assigned tags.
 *   **Notes System:** Create personal or shared notes with tag support.
-*   **Signature System:** Define signature components (e.g., Fonds, Series) and elements, build hierarchical descriptive signatures, apply them to documents, and re-index element numbering at any time.
+*   **Signature System:** Define signature components (e.g., Fonds, Series) as flat or tree-based categories, manage their elements, build hierarchical descriptive signatures, apply them to documents, and re-index element numbering at any time.
 *   **Search Functionality:** Robust search across documents, notes, and system logs with various filter conditions.
 *   **Admin Panel:** Manage users (roles, passwords, tags, language), application settings (ports, language, HTTPS), database (backup), and system logs (view, purge).
 *   **Built-in Help:** Every main page has a Help button with an up-to-date guide for its features.

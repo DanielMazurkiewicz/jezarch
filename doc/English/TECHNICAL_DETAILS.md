@@ -58,6 +58,16 @@ The final, effective parameters used by the running application are logged to th
 
 ---
 
+## Signature Data Model
+
+*   Signature components have a `type`: `FLAT`, `TREE`, or `ELEMENT`. Legacy rows without a type are treated as `FLAT`.
+*   `ELEMENT` components are internal mirrors of single elements inside tree hierarchies: they store the element's id (`element_id`) and its index formatting, are never returned from component lists, and are created/updated only by the element endpoints.
+*   Component name uniqueness applies to non-ELEMENT components (partial unique index), so mirrors may share names with their elements.
+*   Element parent links live in `signature_element_parents`. Parent derivation is server-side: for a `TREE` parent component no parents are stored; for an `ELEMENT` parent the parent is derived from the mirror's `element_id`; `FLAT` components store requested parents as-is.
+*   Multi-step signature operations (element create/update with mirror sync, tree-aware deletions) run in explicit SQLite transactions via a `runInTransaction` helper, because Bun's async `db.transaction` wrapper commits on first suspension and is not atomic.
+
+---
+
 ## API Overview
 
 The backend exposes a RESTful API under the `/api` prefix. Key resource endpoints include:
@@ -68,7 +78,7 @@ The backend exposes a RESTful API under the `/api` prefix. Key resource endpoint
 *   `/api/logs/...` (System Logs)
 *   `/api/tag/...`, `/api/tags` (Global Tags)
 *   `/api/note/...` (Notes)
-*   `/api/signature/component/...` (Signature Components)
+*   `/api/signature/component/...` (Signature Components; `GET /api/signature/component/by-element/:elementId` returns the internal ELEMENT mirror of an element)
 *   `/api/signature/element/...` (Signature Elements)
 *   `/api/archive/document/...` (Archive Documents/Units)
 *   `/api/admin/db/...` (Database Administration)

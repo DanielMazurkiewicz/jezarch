@@ -191,9 +191,12 @@ Zarządzaj elementami składowymi sygnatur opisowych.
 
 *   Przejdź do sekcji **Sygnatury**.
 *   Wyświetl istniejące komponenty, ich opis, typ indeksowania i liczbę elementów. Komponenty są sortowane z **komponentami głównymi na początku**, a następnie alfabetycznie; komponenty główne mają wyróżnioną (kolorową) ikonę folderu.
-*   **Tworzenie:** Kliknij **Nowy Komponent**. Podaj unikalną Nazwę, opcjonalny Opis, wybierz Typ Formatowania Indeksu (jak będą wyświetlane indeksy elementów w tym komponencie - Dziesiętny, Rzymski itp.) i zaznacz **Komponent główny**, jeśli ten poziom należy do głównej struktury sygnatur.
+*   Komponenty mają **typ**:
+    *   **Płaski** — klasyczny komponent: jego elementy mogą odwoływać się do elementów nadrzędnych z dowolnego komponentu. Tak zachowywały się komponenty przed wprowadzeniem typów; istniejące komponenty są płaskie.
+    *   **Drzewo** — samodzielna hierarchia: każdy element automatycznie otrzymuje własny wewnętrzny komponent-lustro, a dzieci utworzone pod elementem są łączone z nim automatycznie (zobacz [Elementy](#elementy)).
+*   **Tworzenie:** Kliknij **Nowy Komponent** dla komponentu płaskiego lub **Nowe Drzewo** dla komponentu drzewa. Oba otwierają ten sam formularz: podaj unikalną Nazwę, opcjonalny Opis, wybierz Typ Formatowania Indeksu (jak będą wyświetlane indeksy elementów w tym komponencie - Dziesiętny, Rzymski itp.) i zaznacz **Komponent główny**, jeśli ten poziom należy do głównej struktury sygnatur.
 *   **Edycja:** Kliknij ikonę **Edytuj** (ołówek). Zmodyfikuj Nazwę, Opis, Typ Indeksu lub flagę **Komponent główny**.
-*   **Usuwanie (Tylko Admin):** Kliknij ikonę **Usuń** (kosz). **Ostrzeżenie:** To trwale usuwa komponent ORAZ wszystkie jego elementy.
+*   **Usuwanie (Tylko Admin):** Kliknij ikonę **Usuń** (kosz). **Ostrzeżenie:** To trwale usuwa komponent ORAZ wszystkie jego elementy; w przypadku komponentów drzewa usunięte zostają także całe poddrzewa wszystkich elementów (wszystkie potomki wraz z ich wewnętrznymi komponentami-lustro).
 *   **Reindeksacja (Admin/Pracownik):** Kliknij ikonę **Reindeksuj** (lista restart). Przelicza i aktualizuje pole `index` dla wszystkich elementów w tym komponencie w oparciu o ich kolejność alfabetyczną i typ indeksu komponentu. Przydatne po dodaniu/usunięciu/zmianie nazwy wielu elementów. Uwaga: własne indeksy elementów zostaną nadpisane.
 *   **Otwórz:** Kliknij wiersz komponentu, aby przejść do strony jego Elementów.
 
@@ -205,6 +208,8 @@ Zarządzaj elementami składowymi sygnatur opisowych.
 *   **Reindeksacja komponentu nadrzędnego:** Kliknij ikonę **Reindeksuj** (lista restart) obok tytułu strony, aby ponumerować wszystkie elementy w tym komponencie — to samo działanie co Reindeksacja na liście Komponentów (własne wartości indeksów zostaną nadpisane).
 *   **Tworzenie:** Kliknij **Nowy Element**. Podaj Nazwę, opcjonalny Opis. Możesz opcjonalnie podać konkretny Indeks (tekst, np. "1a", "V"), w przeciwnym razie zostanie on wygenerowany automatycznie na podstawie licznika komponentu i typu indeksu. Użyj selektora **Elementy Nadrzędne**, aby połączyć ten element jako dziecko innych elementów (tworząc relacje hierarchiczne).
 *   **Edycja:** Kliknij ikonę **Edytuj** (ołówek). Zmodyfikuj Nazwę, Opis, Indeks lub Elementy Nadrzędne. Wyczyszczenie pola Indeks usuwa własną wartość (element zachowa bieżący indeks do czasu reindeksacji).
+*   **Komponenty drzewa:** Gdy komponent jest drzewem, formularz elementu ukrywa pola **Komponent** i **Elementy Nadrzędne** — są one określane automatycznie. Zamiast nich pojawia się pole **Formatowanie Indeksu**, które ustawia, jak będą numerowane własne dzieci tego elementu (zapisywane we wewnętrznym komponencie-lustrze elementu). Elementy tworzone bezpośrednio w komponencie drzewa nie mają rodziców; dzieci tworzone pod elementem otrzymują go jako rodzica automatycznie.
+*   **Reindeksacja wyświetlonych elementów:** Na stronie komponentu drzewa obok przycisku **Nowy Element** pojawia się przycisk **Reindeksuj**, który ponumerowuje dokładnie elementy aktualnie widoczne na tej stronie (własne wartości indeksów zostaną nadpisane).
 *   **Usuwanie (Tylko Admin):** Kliknij ikonę **Usuń** (kosz). To trwale usuwa element i czyści odwołania do niego w ścieżkach sygnatur dokumentów.
 *   **Wyszukiwanie:** Pasek wyszukiwania jest domyślnie ukryty — kliknij przycisk **Pokaż filtry** w górnej linii przycisków karty (obok Nowy Element / Pomoc), aby go wyświetlić. Użyj go, aby filtrować elementy w bieżącym komponencie (filtr komponentu jest już nałożony). Dostępne pola: **Nazwa**, **Opis** i **Indeks** (wszystkie z warunkami `Zawiera` / `Równa się`) oraz **Ma Rodziców** (warunek logiczny `Jest` → Prawda/Fałsz, pokazujący tylko elementy będące dziećmi innych elementów). Wyniki są podzielone na strony (15 na stronę).
 *   **Przejście do elementów podrzędnych:** Kliknij **nazwę** elementu, aby otworzyć jego stronę Elementów Podrzędnych. Mała odznaka obok nazwy pokazuje liczbę elementów podrzędnych.
@@ -219,6 +224,8 @@ Zarządzaj elementami składowymi sygnatur opisowych.
 *   **Tworzenie elementu podrzędnego:** Kliknij **Nowy Element**. Okno dialogowe jest nieco inne niż na stronie Elementów:
     *   Pole **Element Nadrzędny** jest wypełnione automatycznie obserwowanym elementem i pokazane **tylko do odczytu** — nowy element będzie jego dzieckiem.
     *   **Komponent** wybierasz za pomocą selektora (nowy element może należeć do innego komponentu niż jego rodzic). Selektor domyślnie wskazuje komponent pierwszego istniejącego elementu podrzędnego; jeśli element nie ma jeszcze dzieci, domyślnie wskazuje własny komponent tego elementu.
+    *   W hierarchii **drzewa** formularz jest jeszcze prostszy: pola Komponent i Element Nadrzędny są ukryte (dziecko należy do wewnętrznego komponentu-lustra elementu nadrzędnego i otrzymuje rodzica automatycznie), a zamiast nich wybierasz **Formatowanie Indeksu** dla przyszłych dzieci nowego elementu.
+*   **Reindeksacja wyświetlonych elementów podrzędnych:** W hierarchii drzewa obok przycisku **Nowy Element** pojawia się przycisk **Reindeksuj**, który ponumerowuje dokładnie elementy podrzędne aktualnie widoczne na liście (własne wartości indeksów zostaną nadpisane).
 
 ---
 

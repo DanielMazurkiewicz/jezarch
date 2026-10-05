@@ -192,9 +192,12 @@ Manage the building blocks for descriptive signatures.
 
 *   Navigate to **Signatures**.
 *   View existing components, their description, index type, and element count. Components are listed with **main components first**, then alphabetically; main components show a highlighted (colored) folder icon.
-*   **Create:** Click **New Component**. Provide a unique Name, optional Description, choose the Index Formatting type (how element indices within this component will be displayed - Decimal, Roman, etc.), and tick **Main component** if this level is part of your main signature system.
+*   Components have a **type**:
+    *   **Flat** — the classic component: its elements can reference parent elements from any component. This is how components behaved before types existed, and existing components are flat.
+    *   **Tree** — a self-contained hierarchy: each element automatically gets its own internal mirror component, and children created under an element are linked to it automatically (see [Elements](#elements)).
+*   **Create:** Click **New Component** for a flat component or **New Tree** for a tree component. Both open the same dialog: provide a unique Name, optional Description, choose the Index Formatting type (how element indices within this component will be displayed - Decimal, Roman, etc.), and tick **Main component** if this level is part of your main signature system.
 *   **Edit:** Click the **Edit** (pencil) icon. Modify Name, Description, Index Type, or the **Main component** flag.
-*   **Delete (Admin only):** Click the **Delete** (trash can) icon. **Warning:** This permanently deletes the component AND all its elements.
+*   **Delete (Admin only):** Click the **Delete** (trash can) icon. **Warning:** This permanently deletes the component AND all its elements; for tree components this also removes every element's entire subtree (all descendants and their internal mirror components).
 *   **Re-index (Admin/Employee):** Click the **Re-index** (list restart) icon. This recalculates and updates the `index` field for all elements within that component based on their alphabetical order and the component's index type. Useful after adding/deleting/renaming multiple elements. Note that custom index overrides are overwritten.
 *   **Open:** Click a component row to navigate to its Elements page.
 
@@ -206,6 +209,8 @@ Manage the building blocks for descriptive signatures.
 *   **Re-index the parent component:** Click the **Re-index** (list restart) icon next to the page title to renumber all elements in this component — the same action as the Re-index on the Components list (custom index overrides are overwritten).
 *   **Create:** Click **New Element**. Provide a Name, optional Description. You can optionally provide a specific Index override (text, e.g., "1a", "V"), otherwise it will be auto-generated based on the component's counter and index type. Use the **Parent Elements** selector to link this element as a child of other elements (creating hierarchical relationships).
 *   **Edit:** Click the **Edit** (pencil) icon. Modify Name, Description, Index override, or Parent Elements. Clearing the Index override removes it (the element keeps its current index until a re-index).
+*   **Tree components:** When the component is a tree, the element dialog hides the **Component** and **Parent Elements** fields — they are determined automatically. Instead, an **Index Formatting** field appears, which sets how this element's own children will be numbered (stored on the element's internal mirror component). Elements created directly in the tree component have no parents; children created under an element get it as their parent automatically.
+*   **Re-index the shown elements:** On a tree component's page, a **Re-index** button appears next to **New Element** and renumbers exactly the elements currently listed on this page (custom index overrides are overwritten).
 *   **Delete (Admin only):** Click the **Delete** (trash can) icon. This permanently removes the element and cleans up any references to it in document signature paths.
 *   **Search:** The search bar is hidden by default — click the **Show filters** button in the card's top button row (next to New Element / Help) to reveal it. Use it to filter elements within the current component (the component filter is pre-applied). Available fields: **Name**, **Description**, and **Index** (all with `Contains` / `Equals` conditions) and **Has Parents** (a boolean `Is` → True/False condition that shows only elements that are children of other elements). Results are paginated (15 per page).
 *   **Drill down into children:** Click an element's **name** to open its Child Elements page. A small badge next to the name shows how many children it has.
@@ -220,6 +225,8 @@ Manage the building blocks for descriptive signatures.
 *   **Create a child element:** Click **New Element**. The dialog is slightly different from the one on the Elements page:
     *   The **Parent** is pre-filled with the element you are viewing and shown **read-only** — the new element will be its child.
     *   You choose the **Component** with a picker (a new element may belong to a different component than its parent). The picker defaults to the component of the first existing sibling; if the element has no children yet, it defaults to the element's own component.
+    *   In a **tree** hierarchy the dialog is even simpler: the Component and Parent fields are hidden (the child belongs to the parent element's internal mirror component and gets its parent set automatically), and instead you choose the **Index Formatting** for the new element's own future children.
+*   **Re-index the shown children:** In a tree hierarchy, a **Re-index** button appears next to **New Element** and renumbers exactly the children currently shown (custom index overrides are overwritten).
 
 ---
 

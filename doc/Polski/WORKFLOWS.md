@@ -74,6 +74,11 @@ Zacznij od taksonomii sygnatur opisowych, ponieważ dokumenty się do niej odwo�
 3.  Kliknij wiersz komponentu, aby otworzyć jego stronę Elementów.
 4.  Kliknij **Nowy Element**, aby dodać instancje, np. pod *Seria* dodaj "Seria A", "Seria B". Pozostaw pole **Indeks** puste, aby ponumerować element automatycznie. Aby utworzyć element podrzędny istniejącego elementu, użyj selektora **Elementy Nadrzędne** w oknie dialogowym albo kliknij nazwę elementu na stronie Elementów i użyj **Nowy Element** na jego stronie Elementów Podrzędnych — tam element nadrzędny jest wypełniony automatycznie (tylko do odczytu) i wybierasz jedynie komponent.
 5.  Jeśli później zmienisz nazwy, dodasz lub usuniesz wiele elementów, kliknij ikonę **Reindeksuj** — na liście Komponentów lub obok tytułu na stronie Elementów danego komponentu — aby spójnie przenumerować wszystko (własne wartości indeksów zostaną nadpisane).
+6.  **Komponenty drzewa (opcjonalnie):** dla poziomów, w których chcesz mieć ścisłą hierarchię, kliknij **Nowe Drzewo** zamiast **Nowy Komponent**. Wewnątrz komponentu drzewa:
+    *   **Nowy Element** tworzy pozycje najwyższego poziomu — formularz nie ma pól Komponent i Elementy Nadrzędne; zamiast tego wybierasz **Formatowanie Indeksu** elementu (jak będą numerowane jego dzieci).
+    *   Kliknij nazwę elementu, aby otworzyć jego stronę Elementów Podrzędnych i użyj tam **Nowy Element** — rodzic dziecka ustawiany jest automatycznie, a formularz zawiera to samo pole Formatowania Indeksu.
+    *   Przycisk **Reindeksuj** obok **Nowy Element** ponumerowuje dokładnie elementy aktualnie widoczne na danej stronie.
+    *   Zmiana nazwy elementu lub jego formatowania indeksu automatycznie aktualizuje jego wewnętrzny komponent-lustro; usunięcie elementu usuwa całe jego poddrzewo (wszystkie potomki wraz z lustrami).
 
 ### Krok 2: Utwórz jednostki (kontenery)
 

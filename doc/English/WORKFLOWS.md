@@ -74,6 +74,11 @@ Start with the descriptive-signature taxonomy, because documents reference it.
 3.  Click a component row to open its Elements page.
 4.  Click **New Element** to add instances, e.g. under *Series* add "Series A", "Series B". Leave the **Index** field empty to auto-number the element. To create a child of an existing element, either use the **Parent Elements** selector in the dialog, or click the element's name on the Elements page and use **New Element** on its Child Elements page — there the parent is pre-filled (read-only) and you only choose the component.
 5.  If you later rename, add, or delete many elements, click the **Re-index** icon — on the Components list or next to the title on a component's Elements page — to renumber everything consistently (custom index values are overwritten).
+6.  **Tree components (optional):** for levels where you want a strict hierarchy, click **New Tree** instead of **New Component**. Inside a tree component:
+    *   **New Element** creates top-level entries — the dialog has no Component or Parent Elements fields; instead you choose the element's **Index Formatting** (how its children will be numbered).
+    *   Click an element's name to open its Child Elements page and use **New Element** there — the child's parent is set automatically, and the same Index Formatting field appears.
+    *   The **Re-index** button next to **New Element** renumbers exactly the elements currently listed on either page.
+    *   Renaming an element or changing its index formatting updates its internal mirror component automatically; deleting an element removes its entire subtree (all descendants and their mirrors).
 
 ### Step 2: Create units (containers)
 

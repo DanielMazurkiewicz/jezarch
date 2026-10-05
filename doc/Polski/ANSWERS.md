@@ -28,6 +28,12 @@ Każdy komponent ma **typ indeksu**, który określa, jak numerowane są jego el
 
 Komponenty mogą być dodatkowo oznaczone jako **komponenty główne** (pole wyboru w formularzu komponentu). Komponenty główne są sortowane na początku — przed kolejnością alfabetyczną — w każdej liście i selektorze komponentów, a ich ikona folderu jest wyróżniona. Szybkie drzewo sygnatur na pasku bocznym Archiwum domyślnie pokazuje tylko komponenty główne.
 
+Komponenty mają **typ**:
+
+- **Płaski** (domyślny) — klasyczny komponent; jego elementy mogą odwoływać się do elementów nadrzędnych z dowolnego komponentu. Istniejące komponenty są płaskie.
+- **Drzewo** — tworzone przyciskiem **Nowe Drzewo** na stronie Sygnatur; tworzy samodzielną hierarchię, w której każdy element automatycznie lustruje własny wewnętrzny komponent, a dzieci łączone są z rodzicem automatycznie.
+- **Element** — wewnętrzne lustro pojedynczego elementu w hierarchii drzewa. Taki komponent zarządzany jest przez system: nigdy nie pojawia się na listach komponentów i nie można go utworzyć ani usunąć bezpośrednio (usunięcie lustrowanego elementu usuwa go).
+
 ### Jaka jest różnica między komponentem a elementem? (#25)
 
 | Komponent | Element |
@@ -49,6 +55,18 @@ W oknie **Selektora Ścieżki Sygnatury** (używanym podczas tworzenia/edycji do
 Podczas tworzenia lub edycji elementu możesz przypisać elementy nadrzędne z innych komponentów, aby zbudować drzewo klasyfikacji. System zapobiega ustawieniu samego siebie jako rodzica, ale nie wymusza ścisłego drzewa z jednym rodzicem — elementy mogą należeć do wielu gałęzi.
 
 Hierarchię można też przeglądać bezpośrednio w sekcji Sygnatury: kliknij nazwę elementu na stronie Elementów, aby otworzyć jego widok Elementów Podrzędnych (z okruszkami pokrywającymi klikniętą ścieżkę) i tworzyć tam elementy podrzędne z automatycznie wybranym rodzicem.
+
+### Jak działają komponenty drzewa? (#37)
+
+**Komponent drzewa** tworzony jest przyciskiem **Nowe Drzewo** na stronie Sygnatur (ten sam formularz co **Nowy Komponent**, który tworzy komponent płaski). Drzewo to samodzielna hierarchia:
+
+- Elementy tworzone bezpośrednio w komponencie drzewa stanowią jego najwyższy poziom i nie mają elementów nadrzędnych.
+- Każdy element automatycznie otrzymuje wewnętrzny komponent-lustro typu **ELEMENT** (ten sam identyfikator, ta sama nazwa). Dzieci utworzone pod tym elementem należą do tego komponentu-lustra i automatycznie otrzymują element jako rodzica — nie trzeba wybierać rodzica.
+- Formularz elementu dla komponentów drzewa ukrywa pola Komponent i Elementy Nadrzędne, a zamiast nich pokazuje pole **Formatowanie Indeksu**; określa ono, jak numerowane będą własne dzieci elementu (zapisywane w jego komponencie-lustrze).
+- Zmiana nazwy elementu lub jego formatowania indeksu jednocześnie aktualizuje komponent-lustro; usunięcie elementu usuwa całe jego poddrzewo (wszystkie potomki wraz z lustrami), a usunięcie komponentu drzewa usuwa poddrzewa wszystkich jego elementów.
+- Przycisk **Reindeksuj** obok **Nowy Element** na obu stronach elementów ponumerowuje dokładnie elementy aktualnie widoczne na liście.
+
+Komponenty płaskie zachowują klasyczne działanie: elementy mogą mieć elementy nadrzędne z dowolnego komponentu, wybierane selektorem Elementów Nadrzędnych w formularzu.
 
 ## Relacja Archiwum i Sygnatur
 
