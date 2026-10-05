@@ -37,11 +37,10 @@ Backend CLI args pass after `--`, e.g. `bun run start:dev -- --http-port 9000`.
 - Add tests for every new behavior — see existing files in `backend-tests/tests/`
 - All tests must pass before opening a PR
 
-## PR & commit conventions
+## Commit & push conventions
 
-- Branch from `main`; never push to it directly
+- Push changes directly to `main` — no branching or PR workflow
 - No CI is configured — run `bun run test` locally before pushing
-- Open the PR via `gh pr create` once tests are green
 
 ## Security
 
