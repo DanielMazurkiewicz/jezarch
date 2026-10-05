@@ -17,6 +17,7 @@ export type ArchiveTranslationKey =
   | 'archiveCreationDateLabel'
   | 'archiveTopoSigLabel'
   | 'archiveDescSigLabel'
+  | 'archiveModifiedOnLabel' // e.g., "Zmodyfikowano" / "Modified"
   | 'archiveEditItemDialogTitle' // e.g., "Edit {itemType}"
   | 'archiveCreateItemDialogTitle' // e.g., "Create {itemType}"
   | 'archiveCreateInUnitDialogTitle' // e.g., "Create Document in Unit "{unitTitle}""

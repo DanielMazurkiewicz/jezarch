@@ -17,6 +17,7 @@ export const archiveTranslationsEN: ArchiveTranslationSet = {
   archiveCreationDateLabel: 'Creation Date', // Original creation date of the document itself
   archiveTopoSigLabel: 'Topographic Sig.',
   archiveDescSigLabel: 'Descriptive Sig.',
+  archiveModifiedOnLabel: 'Modified',
   archiveEditItemDialogTitle: 'Edit {itemType}', // e.g., "Edit Document", "Edit Unit"
   archiveCreateItemDialogTitle: 'Create {itemType}', // e.g., "Create Document"
   archiveCreateInUnitDialogTitle: 'Create Document in Unit "{unitTitle}"',

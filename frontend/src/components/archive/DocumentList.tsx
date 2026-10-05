@@ -76,6 +76,7 @@ const DocumentList: React.FC<DocumentListProps> = React.memo(({ documents, onEdi
                     {/* REMOVED CreatedBy/UpdatedBy Headers */}
                     <SortableHeader field="topographicSignature" className='max-w-[200px]'>{t('archiveTopoSigLabel', preferredLanguage)}</SortableHeader>
                     <TableHead className='max-w-[200px]'>{t('archiveDescSigLabel', preferredLanguage)}</TableHead>
+                    <SortableHeader field="modifiedOn" className='w-[130px] whitespace-nowrap'>{t('archiveModifiedOnLabel', preferredLanguage)}</SortableHeader>
                     <TableHead className="text-right w-[130px]">{t('actionsLabel', preferredLanguage)}</TableHead>
                 </TableRow>
             </TableHeader>
@@ -126,6 +127,7 @@ const DocumentList: React.FC<DocumentListProps> = React.memo(({ documents, onEdi
                                      : <i className='text-muted-foreground not-italic'>{t('noneLabel', preferredLanguage)}</i>
                                 }
                             </TableCell>
+                            <TableCell className='text-xs whitespace-nowrap font-mono'>{String(doc.modifiedOn).slice(0, 10)}</TableCell>
                             <TableCell className="text-right space-x-1">
                                 {/* Preview Button */}
                                 <Button variant="ghost" size="icon" onClick={(e) => { e.stopPropagation(); onPreview(doc); }} title={t('previewButton', preferredLanguage)}>
