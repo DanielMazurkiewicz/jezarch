@@ -1,12 +1,12 @@
 #!/usr/bin/env bun
 /**
  * JezArch data loader — imports the AI-converted inventory units from ./units.json
- * (produced from data/source: Grzebień_Inwentarz.pdf + docx working inventories)
+ * (produced from data/archive/source: Grzebień_Inwentarz.pdf + docx working inventories)
  * into a running JezArch instance via its REST API.
  *
- * Usage (from anywhere):
- *   bun data/load-data.ts [baseUrl] [adminPassword]
- *   e.g.:  bun data/load-data.ts http://localhost:8080 admin
+ * Usage (one liner, from anywhere):
+ *   bun data/load/load-data.ts [baseUrl] [adminPassword]
+ *   e.g.:  bun data/load/load-data.ts http://localhost:8080 admin
  * Password can also come from env SEED_ADMIN_PASSWORD.
  *
  * Behavior:

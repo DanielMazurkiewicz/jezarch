@@ -16,7 +16,7 @@
  *    are moved to creationPlace when it is empty, otherwise noted in remarks.
  * 4. Units get the same date normalization applied.
  *
- * Usage: bun data/fix-data.ts [file ...]   (default: units.json + processed/*)
+ * Usage: bun data/archive/fix-data.ts [file ...]   (default: ../load/units.json + processed/*)
  */
 
 import { readFileSync, writeFileSync, copyFileSync, existsSync } from 'node:fs';
@@ -610,7 +610,7 @@ export function fixDataFile(path: string): Stats {
   return stats;
 }
 
-const DEFAULT_FILES = ['units.json', 'processed/grzebień_do_1820.json', 'processed/inwentarz_298-980.json'];
+const DEFAULT_FILES = ['../load/units.json', 'processed/grzebień_do_1820.json', 'processed/inwentarz_298-980.json'];
 
 if (import.meta.main) {
   const files = process.argv.slice(2).length ? process.argv.slice(2) : DEFAULT_FILES;
