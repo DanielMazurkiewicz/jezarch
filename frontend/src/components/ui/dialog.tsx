@@ -72,8 +72,15 @@ function DialogContent({
         )}
         {...props}
       >
-        {/* Header and Footer are part of the flex layout now */}
-        {children}
+        {/* Scrollable body: when the dialog content exceeds the max height,
+            a vertical scrollbar appears so header, body and footer buttons
+            all stay reachable instead of being clipped. */}
+        <div
+          data-slot="dialog-body"
+          className="flex-1 min-h-0 flex flex-col gap-4 overflow-y-auto"
+        >
+          {children}
+        </div>
         <DialogPrimitive.Close className="ring-offset-background focus:ring-ring data-[state=open]:bg-accent data-[state=open]:text-muted-foreground absolute top-4 right-4 rounded-sm opacity-70 transition-opacity hover:opacity-100 focus:ring-2 focus:ring-offset-2 focus:outline-none disabled:pointer-events-none [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4 text-neutral-500 hover:text-neutral-900">
           <XIcon />
           <span className="sr-only">{t('closeButton')}</span>
