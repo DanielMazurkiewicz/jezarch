@@ -14,6 +14,7 @@ Ten przewodnik szczegółowo opisuje funkcjonalności dostępne wyłącznie dla 
     *   [Ustawianie Preferowanego Języka](#ustawianie-preferowanego-języka)
 *   [Ustawienia Aplikacji](#ustawienia-aplikacji)
     *   [Domyślny Język](#domyślny-język)
+    *   [Widoczność Interfejsu](#widoczność-interfejsu)
     *   [Porty Sieciowe (HTTP/HTTPS)](#porty-sieciowe-httphttps)
     *   [Konfiguracja HTTPS/SSL](#konfiguracja-httpsssl)
     *   [Implikacje Restartu](#implikacje-restartu)
@@ -86,6 +87,16 @@ Ten przewodnik szczegółowo opisuje funkcjonalności dostępne wyłącznie dla 
 
 *   Wybierz domyślny język interfejsu użytkownika dla nowych użytkowników lub użytkowników bez ustawionych preferencji.
 
+### Widoczność Interfejsu
+
+*   Zaznacz lub odznacz przyciski i zakładki, które mają być widoczne **dla wszystkich użytkowników** (administratorów i pracowników):
+    *   **Strona Sygnatur** — przyciski *Nowy Komponent* i *Nowe Drzewo*.
+    *   **Zakładki Strony Archiwum** — które zakładki są dostępne nad listą dokumentów.
+*   **Odznaczone = ukryte.** Ukryte elementy znikają z interfejsu natychmiast po zapisaniu; restart nie jest wymagany.
+*   **To wyłącznie kwestia kosmetyczna.** Ukrycie kontrolki nie wyłącza powiązanej funkcji ani jej API i nigdy nie usuwa danych — jedynie usuwa przycisk lub zakładkę ze strony.
+*   **Ukrycie zakładki Archiwum zmienia również widok domyślny.** Jeśli zakładka, na której użytkownik wylądowałby, jest ukryta, użyta zostanie pierwsza pozostała widoczna zakładka. Jeśli ukryte są **wszystkie** zakładki Archiwum, pasek zakładek nie jest w ogóle renderowany, a lista pokazuje wszystko.
+*   Istniejące dane pozostają nietknięte — ukryty przycisk *Nowe Drzewo* oznacza po prostu, że komponentów drzewa nie da się już utworzyć z interfejsu.
+
 ### Porty Sieciowe (HTTP/HTTPS)
 
 *   Ustaw numery portów, na których serwer aplikacji nasłuchuje ruchu HTTP i HTTPS.
@@ -106,6 +117,7 @@ Ten przewodnik szczegółowo opisuje funkcjonalności dostępne wyłącznie dla 
 
 *   Zmiana **Portu HTTP** lub **Portu HTTPS** wymaga **ręcznego restartu** procesu serwera backendu.
 *   Zmiana **Domyślnego Języka** działa natychmiast dla nowych sesji/użytkowników bez ustawionych preferencji.
+*   Zmiana **Widoczności Interfejsu** działa natychmiast dla wszystkich użytkowników; restart nie jest wymagany.
 *   Zmiana **Ścieżek HTTPS** działa natychmiast — serwer automatycznie przeładowuje lub zatrzymuje konfigurację HTTPS w razie potrzeby (potwierdzenie znajdziesz w logach serwera); restart nie jest wymagany.
 
 ---

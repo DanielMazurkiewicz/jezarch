@@ -17,6 +17,7 @@ import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/com
 import { HelpCircle } from 'lucide-react';
 import HelpDialog, { HelpSection } from '@/components/shared/HelpDialog';
 import { t } from '@/translations/utils'; // Import translation utility
+import { useUiVisibility } from '@/context/UiVisibilityContext';
 
 // Renamed from SignaturesPage to ComponentsPage
 const ComponentsPage: React.FC = () => {
@@ -24,6 +25,10 @@ const ComponentsPage: React.FC = () => {
     const navigate = useNavigate(); // Hook for navigation
     const isAdmin = user?.role === 'admin';
     const canModify = isAdmin || user?.role === 'employee';
+    // Cosmetically hideable from the admin settings page.
+    const { isVisible } = useUiVisibility();
+    const showNewComponentButton = isVisible('signatures.newComponentButton');
+    const showNewTreeButton = isVisible('signatures.newTreeButton');
 
     // --- Component State ---
     const [components, setComponents] = useState<SignatureComponent[]>([]);
@@ -159,12 +164,16 @@ const ComponentsPage: React.FC = () => {
                          </div>
                           <div className='flex items-center gap-2 flex-wrap justify-end'>
                            {/* Both buttons open the same dialog; the stored kind differs (FLAT vs TREE) */}
+                           {showNewComponentButton && (
                            <Button onClick={() => handleCreateComponent('FLAT')} size="sm" className='shrink-0' disabled={!canModify} title={canModify ? undefined : t('insufficientPermissionsError', preferredLanguage)}>
                                <PlusCircle className="mr-2 h-4 w-4" /> {t('newComponentButton', preferredLanguage)}
                            </Button>
+                           )}
+                           {showNewTreeButton && (
                            <Button onClick={() => handleCreateComponent('TREE')} size="sm" className='shrink-0' disabled={!canModify} title={canModify ? undefined : t('insufficientPermissionsError', preferredLanguage)}>
                                <PlusCircle className="mr-2 h-4 w-4" /> {t('newTreeButton', preferredLanguage)}
                            </Button>
+                           )}
                            <Button variant="ghost" size="sm" onClick={() => setHelpOpen(true)} title={t('helpButton', preferredLanguage)}>
                                <HelpCircle className="mr-2 h-4 w-4" /> {t('helpButton', preferredLanguage)}
                            </Button>
@@ -187,7 +196,7 @@ const ComponentsPage: React.FC = () => {
                     )}
                      {/* Use translated empty state */}
                     {!isComponentsLoading && !componentsError && components.length === 0 && (
-                        <p className="text-center text-muted-foreground py-4">{t('noComponentsFound', preferredLanguage)} {isAdmin ? t('clickToCreate', preferredLanguage, { item: t('newComponentButton', preferredLanguage) }) : ''}</p> // TODO: Add clickToCreate key
+                        <p className="text-center text-muted-foreground py-4">{t('noComponentsFound', preferredLanguage)} {isAdmin && showNewComponentButton ? t('clickToCreate', preferredLanguage, { item: t('newComponentButton', preferredLanguage) }) : ''}</p> // TODO: Add clickToCreate key
                     )}
                 </CardContent>
             </Card>

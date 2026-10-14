@@ -25,13 +25,10 @@ import { cn } from '@/lib/utils';
 import { t } from '@/translations/utils'; // Import translation utility
 import { useQuickFilterContext } from '@/context/QuickFilterContext';
 import { DEFAULT_DELETED_FILTER, mergeQuickFilter as mergeQuickFilterHelper } from '@/lib/mergeQuickFilter';
+import { ARCHIVE_TABS, getVisibleArchiveTabs, resolveActiveArchiveTab } from '@/lib/archiveTabs';
+import { useUiVisibility } from '@/context/UiVisibilityContext';
 
 const ARCHIVE_PAGE_SIZE = 10;
-
-// Archive page tabs. All tabs share the same filters (search bar + sidebar
-// quick signature filter); each tab only adds its own base query modifier.
-const ARCHIVE_TABS = ['units', 'unitsAndMainDocs', 'mainDocs', 'everything'] as const;
-type ArchiveTab = (typeof ARCHIVE_TABS)[number];
 
 const ArchivePage: React.FC = () => {
   const { token, user, preferredLanguage } = useAuth();
@@ -39,8 +36,13 @@ const ArchivePage: React.FC = () => {
   const [searchParams] = useSearchParams();
   const parentUnitId = searchParams.get('unitId') ? Number(searchParams.get('unitId')) : null;
 
+  // Tabs an admin chose to hide are not rendered and are never active — see
+  // resolveActiveArchiveTab for why the URL param alone is not enough.
+  const { hiddenElements } = useUiVisibility();
+  const visibleTabs = getVisibleArchiveTabs(hiddenElements);
+
   const rawTab = searchParams.get('tab');
-  const activeTab: ArchiveTab = (ARCHIVE_TABS as readonly string[]).includes(rawTab ?? '') ? (rawTab as ArchiveTab) : 'everything';
+  const activeTab = resolveActiveArchiveTab(rawTab, hiddenElements);
 
   const [documents, setDocuments] = useState<ArchiveDocumentSearchResult[]>([]);
   const [parentUnit, setParentUnit] = useState<ArchiveDocument | null>(null);
@@ -304,7 +306,7 @@ const ArchivePage: React.FC = () => {
    };
    const handlePageChange = (newPage: number) => { setCurrentPage(newPage); };
    const handleTabChange = useCallback((value: string) => {
-       if (!(ARCHIVE_TABS as readonly string[]).includes(value)) return;
+       if (!ARCHIVE_TABS.some(tab => tab.id === value)) return;
        setCurrentPage(1); // a tab switch always restarts pagination
        const nextParams = new URLSearchParams(searchParams.toString());
        nextParams.set('tab', value);
@@ -491,14 +493,14 @@ const ArchivePage: React.FC = () => {
          </div>
 
          {/* --- Tabs: all share the filters below; each tab only adds its own base query modifier.
-             Hidden inside a unit (drill-down) where the list is already scoped to that unit. --- */}
-        {!parentUnitId && (
+             Hidden inside a unit (drill-down) where the list is already scoped to that unit,
+             and hidden entirely when an admin hid every tab. --- */}
+        {!parentUnitId && visibleTabs.length > 0 && (
             <Tabs value={activeTab} onValueChange={handleTabChange}>
                 <TabsList className="w-full">
-                    <TabsTrigger value="units">{t('archiveTabUnits', preferredLanguage)}</TabsTrigger>
-                    <TabsTrigger value="unitsAndMainDocs">{t('archiveTabUnitsAndMainDocs', preferredLanguage)}</TabsTrigger>
-                    <TabsTrigger value="mainDocs">{t('archiveTabMainDocs', preferredLanguage)}</TabsTrigger>
-                    <TabsTrigger value="everything">{t('archiveTabEverything', preferredLanguage)}</TabsTrigger>
+                    {visibleTabs.map(tab => (
+                        <TabsTrigger key={tab.id} value={tab.id}>{t(tab.labelKey, preferredLanguage)}</TabsTrigger>
+                    ))}
                 </TabsList>
             </Tabs>
         )}

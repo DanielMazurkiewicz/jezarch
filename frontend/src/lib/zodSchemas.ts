@@ -192,6 +192,8 @@ export const settingsSchema = z.object({
     [AppConfigKeys.HTTPS_KEY_PATH]: z.string().max(1024, "Path too long").optional().nullable(),
     [AppConfigKeys.HTTPS_CERT_PATH]: z.string().max(1024, "Path too long").optional().nullable(),
     [AppConfigKeys.HTTPS_CA_PATH]: z.string().max(1024, "Path too long").optional().nullable(),
+    // Stored (and sent to the API) as a JSON array string of UiElementId values.
+    [AppConfigKeys.HIDDEN_UI_ELEMENTS]: z.array(z.string()),
 }).refine(data => !(data[AppConfigKeys.HTTPS_KEY_PATH] && !data[AppConfigKeys.HTTPS_CERT_PATH]), {
     message: "Certificate path is required if key path is provided.",
     path: [AppConfigKeys.HTTPS_CERT_PATH],

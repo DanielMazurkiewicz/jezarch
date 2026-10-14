@@ -14,6 +14,7 @@ This guide details the functionalities available exclusively to users with the '
     *   [Setting Preferred Language](#setting-preferred-language)
 *   [Application Settings](#application-settings)
     *   [Default Language](#default-language)
+    *   [Interface Visibility](#interface-visibility)
     *   [Network Ports (HTTP/HTTPS)](#network-ports-httphttps)
     *   [HTTPS/SSL Configuration](#httpssl-configuration)
     *   [Restart Implications](#restart-implications)
@@ -90,6 +91,16 @@ Navigate to the "App Settings" tab within the Admin Panel. Changes here might re
 
 *   Select the default language for the user interface for new users or users without a specific preference set.
 
+### Interface Visibility
+
+*   Tick or untick the buttons and tabs that should appear **for every user** (admins and employees alike):
+    *   **Signatures Page** — the *New Component* and *New Tree* buttons.
+    *   **Archive Page Tabs** — which tabs are offered above the document list.
+*   **Untick = hidden.** Hidden elements are removed from the interface immediately after saving; no restart is needed.
+*   **This is purely cosmetic.** Hiding a control does not disable the underlying feature or its API, and no data is ever deleted — it only removes the button or tab from the page.
+*   **Hiding an Archive tab also changes the default view.** If the tab a user would land on is hidden, the first remaining visible tab is used instead. If *all* Archive tabs are hidden, the tab bar is not rendered at all and the list shows everything.
+*   Existing records are untouched — a hidden *New Tree* button simply means tree components can no longer be created from the interface.
+
 ### Network Ports (HTTP/HTTPS)
 
 *   Set the port numbers the application server listens on for HTTP and HTTPS traffic.
@@ -110,6 +121,7 @@ Navigate to the "App Settings" tab within the Admin Panel. Changes here might re
 
 *   Changing **HTTP Port** or **HTTPS Port** requires a **manual restart** of the backend server process.
 *   Changing **Default Language** takes effect immediately for new sessions/users without preferences.
+*   Changing **Interface Visibility** takes effect immediately for all users; no restart required.
 *   Changing **HTTPS Paths** takes effect immediately — the server automatically reloads or stops the HTTPS configuration as needed (check server logs for confirmation); no restart required.
 
 ---

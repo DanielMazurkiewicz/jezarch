@@ -149,7 +149,7 @@ async function fetchApi<T>(
 
 // --- Type Adjustments ---
 type GetConfigResponse<K extends AppConfigKeys> = {
-    [key in K]: string | number | null;
+    [key in K]: string | number | string[] | null;
 };
 
 interface PurgeLogsResponse {

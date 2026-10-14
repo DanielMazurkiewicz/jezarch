@@ -1,6 +1,6 @@
 import { BunRequest } from 'bun';
 import { getConfig, setConfig } from './db';
-import { AppConfigKeys } from './models'; // Models now have updated keys
+import { AppConfigKeys, parseHiddenUiElements, type UiElementId } from './models'; // Models now have updated keys
 import { getSessionAndUser, isAllowedRole } from '../session/controllers';
 import { Log } from '../log/db';
 // --- Import server control functions ---
@@ -54,8 +54,15 @@ export const getConfigController = async (req: BunRequest<":key">) => {
          AppConfigKeys.HTTPS_PORT,
     ];
 
+    // Keys every authenticated role may read. These are app-wide UI
+    // preferences, not secrets: the 'user' role reaches /archive as well, so
+    // it has to honour the same visibility settings as admins and employees.
+    const keysForAnyAuthenticatedRole: AppConfigKeys[] = [
+         AppConfigKeys.HIDDEN_UI_ELEMENTS,
+    ];
+
     // Basic Access Control
-    if (!isAllowedRole(sessionAndUser, 'admin')) {
+    if (!keysForAnyAuthenticatedRole.includes(key) && !isAllowedRole(sessionAndUser, 'admin')) {
         // If employee, allow access only to specific non-sensitive keys
         if (isAllowedRole(sessionAndUser, 'employee')) {
             if (!nonSensitiveKeysForEmployee.includes(key)) {
@@ -83,8 +90,8 @@ export const getConfigController = async (req: BunRequest<":key">) => {
     try {
         // Fetch directly from AppParams to reflect the *currently active* value
         // including overrides from env/cmd, not just the DB value.
-        let value: string | number | null | undefined;
-        let displayValue: string | number | null | undefined;
+        let value: string | number | string[] | null | undefined;
+        let displayValue: string | number | string[] | null | undefined;
 
          switch (key) {
              case AppConfigKeys.DEFAULT_LANGUAGE: value = AppParams.defaultLanguage; break;
@@ -93,6 +100,7 @@ export const getConfigController = async (req: BunRequest<":key">) => {
              case AppConfigKeys.HTTPS_KEY_PATH: value = AppParams.httpsKeyPath; break;
              case AppConfigKeys.HTTPS_CERT_PATH: value = AppParams.httpsCertPath; break;
              case AppConfigKeys.HTTPS_CA_PATH: value = AppParams.httpsCaPath; break;
+             case AppConfigKeys.HIDDEN_UI_ELEMENTS: value = AppParams.hiddenUiElements; break;
              default:
                 // Fallback to DB for potentially unknown keys (shouldn't happen with enum check)
                 value = await getConfig(key);
@@ -152,6 +160,8 @@ export const setConfigController = async (req: BunRequest<":key">) => {
         // --- Specific Validations and Processing ---
         let originalValue: string | number | null | undefined;
         let processedValue: string | number | null = value; // Start with input, process below
+        // Parsed ids kept around so the runtime update below doesn't re-parse.
+        let processedHiddenUiElements: UiElementId[] | null = null;
 
         switch (key) {
              case AppConfigKeys.HTTP_PORT:
@@ -197,6 +207,20 @@ export const setConfigController = async (req: BunRequest<":key">) => {
                      processedValue = value;
                  }
                  break;
+            case AppConfigKeys.HIDDEN_UI_ELEMENTS:
+                originalValue = JSON.stringify(AppParams.hiddenUiElements);
+                // Value arrives as a JSON array string. parseHiddenUiElements is
+                // the single definition of a valid value (shared with startup).
+                if (typeof value !== 'string') {
+                    return new Response(JSON.stringify({ message: `Config key '${key}' requires a JSON array string.` }), { status: 400 });
+                }
+                const parsedHidden = parseHiddenUiElements(value);
+                if ('error' in parsedHidden) {
+                    return new Response(JSON.stringify({ message: parsedHidden.error }), { status: 400 });
+                }
+                processedHiddenUiElements = parsedHidden.ids;
+                processedValue = JSON.stringify(parsedHidden.ids);
+                break;
         }
         // --- End Specific Validations ---
 
@@ -230,6 +254,9 @@ export const setConfigController = async (req: BunRequest<":key">) => {
              case AppConfigKeys.HTTPS_KEY_PATH: AppParams.httpsKeyPath = processedValue as string | null; break;
              case AppConfigKeys.HTTPS_CERT_PATH: AppParams.httpsCertPath = processedValue as string | null; break;
              case AppConfigKeys.HTTPS_CA_PATH: AppParams.httpsCaPath = processedValue as string | null; break;
+             case AppConfigKeys.HIDDEN_UI_ELEMENTS:
+                 if (processedHiddenUiElements) AppParams.hiddenUiElements = processedHiddenUiElements;
+                 break;
         }
         await Log.info(`Config updated: ${key} set to '${valueForDb}' (Runtime updated). Value changed: ${valueChanged}`, sessionAndUser.user.login, 'config');
 

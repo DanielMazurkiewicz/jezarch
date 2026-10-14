@@ -1,5 +1,5 @@
 import { CmdParams } from './cmd';
-import { AppConfigKeys } from '../functionalities/config/models'; // Import AppConfigKeys
+import { AppConfigKeys, DEFAULT_HIDDEN_UI_ELEMENTS, type UiElementId } from '../functionalities/config/models'; // Import AppConfigKeys
 
 // Updated interface to reflect new config structure
 export interface ApplicationParams {
@@ -12,6 +12,8 @@ export interface ApplicationParams {
     httpsKeyPath: string | null; // New, stores path
     httpsCertPath: string | null; // New, stores path
     httpsCaPath: string | null; // New, stores path
+
+    hiddenUiElements: UiElementId[]; // Cosmetically hidden UI controls, app-wide
 }
 
 // Updated defaults
@@ -25,6 +27,8 @@ export const AppParamsDefaults: ApplicationParams = {
     httpsKeyPath: null,
     httpsCertPath: null,
     httpsCaPath: null,
+
+    hiddenUiElements: [...DEFAULT_HIDDEN_UI_ELEMENTS],
 };
 
 export const AppParamsHttpsDefaults = {

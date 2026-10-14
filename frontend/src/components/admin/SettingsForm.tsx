@@ -8,12 +8,14 @@ import { Label } from '@/components/ui/label';
 // --- NEW: Import Select components ---
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 // ---------------------------------
+import { Checkbox } from '@/components/ui/checkbox';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import LoadingSpinner from '@/components/shared/LoadingSpinner';
 import ErrorDisplay from '@/components/shared/ErrorDisplay';
 import { useAuth } from '@/hooks/useAuth';
 import api from '@/lib/api';
 import { AppConfigKeys } from '../../../../backend/src/functionalities/config/models';
+import type { UiElementId } from '../../../../backend/src/functionalities/config/models';
 import { cn } from '@/lib/utils';
 import { settingsSchema, SettingsFormData } from '@/lib/zodSchemas';
 import { toast } from "sonner";
@@ -23,9 +25,12 @@ import { t } from '@/translations/utils';
 // --- NEW: Import supportedLanguages ---
 import { supportedLanguages, type SupportedLanguage } from '@/translations/models';
 // ------------------------------------
+import { UI_ELEMENT_GROUPS, parseHiddenList, toggleHiddenElement } from '@/lib/uiVisibility';
+import { useUiVisibility } from '@/context/UiVisibilityContext';
 
 const SettingsForm: React.FC = () => {
     const { token, preferredLanguage } = useAuth();
+    const { refresh: refreshUiVisibility } = useUiVisibility();
     const [isLoading, setIsLoading] = useState(true);
     const [loadError, setLoadError] = useState<string | null>(null);
     const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'success' | 'error'>('idle');
@@ -47,6 +52,7 @@ const SettingsForm: React.FC = () => {
             [AppConfigKeys.HTTPS_KEY_PATH]: '',
             [AppConfigKeys.HTTPS_CERT_PATH]: '',
             [AppConfigKeys.HTTPS_CA_PATH]: '',
+            [AppConfigKeys.HIDDEN_UI_ELEMENTS]: [],
         }
     });
 
@@ -55,6 +61,19 @@ const SettingsForm: React.FC = () => {
     const watchedKeyPath = watch(AppConfigKeys.HTTPS_KEY_PATH);
     const watchedCertPath = watch(AppConfigKeys.HTTPS_CERT_PATH);
     const watchedCaPath = watch(AppConfigKeys.HTTPS_CA_PATH);
+    const watchedHiddenUiElements = watch(AppConfigKeys.HIDDEN_UI_ELEMENTS);
+
+    // The form edits the *hidden* list, but the checkbox reads as "shown", so
+    // the two are inverted here and nowhere else.
+    const setElementVisible = useCallback((id: UiElementId, visible: boolean) => {
+        const current = parseHiddenList(watchedHiddenUiElements);
+        const withoutId = current.filter(x => x !== id);
+        setValue(
+            AppConfigKeys.HIDDEN_UI_ELEMENTS,
+            visible ? withoutId : toggleHiddenElement(withoutId, id),
+            { shouldDirty: true, shouldValidate: true },
+        );
+    }, [watchedHiddenUiElements, setValue]);
 
     const isHttpsCurrentlyEnabled = !!watchedKeyPath && !!watchedCertPath;
 
@@ -78,6 +97,7 @@ const SettingsForm: React.FC = () => {
             AppConfigKeys.HTTPS_KEY_PATH,
             AppConfigKeys.HTTPS_CERT_PATH,
             AppConfigKeys.HTTPS_CA_PATH,
+            AppConfigKeys.HIDDEN_UI_ELEMENTS,
         ];
 
         try {
@@ -97,6 +117,7 @@ const SettingsForm: React.FC = () => {
                          case AppConfigKeys.HTTP_PORT: newFormValues[key] = 8080; break;
                          case AppConfigKeys.HTTPS_PORT: newFormValues[key] = 8443; break;
                          case AppConfigKeys.DEFAULT_LANGUAGE: newFormValues[key] = 'en'; break;
+                         case AppConfigKeys.HIDDEN_UI_ELEMENTS: newFormValues[key] = []; break;
                          default: newFormValues[key] = '';
                      }
                      return;
@@ -131,6 +152,10 @@ const SettingsForm: React.FC = () => {
                         newFormValues[key] = value && typeof value === 'string' && !value.includes('SET (Path Hidden)') ? value : '';
                         setOriginalCaPath(value as string | null);
                         break;
+                    case AppConfigKeys.HIDDEN_UI_ELEMENTS:
+                        // The API returns a JSON array of ids; parse defensively.
+                        newFormValues[key] = parseHiddenList(value);
+                        break;
                 }
             });
 
@@ -159,9 +184,13 @@ const SettingsForm: React.FC = () => {
         let restartRequiredBySave = false;
 
         const savePromises = (Object.keys(data) as Array<keyof SettingsFormData>).map(key => {
-            let valueToSave: string | null | number | undefined = data[key]; // Allow number for port types
+            let valueToSave: string | string[] | null | number | undefined = data[key]; // Allow number for port types
              if ([AppConfigKeys.HTTPS_KEY_PATH, AppConfigKeys.HTTPS_CERT_PATH, AppConfigKeys.HTTPS_CA_PATH].includes(key as AppConfigKeys) && valueToSave === '') {
                 valueToSave = null;
+            }
+             // --- Serialize arrays (hidden UI elements) into their JSON form ---
+            if (Array.isArray(valueToSave)) {
+                valueToSave = JSON.stringify(valueToSave);
             }
              // --- Convert number to string ONLY if it's not null ---
              if (typeof valueToSave === 'number') {
@@ -212,6 +241,8 @@ const SettingsForm: React.FC = () => {
                 setSaveStatus('success');
                 const baseSuccessMsg = t('saveSettingsSuccessMessage', preferredLanguage);
                 await fetchSettings();
+                // Apply visibility changes immediately instead of waiting for a reload.
+                await refreshUiVisibility();
                 if (restartRequiredBySave) {
                     toast.warning(`${baseSuccessMsg} ${t('saveSettingsRestartWarning', preferredLanguage)}`);
                 } else {
@@ -292,6 +323,38 @@ const SettingsForm: React.FC = () => {
                                 {errors[AppConfigKeys.DEFAULT_LANGUAGE] && <p className="text-xs text-destructive">{errors[AppConfigKeys.DEFAULT_LANGUAGE]?.message}</p>}
                              </div>
                          </div>
+                    </div>
+
+                    {/* Interface Visibility Section */}
+                    <div className="space-y-4 border-b pb-4">
+                        <div>
+                            <h3 className="text-lg font-medium">{t('uiVisibilityTitle', preferredLanguage)}</h3>
+                            <p className="text-sm text-muted-foreground">
+                                {t('uiVisibilityDescription', preferredLanguage)}
+                            </p>
+                        </div>
+                        {UI_ELEMENT_GROUPS.map(group => (
+                            <div key={group.titleKey} className="space-y-2">
+                                <h4 className="text-sm font-medium text-muted-foreground">{t(group.titleKey, preferredLanguage)}</h4>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                                    {group.items.map(item => {
+                                        const checkboxId = `ui-visibility-${item.id}`;
+                                        return (
+                                            <div key={item.id} className="flex items-center gap-2">
+                                                <Checkbox
+                                                    id={checkboxId}
+                                                    checked={!watchedHiddenUiElements.includes(item.id)}
+                                                    onCheckedChange={(checked) => setElementVisible(item.id, checked === true)}
+                                                />
+                                                <Label htmlFor={checkboxId} className="cursor-pointer">
+                                                    {t(item.labelKey, preferredLanguage)}
+                                                </Label>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            </div>
+                        ))}
                     </div>
 
                     {/* Network Settings Section */}

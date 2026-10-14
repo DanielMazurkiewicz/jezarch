@@ -1,4 +1,4 @@
-import { AppConfigKeys } from '../functionalities/config/models';
+import { AppConfigKeys, parseHiddenUiElements } from '../functionalities/config/models';
 import { getConfig, setConfig } from '../functionalities/config/db';
 import { AppParams, AppParamsDefaults } from './app_params';
 import { actualDbPath } from './db'; // Single source of truth for the live DB path
@@ -114,6 +114,23 @@ export async function initializeConfigs() {
                            );
 
 
+    // --- Hidden UI elements ---
+    // Cosmetic only, so no env/cmd override — it is an app-wide UI preference
+    // rather than server configuration.
+    const hiddenUiElementsFromDb = await getConfig(AppConfigKeys.HIDDEN_UI_ELEMENTS);
+    const parsedHiddenUiElements = parseHiddenUiElements(hiddenUiElementsFromDb);
+    if ('error' in parsedHiddenUiElements) {
+        await Log.warn(`Ignoring invalid '${AppConfigKeys.HIDDEN_UI_ELEMENTS}' config value: ${parsedHiddenUiElements.error}`, 'system', 'startup');
+        AppParams.hiddenUiElements = [...AppParamsDefaults.hiddenUiElements];
+    } else {
+        AppParams.hiddenUiElements = parsedHiddenUiElements.ids;
+    }
+    if (!hiddenUiElementsFromDb) {
+        await setConfig(AppConfigKeys.HIDDEN_UI_ELEMENTS, JSON.stringify(AppParamsDefaults.hiddenUiElements));
+        await Log.info(`Stored default hidden UI elements (none) in database config.`, 'system', 'startup');
+    }
+
+
     // Log the final computed configuration parameters
     console.log(`* Config Initialization Complete. Effective Parameters:`);
     console.log(`  - DB Path: ${AppParams.dbPath}`);
@@ -123,5 +140,6 @@ export async function initializeConfigs() {
     console.log(`  - HTTPS Key Path: ${AppParams.httpsKeyPath ?? 'Not Set / Not Found'}`);
     console.log(`  - HTTPS Cert Path: ${AppParams.httpsCertPath ?? 'Not Set / Not Found'}`);
     console.log(`  - HTTPS CA Path: ${AppParams.httpsCaPath ?? 'Not Set / Not Found'}`);
+    console.log(`  - Hidden UI Elements: ${AppParams.hiddenUiElements.length > 0 ? AppParams.hiddenUiElements.join(', ') : 'None'}`);
 
 }
