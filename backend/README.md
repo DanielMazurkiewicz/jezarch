@@ -635,7 +635,17 @@ Response `204 No Content`
 
 ---
 
-**`POST /api/signature/components/id/:id/reindex`** — Recalculate all element indices within a component. Requires authentication (admin or employee). Sorts elements alphabetically and assigns sequential indices based on the component's `index_type`, then updates the component's `index_count`. Custom element indices are overwritten.
+**`POST /api/signature/components/id/:id/reindex`** — Recalculate all element indices within a component. Requires authentication (admin or employee). Assigns sequential indices based on the component's `index_type`, then updates the component's `index_count`. Custom element indices are overwritten.
+
+Request body (optional — both fields may be omitted):
+```json
+{
+  "orderBy": "alphabetical",
+  "reverse": false
+}
+```
+- `orderBy` — `"alphabetical"` (by element name, case-insensitive) or `"creation"` (by creation date, oldest first). Defaults to `"alphabetical"`.
+- `reverse` — `true` numbers the elements in the opposite direction, so the last element in the chosen order receives index `1`. Defaults to `false`.
 
 Response `200 OK`:
 ```json
@@ -644,6 +654,8 @@ Response `200 OK`:
   "finalCount": 15
 }
 ```
+
+Errors: `400` invalid component id or invalid body, `401` not authenticated, `403` insufficient role, `404` component not found.
 
 ---
 

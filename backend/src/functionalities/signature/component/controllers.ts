@@ -20,7 +20,7 @@ import { getSessionAndUser, isAllowedRole } from '../../session/controllers';
 import { Log } from '../../log/db';
 import { formatIndex } from '../../../utils/formatIndex'; // Import formatter
 import { removeSignatureElementIdsFromDocuments } from '../../archive/document/db';
-import { createSignatureComponentSchema, updateSignatureComponentSchema, CreateSignatureComponentInput, UpdateSignatureComponentInput, effectiveComponentType } from './models';
+import { createSignatureComponentSchema, updateSignatureComponentSchema, CreateSignatureComponentInput, UpdateSignatureComponentInput, effectiveComponentType, reindexElementsSchema, ReindexElementsInput } from './models';
 
 const COMPONENT_AREA = 'signature_component';
 
@@ -228,22 +228,39 @@ export const reindexComponentElementsController = async (req: BunRequest<":id">)
     // Admins and employees may re-index
     if (!isAllowedRole(sessionAndUser, 'admin', 'employee')) return new Response("Forbidden", { status: 403 });
 
-    let componentId: number | null = null; // For logging
+    const id = parseInt(req.params.id);
+    if (isNaN(id)) {
+        return new Response(JSON.stringify({ message: 'Invalid component ID' }), { status: 400 });
+    }
+
+    // Ordering options are optional; an absent or empty body keeps the alphabetical default.
+    let options: ReindexElementsInput;
+    try {
+        const rawBody: unknown = await req.json().catch(() => undefined);
+        const validation = reindexElementsSchema.safeParse(rawBody ?? {});
+        if (!validation.success) {
+            return new Response(JSON.stringify({ message: "Invalid input", errors: validation.error.format() }), { status: 400 });
+        }
+        options = validation.data;
+    } catch {
+        return new Response(JSON.stringify({ message: 'Invalid input' }), { status: 400 });
+    }
+
+    const componentId: number = id; // Kept for logging
 
     // Use a transaction for the entire re-indexing process
     const transaction = db.transaction(async (compId: number) => {
-        componentId = compId; // Store for outer scope
-
         const component = await getComponentById(compId);
         if (!component) {
             throw new Error(`Component with ID ${compId} not found`);
         }
 
-        const elements = await getElementsByComponentId(compId); // Sorted by name
+        const elements = await getElementsByComponentId(compId, options.orderBy);
+        const orderedElements = options.reverse ? elements.slice().reverse() : elements;
         await resetComponentIndexCount(compId);
 
         let currentCount = 0;
-        for (const element of elements) {
+        for (const element of orderedElements) {
             currentCount++;
             const newIndex = formatIndex(currentCount, component.index_type);
             await updateElementIndex(element.signatureElementId!, newIndex);
@@ -253,14 +270,10 @@ export const reindexComponentElementsController = async (req: BunRequest<":id">)
     });
 
     try {
-        const id = parseInt(req.params.id);
-        if (isNaN(id)) {
-            return new Response(JSON.stringify({ message: 'Invalid component ID' }), { status: 400 });
-        }
-
         const reindexedCount = await transaction(id);
 
-        await Log.info(`Re-indexed ${reindexedCount} elements for component ID ${id}`, sessionAndUser.user.login, COMPONENT_AREA);
+        const order = `${options.orderBy}${options.reverse ? ' (reversed)' : ''}`;
+        await Log.info(`Re-indexed ${reindexedCount} elements for component ID ${id} (${order})`, sessionAndUser.user.login, COMPONENT_AREA);
         return new Response(JSON.stringify({ message: `Successfully re-indexed ${reindexedCount} elements.`, finalCount: reindexedCount }), { status: 200 });
 
     } catch (error: any) {

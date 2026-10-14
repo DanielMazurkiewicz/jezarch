@@ -8,6 +8,7 @@ import ElementList from './ElementList';
 import ElementForm from './ElementForm';
 import ComponentForm from './ComponentForm';
 import ElementPreviewDialog from './ElementPreviewDialog';
+import ReindexDialog, { type ReindexOptions } from './ReindexDialog';
 import SearchBar, { type SearchFieldOption } from '@/components/shared/SearchBar';
 import Pagination from '@/components/shared/Pagination';
 import LoadingSpinner from '@/components/shared/LoadingSpinner';
@@ -48,6 +49,7 @@ const ElementsPage: React.FC = () => {
     const [isElementFormOpen, setIsElementFormOpen] = useState(false);
     const [isComponentFormOpen, setIsComponentFormOpen] = useState(false);
     const [isReindexing, setIsReindexing] = useState(false);
+    const [isReindexDialogOpen, setIsReindexDialogOpen] = useState(false);
     const [previewingElement, setPreviewingElement] = useState<SignatureElement | null>(null);
     const [isPreviewOpen, setIsPreviewOpen] = useState(false);
     const [helpOpen, setHelpOpen] = useState(false);
@@ -220,14 +222,22 @@ const ElementsPage: React.FC = () => {
             .catch(() => toast.warning(t('parentComponentRefreshError', preferredLanguage)));
     }, [parentComponent, token, preferredLanguage]);
 
-    const handleReindexComponent = useCallback(async () => {
-        if (!canModify || !parentComponent || !token) return;
+    const openReindexDialog = useCallback(() => {
+        if (!canModify) { toast.error(t('insufficientPermissionsError', preferredLanguage)); return; }
+        if (!token) { toast.error(t('componentAuthTokenMissingError', preferredLanguage)); return; }
+        setIsReindexDialogOpen(true);
+    }, [canModify, token, preferredLanguage]);
+
+    const handleReindexComponent = useCallback(async (options: ReindexOptions) => {
+        if (!canModify || !parentComponent || !token) {
+            setIsReindexDialogOpen(false); // Nothing to do — don't leave the dialog open
+            return;
+        }
         const id = parentComponent.signatureComponentId!;
-        if (!window.confirm(t('confirmReindexComponentMessage', preferredLanguage, { componentId: id }))) return;
 
         setIsReindexing(true);
         try {
-            await api.reindexComponentElements(id, token);
+            await api.reindexComponentElements(id, options, token);
             toast.success(t('componentReindexedSuccess', preferredLanguage));
             const updatedParent = await api.getSignatureComponentById(id, token);
             setParentComponent(updatedParent);
@@ -237,6 +247,7 @@ const ElementsPage: React.FC = () => {
             toast.error(t('errorMessageTemplate', preferredLanguage, { message: t('componentReindexFailedError', preferredLanguage) + `: ${msg}` }));
         } finally {
             setIsReindexing(false);
+            setIsReindexDialogOpen(false);
         }
     }, [canModify, parentComponent, token, currentElementPage, elementSearchQuery, fetchElements, preferredLanguage]);
 
@@ -283,7 +294,7 @@ const ElementsPage: React.FC = () => {
                                 <Button variant="ghost" size="icon" onClick={() => setIsComponentFormOpen(true)} title={t('editComponentButtonTooltip', preferredLanguage)}>
                                     <Edit className="h-4 w-4" />
                                 </Button>
-                                <Button variant="ghost" size="icon" onClick={() => void handleReindexComponent()} disabled={isReindexing} title={t('reindexElementsButtonTooltip', preferredLanguage)}>
+                                <Button variant="ghost" size="icon" onClick={openReindexDialog} disabled={isReindexing} title={t('reindexElementsButtonTooltip', preferredLanguage)}>
                                     <ListRestart className={cn("h-4 w-4", isReindexing && "animate-spin")} />
                                 </Button>
                             </>
@@ -328,7 +339,7 @@ const ElementsPage: React.FC = () => {
                           </Dialog>
                           {/* Re-index the elements currently listed here (TREE/ELEMENT components) */}
                           {canModify && parentComponent && effectiveComponentType(parentComponent) !== 'FLAT' && (
-                              <Button variant="ghost" size="sm" onClick={() => void handleReindexComponent()} disabled={isReindexing || isElementsLoading} title={t('reindexElementsButtonTooltip', preferredLanguage)}>
+                              <Button variant="ghost" size="sm" onClick={openReindexDialog} disabled={isReindexing || isElementsLoading} title={t('reindexElementsButtonTooltip', preferredLanguage)}>
                                   <ListRestart className="mr-2 h-4 w-4" /> {t('reindexButton', preferredLanguage)}
                               </Button>
                           )}
@@ -380,6 +391,14 @@ const ElementsPage: React.FC = () => {
                     )}
                  </CardContent>
             </Card>
+
+            <ReindexDialog
+                isOpen={isReindexDialogOpen}
+                onOpenChange={(open) => { if (!open && !isReindexing) setIsReindexDialogOpen(false); }}
+                component={parentComponent}
+                isPending={isReindexing}
+                onConfirm={(options) => void handleReindexComponent(options)}
+            />
 
             <ElementPreviewDialog
                 isOpen={isPreviewOpen}

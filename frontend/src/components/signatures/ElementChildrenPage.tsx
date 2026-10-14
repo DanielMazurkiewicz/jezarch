@@ -6,6 +6,7 @@ import { PlusCircle, ArrowLeft, ChevronRight, SlidersHorizontal, ListRestart } f
 import ElementList from './ElementList';
 import ElementForm from './ElementForm';
 import ElementPreviewDialog from './ElementPreviewDialog';
+import ReindexDialog, { type ReindexOptions } from './ReindexDialog';
 import SearchBar, { type SearchFieldOption } from '@/components/shared/SearchBar';
 import Pagination from '@/components/shared/Pagination';
 import LoadingSpinner from '@/components/shared/LoadingSpinner';
@@ -62,6 +63,7 @@ const ElementChildrenPage: React.FC = () => {
     // hierarchies): its elements are exactly the children shown on this page.
     const [correspondingComponent, setCorrespondingComponent] = useState<SignatureComponent | null>(null);
     const [isReindexing, setIsReindexing] = useState(false);
+    const [isReindexDialogOpen, setIsReindexDialogOpen] = useState(false);
 
     // --- Children State ---
     const [elements, setElements] = useState<SignatureElementSearchResult[]>([]);
@@ -280,12 +282,21 @@ const ElementChildrenPage: React.FC = () => {
         setIsElementFormOpen(true);
     }, [canModify, currentElement, isTreeChildren, correspondingComponent, preferredLanguage]);
 
-    const handleReindexChildren = useCallback(async () => {
-        if (!correspondingComponent?.signatureComponentId || !token) return;
-        if (!window.confirm(t('confirmReindexComponentMessage', preferredLanguage, { componentId: correspondingComponent.signatureComponentId }))) return;
+    const openReindexDialog = useCallback(() => {
+        if (!canModify) { toast.error(t('insufficientPermissionsError', preferredLanguage)); return; }
+        if (!token) { toast.error(t('componentAuthTokenMissingError', preferredLanguage)); return; }
+        setIsReindexDialogOpen(true);
+    }, [canModify, token, preferredLanguage]);
+
+    const handleReindexChildren = useCallback(async (options: ReindexOptions) => {
+        const compId = correspondingComponent?.signatureComponentId;
+        if (!compId || !token) {
+            setIsReindexDialogOpen(false); // Nothing to do — don't leave the dialog open
+            return;
+        }
         setIsReindexing(true);
         try {
-            await api.reindexComponentElements(correspondingComponent.signatureComponentId, token);
+            await api.reindexComponentElements(compId, options, token);
             toast.success(t('componentReindexedSuccess', preferredLanguage));
             await fetchChildren(currentChildrenPage, elementSearchQuery);
         } catch (err: any) {
@@ -293,6 +304,7 @@ const ElementChildrenPage: React.FC = () => {
             toast.error(t('errorMessageTemplate', preferredLanguage, { message: msg }));
         } finally {
             setIsReindexing(false);
+            setIsReindexDialogOpen(false);
         }
     }, [correspondingComponent, token, preferredLanguage, currentChildrenPage, elementSearchQuery, fetchChildren]);
 
@@ -471,7 +483,7 @@ const ElementChildrenPage: React.FC = () => {
                               <Button
                                   variant="ghost"
                                   size="sm"
-                                  onClick={handleReindexChildren}
+                                  onClick={openReindexDialog}
                                   disabled={!canModify || isReindexing}
                                   title={t('reindexElementsButtonTooltip', preferredLanguage)}
                               >
@@ -524,6 +536,14 @@ const ElementChildrenPage: React.FC = () => {
                     )}
                  </CardContent>
             </Card>
+
+            <ReindexDialog
+                isOpen={isReindexDialogOpen}
+                onOpenChange={(open) => { if (!open && !isReindexing) setIsReindexDialogOpen(false); }}
+                component={correspondingComponent}
+                isPending={isReindexing}
+                onConfirm={(options) => void handleReindexChildren(options)}
+            />
 
             <ElementPreviewDialog
                 isOpen={isPreviewOpen}

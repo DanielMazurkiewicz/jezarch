@@ -64,7 +64,7 @@ Hierarchię można też przeglądać bezpośrednio w sekcji Kreatora hierarchii:
 - Każdy element automatycznie otrzymuje wewnętrzny komponent-lustro typu **ELEMENT** (ten sam identyfikator, ta sama nazwa). Dzieci utworzone pod tym elementem należą do tego komponentu-lustra i automatycznie otrzymują element jako rodzica — nie trzeba wybierać rodzica.
 - Formularz elementu dla komponentów drzewa ukrywa pola Komponent i Elementy Nadrzędne, a zamiast nich pokazuje pole **Formatowanie Indeksu**; określa ono, jak numerowane będą własne dzieci elementu (zapisywane w jego komponencie-lustrze).
 - Zmiana nazwy elementu lub jego formatowania indeksu jednocześnie aktualizuje komponent-lustro; usunięcie elementu usuwa całe jego poddrzewo (wszystkie potomki wraz z lustrami), a usunięcie komponentu drzewa usuwa poddrzewa wszystkich jego elementów.
-- Przycisk **Reindeksuj** obok **Nowy Element** na obu stronach elementów ponumerowuje dokładnie elementy aktualnie widoczne na liście.
+- Przycisk **Reindeksuj** obok **Nowy Element** na obu stronach elementów ponumerowuje dokładnie elementy aktualnie widoczne na liście; w oknie dialogowym można wybrać **Alfabetycznie** lub **Według kolejności utworzenia** oraz opcjonalnie zaznaczyć **Odwrotna**.
 
 Komponenty płaskie zachowują klasyczne działanie: elementy mogą mieć elementy nadrzędne z dowolnego komponentu, wybierane selektorem Elementów Nadrzędnych w formularzu.
 

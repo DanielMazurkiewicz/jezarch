@@ -7,6 +7,7 @@ import ComponentList from './ComponentList';
 import ComponentForm from './ComponentForm';
 import { compareSignatureComponents } from '@/lib/signatureComponentSort';
 import ComponentPreviewDialog from './ComponentPreviewDialog';
+import ReindexDialog, { type ReindexOptions } from './ReindexDialog';
 import LoadingSpinner from '@/components/shared/LoadingSpinner';
 import ErrorDisplay from '@/components/shared/ErrorDisplay';
 import { useAuth } from '@/hooks/useAuth';
@@ -40,6 +41,9 @@ const ComponentsPage: React.FC = () => {
     const [creatingKind, setCreatingKind] = useState<'FLAT' | 'TREE'>('FLAT');
     const [previewingComponent, setPreviewingComponent] = useState<SignatureComponent | null>(null);
     const [isPreviewOpen, setIsPreviewOpen] = useState(false);
+    // Component whose elements are about to be re-indexed (drives the dialog)
+    const [reindexingComponent, setReindexingComponent] = useState<SignatureComponent | null>(null);
+    const [isReindexing, setIsReindexing] = useState(false);
     const [helpOpen, setHelpOpen] = useState(false);
 
     // --- Component Logic ---
@@ -111,13 +115,22 @@ const ComponentsPage: React.FC = () => {
         // Loading state will be reset by fetchComponents on success
     }, [isAdmin, token, fetchComponents, preferredLanguage]); // Add preferredLanguage
 
-    const handleReindexComponent = useCallback(async (componentId: number) => {
+    const openReindexDialog = useCallback((component: SignatureComponent) => {
+        if (!canModify) { toast.error(t('insufficientPermissionsError', preferredLanguage)); return; }
         if (!token) { toast.error(t('componentAuthTokenMissingError', preferredLanguage)); return; }
-        if (!window.confirm(t('confirmReindexComponentMessage', preferredLanguage, { componentId }))) return;
+        setReindexingComponent(component);
+    }, [canModify, token, preferredLanguage]);
 
-        setIsComponentsLoading(true); setComponentsError(null);
+    const handleReindexComponent = useCallback(async (component: SignatureComponent, options: ReindexOptions) => {
+        const componentId = component.signatureComponentId;
+        if (componentId === undefined || !token) {
+            setReindexingComponent(null); // Nothing to do — don't leave the dialog open
+            return;
+        }
+
+        setIsReindexing(true); setComponentsError(null);
         try {
-            await api.reindexComponentElements(componentId, token);
+            await api.reindexComponentElements(componentId, options, token);
             toast.success(t('componentReindexedSuccess', preferredLanguage));
             // Refetch to update counts etc.
             await fetchComponents();
@@ -125,9 +138,10 @@ const ComponentsPage: React.FC = () => {
             const msg = e.message || "Failed";
             setComponentsError(t('componentReindexFailedError', preferredLanguage));
             toast.error(t('errorMessageTemplate', preferredLanguage, { message: t('componentReindexFailedError', preferredLanguage) + `: ${msg}` }));
-            setIsComponentsLoading(false); // Stop loading on error
+        } finally {
+            setIsReindexing(false);
+            setReindexingComponent(null); // Close the dialog once the request settles
         }
-        // Loading state will be reset by fetchComponents on success
     }, [token, fetchComponents, preferredLanguage]); // Add preferredLanguage
 
     const handleComponentSaveSuccess = useCallback(() => {
@@ -191,7 +205,8 @@ const ComponentsPage: React.FC = () => {
                             onDelete={handleDeleteComponent}
                             onPreview={handlePreviewComponent}
                             onOpen={handleOpenComponent} // Changed prop name
-                            onReindex={handleReindexComponent}
+                            onReindex={openReindexDialog}
+                            isReindexing={isReindexing}
                          />
                     )}
                      {/* Use translated empty state */}
@@ -211,6 +226,15 @@ const ComponentsPage: React.FC = () => {
             </Dialog>
 
             {/* Element section is removed from this page */}
+
+            {/* Re-index dialog: pick the ordering mode before renumbering elements */}
+            <ReindexDialog
+                isOpen={reindexingComponent !== null}
+                onOpenChange={(open) => { if (!open && !isReindexing) setReindexingComponent(null); }}
+                component={reindexingComponent}
+                isPending={isReindexing}
+                onConfirm={(options) => { if (reindexingComponent) void handleReindexComponent(reindexingComponent, options); }}
+            />
 
             <ComponentPreviewDialog
                 isOpen={isPreviewOpen}

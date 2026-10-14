@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Edit, Trash2, FolderOpen } from 'lucide-react';
 import type { SignatureComponent } from '../../../../backend/src/functionalities/signature/component/models';
 import { useAuth } from '@/hooks/useAuth';
+import { indexTypeLabel } from '@/lib/signatureIndexType';
 import { t } from '@/translations/utils';
 import { formatDateTime } from '@/lib/format';
 
@@ -26,16 +27,6 @@ const ComponentPreviewDialog: React.FC<ComponentPreviewDialogProps> = ({
     const { user, preferredLanguage } = useAuth();
 
     if (!component) return null;
-
-    const getIndexTypeLabel = (type: SignatureComponent['index_type']): string => {
-        switch(type) {
-            case 'dec': return t('indexTypeDecimal', preferredLanguage);
-            case 'roman': return t('indexTypeRoman', preferredLanguage);
-            case 'small_char': return t('indexTypeLowerLetter', preferredLanguage);
-            case 'capital_char': return t('indexTypeUpperLetter', preferredLanguage);
-            default: return type;
-        }
-    };
 
     const canModify = user?.role === 'admin' || user?.role === 'employee';
     // Deleting components is admin-only (matches the API and ComponentList)
@@ -63,7 +54,7 @@ const ComponentPreviewDialog: React.FC<ComponentPreviewDialogProps> = ({
                         </div>
                         <div>
                             <span className="text-sm font-medium text-muted-foreground">{t('componentIndexTypeLabel', preferredLanguage)}</span>
-                            <div className="mt-1"><Badge variant="outline">{getIndexTypeLabel(component.index_type)}</Badge></div>
+                            <div className="mt-1"><Badge variant="outline">{indexTypeLabel(component.index_type, preferredLanguage)}</Badge></div>
                         </div>
                         <div>
                             <span className="text-sm font-medium text-muted-foreground">{t('componentElementsCountLabel', preferredLanguage)}</span>

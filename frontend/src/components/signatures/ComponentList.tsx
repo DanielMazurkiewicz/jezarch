@@ -5,6 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { Edit, Trash2, ListRestart, FolderOpen, Eye } from 'lucide-react'; // Added Eye icon
 import type { SignatureComponent } from '../../../../backend/src/functionalities/signature/component/models';
 import { useAuth } from '@/hooks/useAuth';
+import { indexTypeLabel } from '@/lib/signatureIndexType';
 import { cn } from '@/lib/utils';
 import { t } from '@/translations/utils'; // Import translation utility
 
@@ -15,12 +16,14 @@ interface ComponentListProps {
     onPreview: (component: SignatureComponent) => void;
     // Renamed onSelect to onOpen for clarity
     onOpen: (component: SignatureComponent) => void;
-    onReindex: (componentId: number) => void;
+    /** Opens the re-index dialog for the given component. */
+    onReindex: (component: SignatureComponent) => void;
+    isReindexing?: boolean;
 }
 
 // Wrap the functional component definition with React.memo
 const ComponentList: React.FC<ComponentListProps> = React.memo(({
-    components, onEdit, onDelete, onPreview, onOpen, onReindex // Updated prop name
+    components, onEdit, onDelete, onPreview, onOpen, onReindex, isReindexing = false // Updated prop name
 }) => {
     const { user, preferredLanguage } = useAuth(); // Get preferredLanguage
     const canModify = user?.role === 'admin' || user?.role === 'employee';
@@ -29,17 +32,6 @@ const ComponentList: React.FC<ComponentListProps> = React.memo(({
     // Handle row click to open the component's element page
     const handleRowClick = (component: SignatureComponent) => {
         onOpen(component);
-    };
-
-    // Map index types to readable labels using translations
-    const getIndexTypeLabel = (type: SignatureComponent['index_type']): string => {
-         switch(type) {
-             case 'dec': return t('indexTypeDecimal', preferredLanguage);
-             case 'roman': return t('indexTypeRoman', preferredLanguage);
-             case 'small_char': return t('indexTypeLowerLetter', preferredLanguage);
-             case 'capital_char': return t('indexTypeUpperLetter', preferredLanguage);
-             default: return type;
-         }
     };
 
     // Return null if list is empty (parent handles empty message)
@@ -96,7 +88,7 @@ const ComponentList: React.FC<ComponentListProps> = React.memo(({
                              <TableCell className='text-sm text-muted-foreground max-w-xs truncate' title={component.description || ''}>
                                 {component.description || <i className='not-italic'>{t('noDescription', preferredLanguage)}</i>}
                             </TableCell>
-                            <TableCell><Badge variant="outline">{getIndexTypeLabel(component.index_type)}</Badge></TableCell>
+                            <TableCell><Badge variant="outline">{indexTypeLabel(component.index_type, preferredLanguage)}</Badge></TableCell>
                             <TableCell className="text-center">{component.index_count ?? 0}</TableCell>
                             <TableCell className="text-right space-x-1">
                                 {canModify ? (
@@ -106,7 +98,7 @@ const ComponentList: React.FC<ComponentListProps> = React.memo(({
                                             <Eye className="h-4 w-4" />
                                         </Button>
                                         {canModify && (
-                                            <Button variant="ghost" size="icon" onClick={(e) => { e.stopPropagation(); onReindex(component.signatureComponentId!); }} title={t('reindexElementsButtonTooltip', preferredLanguage)}>
+                                            <Button variant="ghost" size="icon" onClick={(e) => { e.stopPropagation(); onReindex(component); }} disabled={isReindexing} title={t('reindexElementsButtonTooltip', preferredLanguage)}>
                                                 <ListRestart className="h-4 w-4" />
                                             </Button>
                                         )}

@@ -12,6 +12,7 @@ import type {
     SignatureComponent,
     CreateSignatureComponentInput,
     UpdateSignatureComponentInput,
+    ReindexElementsInput,
 } from "../../../backend/src/functionalities/signature/component/models";
 import type {
     SignatureElement,
@@ -209,7 +210,7 @@ const getSignatureComponentById = (id: number, token: string) => fetchApi<Signat
 const getSignatureComponentByElementId = (elementId: number, token: string) => fetchApi<SignatureComponent>(`/signature/component/by-element/${elementId}`, 'GET', null, token);
 const updateSignatureComponent = (id: number, data: UpdateSignatureComponentInput, token: string) => fetchApi<SignatureComponent>(`/signature/component/${id}`, 'PATCH', data, token);
 const deleteSignatureComponent = (id: number, token: string) => fetchApi<void>(`/signature/component/${id}`, 'DELETE', null, token);
-const reindexComponentElements = (id: number, token: string) => fetchApi<{ message: string, finalCount: number }>(`/signature/components/id/${id}/reindex`, 'POST', null, token);
+const reindexComponentElements = (id: number, options: ReindexElementsInput, token: string) => fetchApi<{ message: string, finalCount: number }>(`/signature/components/id/${id}/reindex`, 'POST', options, token);
 const createSignatureElement = (data: CreateSignatureElementInput, token: string) => fetchApi<SignatureElement>('/signature/element', 'PUT', data, token);
 const getSignatureElementById = (id: number, populate: ('component' | 'parents')[] = [], token: string) => fetchApi<SignatureElement>(`/signature/element/${id}${populate.length ? `?populate=${populate.join(',')}` : ''}`, 'GET', null, token);
 const updateSignatureElement = (id: number, data: UpdateSignatureElementInput, token: string) => fetchApi<SignatureElement>(`/signature/element/${id}`, 'PATCH', data, token);

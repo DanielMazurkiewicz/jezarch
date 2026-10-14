@@ -5,6 +5,22 @@ export const SignatureComponentIndexType = z.enum(["dec", "roman", "small_char",
 export type SignatureComponentIndexType = z.infer<typeof SignatureComponentIndexType>;
 
 /**
+ * Ordering used when re-indexing a component's elements:
+ * - alphabetical: by element name (case-insensitive)
+ * - creation: by creation date, oldest first
+ */
+export const ReindexOrderBy = z.enum(["alphabetical", "creation"]);
+export type ReindexOrderBy = z.infer<typeof ReindexOrderBy>;
+
+// Body of the re-index request. Both fields are optional so an empty body keeps
+// the previous behaviour (alphabetical, non-reversed).
+export const reindexElementsSchema = z.object({
+    orderBy: ReindexOrderBy.optional().default("alphabetical"),
+    reverse: z.boolean().optional().default(false),
+});
+export type ReindexElementsInput = z.infer<typeof reindexElementsSchema>;
+
+/**
  * Component kind:
  * - FLAT: classic component, elements behave exactly as before (default).
  * - TREE: hierarchical tree root; each of its elements gets a paired ELEMENT component.

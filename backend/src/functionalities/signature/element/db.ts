@@ -1,6 +1,7 @@
 import { db } from '../../../initialization/db';
 import type { SignatureElement, SignatureElementSearchResult } from './models';
 import type { SignatureComponent } from '../component/models';
+import type { ReindexOrderBy } from '../component/models';
 import { Log } from '../../log/db';
 import { buildUpdateFields } from '../../../utils/sql';
 import { sqliteNow } from '../../../utils/sqlite';
@@ -108,8 +109,15 @@ export async function getElementById(id: number, populate: ('component' | 'paren
 }
 
 // Ensure sorting by name for re-indexing
-export async function getElementsByComponentId(componentId: number): Promise<(SignatureElement & { parentIds: number[]; childCount: number })[]> {
-    const statement = db.prepare(`SELECT * FROM signature_elements WHERE signatureComponentId = ? ORDER BY name COLLATE NOCASE`);
+const REINDEX_ORDER_CLAUSE: Record<ReindexOrderBy, string> = {
+    alphabetical: 'name COLLATE NOCASE, signatureElementId',
+    creation: 'createdOn, signatureElementId',
+};
+
+export async function getElementsByComponentId(componentId: number, orderBy: ReindexOrderBy = 'alphabetical'): Promise<(SignatureElement & { parentIds: number[]; childCount: number })[]> {
+    // The clause comes from a closed set of literals above, never from user input.
+    const orderClause = REINDEX_ORDER_CLAUSE[orderBy] ?? REINDEX_ORDER_CLAUSE.alphabetical;
+    const statement = db.prepare(`SELECT * FROM signature_elements WHERE signatureComponentId = ? ORDER BY ${orderClause}`);
     const results = statement.all(componentId);
     const elements = results.map(dbToElement).filter(e => e !== undefined) as SignatureElement[];
 

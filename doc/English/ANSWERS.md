@@ -65,7 +65,7 @@ A **tree component** is created with the **New Tree** button on the Hierarchy Cr
 - Each element automatically gets an internal **ELEMENT**-type mirror component (same id, same name). Children you create under that element belong to this mirror component and get the element as their parent automatically — no parent selection is needed.
 - The element dialog for tree components hides the Component and Parent Elements fields and shows an **Index Formatting** field instead; it controls how the element's own children are numbered (stored on its mirror component).
 - Renaming an element or changing its index formatting updates the mirror component at the same time; deleting an element removes its whole subtree (all descendants and their mirrors), and deleting a tree component removes all of its elements' subtrees.
-- A **Re-index** button next to **New Element** on both element pages renumbers exactly the elements currently listed there.
+- A **Re-index** button next to **New Element** on both element pages renumbers exactly the elements currently listed there; a dialog lets you pick **Alphabetically** or **In order of creation** and optionally **Reverse** the result before confirming.
 
 Flat components keep the classic behavior: elements can have parent elements from any component, chosen with the Parent Elements selector in the dialog.
 
