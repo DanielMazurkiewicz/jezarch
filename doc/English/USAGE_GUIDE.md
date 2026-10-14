@@ -11,7 +11,7 @@ This guide covers the core functionalities of the JezArch application for differ
     *   [Main Content Area](#main-content-area)
     *   [Built-in Help](#built-in-help)
 *   [Dashboard](#dashboard)
-*   [Archive Management](#archive-management)
+*   [Archival Resources Management](#archival-resources-management)
     *   [Browsing Units & Documents](#browsing-units--documents)
     *   [Searching](#searching)
     *   [Sorting & Pagination](#sorting--pagination)
@@ -62,14 +62,14 @@ This guide covers the core functionalities of the JezArch application for differ
 
 *   Provides navigation to the main sections of the application based on your role:
     *   **Dashboard:** Overview page.
-    *   **Archive:** Browse and search archival documents and units. ('User' role sees 'Search Archive').
+    *   **Archival Resources:** Browse and search archival documents and units. (The 'User' role lands on the same section, but with a search icon and results limited to its assigned tags).
     *   **Hierarchy Creator (Admin/Employee):** Manage hierarchy components and elements.
     *   **Tags (Admin/Employee):** Manage global tags.
     *   **Notes (Admin/Employee):** Access personal and shared notes.
     *   **Admin (Admin only):** Access administrative functions.
 *   The sidebar shows the account you are logged in as and a logout icon at the top.
 *   The sidebar width can be **dragged** to resize it.
-*   While on the **Archive** page, a **"Descriptive signature tree"** quick filter appears at the bottom of the sidebar (see [Searching](#searching)).
+*   While on the **Archival Resources** page, a **"Descriptive signature tree"** quick filter appears at the bottom of the sidebar (see [Searching](#searching)).
 
 ### Main Content Area
 
@@ -77,36 +77,36 @@ This guide covers the core functionalities of the JezArch application for differ
 
 ### Built-in Help
 
-*   Every main page (Dashboard, Archive, Hierarchy Creator, Tags, Notes, Admin) has a **Help** button that opens a built-in guide for that page.
+*   Every main page (Dashboard, Archival Resources, Hierarchy Creator, Tags, Notes, Admin) has a **Help** button that opens a built-in guide for that page.
 *   The guides explain the purpose of the section, its key concepts, and the permissions of each role.
 
 ---
 
 ## Dashboard
 
-The default page after logging in. Provides a welcome message. 'User' role users are prompted to use the sidebar to search the archive, while other roles are prompted to select a section.
+The default page after logging in. Provides a welcome message. 'User' role users are prompted to use the sidebar to search archival resources, while other roles are prompted to select a section.
 
 ---
 
-## Archive Management
+## Archival Resources Management
 
-Accessible via the "Archive" / "Search Archive" link in the sidebar.
+Accessible via the "Archival Resources" link in the sidebar.
 
 ### Browsing Units & Documents
 
-*   The main archive view lists top-level units and documents.
+*   The main archival resources view lists top-level units and documents.
 *   Items marked with a **Folder** icon are **Units**. Clicking a Unit navigates into it, showing its child documents and sub-units.
 *   Items marked with a **File** icon are **Documents**. Clicking a Document opens a preview dialog.
-*   Use the **Back Arrow** button when inside a unit to return to the parent level or archive root.
+*   Use the **Back Arrow** button when inside a unit to return to the parent level or the archival resources root.
 *   The header shows how many items match the current view ("Found N item(s).").
 
 ### Searching
 
 *   The filter section is hidden by default. Click the **Show filters** button in the top button row (next to Create / Help) to reveal the **Search Bar**; it then reads **Hide filters** to collapse it again. Criteria you have entered are preserved while the panel is hidden.
-*   Use the **Search Bar** at the top of the Archive page to find items.
+*   Use the **Search Bar** at the top of the Archival Resources page to find items.
 *   Click **Add Filter** to add a search criterion; each row has a **Field**, a **Condition**, and a **Value**.
 *   Select a **Field** from:
-    *   **All roles:** Title, Creator, Creation Date, Place of Creation, Seals, Content Description, Topographic Signature, Descriptive Signature, Type (only at the archive root), Is Digitized.
+    *   **All roles:** Title, Creator, Creation Date, Place of Creation, Seals, Content Description, Topographic Signature, Descriptive Signature, Type (only at the archival resources root), Is Digitized.
     *   **Admin/Employee only:** Tags, Created By, Updated By, Is Deleted.
     *   When you are browsing inside a unit, the list is automatically limited to that unit's contents.
 *   Choose a **Condition** — the available conditions depend on the field type:
@@ -124,7 +124,7 @@ Accessible via the "Archive" / "Search Archive" link in the sidebar.
 
 ### Sorting & Pagination
 
-*   Click a table column header to sort the archive list — sortable columns are **Type**, **Title**, and **Topographic Sig.**
+*   Click a table column header to sort the archival resources list — sortable columns are **Type**, **Title**, and **Topographic Sig.**
 *   Click the same header again to toggle between ascending and descending order; arrows indicate the current direction.
 *   Results are paginated (10 items per page). Use the pagination bar at the bottom of the list to move between pages.
 
@@ -178,7 +178,7 @@ Accessible via the "Archive" / "Search Archive" link in the sidebar.
 *   Use the search bar to filter the items you want to tag.
 *   Click **Add Tags** or **Remove Tags** near the search bar.
 *   A dialog appears showing how many items will be affected based on the current search filters.
-    *   **Warning:** If no search filters are active, the action will apply to *all* items in the archive.
+    *   **Warning:** If no search filters are active, the action will apply to *all* items across archival resources.
 *   Select the tags you want to add or remove using the Tag Selector.
 *   Click **Add Tags ({count})** or **Remove Tags ({count})** to confirm.
 
@@ -303,4 +303,4 @@ Accessible via the user icon dropdown in the header.
 
 ## Example Workflows
 
-For complete, step-by-step walkthroughs — from first run through building an archive, searching, granting restricted access, and routine maintenance — see the [Example Workflows](WORKFLOWS.md) guide.
+For complete, step-by-step walkthroughs — from first run through building archival resources, searching, granting restricted access, and routine maintenance — see the [Example Workflows](WORKFLOWS.md) guide.

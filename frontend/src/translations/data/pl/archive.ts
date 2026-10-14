@@ -2,17 +2,17 @@
 import type { ArchiveTranslationSet } from '../../models/archive';
 
 export const archiveTranslationsPL: ArchiveTranslationSet = {
-  archiveTitle: 'Archiwum',
+  archiveTitle: 'Zasób archiwalny',
   archiveDescription: 'Zarządzaj dokumentami i jednostkami archiwalnymi.',
   archiveCreateDocumentButton: 'Utwórz Dokument',
   archiveCreateUnitButton: 'Utwórz Jednostkę',
   archiveNoItemsInUnit: 'Nie znaleziono pozycji w jednostce "{unitTitle}".',
   archiveNoItemsForUserTags: 'Nie znaleziono dokumentów pasujących do przypisanych tagów.',
-  archiveIsEmpty: 'Archiwum jest obecnie puste.',
+  archiveIsEmpty: 'Zasób archiwalny jest obecnie pusty.',
   archiveItemLabel: 'Pozycję', // e.g., used for "Create Item" -> Utwórz Pozycję
   archiveUnitLabel: 'Jednostka',
   archiveDocumentLabel: 'Dokument',
-  backToArchiveButton: 'Wróć do Głównego Widoku Archiwum',
+  backToArchiveButton: 'Wróć do Głównego Widoku Zasobu Archiwalnego',
   archiveCreatorLabel: 'Twórca', // Oryginalny twórca/autor dokumentu
   archiveCreationDateLabel: 'Data Utworzenia', // Oryginalna data utworzenia dokumentu
   archiveTopoSigLabel: 'Sygn. Topograf.',
@@ -34,7 +34,7 @@ export const archiveTranslationsPL: ArchiveTranslationSet = {
   archiveDetailsLoadFailed: 'Nie udało się załadować szczegółów dokumentu: {message}',
   archiveFoundItems: 'Znaleziono {count, plural, one {# pozycję} few {# pozycje} many {# pozycji} other {# pozycji}}.', // Improved pluralization
   archiveBatchActionWarning: 'Operacje dodawania/usuwania tagów wpłyną na wszystkie {count, plural, one {# znalezioną pozycję} few {# znalezione pozycje} many {# znalezionych pozycji} other {# znalezionych pozycji}} pasujące do obecnych filtrów.',
-  archiveBatchActionNoFilterWarning: 'Operacje dodawania/usuwania tagów wpłyną na wszystkie {count, plural, one {# pozycję} few {# pozycje} many {# pozycji} other {# pozycji}} w archiwum (brak aktywnych filtrów).',
+  archiveBatchActionNoFilterWarning: 'Operacje dodawania/usuwania tagów wpłyną na wszystkie {count, plural, one {# pozycję} few {# pozycje} many {# pozycji} other {# pozycji}} w zasobie archiwalnym (brak aktywnych filtrów).',
   archiveBatchActionLoading: 'Wykonywanie operacji wsadowej na tagach...',
   archiveBatchTagsAddTitle: 'Dodaj Tagi do Wyfiltrowanych Pozycji',
   archiveBatchTagsRemoveTitle: 'Usuń Tagi z Wyfiltrowanych Pozycji',
@@ -146,9 +146,9 @@ export const archiveTranslationsPL: ArchiveTranslationSet = {
   archiveParentUnitLoadError: 'Nie udało się załadować jednostki nadrzędnej: {message}',
   archiveFetchError: 'Nie udało się pobrać dokumentów',
   archiveBatchAddTooltipFiltered: 'Dodaj tagi do wyfiltrowanych pozycji',
-  archiveBatchAddTooltipAll: 'Dodaj tagi do WSZYSTKICH pozycji w archiwum',
+  archiveBatchAddTooltipAll: 'Dodaj tagi do WSZYSTKICH pozycji w zasobie archiwalnym',
   archiveBatchRemoveTooltipFiltered: 'Usuń tagi z wyfiltrowanych pozycji',
-  archiveBatchRemoveTooltipAll: 'Usuń tagi ze WSZYSTKICH pozycji w archiwum',
+  archiveBatchRemoveTooltipAll: 'Usuń tagi ze WSZYSTKICH pozycji w zasobie archiwalnym',
   archiveIsDeletedLabel: 'Usunięte',
   unitLabel: 'Jednostka',
   archiveBrowsingUnit: 'Przeglądanie pozycji w jednostce "{unitTitle}".',
@@ -168,8 +168,8 @@ export const archiveTranslationsPL: ArchiveTranslationSet = {
   // --- NEW: createdBy/updatedBy search field labels ---
   createdBySearchLabel: 'Utworzone przez',
   updatedBySearchLabel: 'Zaktualizowane przez',
-  archiveHelpTitle: 'O archiwum',
-  archiveHelpIntro: 'Archiwum to miejsce, w którym przechowujesz i organizujesz materiały archiwalne jako hierarchię jednostek i dokumentów. Możesz przeglądać, wyszukiwać, tworzyć, edytować, podglądać i usuwać pozycje oraz zarządzać ich metadanymi, tagami i sygnaturami.',
+  archiveHelpTitle: 'O zasobie archiwalnym',
+  archiveHelpIntro: 'Zasób archiwalny to miejsce, w którym przechowujesz i organizujesz materiały archiwalne jako hierarchię jednostek i dokumentów. Możesz przeglądać, wyszukiwać, tworzyć, edytować, podglądać i usuwać pozycje oraz zarządzać ich metadanymi, tagami i sygnaturami.',
   archiveHelpUnits: 'Jednostki to kontenery (foldery) grupujące dokumenty. Reprezentują fizyczne lub logiczne grupowania. Kliknij jednostkę, aby ją otworzyć i przejrzeć jej zawartość.',
   archiveHelpDocuments: 'Dokumenty to pojedyncze pozycje z metadanymi takimi jak tytuł, twórca, data i opis. Każdy dokument może należeć do jednej jednostki.',
   archiveHelpSignatures: 'Skategoryzuj dokument za pomocą sygnatury opisowej — uporządkowanej ścieżki elementów zdefiniowanych w sekcji Kreatora hierarchii — oraz/lub swobodnej sygnatury topograficznej (np. "Szafa 1, Folder 5").',

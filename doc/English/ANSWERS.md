@@ -10,11 +10,11 @@ In the signature system, an **element** is an individual item within a component
 
 Elements can have **parent elements** from other components, forming a hierarchy. For instance, "Series A" (element) can be a child of "Fonds X" (element from a different component).
 
-When you create a document in the Archive section, you assign it a "descriptive signature path" - a sequence of element IDs that classifies where the document belongs in the archive structure.
+When you create a document in the Archival Resources section, you assign it a "descriptive signature path" - a sequence of element IDs that classifies where the document belongs in the archival resource structure.
 
 ### What is a component? (#25)
 
-A **component** is a classification category that defines a level in your archive's hierarchical structure. Common examples include:
+A **component** is a classification category that defines a level in your hierarchical archival resource structure. Common examples include:
 
 - **Fonds** - the highest level of organization (e.g., an entire collection)
 - **Series** - a group of related records within a fonds
@@ -26,7 +26,7 @@ Each component has an **index type** that determines how its elements are number
 - Lowercase letters (a, b, c...)
 - Uppercase letters (A, B, C...)
 
-Components can also be marked as **main components** (a checkbox in the component form). Main components are listed first — before alphabetical order — in every component list and picker, and their folder icon is highlighted. The quick signature tree in the Archive sidebar shows only main components by default.
+Components can also be marked as **main components** (a checkbox in the component form). Main components are listed first — before alphabetical order — in every component list and picker, and their folder icon is highlighted. The quick signature tree in the Archival Resources sidebar shows only main components by default.
 
 Components have a **type**:
 
@@ -47,9 +47,9 @@ Components have a **type**:
 
 Elements can have **parent-child relationships** with other elements, even across different components. This is stored in a many-to-many junction table (`signature_element_parents`), meaning an element can have multiple parents.
 
-In the **Signature Path Selector** dialog (used when creating/editing archive documents):
+In the **Signature Path Selector** dialog (used when creating/editing archival resource documents):
 
-- **Tree mode** (default): Shows the same tree as the Archive sidebar — components at the top, their root elements beneath, and children as you expand. Click an element to select its full path; hovering an item reveals **Preview**, **Edit**, and **Add child** actions.
+- **Tree mode** (default): Shows the same tree as the Archival Resources sidebar — components at the top, their root elements beneath, and children as you expand. Click an element to select its full path; hovering an item reveals **Preview**, **Edit**, and **Add child** actions.
 - **Hierarchical mode**: Shows root-level elements (those without parents) first. Selecting an element reveals its children, allowing you to drill down level by level.
 - **Free mode**: Shows all elements from a selected component at once, letting you pick any element regardless of parent relationships.
 
@@ -69,29 +69,29 @@ A **tree component** is created with the **New Tree** button on the Hierarchy Cr
 
 Flat components keep the classic behavior: elements can have parent elements from any component, chosen with the Parent Elements selector in the dialog.
 
-## Archive & Hierarchy Creator Relationship
+## Archival Resources & Hierarchy Creator Relationship
 
-### What is the relationship between Archive and the Hierarchy Creator? (#22)
+### What is the relationship between Archival Resources and the Hierarchy Creator? (#22)
 
 - **The Hierarchy Creator** defines the classification system - the hierarchical taxonomy of components and elements
-- **Archive** stores the actual units (containers) and documents (items)
+- **Archival Resources** stores the actual units (containers) and documents (items)
 
-The link between them is the **"descriptive signature path"** field on archive documents. This field stores references to element IDs from the signature system, classifying where each document belongs.
+The link between them is the **"descriptive signature path"** field on archival resource documents. This field stores references to element IDs from the signature system, classifying where each document belongs.
 
 For example, a document might have a descriptive signature path of `[1, 5, 12]`, meaning it belongs under Element 1 → Element 5 → Element 12 in the classification hierarchy.
 
-### How do entries in the Hierarchy Creator appear in Archive? (#24)
+### How do entries in the Hierarchy Creator appear in Archival Resources? (#24)
 
-When you create components and elements in the Hierarchy Creator section, they become available in the Archive section's "Add Signature Path" dialog. The dialog fetches all components and elements from the API, allowing you to browse and select elements to build a signature path for your documents.
+When you create components and elements in the Hierarchy Creator section, they become available in the Archival Resources section's "Add Signature Path" dialog. The dialog fetches all components and elements from the API, allowing you to browse and select elements to build a signature path for your documents.
 
-### Should the Hierarchy Creator use inventory-style descriptions and Archive use tree view? (#23)
+### Should the Hierarchy Creator use inventory-style descriptions and Archival Resources use tree view? (#23)
 
 The current design separates concerns:
 
 - **Hierarchy Creator section** uses a list view (like an inventory/catalog) - this is appropriate because components and elements are classification definitions, not hierarchical containers
-- **Archive section** supports hierarchical navigation through units (clicking a unit navigates to `?unitId=N`, showing only children of that unit)
+- **Archival Resources section** supports hierarchical navigation through units (clicking a unit navigates to `?unitId=N`, showing only children of that unit)
 
-The archive's tree structure is defined by the `parentUnitArchiveDocumentId` field, which creates parent-child relationships between units and documents.
+The archival resources' tree structure is defined by the `parentUnitArchiveDocumentId` field, which creates parent-child relationships between units and documents.
 
 ## Document & Unit Descriptions
 
@@ -156,7 +156,7 @@ Yes, all main sections now have:
 
 | Section | Preview | Delete |
 |---------|---------|--------|
-| Archive | DocumentPreviewDialog | Soft delete / restore (soft delete) |
+| Archival Resources | DocumentPreviewDialog | Soft delete / restore (soft delete) |
 | Components | ComponentPreviewDialog | Admin-only hard delete |
 | Elements | ElementPreviewDialog | Admin-only hard delete |
 | Tags | Edit form serves as preview | Delete with confirmation |
@@ -164,9 +164,9 @@ Yes, all main sections now have:
 
 Preview dialogs show read-only details of the selected item, with edit/delete buttons for authorized users (owner or admin for notes, admin/employee for other sections).
 
-### Is the archive list sortable? (#31)
+### Is the archival resources list sortable? (#31)
 
-Yes, the archive list supports sorting by:
+Yes, the archival resources list supports sorting by:
 - **Title** - alphabetical sorting
 - **Type** - unit vs document
 - **Topographic Signature** - alphabetical sorting of the signature text
@@ -175,7 +175,7 @@ Click a column header to sort. Click again to toggle between ascending and desce
 
 ### What is the "Descriptive signature tree" in the sidebar? (#32)
 
-It is a **quick filter** for the Archive page that lets you filter by descriptive signature by browsing the hierarchy instead of typing a path:
+It is a **quick filter** for the Archival Resources page that lets you filter by descriptive signature by browsing the hierarchy instead of typing a path:
 
 1. Enable the checkbox on the tree at the bottom of the sidebar.
 2. Pick a condition: `Starts With`, `Contains Sequence`, or `Equals`.
@@ -185,7 +185,7 @@ It is a **quick filter** for the Archive page that lets you filter by descriptiv
 
 ### Why do my search results change when I enter a unit? (#33)
 
-Archive navigation is hierarchical: while you are inside a unit, the list is automatically scoped to that unit's children via the `parentUnitArchiveDocumentId` field, and the search bar shows a pre-applied "Parent Unit" filter. Leave the unit (back arrow) to search the whole archive again. Some fields, such as **Type**, are only offered at the archive root.
+Archival Resources navigation is hierarchical: while you are inside a unit, the list is automatically scoped to that unit's children via the `parentUnitArchiveDocumentId` field, and the search bar shows a pre-applied "Parent Unit" filter. Leave the unit (back arrow) to search all archival resources again. Some fields, such as **Type**, are only offered at the archival resources root.
 
 ### How long does my login last? (#34)
 
@@ -194,11 +194,11 @@ A session is valid for **24 hours**, after which you are logged out and must sig
 ### What can a restricted 'User' account see? (#35)
 
 A user with the `user` role:
-- Can log in and open the Archive page (shown as "Search Archive").
+- Can log in and open the Archival Resources page.
 - Only sees documents that carry **at least one** of the tags an administrator assigned to that account. If no tags are assigned, the search returns nothing.
 - Cannot see tags, notes, signatures, or admin sections, and never sees deleted items.
-- Is automatically restricted by a tag filter applied to every archive search.
+- Is automatically restricted by a tag filter applied to every archival resources search.
 
-### What happens when I delete an archive item? (#36)
+### What happens when I delete an archival resource? (#36)
 
 Deleting a document or unit is a **soft delete**: the item is hidden but not erased, and admins/employees can recover it. To see deleted items, set the `Is Deleted` filter to `True` (or remove the default `Is Deleted = False` filter). Deleted rows show a **Restore** icon that brings the item back. Users with the `user` role never see deleted items. Deleting a **component or element** in the Hierarchy Creator, in contrast, is permanent and admin-only.

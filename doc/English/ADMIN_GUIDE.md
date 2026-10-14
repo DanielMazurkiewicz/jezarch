@@ -62,7 +62,7 @@ Navigate to the "User Management" tab within the Admin Panel.
 
 ### Assigning Tags (for 'User' role)
 
-*   This feature is only applicable to users with the 'User' role. Users with this role can only view/search archive documents that have *at least one* of the tags assigned to them here.
+*   This feature is only applicable to users with the 'User' role. Users with this role can only view/search archival resources that have *at least one* of the tags assigned to them here.
 *   Click the **Assign Tags** (tags icon) button in the "Actions" column for a user with the 'User' role.
 *   A dialog opens with a Tag Selector. Select the tags the user should have access to.
 *   Click **Save**.
@@ -95,10 +95,10 @@ Navigate to the "App Settings" tab within the Admin Panel. Changes here might re
 
 *   Tick or untick the buttons and tabs that should appear **for every user** (admins and employees alike):
     *   **Signatures Page** — the *New Component* and *New Tree* buttons.
-    *   **Archive Page Tabs** — which tabs are offered above the document list.
+    *   **Archival Resources Page Tabs** — which tabs are offered above the document list.
 *   **Untick = hidden.** Hidden elements are removed from the interface immediately after saving; no restart is needed.
 *   **This is purely cosmetic.** Hiding a control does not disable the underlying feature or its API, and no data is ever deleted — it only removes the button or tab from the page.
-*   **Hiding an Archive tab also changes the default view.** If the tab a user would land on is hidden, the first remaining visible tab is used instead. If *all* Archive tabs are hidden, the tab bar is not rendered at all and the list shows everything.
+*   **Hiding an Archival Resources tab also changes the default view.** If the tab a user would land on is hidden, the first remaining visible tab is used instead. If *all* Archival Resources tabs are hidden, the tab bar is not rendered at all and the list shows everything.
 *   Existing records are untouched — a hidden *New Tree* button simply means tree components can no longer be created from the interface.
 
 ### Network Ports (HTTP/HTTPS)
@@ -186,4 +186,4 @@ Beyond the dedicated Admin Panel, Administrators generally have elevated permiss
 *   **Can edit/delete any Note.**
 *   **Can edit/delete any Hierarchy Creator Component or Element.** *(Employees can create/edit components and elements and re-index them, but cannot delete.)*
 *   **Can bypass ownership checks** for viewing/editing/deleting most items (except changing their own role/password via admin routes).
-*   **Can view deleted Archive items.** Deleted items are **hidden by default** (a default `Is Deleted = False` filter is applied); set the `Is Deleted` filter to `True`, or remove the default filter, to see them.
+*   **Can view deleted Archival Resources items.** Deleted items are **hidden by default** (a default `Is Deleted = False` filter is applied); set the `Is Deleted` filter to `True`, or remove the default filter, to see them.

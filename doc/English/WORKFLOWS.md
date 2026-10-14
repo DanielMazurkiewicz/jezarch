@@ -6,13 +6,13 @@ This guide walks you through common end-to-end workflows in JezArch, from first 
 
 *   [1. First Run and Initial Admin Access](#1-first-run-and-initial-admin-access)
 *   [2. Exploring With Demo Data (Optional)](#2-exploring-with-demo-data-optional)
-*   [3. Building an Archive Structure](#3-building-an-archive-structure)
+*   [3. Building an Archival Resource Structure](#3-building-an-archival-resource-structure)
     *   [Step 1: Define the classification (Hierarchy Creator)](#step-1-define-the-classification-hierarchy-creator)
     *   [Step 2: Create units (containers)](#step-2-create-units-containers)
     *   [Step 3: Add documents](#step-3-add-documents)
     *   [Step 4: Assign signatures and tags](#step-4-assign-signatures-and-tags)
 *   [4. Organizing With Tags and Batch Tagging](#4-organizing-with-tags-and-batch-tagging)
-*   [5. Searching and Filtering the Archive](#5-searching-and-filtering-the-archive)
+*   [5. Searching and Filtering Archival Resources](#5-searching-and-filtering-archival-resources)
 *   [6. Giving a Restricted User Access](#6-giving-a-restricted-user-access)
 *   [7. Managing the Lifecycle of an Item](#7-managing-the-lifecycle-of-an-item)
 *   [8. Using Notes as a Team](#8-using-notes-as-a-team)
@@ -51,15 +51,15 @@ This guide walks you through common end-to-end workflows in JezArch, from first 
     ```bash
     bun run seed http://localhost:8080 <admin-password>
     ```
-2.  Log in as `admin` (or a demo user) and browse the Archive, Hierarchy Creator, Tags, and Notes sections to see the seeded content.
+2.  Log in as `admin` (or a demo user) and browse the Archival Resources, Hierarchy Creator, Tags, and Notes sections to see the seeded content.
 
 > Note: the seed scripts use the admin account by default (`SEED_ADMIN_PASSWORD`, the CLI argument, or `JEZARCH_INITIAL_ADMIN_PASSWORD`). See the [Installation Guide](INSTALLATION.md#initial-setup) for the details.
 
 ---
 
-## 3. Building an Archive Structure
+## 3. Building an Archival Resource Structure
 
-**Goal:** From an empty archive, create a classification, add containers, and file documents with signatures and tags.
+**Goal:** From empty archival resources, create a classification, add containers, and file documents with signatures and tags.
 
 ### Step 1: Define the classification (Hierarchy Creator)
 
@@ -70,7 +70,7 @@ Start with the descriptive-signature taxonomy, because documents reference it.
     *   **Fonds** with index type *Decimal* (1, 2, 3...).
     *   **Series** with index type *Roman* (I, II, III...).
     *   **Sub-series** with index type *Lowercase letters* (a, b, c...).
-    Tick **Main component** for the levels that make up your main signature system — main components are listed first everywhere and shown by default in the archive's quick signature tree (the demo seed data marks all three of these as main).
+    Tick **Main component** for the levels that make up your main signature system — main components are listed first everywhere and shown by default in the archival resources' quick signature tree (the demo seed data marks all three of these as main).
 3.  Click a component row to open its Elements page.
 4.  Click **New Element** to add instances, e.g. under *Series* add "Series A", "Series B". Leave the **Index** field empty to auto-number the element. To create a child of an existing element, either use the **Parent Elements** selector in the dialog, or click the element's name on the Elements page and use **New Element** on its Child Elements page — there the parent is pre-filled (read-only) and you only choose the component.
 5.  If you later rename, add, or delete many elements, click the **Re-index** icon — on the Components list or next to the title on a component's Elements page — to renumber everything consistently (custom index values are overwritten).
@@ -82,7 +82,7 @@ Start with the descriptive-signature taxonomy, because documents reference it.
 
 ### Step 2: Create units (containers)
 
-1.  Open the **Archive** section.
+1.  Open the **Archival Resources** section.
 2.  Click **Create Item**, set **Type = Unit**, and give it a **Title**, **Creator**, and **Creation Date**.
 3.  Optionally fill the **Physical Description** block (number of pages, document type, dimensions, binding, condition) that only applies to units.
 4.  Click **Create Item**. The new unit appears in the list.
@@ -91,7 +91,7 @@ Start with the descriptive-signature taxonomy, because documents reference it.
 ### Step 3: Add documents
 
 1.  **Click the unit** to enter it, then click **Create Document**.
-    *   The form is forced to *Document* and the parent unit is already set; you can also create documents at the archive root and pick a parent unit with the unit selector.
+    *   The form is forced to *Document* and the parent unit is already set; you can also create documents at the archival resources root and pick a parent unit with the unit selector.
 2.  Fill the required fields: **Title**, **Creator**, **Creation Date** (free text, e.g. `2023-10-26` or `ca. 1950`).
 3.  Fill optional metadata as relevant:
     *   *Content & Context:* document language, content description, remarks, seals, related document references, additional information.
@@ -115,19 +115,19 @@ With a document form open:
 **Goal:** set up a consistent tag vocabulary and apply it to many documents at once.
 
 1.  Go to **Tags** and click **Create Tag** for each label you want to reuse (e.g. `Digitalized`, `Confidential`, `19th century`). Optionally add a description.
-2.  Go to **Archive** and build a search that selects exactly the group of items you want to tag (see Workflow 5). The header shows how many items currently match.
+2.  Go to **Archival Resources** and build a search that selects exactly the group of items you want to tag (see Workflow 5). The header shows how many items currently match.
 3.  Click **Add Tags** (or **Remove Tags**) next to the search bar.
 4.  Choose the tags in the dialog and confirm.
-    *   **Warning:** if no search filters are active, a batch action applies to **all** items in the archive. Always double-check the shown count before confirming.
+    *   **Warning:** if no search filters are active, a batch action applies to **all** items across archival resources. Always double-check the shown count before confirming.
 5.  Tags act as access control for restricted users — see Workflow 6.
 
 ---
 
-## 5. Searching and Filtering the Archive
+## 5. Searching and Filtering Archival Resources
 
 **Goal:** find a precise subset of documents (and keep it as a reusable idea).
 
-1.  Open **Archive**. Staff see non-deleted items by default through an automatic `Is Deleted = False` filter.
+1.  Open **Archival Resources**. Staff see non-deleted items by default through an automatic `Is Deleted = False` filter.
 2.  Click **Show filters** in the top button row (the search bar is hidden by default), then use the **Search Bar** to add criteria:
     *   **Add Filter** for each field you want to constrain. Available fields include Title, Creator, Creation Date, Place of Creation, Seals, Content Description, Topographic Signature, Descriptive Signature, Type (at root) and Is Digitized; staff additionally see Tags, Created By, Updated By, and Is Deleted.
     *   Pick a **Condition** for each field:
@@ -156,7 +156,7 @@ With a document form open:
     *   You will be prompted to assign allowed tags immediately; you can also click the **Assign Tags** (tag icon) button in the Actions column later.
 3.  In the tag dialog, select the tags whose documents the user may access, and click **Save**.
     *   The user can see a document if it has **at least one** of the assigned tags. Documents with none of those tags are invisible to them, as are deleted items.
-4.  Tell the user to log in. Their Archive page ("Search Archive") only shows matching documents, and the search automatically applies the tag filter.
+4.  Tell the user to log in. Their Archival Resources page (the same section, but with a search icon) only shows matching documents, and the search automatically applies the tag filter.
 5.  To revoke access later, remove tags in the same dialog, change the role, or set the role to **No Role / Disabled**.
 
 > Tags assigned to a user are cleared automatically if you change their role away from **User**.
@@ -167,7 +167,7 @@ With a document form open:
 
 **Goal:** delete an item safely and recover it later.
 
-1.  **Soft delete:** in the Archive, click the **Delete** (trash) icon on a document or unit row (or in the preview dialog) and confirm. The item is hidden, **not** erased; it can be recovered by staff.
+1.  **Soft delete:** in Archival Resources, click the **Delete** (trash) icon on a document or unit row (or in the preview dialog) and confirm. The item is hidden, **not** erased; it can be recovered by staff.
 2.  **View deleted items:** as admin/employee, in the search bar set **Is Deleted = Is → True** (or remove the default `Is Deleted = False` filter). Deleted rows show a **Restore** icon.
 3.  **Restore:** click the **Restore** icon to bring the item back to the regular list.
 

@@ -80,7 +80,7 @@ The backend exposes a RESTful API under the `/api` prefix. Key resource endpoint
 *   `/api/note/...` (Notes)
 *   `/api/signature/component/...` (Hierarchy Components; `GET /api/signature/component/by-element/:elementId` returns the internal ELEMENT mirror of an element)
 *   `/api/signature/element/...` (Hierarchy Elements)
-*   `/api/archive/document/...` (Archive Documents/Units)
+*   `/api/archive/document/...` (Archival Resource Documents/Units)
 *   `/api/admin/db/...` (Database Administration)
 
 Authentication is handled via a session token passed in the `Authorization` header (either bare or as `Bearer <token>`). Tokens are obtained via `POST /api/user/login` and expire after 24 hours; the server stores only the SHA-256 hash of the token. Sessions can be checked with `GET /api/session/validate`. Specific endpoints require different user roles (`admin`, `employee`, or `user`) for access.

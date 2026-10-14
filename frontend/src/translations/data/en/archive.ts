@@ -2,17 +2,17 @@
 import type { ArchiveTranslationSet } from '../../models/archive';
 
 export const archiveTranslationsEN: ArchiveTranslationSet = {
-  archiveTitle: 'Archive',
+  archiveTitle: 'Archival Resources',
   archiveDescription: 'Manage archival documents and units.',
   archiveCreateDocumentButton: 'Create Document',
   archiveCreateUnitButton: 'Create Unit',
   archiveNoItemsInUnit: 'No items found in unit "{unitTitle}".',
   archiveNoItemsForUserTags: 'No documents found matching your assigned tags.',
-  archiveIsEmpty: 'The archive is currently empty.',
+  archiveIsEmpty: 'There are no archival resources yet.',
   archiveItemLabel: 'Item', // General term, used in combinations
   archiveUnitLabel: 'Unit',
   archiveDocumentLabel: 'Document',
-  backToArchiveButton: 'Back to Archive Root',
+  backToArchiveButton: 'Back to Archival Resources Root',
   archiveCreatorLabel: 'Creator', // Original creator/author of the document itself
   archiveCreationDateLabel: 'Creation Date', // Original creation date of the document itself
   archiveTopoSigLabel: 'Topographic Sig.',
@@ -34,7 +34,7 @@ export const archiveTranslationsEN: ArchiveTranslationSet = {
   archiveDetailsLoadFailed: 'Failed to load document details: {message}',
   archiveFoundItems: 'Found {count} item(s).',
   archiveBatchActionWarning: 'Batch actions will affect {count} items matching current filters.',
-  archiveBatchActionNoFilterWarning: 'Batch actions will affect all {count} items in the archive (no filters applied).',
+  archiveBatchActionNoFilterWarning: 'Batch actions will affect all {count} items across archival resources (no filters applied).',
   archiveBatchActionLoading: 'Performing batch tag operation...',
   archiveBatchTagsAddTitle: 'Add Tags to Filtered Items',
   archiveBatchTagsRemoveTitle: 'Remove Tags from Filtered Items',
@@ -146,9 +146,9 @@ export const archiveTranslationsEN: ArchiveTranslationSet = {
   archiveParentUnitLoadError: 'Failed to load parent unit: {message}',
   archiveFetchError: 'Failed to fetch documents',
   archiveBatchAddTooltipFiltered: 'Add tags to filtered items',
-  archiveBatchAddTooltipAll: 'Add tags to ALL items in the archive',
+  archiveBatchAddTooltipAll: 'Add tags to ALL items across archival resources',
   archiveBatchRemoveTooltipFiltered: 'Remove tags from filtered items',
-  archiveBatchRemoveTooltipAll: 'Remove tags from ALL items in the archive',
+  archiveBatchRemoveTooltipAll: 'Remove tags from ALL items across archival resources',
   archiveIsDeletedLabel: 'Deleted',
   unitLabel: 'Unit',
   archiveBrowsingUnit: 'Browsing items within "{unitTitle}".',
@@ -166,8 +166,8 @@ export const archiveTranslationsEN: ArchiveTranslationSet = {
   createdBySearchLabel: 'Created By',
   updatedBySearchLabel: 'Updated By',
   ownerUserIdSearchLabel: 'Owner User ID (Deprecated - Use Created/Updated By)',
-  archiveHelpTitle: 'About the Archive',
-  archiveHelpIntro: 'The Archive is where you store and organize your archival materials as a hierarchy of units and documents. You can browse, search, create, edit, preview, and delete items, and manage their metadata, tags, and signatures.',
+  archiveHelpTitle: 'About Archival Resources',
+  archiveHelpIntro: 'Archival resources are where you store and organize your archival materials as a hierarchy of units and documents. You can browse, search, create, edit, preview, and delete items, and manage their metadata, tags, and signatures.',
   archiveHelpUnits: 'Units are containers (folders) that group documents. They represent physical or logical groupings. Click a unit to open it and browse its contents.',
   archiveHelpDocuments: 'Documents are individual items with metadata such as title, creator, date, and description. Each document can belong to one unit.',
   archiveHelpSignatures: 'Classify a document with a descriptive signature — an ordered path of elements defined in the Hierarchy Creator section — and/or a free-text topographic signature (e.g., "Box 1, Folder 5").',

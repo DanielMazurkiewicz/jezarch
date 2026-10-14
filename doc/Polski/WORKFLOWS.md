@@ -6,13 +6,13 @@ Ten przewodnik przeprowadzi Cię przez typowe scenariusze end-to-end w JezArch �
 
 *   [1. Pierwsze Uruchomienie i Dostęp do Konta Administratora](#1-pierwsze-uruchomienie-i-dostęp-do-konta-administratora)
 *   [2. Zapoznanie się z Danymi Demo (Opcjonalne)](#2-zapoznanie-się-z-danymi-demo-opcjonalne)
-*   [3. Budowa Struktury Archiwum](#3-budowa-struktury-archiwum)
+*   [3. Budowa Struktury Zasobu Archiwalnego](#3-budowa-struktury-zasobu-archiwalnego)
     *   [Krok 1: Zdefiniuj klasyfikację (Kreator hierarchii)](#krok-1-zdefiniuj-klasyfikację-kreator-hierarchii)
     *   [Krok 2: Utwórz jednostki (kontenery)](#krok-2-utwórz-jednostki-kontenery)
     *   [Krok 3: Dodaj dokumenty](#krok-3-dodaj-dokumenty)
     *   [Krok 4: Przypisz sygnatury i tagi](#krok-4-przypisz-sygnatury-i-tagi)
 *   [4. Organizacja za Pomocą Tagów i Tagowania Wsadowego](#4-organizacja-za-pomocą-tagów-i-tagowania-wsadowego)
-*   [5. Wyszukiwanie i Filtrowanie Archiwum](#5-wyszukiwanie-i-filtrowanie-archiwum)
+*   [5. Wyszukiwanie i Filtrowanie Zasobu Archiwalnego](#5-wyszukiwanie-i-filtrowanie-zasobu-archiwalnego)
 *   [6. Przyznanie Ograniczonego Dostępu Użytkownikowi](#6-przyznanie-ograniczonego-dostępu-użytkownikowi)
 *   [7. Zarządzanie Cyklem Życia Pozycji](#7-zarządzanie-cyklem-życia-pozycji)
 *   [8. Praca z Notatkami w Zespole](#8-praca-z-notatkami-w-zespole)
@@ -51,15 +51,15 @@ Ten przewodnik przeprowadzi Cię przez typowe scenariusze end-to-end w JezArch �
     ```bash
     bun run seed http://localhost:8080 <haslo-admina>
     ```
-2.  Zaloguj się jako `admin` (lub konto demo) i przejrzyj sekcje Archiwum, Kreator hierarchii, Tagi oraz Notatki, aby zobaczyć wypełnioną zawartość.
+2.  Zaloguj się jako `admin` (lub konto demo) i przejrzyj sekcje Zasób archiwalny, Kreator hierarchii, Tagi oraz Notatki, aby zobaczyć wypełnioną zawartość.
 
 > Uwaga: skrypty seed używają domyślnie konta administratora (`SEED_ADMIN_PASSWORD`, argument CLI lub `JEZARCH_INITIAL_ADMIN_PASSWORD`). Szczegóły znajdziesz w [Przewodniku Instalacji](INSTALLATION.md#początkowa-konfiguracja).
 
 ---
 
-## 3. Budowa Struktury Archiwum
+## 3. Budowa Struktury Zasobu Archiwalnego
 
-**Cel:** Od pustego archiwum — utworzenie klasyfikacji, dodanie kontenerów i wypełnienie ich dokumentami z sygnaturami i tagami.
+**Cel:** Od pustego zasobu archiwalnego — utworzenie klasyfikacji, dodanie kontenerów i wypełnienie ich dokumentami z sygnaturami i tagami.
 
 ### Krok 1: Zdefiniuj klasyfikację (Kreator hierarchii)
 
@@ -70,7 +70,7 @@ Zacznij od taksonomii sygnatur opisowych, ponieważ dokumenty się do niej odwo�
     *   **Zespół** z typem indeksu *Dziesiętny* (1, 2, 3...).
     *   **Seria** z typem indeksu *Rzymski* (I, II, III...).
     *   **Podseria** z typem indeksu *Małe litery* (a, b, c...).
-    Zaznacz **Komponent główny** dla poziomów tworzących główną strukturę sygnatur — komponenty główne są sortowane na początku w każdej liście i domyślnie widoczne w szybkim drzewie sygnatur archiwum (dane demo oznaczają wszystkie te trzy poziomy jako główne).
+    Zaznacz **Komponent główny** dla poziomów tworzących główną strukturę sygnatur — komponenty główne są sortowane na początku w każdej liście i domyślnie widoczne w szybkim drzewie sygnatur zasobu archiwalnego (dane demo oznaczają wszystkie te trzy poziomy jako główne).
 3.  Kliknij wiersz komponentu, aby otworzyć jego stronę Elementów.
 4.  Kliknij **Nowy Element**, aby dodać instancje, np. pod *Seria* dodaj "Seria A", "Seria B". Pozostaw pole **Indeks** puste, aby ponumerować element automatycznie. Aby utworzyć element podrzędny istniejącego elementu, użyj selektora **Elementy Nadrzędne** w oknie dialogowym albo kliknij nazwę elementu na stronie Elementów i użyj **Nowy Element** na jego stronie Elementów Podrzędnych — tam element nadrzędny jest wypełniony automatycznie (tylko do odczytu) i wybierasz jedynie komponent.
 5.  Jeśli później zmienisz nazwy, dodasz lub usuniesz wiele elementów, kliknij ikonę **Reindeksuj** — na liście Komponentów lub obok tytułu na stronie Elementów danego komponentu — aby spójnie przenumerować wszystko (własne wartości indeksów zostaną nadpisane).
@@ -82,7 +82,7 @@ Zacznij od taksonomii sygnatur opisowych, ponieważ dokumenty się do niej odwo�
 
 ### Krok 2: Utwórz jednostki (kontenery)
 
-1.  Otwórz sekcję **Archiwum**.
+1.  Otwórz sekcję **Zasób archiwalny**.
 2.  Kliknij **Utwórz Pozycję**, ustaw **Typ = Jednostka** i podaj **Tytuł**, **Twórcę** oraz **Datę Utworzenia**.
 3.  Opcjonalnie wypełnij blok **Opis Fizyczny** (liczba stron, typ dokumentu, wymiary, oprawa, stan), który dotyczy tylko jednostek.
 4.  Kliknij **Utwórz Pozycję**. Nowa jednostka pojawi się na liście.
@@ -91,7 +91,7 @@ Zacznij od taksonomii sygnatur opisowych, ponieważ dokumenty się do niej odwo�
 ### Krok 3: Dodaj dokumenty
 
 1.  **Kliknij jednostkę**, aby do niej wejść, a następnie kliknij **Utwórz Dokument**.
-    *   Formularz jest ustawiony na *Dokument*, a jednostka nadrzędna jest już wybrana; możesz też tworzyć dokumenty w głównym widoku archiwum i wybrać jednostkę nadrzędną selektorem.
+    *   Formularz jest ustawiony na *Dokument*, a jednostka nadrzędna jest już wybrana; możesz też tworzyć dokumenty w głównym widoku zasobu archiwalnego i wybrać jednostkę nadrzędną selektorem.
 2.  Wypełnij pola wymagane: **Tytuł**, **Twórca**, **Data Utworzenia** (tekst dowolny, np. `2023-10-26` lub `ok. 1950`).
 3.  Wypełnij opcjonalne metadane w miarę potrzeb:
     *   *Treść i Kontekst:* język dokumentu, opis treści, uwagi, pieczęcie, odwołania do powiązanych dokumentów, informacje dodatkowe.
@@ -115,19 +115,19 @@ Przy otwartym formularzu dokumentu:
 **Cel:** Stworzenie spójnego słownika tagów i zastosowanie go do wielu dokumentów naraz.
 
 1.  Przejdź do **Tagi** i kliknij **Utwórz Tag** dla każdej etykiety, którą chcesz używać ponownie (np. `Zdigitalizowane`, `Poufne`, `XIX wiek`). Opcjonalnie dodaj opis.
-2.  Przejdź do **Archiwum** i zbuduj wyszukiwanie, które wybierze dokładnie tę grupę pozycji, którą chcesz otagować (zobacz Scenariusz 5). Nagłówek pokazuje, ile pozycji aktualnie pasuje.
+2.  Przejdź do **Zasobu archiwalnego** i zbuduj wyszukiwanie, które wybierze dokładnie tę grupę pozycji, którą chcesz otagować (zobacz Scenariusz 5). Nagłówek pokazuje, ile pozycji aktualnie pasuje.
 3.  Kliknij **Dodaj Tagi** (lub **Usuń Tagi**) obok paska wyszukiwania.
 4.  Wybierz tagi w oknie dialogowym i potwierdź.
-    *   **Ostrzeżenie:** jeśli żadne filtry wyszukiwania nie są aktywne, akcja wsadowa zostanie zastosowana do **wszystkich** pozycji w archiwum. Zawsze sprawdź wyświetlaną liczbę przed potwierdzeniem.
+    *   **Ostrzeżenie:** jeśli żadne filtry wyszukiwania nie są aktywne, akcja wsadowa zostanie zastosowana do **wszystkich** pozycji w zasobie archiwalnym. Zawsze sprawdź wyświetlaną liczbę przed potwierdzeniem.
 5.  Tagi służą jako kontrola dostępu dla użytkowników z ograniczeniami — zobacz Scenariusz 6.
 
 ---
 
-## 5. Wyszukiwanie i Filtrowanie Archiwum
+## 5. Wyszukiwanie i Filtrowanie Zasobu Archiwalnego
 
 **Cel:** Znalezienie dokładnego podzbioru dokumentów.
 
-1.  Otwórz **Archiwum**. Pracownicy i administratorzy domyślnie widzą pozycje nieusunięte dzięki automatycznemu filtrowi `Czy Usunięte = Fałsz`.
+1.  Otwórz **Zasób archiwalny**. Pracownicy i administratorzy domyślnie widzą pozycje nieusunięte dzięki automatycznemu filtrowi `Czy Usunięte = Fałsz`.
 2.  Kliknij **Pokaż filtry** w górnej linii przycisków (pasek wyszukiwania jest domyślnie ukryty), a następnie użyj **Paska Wyszukiwania**, aby dodawać kryteria:
     *   **Dodaj Filtr** dla każdego pola, które chcesz ograniczyć. Dostępne pola to m.in. Tytuł, Twórca, Data Utworzenia, Miejsce Utworzenia, Pieczęcie, Opis Treści, Sygnatura Topograficzna, Sygnatura Opisowa, Typ (w widoku głównym) i Czy Zdigitalizowano; admin/pracownik widzą dodatkowo Tagi, Utworzone Przez, Zaktualizowane Przez oraz Czy Usunięte.
     *   Wybierz **Warunek** dla każdego pola:
@@ -156,7 +156,7 @@ Przy otwartym formularzu dokumentu:
     *   Zostaniesz od razu poproszony o przypisanie dozwolonych tagów; możesz też później kliknąć przycisk **Przypisz Tagi** (ikona tagów) w kolumnie Akcje.
 3.  W oknie dialogowym tagów wybierz tagi, do których dokumentów użytkownik ma dostęp, i kliknij **Zapisz**.
     *   Użytkownik widzi dokument, jeśli ma on **przynajmniej jeden** z przypisanych tagów. Dokumenty bez żadnego z tych tagów są dla niego niewidoczne, podobnie jak pozycje usunięte.
-4.  Poproś użytkownika o zalogowanie się. Jego strona Archiwum ("Szukaj w Archiwum") pokazuje tylko pasujące dokumenty, a wyszukiwanie automatycznie nakłada filtr tagów.
+4.  Poproś użytkownika o zalogowanie się. Jego strona zasobu archiwalnego (ta sama sekcja, ale z ikoną wyszukiwania) pokazuje tylko pasujące dokumenty, a wyszukiwanie automatycznie nakłada filtr tagów.
 5.  Aby później odebrać dostęp, usuń tagi w tym samym oknie, zmień rolę lub ustaw rolę na **Brak Roli / Wyłączony**.
 
 > Tagi przypisane użytkownikowi są automatycznie czyszczone, gdy zmienisz jego rolę z `użytkownik` na inną.
@@ -167,7 +167,7 @@ Przy otwartym formularzu dokumentu:
 
 **Cel:** Bezpieczne usunięcie pozycji i jej późniejsze odzyskanie.
 
-1.  **Miękkie usunięcie:** w Archiwum kliknij ikonę **Usuń** (kosz) w wierszu dokumentu lub jednostki (lub w oknie podglądu) i potwierdź. Pozycja zostaje ukryta, a **nie** wymazana; admin/pracownik mogą ją odzyskać.
+1.  **Miękkie usunięcie:** w zasobie archiwalnym kliknij ikonę **Usuń** (kosz) w wierszu dokumentu lub jednostki (lub w oknie podglądu) i potwierdź. Pozycja zostaje ukryta, a **nie** wymazana; admin/pracownik mogą ją odzyskać.
 2.  **Podgląd usuniętych pozycji:** jako admin/pracownik ustaw w pasku wyszukiwania **Czy Usunięte = Jest → Prawda** (lub usuń domyślny filtr `Czy Usunięte = Fałsz`). Usunięte wiersze pokazują ikonę **Przywróć**.
 3.  **Przywracanie:** kliknij ikonę **Przywróć**, aby przywrócić pozycję do zwykłej listy.
 

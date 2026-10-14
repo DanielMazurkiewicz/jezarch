@@ -11,7 +11,7 @@ Ten przewodnik opisuje podstawowe funkcjonalności aplikacji JezArch dla różny
     *   [Główny Obszar Treści](#główny-obszar-treści)
     *   [Wbudowana Pomoc](#wbudowana-pomoc)
 *   [Panel Główny](#panel-główny)
-*   [Zarządzanie Archiwum](#zarządzanie-archiwum)
+*   [Zarządzanie Zasobem Archiwalnym](#zarządzanie-zasobem-archiwalnym)
     *   [Przeglądanie Jednostek i Dokumentów](#przeglądanie-jednostek-i-dokumentów)
     *   [Wyszukiwanie](#wyszukiwanie)
     *   [Sortowanie i Paginacja](#sortowanie-i-paginacja)
@@ -62,14 +62,14 @@ Ten przewodnik opisuje podstawowe funkcjonalności aplikacji JezArch dla różny
 
 *   Umożliwia nawigację do głównych sekcji aplikacji w zależności od Twojej roli:
     *   **Panel Główny:** Strona przeglądowa.
-    *   **Archiwum:** Przeglądaj i wyszukuj dokumenty oraz jednostki archiwalne. (Rola 'Użytkownik' widzi 'Szukaj w Archiwum').
+    *   **Zasób archiwalny:** Przeglądaj i wyszukuj dokumenty oraz jednostki archiwalne. (Rola 'Użytkownik' trafia na tę samą sekcję, ale z ikoną wyszukiwania i ograniczonymi do jej tagów wynikami).
     *   **Kreator hierarchii (Admin/Pracownik):** Zarządzaj komponentami i elementami kreatora hierarchii.
     *   **Tagi (Admin/Pracownik):** Zarządzaj globalnymi tagami.
     *   **Notatki (Admin/Pracownik):** Dostęp do osobistych i udostępnionych notatek.
     *   **Admin (Tylko Admin):** Dostęp do funkcji administracyjnych.
 *   Pasek boczny pokazuje konto, jako które jesteś zalogowany, oraz ikonę wylogowania u góry.
 *   Szerokość paska bocznego można **przeciągać**, aby go zmienić.
-*   Na stronie **Archiwum** na dole paska bocznego pojawia się szybki filtr **"Drzewo sygnatur opisowych"** (zobacz [Wyszukiwanie](#wyszukiwanie)).
+*   Na stronie **Zasób archiwalny** na dole paska bocznego pojawia się szybki filtr **"Drzewo sygnatur opisowych"** (zobacz [Wyszukiwanie](#wyszukiwanie)).
 
 ### Główny Obszar Treści
 
@@ -77,35 +77,35 @@ Ten przewodnik opisuje podstawowe funkcjonalności aplikacji JezArch dla różny
 
 ### Wbudowana Pomoc
 
-*   Każda główna strona (Panel Główny, Archiwum, Kreator hierarchii, Tagi, Notatki, Admin) ma przycisk **Pomoc**, który otwiera wbudowany przewodnik dla tej strony.
+*   Każda główna strona (Panel Główny, Zasób archiwalny, Kreator hierarchii, Tagi, Notatki, Admin) ma przycisk **Pomoc**, który otwiera wbudowany przewodnik dla tej strony.
 *   Przewodniki objaśniają cel sekcji, kluczowe pojęcia i uprawnienia poszczególnych ról.
 
 ---
 
 ## Panel Główny
 
-Domyślna strona po zalogowaniu. Wyświetla wiadomość powitalną. Użytkownicy z rolą 'Użytkownik' są zachęcani do użycia paska bocznego do przeszukiwania archiwum, podczas gdy inne role są proszone o wybranie sekcji.
+Domyślna strona po zalogowaniu. Wyświetla wiadomość powitalną. Użytkownicy z rolą 'Użytkownik' są zachęcani do użycia paska bocznego do przeszukiwania zasobu archiwalnego, podczas gdy inne role są proszone o wybranie sekcji.
 
 ---
 
-## Zarządzanie Archiwum
+## Zarządzanie Zasobem Archiwalnym
 
 ### Przeglądanie Jednostek i Dokumentów
 
-*   Dostępne przez link "Archiwum" / "Szukaj w Archiwum" na pasku bocznym.
-*   Główny widok archiwum listuje jednostki i dokumenty najwyższego poziomu.
+*   Dostępne przez link "Zasób archiwalny" na pasku bocznym.
+*   Główny widok zasobu archiwalnego listuje jednostki i dokumenty najwyższego poziomu.
 *   Pozycje oznaczone ikoną **Folderu** to **Jednostki**. Kliknięcie Jednostki przenosi do jej wnętrza, pokazując zawarte w niej dokumenty i podjednostki.
 *   Pozycje oznaczone ikoną **Pliku** to **Dokumenty**. Kliknięcie Dokumentu otwiera okno podglądu.
-*   Użyj przycisku **Strzałki Wstecz**, będąc wewnątrz jednostki, aby wrócić do poziomu nadrzędnego lub głównego widoku archiwum.
+*   Użyj przycisku **Strzałki Wstecz**, będąc wewnątrz jednostki, aby wrócić do poziomu nadrzędnego lub głównego widoku zasobu archiwalnego.
 *   Nagłówek pokazuje, ile pozycji pasuje do bieżącego widoku ("Znaleziono N pozycji.").
 
 ### Wyszukiwanie
 
 *   Sekcja filtrów jest domyślnie ukryta. Kliknij przycisk **Pokaż filtry** w górnej linii przycisków (obok Utwórz / Pomoc), aby wyświetlić **Pasek Wyszukiwania**; po rozwinięciu czyta się **Ukryj filtry** i zwija panel. Wpisane kryteria są zachowane, gdy panel jest ukryty.
-*   Użyj **Paska Wyszukiwania** na górze strony Archiwum, aby znaleźć pozycje.
+*   Użyj **Paska Wyszukiwania** na górze strony zasobu archiwalnego, aby znaleźć pozycje.
 *   Kliknij **Dodaj Filtr**, aby dodać kryterium wyszukiwania; każdy wiersz ma **Pole**, **Warunek** i **Wartość**.
 *   Wybierz **Pole** z listy:
-    *   **Wszystkie role:** Tytuł, Twórca, Data Utworzenia, Miejsce Utworzenia, Pieczęcie, Opis Treści, Sygnatura Topograficzna, Sygnatura Opisowa, Typ (tylko w widoku głównym archiwum), Czy Zdigitalizowano.
+    *   **Wszystkie role:** Tytuł, Twórca, Data Utworzenia, Miejsce Utworzenia, Pieczęcie, Opis Treści, Sygnatura Topograficzna, Sygnatura Opisowa, Typ (tylko w widoku głównym zasobu archiwalnego), Czy Zdigitalizowano.
     *   **Tylko Admin/Pracownik:** Tagi, Utworzone Przez, Zaktualizowane Przez, Czy Usunięte.
     *   Gdy przeglądasz zawartość jednostki, lista jest automatycznie ograniczona do jej zawartości.
 *   Wybierz **Warunek** — dostępne warunki zależą od typu pola:
@@ -123,7 +123,7 @@ Domyślna strona po zalogowaniu. Wyświetla wiadomość powitalną. Użytkownicy
 
 ### Sortowanie i Paginacja
 
-*   Kliknij nagłówek kolumny, aby posortować listę archiwum — sortowalne kolumny to **Typ**, **Tytuł** i **Sygn. Topograficzna**.
+*   Kliknij nagłówek kolumny, aby posortować listę zasobu archiwalnego — sortowalne kolumny to **Typ**, **Tytuł** i **Sygn. Topograficzna**.
 *   Kliknij ten sam nagłówek ponownie, aby przełączyć między porządkiem rosnącym a malejącym; strzałki wskazują bieżący kierunek.
 *   Wyniki są podzielone na strony (10 pozycji na stronę). Użyj paska paginacji na dole listy, aby przechodzić między stronami.
 
@@ -177,7 +177,7 @@ Domyślna strona po zalogowaniu. Wyświetla wiadomość powitalną. Użytkownicy
 *   Użyj paska wyszukiwania, aby przefiltrować pozycje, które chcesz otagować.
 *   Kliknij **Dodaj Tagi** lub **Usuń Tagi** obok paska wyszukiwania.
 *   Pojawi się okno dialogowe pokazujące, na ile pozycji wpłynie akcja w oparciu o bieżące filtry wyszukiwania.
-    *   **Ostrzeżenie:** Jeśli żadne filtry wyszukiwania nie są aktywne, akcja zostanie zastosowana do *wszystkich* pozycji w archiwum.
+    *   **Ostrzeżenie:** Jeśli żadne filtry wyszukiwania nie są aktywne, akcja zostanie zastosowana do *wszystkich* pozycji w zasobie archiwalnym.
 *   Wybierz tagi, które chcesz dodać lub usunąć, używając Selektora Tagów.
 *   Kliknij **Dodaj Tagi ({liczba})** lub **Usuń Tagi ({liczba})**, aby potwierdzić.
 
@@ -300,4 +300,4 @@ Twórz i zarządzaj osobistymi oraz udostępnionymi notatkami.
 
 ## Przykładowe Scenariusze
 
-Pełne, krok po kroku przykłady — od pierwszego uruchomienia, przez budowę archiwum i wyszukiwanie, po przyznawanie ograniczonego dostępu i rutynową konserwację — znajdziesz w przewodniku [Przykładowe Scenariusze](WORKFLOWS.md).
+Pełne, krok po kroku przykłady — od pierwszego uruchomienia, przez budowę zasobu archiwalnego i wyszukiwanie, po przyznawanie ograniczonego dostępu i rutynową konserwację — znajdziesz w przewodniku [Przykładowe Scenariusze](WORKFLOWS.md).

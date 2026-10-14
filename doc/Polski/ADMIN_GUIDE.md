@@ -60,7 +60,7 @@ Ten przewodnik szczegółowo opisuje funkcjonalności dostępne wyłącznie dla 
 
 ### Przypisywanie Tagów (dla roli 'Użytkownik')
 
-*   Ta funkcja dotyczy tylko użytkowników z rolą 'Użytkownik'. Użytkownicy z tą rolą mogą przeglądać/wyszukiwać tylko te dokumenty archiwalne, które mają przypisany *przynajmniej jeden* z tagów przypisanych im tutaj.
+*   Ta funkcja dotyczy tylko użytkowników z rolą 'Użytkownik'. Użytkownicy z tą rolą mogą przeglądać/wyszukiwać tylko te zasoby archiwalne, które mają przypisany *przynajmniej jeden* z tagów przypisanych im tutaj.
 *   Kliknij przycisk **Przypisz Tagi** (ikona tagów) w kolumnie "Akcje" dla użytkownika z rolą 'Użytkownik'.
 *   Otworzy się okno dialogowe z Selektorem Tagów. Wybierz tagi, do których użytkownik powinien mieć dostęp.
 *   Kliknij **Zapisz**.
@@ -91,10 +91,10 @@ Ten przewodnik szczegółowo opisuje funkcjonalności dostępne wyłącznie dla 
 
 *   Zaznacz lub odznacz przyciski i zakładki, które mają być widoczne **dla wszystkich użytkowników** (administratorów i pracowników):
     *   **Strona Sygnatur** — przyciski *Nowy Komponent* i *Nowe Drzewo*.
-    *   **Zakładki Strony Archiwum** — które zakładki są dostępne nad listą dokumentów.
+    *   **Zakładki Strony Zasobu Archiwalnego** — które zakładki są dostępne nad listą dokumentów.
 *   **Odznaczone = ukryte.** Ukryte elementy znikają z interfejsu natychmiast po zapisaniu; restart nie jest wymagany.
 *   **To wyłącznie kwestia kosmetyczna.** Ukrycie kontrolki nie wyłącza powiązanej funkcji ani jej API i nigdy nie usuwa danych — jedynie usuwa przycisk lub zakładkę ze strony.
-*   **Ukrycie zakładki Archiwum zmienia również widok domyślny.** Jeśli zakładka, na której użytkownik wylądowałby, jest ukryta, użyta zostanie pierwsza pozostała widoczna zakładka. Jeśli ukryte są **wszystkie** zakładki Archiwum, pasek zakładek nie jest w ogóle renderowany, a lista pokazuje wszystko.
+*   **Ukrycie zakładki zasobu archiwalnego zmienia również widok domyślny.** Jeśli zakładka, na której użytkownik wylądowałby, jest ukryta, użyta zostanie pierwsza pozostała widoczna zakładka. Jeśli ukryte są **wszystkie** zakładki zasobu archiwalnego, pasek zakładek nie jest w ogóle renderowany, a lista pokazuje wszystko.
 *   Istniejące dane pozostają nietknięte — ukryty przycisk *Nowe Drzewo* oznacza po prostu, że komponentów drzewa nie da się już utworzyć z interfejsu.
 
 ### Porty Sieciowe (HTTP/HTTPS)
@@ -178,4 +178,4 @@ Poza dedykowanym Panelem Administratora, Administratorzy generalnie mają podwy�
 *   **Mogą edytować/usuwać dowolną Notatkę.**
 *   **Mogą edytować/usuwać dowolny Komponent lub Element kreatora hierarchii.** *(Pracownicy mogą tworzyć/edytować komponenty i elementy oraz je reindeksować, ale nie mogą ich usuwać.)*
 *   **Mogą omijać kontrole własności** przy przeglądaniu/edycji/usuwaniu większości elementów (z wyjątkiem zmiany własnej roli/hasła przez ścieżki administracyjne).
-*   **Mogą przeglądać usunięte pozycje Archiwum.** Usunięte pozycje są **domyślnie ukryte** (nakładany jest domyślny filtr `Czy Usunięte = Fałsz`); ustaw filtr `Czy Usunięte` na `Prawda` lub usuń domyślny filtr, aby je zobaczyć.
+*   **Mogą przeglądać usunięte pozycje zasobu archiwalnego.** Usunięte pozycje są **domyślnie ukryte** (nakładany jest domyślny filtr `Czy Usunięte = Fałsz`); ustaw filtr `Czy Usunięte` na `Prawda` lub usuń domyślny filtr, aby je zobaczyć.
