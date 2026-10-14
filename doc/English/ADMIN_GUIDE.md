@@ -98,7 +98,7 @@ Navigate to the "App Settings" tab within the Admin Panel. Changes here might re
     *   **Archival Resources Page Tabs** — which tabs are offered above the document list.
 *   **Untick = hidden.** Hidden elements are removed from the interface immediately after saving; no restart is needed.
 *   **This is purely cosmetic.** Hiding a control does not disable the underlying feature or its API, and no data is ever deleted — it only removes the button or tab from the page.
-*   **Hiding an Archival Resources tab also changes the default view.** If the tab a user would land on is hidden, the first remaining visible tab is used instead. If *all* Archival Resources tabs are hidden, the tab bar is not rendered at all and the list shows everything.
+*   **Hiding an Archival Resources tab also changes the default view.** Users always land on the **first (leftmost) visible tab**, so hiding the leftmost one promotes the next tab to be the default. If *all* Archival Resources tabs are hidden, the tab bar is not rendered at all and the list shows everything.
 *   Existing records are untouched — a hidden *New Tree* button simply means tree components can no longer be created from the interface.
 
 ### Network Ports (HTTP/HTTPS)

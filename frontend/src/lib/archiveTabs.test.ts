@@ -2,7 +2,6 @@ import { describe, test, expect } from 'bun:test';
 import type { UiElementId } from '../../../backend/src/functionalities/config/models';
 import {
   ARCHIVE_TABS,
-  DEFAULT_ARCHIVE_TAB,
   getVisibleArchiveTabs,
   resolveActiveArchiveTab,
 } from './archiveTabs';
@@ -23,16 +22,24 @@ describe('archiveTabs — getVisibleArchiveTabs', () => {
 });
 
 describe('archiveTabs — resolveActiveArchiveTab', () => {
+  /** The leftmost tab rendered in the bar. */
+  const firstTabId = ARCHIVE_TABS[0].id;
+
   test('keeps a visible requested tab', () => {
     expect(resolveActiveArchiveTab('mainDocs', noHidden)).toBe('mainDocs');
   });
 
-  test('defaults when no tab is requested', () => {
-    expect(resolveActiveArchiveTab(null, noHidden)).toBe(DEFAULT_ARCHIVE_TAB);
+  test('lands on the first (leftmost) tab when no tab is requested', () => {
+    expect(resolveActiveArchiveTab(null, noHidden)).toBe(firstTabId);
+    expect(resolveActiveArchiveTab(undefined, noHidden)).toBe(firstTabId);
   });
 
-  test('defaults on an unknown tab value', () => {
-    expect(resolveActiveArchiveTab('nonsense', noHidden)).toBe(DEFAULT_ARCHIVE_TAB);
+  test('lands on the first tab on an unknown tab value', () => {
+    expect(resolveActiveArchiveTab('nonsense', noHidden)).toBe(firstTabId);
+  });
+
+  test('lands on the first visible tab when the first tab is hidden', () => {
+    expect(resolveActiveArchiveTab(null, hidden('archive.tab.units'))).toBe('unitsAndMainDocs');
   });
 
   test('falls back to the first visible tab when the requested one is hidden', () => {
@@ -45,10 +52,10 @@ describe('archiveTabs — resolveActiveArchiveTab', () => {
       'units',
       hidden('archive.tab.units', 'archive.tab.unitsAndMainDocs', 'archive.tab.mainDocs'),
     );
-    expect(result).toBe(DEFAULT_ARCHIVE_TAB);
+    expect(result).toBe('everything');
   });
 
-  test('degrades to the default tab when every tab is hidden', () => {
+  test('degrades to the unfiltered tab when every tab is hidden', () => {
     const allHidden = hidden(
       'archive.tab.units',
       'archive.tab.unitsAndMainDocs',
@@ -56,10 +63,10 @@ describe('archiveTabs — resolveActiveArchiveTab', () => {
       'archive.tab.everything',
     );
     expect(getVisibleArchiveTabs(allHidden)).toHaveLength(0);
-    expect(resolveActiveArchiveTab('mainDocs', allHidden)).toBe(DEFAULT_ARCHIVE_TAB);
+    expect(resolveActiveArchiveTab('mainDocs', allHidden)).toBe('everything');
   });
 
-  test('an unknown value still respects hiding of the default tab', () => {
+  test('an unknown value still respects hiding of the first tabs', () => {
     const result = resolveActiveArchiveTab(
       'nonsense',
       hidden('archive.tab.everything', 'archive.tab.units', 'archive.tab.unitsAndMainDocs'),
@@ -67,7 +74,7 @@ describe('archiveTabs — resolveActiveArchiveTab', () => {
     expect(result).toBe('mainDocs');
   });
 
-  test('hiding the default tab redirects a plain /archive visit', () => {
+  test('hiding the first tabs redirects a plain /archive visit', () => {
     const result = resolveActiveArchiveTab(null, hidden('archive.tab.units', 'archive.tab.everything'));
     expect(result).toBe('unitsAndMainDocs');
   });

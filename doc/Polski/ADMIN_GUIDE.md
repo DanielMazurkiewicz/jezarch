@@ -94,7 +94,7 @@ Ten przewodnik szczegółowo opisuje funkcjonalności dostępne wyłącznie dla 
     *   **Zakładki Strony Zasobu Archiwalnego** — które zakładki są dostępne nad listą dokumentów.
 *   **Odznaczone = ukryte.** Ukryte elementy znikają z interfejsu natychmiast po zapisaniu; restart nie jest wymagany.
 *   **To wyłącznie kwestia kosmetyczna.** Ukrycie kontrolki nie wyłącza powiązanej funkcji ani jej API i nigdy nie usuwa danych — jedynie usuwa przycisk lub zakładkę ze strony.
-*   **Ukrycie zakładki zasobu archiwalnego zmienia również widok domyślny.** Jeśli zakładka, na której użytkownik wylądowałby, jest ukryta, użyta zostanie pierwsza pozostała widoczna zakładka. Jeśli ukryte są **wszystkie** zakładki zasobu archiwalnego, pasek zakładek nie jest w ogóle renderowany, a lista pokazuje wszystko.
+*   **Ukrycie zakładki zasobu archiwalnego zmienia również widok domyślny.** Użytkownicy zawsze trafiają na **pierwszą (najbardziej lewą) widoczną zakładkę**, więc ukrycie pierwszej z lewej przenosi domyślną rolę na następną. Jeśli ukryte są **wszystkie** zakładki zasobu archiwalnego, pasek zakładek nie jest w ogóle renderowany, a lista pokazuje wszystko.
 *   Istniejące dane pozostają nietknięte — ukryty przycisk *Nowe Drzewo* oznacza po prostu, że komponentów drzewa nie da się już utworzyć z interfejsu.
 
 ### Porty Sieciowe (HTTP/HTTPS)

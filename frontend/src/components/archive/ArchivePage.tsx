@@ -36,8 +36,9 @@ const ArchivePage: React.FC = () => {
   const [searchParams] = useSearchParams();
   const parentUnitId = searchParams.get('unitId') ? Number(searchParams.get('unitId')) : null;
 
-  // Tabs an admin chose to hide are not rendered and are never active — see
-  // resolveActiveArchiveTab for why the URL param alone is not enough.
+  // Tabs an admin chose to hide are not rendered and are never active; the
+  // page lands on the leftmost visible one. See resolveActiveArchiveTab for
+  // why the URL param alone is not enough.
   const { hiddenElements } = useUiVisibility();
   const visibleTabs = getVisibleArchiveTabs(hiddenElements);
 

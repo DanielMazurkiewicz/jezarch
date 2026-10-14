@@ -17,9 +17,6 @@ export const ARCHIVE_TABS = [
 
 export type ArchiveTab = (typeof ARCHIVE_TABS)[number]['id'];
 
-/** Fallback used when the requested tab is unknown or hidden. */
-export const DEFAULT_ARCHIVE_TAB: ArchiveTab = 'everything';
-
 export const isArchiveTab = (value: string | null | undefined): value is ArchiveTab =>
   ARCHIVE_TABS.some(tab => tab.id === value);
 
@@ -31,30 +28,29 @@ export const getVisibleArchiveTabs = (hidden: ReadonlySet<UiElementId>) =>
   ARCHIVE_TABS.filter(tab => !hidden.has(tab.elementId));
 
 /**
+ * Degrade target for the degenerate case where an admin hid every tab: the bar
+ * is not rendered, so the page must fall back to a tab whose query modifier
+ * leaves the list unfiltered.
+ */
+const UNFILTERED_ARCHIVE_TAB: ArchiveTab = 'everything';
+
+/**
  * Picks the tab the page should actually run with.
+ *
+ * The default is the first (leftmost) visible tab, so a plain `/archive` visit
+ * always lands on the tab the user sees first in the bar.
  *
  * The requested tab comes from the `?tab=` URL parameter, so it can point at a
  * tab that an admin has since hidden (stale bookmark, hand-written link). In
- * that case we fall back to the first visible tab, otherwise the page would
- * silently filter by a tab whose trigger is not rendered.
- *
- * An absent or unrecognised parameter keeps the historical default
- * (DEFAULT_ARCHIVE_TAB); only hidden tabs redirect the choice.
- *
- * If every tab is hidden the bar is not rendered at all and we degrade to
- * DEFAULT_ARCHIVE_TAB so the document list still returns results.
+ * that case we fall back to the first visible tab as well, otherwise the page
+ * would silently filter by a tab whose trigger is not rendered.
  */
 export function resolveActiveArchiveTab(
   preferred: string | null | undefined,
   hidden: ReadonlySet<UiElementId>,
 ): ArchiveTab {
-  const firstVisible = () => getVisibleArchiveTabs(hidden)[0]?.id ?? DEFAULT_ARCHIVE_TAB;
-
-  if (!isArchiveTab(preferred)) {
-    return hidden.has(ELEMENT_ID_BY_TAB[DEFAULT_ARCHIVE_TAB]) ? firstVisible() : DEFAULT_ARCHIVE_TAB;
-  }
-  if (!hidden.has(ELEMENT_ID_BY_TAB[preferred])) {
+  if (isArchiveTab(preferred) && !hidden.has(ELEMENT_ID_BY_TAB[preferred])) {
     return preferred;
   }
-  return firstVisible();
+  return getVisibleArchiveTabs(hidden)[0]?.id ?? UNFILTERED_ARCHIVE_TAB;
 }
