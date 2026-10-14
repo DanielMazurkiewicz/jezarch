@@ -170,7 +170,7 @@ export const archiveTranslationsEN: ArchiveTranslationSet = {
   archiveHelpIntro: 'The Archive is where you store and organize your archival materials as a hierarchy of units and documents. You can browse, search, create, edit, preview, and delete items, and manage their metadata, tags, and signatures.',
   archiveHelpUnits: 'Units are containers (folders) that group documents. They represent physical or logical groupings. Click a unit to open it and browse its contents.',
   archiveHelpDocuments: 'Documents are individual items with metadata such as title, creator, date, and description. Each document can belong to one unit.',
-  archiveHelpSignatures: 'Classify a document with a descriptive signature — an ordered path of elements defined in the Signatures section — and/or a free-text topographic signature (e.g., "Box 1, Folder 5").',
+  archiveHelpSignatures: 'Classify a document with a descriptive signature — an ordered path of elements defined in the Hierarchy Creator section — and/or a free-text topographic signature (e.g., "Box 1, Folder 5").',
   archiveHelpPermissions: 'Admins and employees can create, edit, delete (soft delete), restore, and batch-tag items. The restricted user role can only view and search documents that match the tags an admin assigned to them.',
   archiveHelpDeleted: 'Deleting an item hides it instead of removing it permanently (soft delete). Staff can restore hidden items later.',
   quickFilterEnableLabel: 'Descriptive signature tree',

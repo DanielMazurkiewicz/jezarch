@@ -7,7 +7,7 @@ Ten przewodnik przeprowadzi Cię przez typowe scenariusze end-to-end w JezArch �
 *   [1. Pierwsze Uruchomienie i Dostęp do Konta Administratora](#1-pierwsze-uruchomienie-i-dostęp-do-konta-administratora)
 *   [2. Zapoznanie się z Danymi Demo (Opcjonalne)](#2-zapoznanie-się-z-danymi-demo-opcjonalne)
 *   [3. Budowa Struktury Archiwum](#3-budowa-struktury-archiwum)
-    *   [Krok 1: Zdefiniuj klasyfikację (Sygnatury)](#krok-1-zdefiniuj-klasyfikację-sygnatury)
+    *   [Krok 1: Zdefiniuj klasyfikację (Kreator hierarchii)](#krok-1-zdefiniuj-klasyfikację-kreator-hierarchii)
     *   [Krok 2: Utwórz jednostki (kontenery)](#krok-2-utwórz-jednostki-kontenery)
     *   [Krok 3: Dodaj dokumenty](#krok-3-dodaj-dokumenty)
     *   [Krok 4: Przypisz sygnatury i tagi](#krok-4-przypisz-sygnatury-i-tagi)
@@ -51,7 +51,7 @@ Ten przewodnik przeprowadzi Cię przez typowe scenariusze end-to-end w JezArch �
     ```bash
     bun run seed http://localhost:8080 <haslo-admina>
     ```
-2.  Zaloguj się jako `admin` (lub konto demo) i przejrzyj sekcje Archiwum, Sygnatury, Tagi oraz Notatki, aby zobaczyć wypełnioną zawartość.
+2.  Zaloguj się jako `admin` (lub konto demo) i przejrzyj sekcje Archiwum, Kreator hierarchii, Tagi oraz Notatki, aby zobaczyć wypełnioną zawartość.
 
 > Uwaga: skrypty seed używają domyślnie konta administratora (`SEED_ADMIN_PASSWORD`, argument CLI lub `JEZARCH_INITIAL_ADMIN_PASSWORD`). Szczegóły znajdziesz w [Przewodniku Instalacji](INSTALLATION.md#początkowa-konfiguracja).
 
@@ -61,11 +61,11 @@ Ten przewodnik przeprowadzi Cię przez typowe scenariusze end-to-end w JezArch �
 
 **Cel:** Od pustego archiwum — utworzenie klasyfikacji, dodanie kontenerów i wypełnienie ich dokumentami z sygnaturami i tagami.
 
-### Krok 1: Zdefiniuj klasyfikację (Sygnatury)
+### Krok 1: Zdefiniuj klasyfikację (Kreator hierarchii)
 
 Zacznij od taksonomii sygnatur opisowych, ponieważ dokumenty się do niej odwołują.
 
-1.  Przejdź do **Sygnatury**.
+1.  Przejdź do **Kreatora hierarchii**.
 2.  Kliknij **Nowy Komponent** i utwórz potrzebne poziomy, na przykład:
     *   **Zespół** z typem indeksu *Dziesiętny* (1, 2, 3...).
     *   **Seria** z typem indeksu *Rzymski* (I, II, III...).
@@ -171,7 +171,7 @@ Przy otwartym formularzu dokumentu:
 2.  **Podgląd usuniętych pozycji:** jako admin/pracownik ustaw w pasku wyszukiwania **Czy Usunięte = Jest → Prawda** (lub usuń domyślny filtr `Czy Usunięte = Fałsz`). Usunięte wiersze pokazują ikonę **Przywróć**.
 3.  **Przywracanie:** kliknij ikonę **Przywróć**, aby przywrócić pozycję do zwykłej listy.
 
-> Usunięte pozycje nigdy nie są widoczne dla kont z rolą `użytkownik`. Usunięcie komponentu lub elementu w **Sygnaturach** jest usunięciem *trwałym*, dlatego mogą to robić tylko administratorzy.
+> Usunięte pozycje nigdy nie są widoczne dla kont z rolą `użytkownik`. Usunięcie komponentu lub elementu w **kreatorze hierarchii** jest usunięciem *trwałym*, dlatego mogą to robić tylko administratorzy.
 
 ---
 

@@ -172,7 +172,7 @@ export const archiveTranslationsPL: ArchiveTranslationSet = {
   archiveHelpIntro: 'Archiwum to miejsce, w którym przechowujesz i organizujesz materiały archiwalne jako hierarchię jednostek i dokumentów. Możesz przeglądać, wyszukiwać, tworzyć, edytować, podglądać i usuwać pozycje oraz zarządzać ich metadanymi, tagami i sygnaturami.',
   archiveHelpUnits: 'Jednostki to kontenery (foldery) grupujące dokumenty. Reprezentują fizyczne lub logiczne grupowania. Kliknij jednostkę, aby ją otworzyć i przejrzeć jej zawartość.',
   archiveHelpDocuments: 'Dokumenty to pojedyncze pozycje z metadanymi takimi jak tytuł, twórca, data i opis. Każdy dokument może należeć do jednej jednostki.',
-  archiveHelpSignatures: 'Skategoryzuj dokument za pomocą sygnatury opisowej — uporządkowanej ścieżki elementów zdefiniowanych w sekcji Sygnatury — oraz/lub swobodnej sygnatury topograficznej (np. "Szafa 1, Folder 5").',
+  archiveHelpSignatures: 'Skategoryzuj dokument za pomocą sygnatury opisowej — uporządkowanej ścieżki elementów zdefiniowanych w sekcji Kreatora hierarchii — oraz/lub swobodnej sygnatury topograficznej (np. "Szafa 1, Folder 5").',
   archiveHelpPermissions: 'Administratorzy i pracownicy mogą tworzyć, edytować, usuwać (miękkie usuwanie), przywracać i masowo tagować pozycje. Ograniczona rola użytkownika może jedynie przeglądać i wyszukiwać dokumenty zgodne z tagami przypisanymi przez administratora.',
   archiveHelpDeleted: 'Usunięcie pozycji ukrywa ją zamiast trwale ją kasować (miękkie usuwanie). Pracownicy mogą później przywrócić ukryte pozycje.',
   quickFilterEnableLabel: 'Drzewo sygnatur opisowych',

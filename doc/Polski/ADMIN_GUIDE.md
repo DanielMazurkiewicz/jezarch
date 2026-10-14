@@ -164,6 +164,6 @@ Poza dedykowanym Panelem Administratora, Administratorzy generalnie mają podwy�
 
 *   **Mogą edytować/usuwać dowolny Tag.** *(Pracownicy również mogą zarządzać tagami.)*
 *   **Mogą edytować/usuwać dowolną Notatkę.**
-*   **Mogą edytować/usuwać dowolny Komponent lub Element Sygnatury.** *(Pracownicy mogą tworzyć/edytować komponenty i elementy oraz je reindeksować, ale nie mogą ich usuwać.)*
+*   **Mogą edytować/usuwać dowolny Komponent lub Element kreatora hierarchii.** *(Pracownicy mogą tworzyć/edytować komponenty i elementy oraz je reindeksować, ale nie mogą ich usuwać.)*
 *   **Mogą omijać kontrole własności** przy przeglądaniu/edycji/usuwaniu większości elementów (z wyjątkiem zmiany własnej roli/hasła przez ścieżki administracyjne).
 *   **Mogą przeglądać usunięte pozycje Archiwum.** Usunięte pozycje są **domyślnie ukryte** (nakładany jest domyślny filtr `Czy Usunięte = Fałsz`); ustaw filtr `Czy Usunięte` na `Prawda` lub usuń domyślny filtr, aby je zobaczyć.

@@ -31,7 +31,7 @@ Components can also be marked as **main components** (a checkbox in the componen
 Components have a **type**:
 
 - **Flat** (default) — the classic component; its elements can reference parent elements from any component. Existing components are flat.
-- **Tree** — created with the **New Tree** button on the Signatures page; forms a self-contained hierarchy in which every element automatically mirrors its own internal component and children are linked to their parent automatically.
+- **Tree** — created with the **New Tree** button on the Hierarchy Creator page; forms a self-contained hierarchy in which every element automatically mirrors its own internal component and children are linked to their parent automatically.
 - **Element** — an internal mirror of a single element inside a tree hierarchy. These components are managed by the system: they never appear in component lists and cannot be created or deleted directly (deleting the mirrored element removes them).
 
 ### What is the difference between a component and an element? (#25)
@@ -55,11 +55,11 @@ In the **Signature Path Selector** dialog (used when creating/editing archive do
 
 When creating or editing an element, you can assign parent elements from other components to build the classification tree. The system prevents self-parenting but does not enforce a strict single-parent tree — elements can belong to multiple branches.
 
-You can also browse the hierarchy directly in the Signatures section: click an element's name on the Elements page to open its Child Elements view (with a breadcrumb of the clicked path), and create children there with the parent pre-selected automatically.
+You can also browse the hierarchy directly in the Hierarchy Creator section: click an element's name on the Elements page to open its Child Elements view (with a breadcrumb of the clicked path), and create children there with the parent pre-selected automatically.
 
 ### How do tree components work? (#37)
 
-A **tree component** is created with the **New Tree** button on the Signatures page (same dialog as **New Component**, which creates a flat component). A tree is a self-contained hierarchy:
+A **tree component** is created with the **New Tree** button on the Hierarchy Creator page (same dialog as **New Component**, which creates a flat component). A tree is a self-contained hierarchy:
 
 - Elements created directly in the tree component are its top level and have no parent elements.
 - Each element automatically gets an internal **ELEMENT**-type mirror component (same id, same name). Children you create under that element belong to this mirror component and get the element as their parent automatically — no parent selection is needed.
@@ -69,26 +69,26 @@ A **tree component** is created with the **New Tree** button on the Signatures p
 
 Flat components keep the classic behavior: elements can have parent elements from any component, chosen with the Parent Elements selector in the dialog.
 
-## Archive & Signatures Relationship
+## Archive & Hierarchy Creator Relationship
 
-### What is the relationship between Archive and Signatures? (#22)
+### What is the relationship between Archive and the Hierarchy Creator? (#22)
 
-- **Signatures** define the classification system - the hierarchical taxonomy of components and elements
+- **The Hierarchy Creator** defines the classification system - the hierarchical taxonomy of components and elements
 - **Archive** stores the actual units (containers) and documents (items)
 
 The link between them is the **"descriptive signature path"** field on archive documents. This field stores references to element IDs from the signature system, classifying where each document belongs.
 
 For example, a document might have a descriptive signature path of `[1, 5, 12]`, meaning it belongs under Element 1 → Element 5 → Element 12 in the classification hierarchy.
 
-### How do entries in Signatures appear in Archive? (#24)
+### How do entries in the Hierarchy Creator appear in Archive? (#24)
 
-When you create components and elements in the Signatures section, they become available in the Archive section's "Add Signature Path" dialog. The dialog fetches all components and elements from the API, allowing you to browse and select elements to build a signature path for your documents.
+When you create components and elements in the Hierarchy Creator section, they become available in the Archive section's "Add Signature Path" dialog. The dialog fetches all components and elements from the API, allowing you to browse and select elements to build a signature path for your documents.
 
-### Should Signatures use inventory-style descriptions and Archive use tree view? (#23)
+### Should the Hierarchy Creator use inventory-style descriptions and Archive use tree view? (#23)
 
 The current design separates concerns:
 
-- **Signatures section** uses a list view (like an inventory/catalog) - this is appropriate because components and elements are classification definitions, not hierarchical containers
+- **Hierarchy Creator section** uses a list view (like an inventory/catalog) - this is appropriate because components and elements are classification definitions, not hierarchical containers
 - **Archive section** supports hierarchical navigation through units (clicking a unit navigates to `?unitId=N`, showing only children of that unit)
 
 The archive's tree structure is defined by the `parentUnitArchiveDocumentId` field, which creates parent-child relationships between units and documents.
@@ -125,15 +125,15 @@ This was a limitation that has been fixed. Now both **admin** and **employee** r
 - Delete components (destructive - cascades to all elements)
 - Delete elements (destructive - removes references from document signature paths)
 
-### Why can't employees access the Signatures section? (#28)
+### Why can't employees access the Hierarchy Creator section? (#28)
 
-The Signatures section is accessible to both admin and employee roles. If you experience issues accessing it:
+The Hierarchy Creator section is accessible to both admin and employee roles. If you experience issues accessing it:
 
 1. Ensure your user account has the `employee` role assigned (not `null`)
 2. Log out and log back in to refresh your session
-3. Check that the sidebar shows the "Signatures" link for your role
+3. Check that the sidebar shows the "Hierarchy Creator" link for your role
 
-The backend controllers and frontend routes both correctly allow `admin` and `employee` roles for all signature operations.
+The backend controllers and frontend routes both correctly allow `admin` and `employee` roles for all hierarchy operations.
 
 ## Signature Path Selection
 
@@ -141,7 +141,7 @@ The backend controllers and frontend routes both correctly allow `admin` and `em
 
 The signature path picker (`ElementBrowserDialogContent`) loads components and elements from the API. If elements don't appear:
 
-1. Ensure components and elements have been created in the Signatures section.
+1. Ensure components and elements have been created in the Hierarchy Creator section.
 2. In **Tree mode** (default): expand a component to reveal its root elements, then expand an element to reveal its children — no component dropdown is needed. Toggle **"Main components only"** off to also see non-main components.
 3. In **Hierarchical** or **Free mode**: select a component from the dropdown first. Hierarchical shows parentless elements first, then their children; Free shows all elements of the selected component at once.
 4. Use the search field to filter elements by name or index (Hierarchical/Free modes).
@@ -201,4 +201,4 @@ A user with the `user` role:
 
 ### What happens when I delete an archive item? (#36)
 
-Deleting a document or unit is a **soft delete**: the item is hidden but not erased, and admins/employees can recover it. To see deleted items, set the `Is Deleted` filter to `True` (or remove the default `Is Deleted = False` filter). Deleted rows show a **Restore** icon that brings the item back. Users with the `user` role never see deleted items. Deleting a **component or element** in Signatures, in contrast, is permanent and admin-only.
+Deleting a document or unit is a **soft delete**: the item is hidden but not erased, and admins/employees can recover it. To see deleted items, set the `Is Deleted` filter to `True` (or remove the default `Is Deleted = False` filter). Deleted rows show a **Restore** icon that brings the item back. Users with the `user` role never see deleted items. Deleting a **component or element** in the Hierarchy Creator, in contrast, is permanent and admin-only.

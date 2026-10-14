@@ -7,7 +7,7 @@ This guide walks you through common end-to-end workflows in JezArch, from first 
 *   [1. First Run and Initial Admin Access](#1-first-run-and-initial-admin-access)
 *   [2. Exploring With Demo Data (Optional)](#2-exploring-with-demo-data-optional)
 *   [3. Building an Archive Structure](#3-building-an-archive-structure)
-    *   [Step 1: Define the classification (Signatures)](#step-1-define-the-classification-signatures)
+    *   [Step 1: Define the classification (Hierarchy Creator)](#step-1-define-the-classification-hierarchy-creator)
     *   [Step 2: Create units (containers)](#step-2-create-units-containers)
     *   [Step 3: Add documents](#step-3-add-documents)
     *   [Step 4: Assign signatures and tags](#step-4-assign-signatures-and-tags)
@@ -51,7 +51,7 @@ This guide walks you through common end-to-end workflows in JezArch, from first 
     ```bash
     bun run seed http://localhost:8080 <admin-password>
     ```
-2.  Log in as `admin` (or a demo user) and browse the Archive, Signatures, Tags, and Notes sections to see the seeded content.
+2.  Log in as `admin` (or a demo user) and browse the Archive, Hierarchy Creator, Tags, and Notes sections to see the seeded content.
 
 > Note: the seed scripts use the admin account by default (`SEED_ADMIN_PASSWORD`, the CLI argument, or `JEZARCH_INITIAL_ADMIN_PASSWORD`). See the [Installation Guide](INSTALLATION.md#initial-setup) for the details.
 
@@ -61,11 +61,11 @@ This guide walks you through common end-to-end workflows in JezArch, from first 
 
 **Goal:** From an empty archive, create a classification, add containers, and file documents with signatures and tags.
 
-### Step 1: Define the classification (Signatures)
+### Step 1: Define the classification (Hierarchy Creator)
 
 Start with the descriptive-signature taxonomy, because documents reference it.
 
-1.  Go to **Signatures**.
+1.  Go to the **Hierarchy Creator**.
 2.  Click **New Component** and create the levels you need, for example:
     *   **Fonds** with index type *Decimal* (1, 2, 3...).
     *   **Series** with index type *Roman* (I, II, III...).
@@ -171,7 +171,7 @@ With a document form open:
 2.  **View deleted items:** as admin/employee, in the search bar set **Is Deleted = Is → True** (or remove the default `Is Deleted = False` filter). Deleted rows show a **Restore** icon.
 3.  **Restore:** click the **Restore** icon to bring the item back to the regular list.
 
-> Deleted items are never visible to `user` accounts. Deleting a component or element in **Signatures** is a *permanent* delete, so only admins can do it.
+> Deleted items are never visible to `user` accounts. Deleting a component or element in the **Hierarchy Creator** is a *permanent* delete, so only admins can do it.
 
 ---
 

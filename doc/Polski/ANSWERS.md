@@ -31,7 +31,7 @@ Komponenty mogą być dodatkowo oznaczone jako **komponenty główne** (pole wyb
 Komponenty mają **typ**:
 
 - **Płaski** (domyślny) — klasyczny komponent; jego elementy mogą odwoływać się do elementów nadrzędnych z dowolnego komponentu. Istniejące komponenty są płaskie.
-- **Drzewo** — tworzone przyciskiem **Nowe Drzewo** na stronie Sygnatur; tworzy samodzielną hierarchię, w której każdy element automatycznie lustruje własny wewnętrzny komponent, a dzieci łączone są z rodzicem automatycznie.
+- **Drzewo** — tworzone przyciskiem **Nowe Drzewo** na stronie Kreatora hierarchii; tworzy samodzielną hierarchię, w której każdy element automatycznie lustruje własny wewnętrzny komponent, a dzieci łączone są z rodzicem automatycznie.
 - **Element** — wewnętrzne lustro pojedynczego elementu w hierarchii drzewa. Taki komponent zarządzany jest przez system: nigdy nie pojawia się na listach komponentów i nie można go utworzyć ani usunąć bezpośrednio (usunięcie lustrowanego elementu usuwa go).
 
 ### Jaka jest różnica między komponentem a elementem? (#25)
@@ -54,11 +54,11 @@ W oknie **Selektora Ścieżki Sygnatury** (używanym podczas tworzenia/edycji do
 
 Podczas tworzenia lub edycji elementu możesz przypisać elementy nadrzędne z innych komponentów, aby zbudować drzewo klasyfikacji. System zapobiega ustawieniu samego siebie jako rodzica, ale nie wymusza ścisłego drzewa z jednym rodzicem — elementy mogą należeć do wielu gałęzi.
 
-Hierarchię można też przeglądać bezpośrednio w sekcji Sygnatury: kliknij nazwę elementu na stronie Elementów, aby otworzyć jego widok Elementów Podrzędnych (z okruszkami pokrywającymi klikniętą ścieżkę) i tworzyć tam elementy podrzędne z automatycznie wybranym rodzicem.
+Hierarchię można też przeglądać bezpośrednio w sekcji Kreatora hierarchii: kliknij nazwę elementu na stronie Elementów, aby otworzyć jego widok Elementów Podrzędnych (z okruszkami pokrywającymi klikniętą ścieżkę) i tworzyć tam elementy podrzędne z automatycznie wybranym rodzicem.
 
 ### Jak działają komponenty drzewa? (#37)
 
-**Komponent drzewa** tworzony jest przyciskiem **Nowe Drzewo** na stronie Sygnatur (ten sam formularz co **Nowy Komponent**, który tworzy komponent płaski). Drzewo to samodzielna hierarchia:
+**Komponent drzewa** tworzony jest przyciskiem **Nowe Drzewo** na stronie Kreatora hierarchii (ten sam formularz co **Nowy Komponent**, który tworzy komponent płaski). Drzewo to samodzielna hierarchia:
 
 - Elementy tworzone bezpośrednio w komponencie drzewa stanowią jego najwyższy poziom i nie mają elementów nadrzędnych.
 - Każdy element automatycznie otrzymuje wewnętrzny komponent-lustro typu **ELEMENT** (ten sam identyfikator, ta sama nazwa). Dzieci utworzone pod tym elementem należą do tego komponentu-lustra i automatycznie otrzymują element jako rodzica — nie trzeba wybierać rodzica.
@@ -68,26 +68,26 @@ Hierarchię można też przeglądać bezpośrednio w sekcji Sygnatury: kliknij n
 
 Komponenty płaskie zachowują klasyczne działanie: elementy mogą mieć elementy nadrzędne z dowolnego komponentu, wybierane selektorem Elementów Nadrzędnych w formularzu.
 
-## Relacja Archiwum i Sygnatur
+## Relacja Archiwum i Kreatora hierarchii
 
-### Jaka jest relacja między Archiwum a Sygnaturami? (#22)
+### Jaka jest relacja między Archiwum a Kreatorem hierarchii? (#22)
 
-- **Sygnatury** definiują system klasyfikacji - hierarchiczną taksonomię komponentów i elementów
+- **Kreator hierarchii** definiuje system klasyfikacji - hierarchiczną taksonomię komponentów i elementów
 - **Archiwum** przechowuje rzeczywiste jednostki (pojemniki) i dokumenty (pozycje)
 
-Łącznikiem między nimi jest pole **"opisowa ścieżka sygnatury"** w dokumentach archiwalnych. To pole przechowuje odniesienia do identyfikatorów elementów z systemu sygnatur, klasyfikując, gdzie każdy dokument należy.
+Łącznikiem między nimi jest pole **"opisowa ścieżka sygnatury"** w dokumentach archiwalnych. To pole przechowuje odniesienia do identyfikatorów elementów z kreatora hierarchii, klasyfikując, gdzie każdy dokument należy.
 
 Na przykład, dokument może mieć opisową ścieżkę sygnatury `[1, 5, 12]`, co oznacza, że należy pod Elementem 1 → Elementem 5 → Elementem 12 w hierarchii klasyfikacji.
 
-### Jak wpisy w Sygnaturach pojawiają się w Archiwum? (#24)
+### Jak wpisy w kreatorze hierarchii pojawiają się w Archiwum? (#24)
 
-Podczas tworzenia komponentów i elementów w sekcji Sygnatury, stają się one dostępne w oknie dialogowym "Dodaj Ścieżkę Sygnatury" w sekcji Archiwum. Okno dialogowe pobiera wszystkie komponenty i elementy z API, umożliwiając przeglądanie i wybieranie elementów do zbudowania ścieżki sygnatury dla dokumentów.
+Podczas tworzenia komponentów i elementów w sekcji Kreatora hierarchii, stają się one dostępne w oknie dialogowym "Dodaj Ścieżkę Sygnatury" w sekcji Archiwum. Okno dialogowe pobiera wszystkie komponenty i elementy z API, umożliwiając przeglądanie i wybieranie elementów do zbudowania ścieżki sygnatury dla dokumentów.
 
-### Czy Sygnatury powinny używać opisów w stylu inwentarza, a Archiwum widoku drzewa? (#23)
+### Czy Kreator hierarchii powinien używać opisów w stylu inwentarza, a Archiwum widoku drzewa? (#23)
 
 Obecny projekt rozdziela odpowiedzialności:
 
-- **Sekcja Sygnatur** używa widoku listy (jak inwentarz/katalog) - jest to odpowiednie, ponieważ komponenty i elementy są definicjami klasyfikacji, a nie hierarchicznymi pojemnikami
+- **Sekcja Kreatora hierarchii** używa widoku listy (jak inwentarz/katalog) - jest to odpowiednie, ponieważ komponenty i elementy są definicjami klasyfikacji, a nie hierarchicznymi pojemnikami
 - **Sekcja Archiwum** obsługuje nawigację hierarchiczną przez jednostki (kliknięcie jednostki nawiguje do `?unitId=N`, pokazując tylko dzieci tej jednostki)
 
 Struktura drzewa archiwum jest zdefiniowana przez pole `parentUnitArchiveDocumentId`, które tworzy relacje nadrzędne-podrzędne między jednostkami i dokumentami.
@@ -124,15 +124,15 @@ To było ograniczenie, które zostało naprawione. Teraz zarówno rola **admin**
 - Usuwać komponenty (destrukcyjne - kaskadowo do wszystkich elementów)
 - Usuwać elementy (destrukcyjne - czyści odwołania w ścieżkach sygnatur dokumentów)
 
-### Dlaczego pracownicy nie mają dostępu do sekcji Sygnatury? (#28)
+### Dlaczego pracownicy nie mają dostępu do sekcji Kreatora hierarchii? (#28)
 
-Sekcja Sygnatury jest dostępna zarówno dla roli admin, jak i pracownik. Jeśli masz problemy z dostępem:
+Sekcja Kreatora hierarchii jest dostępna zarówno dla roli admin, jak i pracownik. Jeśli masz problemy z dostępem:
 
 1. Upewnij się, że Twoje konto ma przypisaną rolę `pracownik` (nie `null`)
 2. Wyloguj się i zaloguj ponownie, aby odświeżyć sesję
-3. Sprawdź, czy pasek boczny pokazuje link "Sygnatury" dla Twojej roli
+3. Sprawdź, czy pasek boczny pokazuje link "Kreator hierarchii" dla Twojej roli
 
-Kontrolery backendu i trasy frontendu poprawnie zezwalają rolom `admin` i `employee` na wszystkie operacje na sygnaturach.
+Kontrolery backendu i trasy frontendu poprawnie zezwalają rolom `admin` i `employee` na wszystkie operacje na kreatorze hierarchii.
 
 ## Wybór Ścieżki Sygnatury
 
@@ -140,7 +140,7 @@ Kontrolery backendu i trasy frontendu poprawnie zezwalają rolom `admin` i `empl
 
 Selektor ścieżki sygnatury (`ElementBrowserDialogContent`) ładuje komponenty i elementy z API. Jeśli elementy się nie pojawiają:
 
-1. Upewnij się, że komponenty i elementy zostały utworzone w sekcji Sygnatury
+1. Upewnij się, że komponenty i elementy zostały utworzone w sekcji Kreatora hierarchii
 2. Najpierw wybierz komponent z listy rozwijanej
 3. W **trybie hierarchicznym**: najpierw pokazywane są elementy bez rodziców, następnie dzieci wybranych elementów
 4. W **trybie wolnym**: pokazywane są wszystkie elementy z wybranego komponentu
@@ -201,4 +201,4 @@ Użytkownik z rolą `użytkownik`:
 
 ### Co się dzieje, gdy usunę pozycję archiwum? (#36)
 
-Usunięcie dokumentu lub jednostki to **miękkie usunięcie**: pozycja zostaje ukryta, ale nie wymazana, a administratorzy/pracownicy mogą ją odzyskać. Aby zobaczyć usunięte pozycje, ustaw filtr `Czy Usunięte` na `Prawda` (lub usuń domyślny filtr `Czy Usunięte = Fałsz`). Usunięte wiersze pokazują ikonę **Przywróć**, która przywraca pozycję. Użytkownicy z rolą `użytkownik` nigdy nie widzą usuniętych pozycji. Usunięcie **komponentu lub elementu** w Sygnaturach jest natomiast trwałe i dostępne tylko dla administratora.
+Usunięcie dokumentu lub jednostki to **miękkie usunięcie**: pozycja zostaje ukryta, ale nie wymazana, a administratorzy/pracownicy mogą ją odzyskać. Aby zobaczyć usunięte pozycje, ustaw filtr `Czy Usunięte` na `Prawda` (lub usuń domyślny filtr `Czy Usunięte = Fałsz`). Usunięte wiersze pokazują ikonę **Przywróć**, która przywraca pozycję. Użytkownicy z rolą `użytkownik` nigdy nie widzą usuniętych pozycji. Usunięcie **komponentu lub elementu** w kreatorze hierarchii jest natomiast trwałe i dostępne tylko dla administratora.

@@ -2,12 +2,12 @@
 import type { SignatureTranslationSet } from '../../models/signatures';
 
 export const signatureTranslationsEN: SignatureTranslationSet = {
-  signaturesTitle: 'Signatures',
-  signaturesDescription: 'Manage signature components and elements.',
+  signaturesTitle: 'Hierarchy Creator',
+  signaturesDescription: 'Manage hierarchy components and elements.',
   componentsTitle: 'Components',
-  componentsDescription: 'Define hierarchical components (like folders) for signatures.',
+  componentsDescription: 'Define hierarchical components (like folders) for the hierarchy creator.',
   elementsTitle: 'Elements',
-  elementsDescription: 'Manage individual elements within a signature component.',
+  elementsDescription: 'Manage individual elements within a hierarchy component.',
   newComponentButton: 'New Component',
   newTreeButton: 'New Tree',
   newElementButton: 'New Element',
@@ -83,7 +83,7 @@ export const signatureTranslationsEN: SignatureTranslationSet = {
   elementBrowserModeTree: 'Tree',
   elementBrowserModeHierarchical: 'Hierarchical',
   elementBrowserModeFree: 'Free',
-  elementBrowserModeTreeHint: 'Browse the signature tree and click an element to select its full path. Hover an item to preview it, edit it or add a child.',
+  elementBrowserModeTreeHint: 'Browse the hierarchy tree and click an element to select its full path. Hover an item to preview it, edit it or add a child.',
   elementBrowserModeHierarchicalHint: 'Select path elements based on hierarchical element-to-child relationships.',
   elementBrowserModeFreeHint: 'Build a path from any elements of any components.',
   elementBrowserSelectFromTreeHint: 'Click an element in the tree to select its full path...',
@@ -131,8 +131,8 @@ export const signatureTranslationsEN: SignatureTranslationSet = {
   elementLoadFailedError: 'Failed to load elements',
   componentNoChangesDetected: 'No changes detected.', // Added Key
   elementBrowserSelectComponentFirst: 'Select a component first to see elements.', // Added missing key
-  signaturesHelpTitle: 'About Signatures',
-  signaturesHelpIntro: 'Signatures provide a classification system for your archive. They are built from components and elements and let you assign a descriptive signature path to each document.',
+  signaturesHelpTitle: 'About the Hierarchy Creator',
+  signaturesHelpIntro: 'The Hierarchy Creator provides a classification system for your archive. It is built from components and elements and lets you assign a descriptive signature path to each document.',
   signaturesHelpComponents: 'Components are classification categories (e.g., "Fonds", "Series", "Sub-series"). Each component has an index type that determines how its elements are numbered. New Component creates a flat component (elements can reference parent elements from any component), while New Tree creates a tree component — a self-contained hierarchy in which each element automatically mirrors its own internal component and children are linked to their parent automatically.',
   signaturesHelpElements: 'Elements are individual items within a component (e.g., "Series A" under "Fonds X"). Elements can reference parent elements, forming a hierarchy, and each has an index. In tree components the dialog hides the Component and Parent Elements fields and shows an Index Formatting field instead; parents are set automatically.',
   signaturesHelpRelationship: 'When you create or edit a document in the Archive, you assign it a descriptive signature path — an ordered sequence of elements that classifies where the document belongs in the archive structure.',

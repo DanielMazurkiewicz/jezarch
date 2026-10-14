@@ -23,31 +23,88 @@ async function ensureSignatureComponentColumns() {
     }
 }
 
+// DDL for the signature components table. The tableName parameter allows creating
+// a temporary copy under a different name during migrations.
+const signatureComponentsTableDDL = (tableName: string) => `
+    CREATE TABLE IF NOT EXISTS ${tableName} (
+        signatureComponentId INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT NOT NULL,
+        description TEXT,
+        index_count INTEGER NOT NULL DEFAULT 0, -- Added field
+        index_type TEXT NOT NULL DEFAULT 'dec' CHECK(index_type IN ('dec', 'roman', 'small_char', 'capital_char')), -- Added field with constraint
+        is_main BOOLEAN NOT NULL DEFAULT 0, -- Marks a component as part of the main signature system
+        type TEXT NOT NULL DEFAULT 'FLAT' CHECK(type IN ('FLAT','TREE','ELEMENT')), -- Component kind
+        element_id INTEGER, -- For type ELEMENT: id of the mirrored element
+        createdOn DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        modifiedOn DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+        -- isDeleted BOOLEAN NOT NULL DEFAULT FALSE -- For soft deletes
+    )
+`;
+
+// One-time migration: the table originally shipped with an inline
+// `name TEXT NOT NULL UNIQUE` constraint. Uniqueness is now enforced only for
+// non-ELEMENT components through a partial index (ELEMENT mirrors may share
+// names). SQLite refuses to DROP the autoindex backing a UNIQUE constraint
+// ("index associated with UNIQUE or PRIMARY KEY constraint cannot be dropped"),
+// so the only way to get rid of it is the full table-rebuild procedure:
+// copy the rows into a new table, drop the old one, rename.
+async function migrateComponentNameUniqueness() {
+    // origin: 'c' = CREATE INDEX (droppable), 'u' = UNIQUE constraint, 'pk' = PRIMARY KEY
+    const indexes = db.query<{ name: string; origin: string }, any[]>('PRAGMA index_list(signature_components)').all();
+    if (!indexes.some(index => index.origin === 'u')) return;
+
+    await Log.info(`Migrating signature_components: removing the global UNIQUE constraint on name.`, 'system', 'migrate');
+    const migratedTable = 'signature_components_migrated';
+
+    // signature_elements references signature_components with ON DELETE CASCADE.
+    // Dropping the parent table while PRAGMA foreign_keys = ON makes SQLite run an
+    // implicit "DELETE FROM" first, which would cascade-delete every element.
+    // FK enforcement must therefore be disabled for the rebuild — and the PRAGMA
+    // only takes effect OUTSIDE a transaction.
+    db.exec('PRAGMA foreign_keys = OFF;');
+    try {
+        if ((db.query('PRAGMA foreign_keys;').get() as any)?.foreign_keys === 1) {
+            throw new Error('Cannot rebuild signature_components: PRAGMA foreign_keys could not be disabled (are we inside a transaction?).');
+        }
+        const migration = db.transaction(() => {
+            db.exec(signatureComponentsTableDDL(migratedTable));
+            db.exec(`
+                INSERT INTO ${migratedTable} (
+                    signatureComponentId, name, description, index_count, index_type,
+                    is_main, type, element_id, createdOn, modifiedOn
+                )
+                SELECT signatureComponentId, name, description, index_count, index_type,
+                    is_main, type, element_id, createdOn, modifiedOn
+                FROM signature_components
+            `);
+            db.exec(`DROP TABLE signature_components;`);
+            db.exec(`ALTER TABLE ${migratedTable} RENAME TO signature_components;`);
+        });
+        migration();
+
+        const violations = db.query('PRAGMA foreign_key_check;').all();
+        if (violations.length > 0) {
+            throw new Error(`Foreign key violations detected after signature_components migration: ${JSON.stringify(violations)}`);
+        }
+    } finally {
+        db.exec('PRAGMA foreign_keys = ON;');
+    }
+    await Log.info(`Migration of signature_components to a partial name uniqueness completed.`, 'system', 'migrate');
+}
+
 // Initialization function (called in initializeDatabase)
 export async function initializeSignatureComponentTable() {
     // Name uniqueness is enforced only for non-ELEMENT components (see the partial
     // index below): ELEMENT components are internal mirrors of elements and may
     // share names with each other or with regular components.
-    await db.exec(`
-        CREATE TABLE IF NOT EXISTS signature_components (
-            signatureComponentId INTEGER PRIMARY KEY AUTOINCREMENT,
-            name TEXT NOT NULL,
-            description TEXT,
-            index_count INTEGER NOT NULL DEFAULT 0, -- Added field
-            index_type TEXT NOT NULL DEFAULT 'dec' CHECK(index_type IN ('dec', 'roman', 'small_char', 'capital_char')), -- Added field with constraint
-            is_main BOOLEAN NOT NULL DEFAULT 0, -- Marks a component as part of the main signature system
-            type TEXT NOT NULL DEFAULT 'FLAT' CHECK(type IN ('FLAT','TREE','ELEMENT')), -- Component kind
-            element_id INTEGER, -- For type ELEMENT: id of the mirrored element
-            createdOn DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-            modifiedOn DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
-            -- isDeleted BOOLEAN NOT NULL DEFAULT FALSE -- For soft deletes
-        )
-    `);
+    await db.exec(signatureComponentsTableDDL('signature_components'));
+    // Top up the schema first: the rebuild in migrateComponentNameUniqueness copies
+    // every column by name and would fail on legacy databases still missing some.
     await ensureSignatureComponentColumns();
-    // Replace the legacy global unique index on name (either the named index or an
-    // autoindex from the original inline UNIQUE constraint) with a partial one.
+    // Replace the legacy global unique index on name (a standalone index, droppable)
+    // or the autoindex of the original inline UNIQUE constraint (table rebuild).
     await db.exec(`DROP INDEX IF EXISTS idx_signature_component_name;`);
-    await db.exec(`DROP INDEX IF EXISTS sqlite_autoindex_signature_components_1;`);
+    await migrateComponentNameUniqueness();
     await db.exec(`CREATE UNIQUE INDEX IF NOT EXISTS idx_signature_component_name_non_element ON signature_components (name) WHERE type != 'ELEMENT';`);
 }
 

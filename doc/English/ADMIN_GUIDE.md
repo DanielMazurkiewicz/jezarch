@@ -172,6 +172,6 @@ Beyond the dedicated Admin Panel, Administrators generally have elevated permiss
 
 *   **Can edit/delete any Tag.** *(Employees can also manage tags.)*
 *   **Can edit/delete any Note.**
-*   **Can edit/delete any Signature Component or Element.** *(Employees can create/edit components and elements and re-index them, but cannot delete.)*
+*   **Can edit/delete any Hierarchy Creator Component or Element.** *(Employees can create/edit components and elements and re-index them, but cannot delete.)*
 *   **Can bypass ownership checks** for viewing/editing/deleting most items (except changing their own role/password via admin routes).
 *   **Can view deleted Archive items.** Deleted items are **hidden by default** (a default `Is Deleted = False` filter is applied); set the `Is Deleted` filter to `True`, or remove the default filter, to see them.

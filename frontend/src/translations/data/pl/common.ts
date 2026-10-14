@@ -153,7 +153,7 @@ export const commonTranslationsPL: CommonTranslationSet = {
   tagSelectorLoading: 'Ładowanie tagów...',
   tagSelectorError: 'Błąd ładowania tagów',
   tagSelectorNoTags: 'Nie znaleziono tagów.',
-  signaturesTitle: 'Sygnatury',
+  signaturesTitle: 'Kreator hierarchii',
   // --- NEW/UPDATED KEYS ---
   createdByLabel: 'Utworzone przez',
   updatedByLabel: 'Zaktualizowane przez',

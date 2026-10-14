@@ -20,7 +20,7 @@ Ten przewodnik opisuje podstawowe funkcjonalności aplikacji JezArch dla różny
     *   [Edytowanie Jednostek/Dokumentów (Admin/Pracownik)](#edytowanie-jednostekdokumentów-adminpracownik)
     *   [Usuwanie Pozycji (Admin/Pracownik)](#usuwanie-pozycji-adminpracownik)
     *   [Wsadowe Tagowanie (Admin/Pracownik)](#wsadowe-tagowanie-adminpracownik)
-*   [Sygnatury (Admin/Pracownik)](#sygnatury-adminpracownik)
+*   [Kreator hierarchii (Admin/Pracownik)](#kreator-hierarchii-adminpracownik)
     *   [Komponenty](#komponenty)
     *   [Elementy](#elementy)
     *   [Elementy Podrzędne](#elementy-podrzędne)
@@ -63,7 +63,7 @@ Ten przewodnik opisuje podstawowe funkcjonalności aplikacji JezArch dla różny
 *   Umożliwia nawigację do głównych sekcji aplikacji w zależności od Twojej roli:
     *   **Panel Główny:** Strona przeglądowa.
     *   **Archiwum:** Przeglądaj i wyszukuj dokumenty oraz jednostki archiwalne. (Rola 'Użytkownik' widzi 'Szukaj w Archiwum').
-    *   **Sygnatury (Admin/Pracownik):** Zarządzaj komponentami i elementami sygnatur.
+    *   **Kreator hierarchii (Admin/Pracownik):** Zarządzaj komponentami i elementami kreatora hierarchii.
     *   **Tagi (Admin/Pracownik):** Zarządzaj globalnymi tagami.
     *   **Notatki (Admin/Pracownik):** Dostęp do osobistych i udostępnionych notatek.
     *   **Admin (Tylko Admin):** Dostęp do funkcji administracyjnych.
@@ -77,7 +77,7 @@ Ten przewodnik opisuje podstawowe funkcjonalności aplikacji JezArch dla różny
 
 ### Wbudowana Pomoc
 
-*   Każda główna strona (Panel Główny, Archiwum, Sygnatury, Tagi, Notatki, Admin) ma przycisk **Pomoc**, który otwiera wbudowany przewodnik dla tej strony.
+*   Każda główna strona (Panel Główny, Archiwum, Kreator hierarchii, Tagi, Notatki, Admin) ma przycisk **Pomoc**, który otwiera wbudowany przewodnik dla tej strony.
 *   Przewodniki objaśniają cel sekcji, kluczowe pojęcia i uprawnienia poszczególnych ról.
 
 ---
@@ -183,13 +183,13 @@ Domyślna strona po zalogowaniu. Wyświetla wiadomość powitalną. Użytkownicy
 
 ---
 
-## Sygnatury (Admin/Pracownik)
+## Kreator hierarchii (Admin/Pracownik)
 
 Zarządzaj elementami składowymi sygnatur opisowych.
 
 ### Komponenty
 
-*   Przejdź do sekcji **Sygnatury**.
+*   Przejdź do sekcji **Kreatora hierarchii**.
 *   Wyświetl istniejące komponenty, ich opis, typ indeksowania i liczbę elementów. Komponenty są sortowane z **komponentami głównymi na początku**, a następnie alfabetycznie; komponenty główne mają wyróżnioną (kolorową) ikonę folderu.
 *   Komponenty mają **typ**:
     *   **Płaski** — klasyczny komponent: jego elementy mogą odwoływać się do elementów nadrzędnych z dowolnego komponentu. Tak zachowywały się komponenty przed wprowadzeniem typów; istniejące komponenty są płaskie.
@@ -202,7 +202,7 @@ Zarządzaj elementami składowymi sygnatur opisowych.
 
 ### Elementy
 
-*   Przejdź na tę stronę, klikając wiersz komponentu na stronie Sygnatury.
+*   Przejdź na tę stronę, klikając wiersz komponentu na stronie Kreatora hierarchii.
 *   Wyświetl elementy należące do wybranego komponentu nadrzędnego.
 *   **Edycja komponentu nadrzędnego:** Kliknij ikonę **Edytuj** (ołówek) obok tytułu strony, aby zmodyfikować Nazwę, Opis, Typ Indeksu lub flagę Główny komponent bez opuszczania strony Elementów.
 *   **Reindeksacja komponentu nadrzędnego:** Kliknij ikonę **Reindeksuj** (lista restart) obok tytułu strony, aby ponumerować wszystkie elementy w tym komponencie — to samo działanie co Reindeksacja na liście Komponentów (własne wartości indeksów zostaną nadpisane).

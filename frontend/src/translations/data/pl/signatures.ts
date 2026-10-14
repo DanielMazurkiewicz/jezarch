@@ -2,12 +2,12 @@
 import type { SignatureTranslationSet } from '../../models/signatures';
 
 export const signatureTranslationsPL: SignatureTranslationSet = {
-  signaturesTitle: 'Sygnatury',
-  signaturesDescription: 'Zarządzaj komponentami i elementami sygnatur.',
+  signaturesTitle: 'Kreator hierarchii',
+  signaturesDescription: 'Zarządzaj komponentami i elementami kreatora hierarchii.',
   componentsTitle: 'Komponenty',
-  componentsDescription: 'Zdefiniuj hierarchiczne komponenty (np. foldery) dla sygnatur.',
+  componentsDescription: 'Zdefiniuj hierarchiczne komponenty (np. foldery) kreatora hierarchii.',
   elementsTitle: 'Elementy',
-  elementsDescription: 'Zarządzaj indywidualnymi elementami w ramach komponentu sygnatury.',
+  elementsDescription: 'Zarządzaj indywidualnymi elementami w ramach komponentu hierarchii.',
   newComponentButton: 'Nowy Komponent',
   newTreeButton: 'Nowe Drzewo',
   newElementButton: 'Nowy Element',
@@ -83,7 +83,7 @@ export const signatureTranslationsPL: SignatureTranslationSet = {
   elementBrowserModeTree: 'Drzewo',
   elementBrowserModeHierarchical: 'Hierarchiczny',
   elementBrowserModeFree: 'Dowolny',
-  elementBrowserModeTreeHint: 'Przeglądaj drzewo sygnatur i kliknij element, aby wybrać jego pełną ścieżkę. Najedź na pozycję, aby ją podglądać, edytować lub dodać element podrzędny.',
+  elementBrowserModeTreeHint: 'Przeglądaj drzewo kreatora hierarchii i kliknij element, aby wybrać jego pełną ścieżkę. Najedź na pozycję, aby ją podglądać, edytować lub dodać element podrzędny.',
   elementBrowserModeHierarchicalHint: 'Wybieraj elementy ścieżki na podstawie relacji hierarchicznej element->element podrzędny',
   elementBrowserModeFreeHint: 'Buduj ścieżkę z dowolnych elementów dowolnych komponentów',
   elementBrowserSelectFromTreeHint: 'Kliknij element w drzewie, aby wybrać jego pełną ścieżkę...',
@@ -131,8 +131,8 @@ export const signatureTranslationsPL: SignatureTranslationSet = {
   elementLoadFailedError: 'Nie udało się załadować elementów',
   componentNoChangesDetected: 'Nie wykryto żadnych zmian.', // Added Key
   elementBrowserSelectComponentFirst: 'Najpierw wybierz komponent, aby zobaczyć elementy.', // Added missing key
-  signaturesHelpTitle: 'O sygnaturach',
-  signaturesHelpIntro: 'Sygnatury stanowią system klasyfikacji Twojego archiwum. Są budowane z komponentów i elementów i pozwalają przypisać każdemu dokumentowi ścieżkę sygnatury opisowej.',
+  signaturesHelpTitle: 'O kreatorze hierarchii',
+  signaturesHelpIntro: 'Kreator hierarchii stanowi system klasyfikacji Twojego archiwum. Jest budowany z komponentów i elementów i pozwala przypisać każdemu dokumentowi ścieżkę sygnatury opisowej.',
   signaturesHelpComponents: 'Komponenty to kategorie klasyfikacyjne (np. "Zbiór", "Seria", "Podseria"). Każdy komponent ma typ indeksu określający sposób numerowania jego elementów. Nowy Komponent tworzy komponent płaski (elementy mogą odwoływać się do elementów nadrzędnych z dowolnego komponentu), a Nowe Drzewo tworzy komponent drzewa — samodzielną hierarchię, w której każdy element automatycznie lustruje własny wewnętrzny komponent, a dzieci łączone są z rodzicem automatycznie.',
   signaturesHelpElements: 'Elementy to poszczególne pozycje w ramach komponentu (np. "Seria A" w "Zbiorze X"). Elementy mogą odwoływać się do elementów nadrzędnych, tworząc hierarchię, a każdy z nich ma indeks. W komponentach drzewa formularz ukrywa pola Komponent i Elementy Nadrzędne, a zamiast nich pokazuje pole Formatowania Indeksu; rodzice są ustawiani automatycznie.',
   signaturesHelpRelationship: 'Tworząc lub edytując dokument w archiwum, przypisujesz mu ścieżkę sygnatury opisowej — uporządkowaną sekwencję elementów klasyfikujących miejsce dokumentu w strukturze archiwum.',

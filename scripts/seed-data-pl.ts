@@ -104,7 +104,7 @@ async function main() {
   }
 
   // 5. Create signature components
-  console.log('\n--- Tworzenie komponentów sygnatury ---');
+  console.log('\n--- Tworzenie komponentów kreatora hierarchii ---');
   const components = [
     { name: 'Zespół', description: 'Najwyższy poziom grupowania archiwalnego', index_type: 'dec', is_main: true },
     { name: 'Seria', description: 'Grupa powiązanych ze sobą rekordów', index_type: 'roman', is_main: true },
@@ -135,7 +135,7 @@ async function main() {
   }
 
   // 6. Create signature elements
-  console.log('\n--- Tworzenie elementów sygnatury ---');
+  console.log('\n--- Tworzenie elementów kreatora hierarchii ---');
 
   // Zespół elements
   const fondsElements = [
@@ -688,8 +688,8 @@ async function main() {
   console.log('\n--- Zasiewanie zakończone ---');
   console.log(`Użytkownicy: ${users.length + 1} (z adminem)`);
   console.log(`Tagów: ${tags.length}`);
-  console.log(`Komponentów sygnatury: ${components.length}`);
-  console.log(`Elementów sygnatury: ${Object.keys(elementIds).length}`);
+  console.log(`Komponentów kreatora hierarchii: ${components.length}`);
+  console.log(`Elementów kreatora hierarchii: ${Object.keys(elementIds).length}`);
   console.log(`Dokumentów: ${docIds.length} (w tym usuniętych: ${deletedIds.length})`);
   console.log(`Notatek: ${notes.length}`);
 }

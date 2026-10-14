@@ -20,7 +20,7 @@ This guide covers the core functionalities of the JezArch application for differ
     *   [Editing Units/Documents (Admin/Employee)](#editing-unitsdocuments-adminemployee)
     *   [Deleting Items (Admin/Employee)](#deleting-items-adminemployee)
     *   [Batch Tagging (Admin/Employee)](#batch-tagging-adminemployee)
-*   [Signatures (Admin/Employee)](#signatures-adminemployee)
+*   [Hierarchy Creator (Admin/Employee)](#hierarchy-creator-adminemployee)
     *   [Components](#components)
     *   [Elements](#elements)
     *   [Child Elements](#child-elements)
@@ -63,7 +63,7 @@ This guide covers the core functionalities of the JezArch application for differ
 *   Provides navigation to the main sections of the application based on your role:
     *   **Dashboard:** Overview page.
     *   **Archive:** Browse and search archival documents and units. ('User' role sees 'Search Archive').
-    *   **Signatures (Admin/Employee):** Manage signature components and elements.
+    *   **Hierarchy Creator (Admin/Employee):** Manage hierarchy components and elements.
     *   **Tags (Admin/Employee):** Manage global tags.
     *   **Notes (Admin/Employee):** Access personal and shared notes.
     *   **Admin (Admin only):** Access administrative functions.
@@ -77,7 +77,7 @@ This guide covers the core functionalities of the JezArch application for differ
 
 ### Built-in Help
 
-*   Every main page (Dashboard, Archive, Signatures, Tags, Notes, Admin) has a **Help** button that opens a built-in guide for that page.
+*   Every main page (Dashboard, Archive, Hierarchy Creator, Tags, Notes, Admin) has a **Help** button that opens a built-in guide for that page.
 *   The guides explain the purpose of the section, its key concepts, and the permissions of each role.
 
 ---
@@ -184,13 +184,13 @@ Accessible via the "Archive" / "Search Archive" link in the sidebar.
 
 ---
 
-## Signatures (Admin/Employee)
+## Hierarchy Creator (Admin/Employee)
 
 Manage the building blocks for descriptive signatures.
 
 ### Components
 
-*   Navigate to **Signatures**.
+*   Navigate to the **Hierarchy Creator**.
 *   View existing components, their description, index type, and element count. Components are listed with **main components first**, then alphabetically; main components show a highlighted (colored) folder icon.
 *   Components have a **type**:
     *   **Flat** — the classic component: its elements can reference parent elements from any component. This is how components behaved before types existed, and existing components are flat.
@@ -203,7 +203,7 @@ Manage the building blocks for descriptive signatures.
 
 ### Elements
 
-*   Access this page by clicking a component row on the Signatures page.
+*   Access this page by clicking a component row on the Hierarchy Creator page.
 *   View elements belonging to the selected parent component.
 *   **Edit the parent component:** Click the **Edit** (pencil) icon next to the page title to modify the component's Name, Description, Index Type, or Main flag without leaving the Elements page.
 *   **Re-index the parent component:** Click the **Re-index** (list restart) icon next to the page title to renumber all elements in this component — the same action as the Re-index on the Components list (custom index overrides are overwritten).
