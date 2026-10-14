@@ -15,7 +15,15 @@ import ErrorDisplay from '@/components/shared/ErrorDisplay';
 import { useAuth } from '@/hooks/useAuth';
 import api from '@/lib/api';
 import { AppConfigKeys } from '../../../../backend/src/functionalities/config/models';
-import type { UiElementId } from '../../../../backend/src/functionalities/config/models';
+import type { UiElementId, ComponentSortMode, ElementSortMode } from '../../../../backend/src/functionalities/config/models';
+import {
+    COMPONENT_SORT_MODES,
+    ELEMENT_SORT_MODES,
+    DEFAULT_COMPONENT_SORT_MODE,
+    DEFAULT_ELEMENT_SORT_MODE,
+    isComponentSortMode,
+    isElementSortMode,
+} from '../../../../backend/src/functionalities/config/models';
 import { cn } from '@/lib/utils';
 import { settingsSchema, SettingsFormData } from '@/lib/zodSchemas';
 import { toast } from "sonner";
@@ -27,10 +35,12 @@ import { supportedLanguages, type SupportedLanguage } from '@/translations/model
 // ------------------------------------
 import { UI_ELEMENT_GROUPS, parseHiddenList, toggleHiddenElement } from '@/lib/uiVisibility';
 import { useUiVisibility } from '@/context/UiVisibilityContext';
+import { useSignatureSort } from '@/context/SignatureSortContext';
 
 const SettingsForm: React.FC = () => {
     const { token, preferredLanguage } = useAuth();
     const { refresh: refreshUiVisibility } = useUiVisibility();
+    const { refresh: refreshSignatureSort } = useSignatureSort();
     const [isLoading, setIsLoading] = useState(true);
     const [loadError, setLoadError] = useState<string | null>(null);
     const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'success' | 'error'>('idle');
@@ -53,6 +63,10 @@ const SettingsForm: React.FC = () => {
             [AppConfigKeys.HTTPS_CERT_PATH]: '',
             [AppConfigKeys.HTTPS_CA_PATH]: '',
             [AppConfigKeys.HIDDEN_UI_ELEMENTS]: [],
+            [AppConfigKeys.COMPONENT_SORT_MODE]: DEFAULT_COMPONENT_SORT_MODE,
+            [AppConfigKeys.COMPONENT_SORT_REVERSED]: false,
+            [AppConfigKeys.ELEMENT_SORT_MODE]: DEFAULT_ELEMENT_SORT_MODE,
+            [AppConfigKeys.ELEMENT_SORT_REVERSED]: false,
         }
     });
 
@@ -62,6 +76,10 @@ const SettingsForm: React.FC = () => {
     const watchedCertPath = watch(AppConfigKeys.HTTPS_CERT_PATH);
     const watchedCaPath = watch(AppConfigKeys.HTTPS_CA_PATH);
     const watchedHiddenUiElements = watch(AppConfigKeys.HIDDEN_UI_ELEMENTS);
+    const watchedComponentSortMode = watch(AppConfigKeys.COMPONENT_SORT_MODE);
+    const watchedComponentSortReversed = watch(AppConfigKeys.COMPONENT_SORT_REVERSED);
+    const watchedElementSortMode = watch(AppConfigKeys.ELEMENT_SORT_MODE);
+    const watchedElementSortReversed = watch(AppConfigKeys.ELEMENT_SORT_REVERSED);
 
     // The form edits the *hidden* list, but the checkbox reads as "shown", so
     // the two are inverted here and nowhere else.
@@ -98,6 +116,10 @@ const SettingsForm: React.FC = () => {
             AppConfigKeys.HTTPS_CERT_PATH,
             AppConfigKeys.HTTPS_CA_PATH,
             AppConfigKeys.HIDDEN_UI_ELEMENTS,
+            AppConfigKeys.COMPONENT_SORT_MODE,
+            AppConfigKeys.COMPONENT_SORT_REVERSED,
+            AppConfigKeys.ELEMENT_SORT_MODE,
+            AppConfigKeys.ELEMENT_SORT_REVERSED,
         ];
 
         try {
@@ -118,6 +140,10 @@ const SettingsForm: React.FC = () => {
                          case AppConfigKeys.HTTPS_PORT: newFormValues[key] = 8443; break;
                          case AppConfigKeys.DEFAULT_LANGUAGE: newFormValues[key] = 'en'; break;
                          case AppConfigKeys.HIDDEN_UI_ELEMENTS: newFormValues[key] = []; break;
+                         case AppConfigKeys.COMPONENT_SORT_MODE: newFormValues[key] = DEFAULT_COMPONENT_SORT_MODE; break;
+                         case AppConfigKeys.ELEMENT_SORT_MODE: newFormValues[key] = DEFAULT_ELEMENT_SORT_MODE; break;
+                         case AppConfigKeys.COMPONENT_SORT_REVERSED: newFormValues[key] = false; break;
+                         case AppConfigKeys.ELEMENT_SORT_REVERSED: newFormValues[key] = false; break;
                          default: newFormValues[key] = '';
                      }
                      return;
@@ -156,6 +182,19 @@ const SettingsForm: React.FC = () => {
                         // The API returns a JSON array of ids; parse defensively.
                         newFormValues[key] = parseHiddenList(value);
                         break;
+                    case AppConfigKeys.COMPONENT_SORT_MODE:
+                        // Guards against a value written outside the admin form.
+                        newFormValues[key] = isComponentSortMode(value) ? value : DEFAULT_COMPONENT_SORT_MODE;
+                        break;
+                    case AppConfigKeys.ELEMENT_SORT_MODE:
+                        newFormValues[key] = isElementSortMode(value) ? value : DEFAULT_ELEMENT_SORT_MODE;
+                        break;
+                    case AppConfigKeys.COMPONENT_SORT_REVERSED:
+                        newFormValues[key] = value === true;
+                        break;
+                    case AppConfigKeys.ELEMENT_SORT_REVERSED:
+                        newFormValues[key] = value === true;
+                        break;
                 }
             });
 
@@ -184,7 +223,7 @@ const SettingsForm: React.FC = () => {
         let restartRequiredBySave = false;
 
         const savePromises = (Object.keys(data) as Array<keyof SettingsFormData>).map(key => {
-            let valueToSave: string | string[] | null | number | undefined = data[key]; // Allow number for port types
+            let valueToSave: string | string[] | boolean | null | number | undefined = data[key]; // Allow number for port types
              if ([AppConfigKeys.HTTPS_KEY_PATH, AppConfigKeys.HTTPS_CERT_PATH, AppConfigKeys.HTTPS_CA_PATH].includes(key as AppConfigKeys) && valueToSave === '') {
                 valueToSave = null;
             }
@@ -195,6 +234,9 @@ const SettingsForm: React.FC = () => {
              // --- Convert number to string ONLY if it's not null ---
              if (typeof valueToSave === 'number') {
                  valueToSave = String(valueToSave);
+             } else if (typeof valueToSave === 'boolean') {
+                 // The API takes strings on the wire; 'false' must not become ''.
+                 valueToSave = valueToSave ? 'true' : 'false';
              } else if (valueToSave === null) {
                  // Keep null as null for paths, but ensure ports/lang are not null before API call
                  if (key === AppConfigKeys.DEFAULT_LANGUAGE || key === AppConfigKeys.HTTP_PORT || key === AppConfigKeys.HTTPS_PORT) {
@@ -243,6 +285,8 @@ const SettingsForm: React.FC = () => {
                 await fetchSettings();
                 // Apply visibility changes immediately instead of waiting for a reload.
                 await refreshUiVisibility();
+                // Same for the signature tree ordering: open pickers re-sort now.
+                await refreshSignatureSort();
                 if (restartRequiredBySave) {
                     toast.warning(`${baseSuccessMsg} ${t('saveSettingsRestartWarning', preferredLanguage)}`);
                 } else {
@@ -355,6 +399,86 @@ const SettingsForm: React.FC = () => {
                                 </div>
                             </div>
                         ))}
+                    </div>
+
+                    {/* Signature Tree Sorting Section */}
+                    <div className="space-y-4 border-b pb-4">
+                        <div>
+                            <h3 className="text-lg font-medium">{t('signatureSortTitle', preferredLanguage)}</h3>
+                            <p className="text-sm text-muted-foreground">
+                                {t('signatureSortDescription', preferredLanguage)}
+                            </p>
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div className="grid gap-1.5">
+                                <Label htmlFor="component-sort-mode">{t('signatureSortComponentsLabel', preferredLanguage)}</Label>
+                                <Controller
+                                    name={AppConfigKeys.COMPONENT_SORT_MODE}
+                                    control={control}
+                                    render={({ field }) => (
+                                        <Select onValueChange={field.onChange} value={field.value}>
+                                            <SelectTrigger id="component-sort-mode" className={cn(errors[AppConfigKeys.COMPONENT_SORT_MODE] && "border-destructive")}>
+                                                <SelectValue />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                {/* 'index' has no meaning for components, so it is not offered. */}
+                                                {COMPONENT_SORT_MODES.map(mode => (
+                                                    <SelectItem key={mode} value={mode}>
+                                                        {t(mode === 'creation' ? 'signatureSortModeCreation' : 'signatureSortModeName', preferredLanguage)}
+                                                    </SelectItem>
+                                                ))}
+                                            </SelectContent>
+                                        </Select>
+                                    )}
+                                />
+                                {errors[AppConfigKeys.COMPONENT_SORT_MODE] && <p className="text-xs text-destructive">{errors[AppConfigKeys.COMPONENT_SORT_MODE]?.message}</p>}
+                                <div className="flex items-start gap-2 pt-1">
+                                    <Checkbox
+                                        id="component-sort-reversed"
+                                        checked={watchedComponentSortReversed}
+                                        onCheckedChange={checked => setValue(AppConfigKeys.COMPONENT_SORT_REVERSED, checked === true, { shouldDirty: true })}
+                                    />
+                                    <div className="grid gap-0.5">
+                                        <Label htmlFor="component-sort-reversed" className="cursor-pointer">{t('signatureSortComponentsReverseLabel', preferredLanguage)}</Label>
+                                        <p className="text-xs text-muted-foreground">{t('signatureSortComponentsReverseHint', preferredLanguage)}</p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="grid gap-1.5">
+                                <Label htmlFor="element-sort-mode">{t('signatureSortElementsLabel', preferredLanguage)}</Label>
+                                <Controller
+                                    name={AppConfigKeys.ELEMENT_SORT_MODE}
+                                    control={control}
+                                    render={({ field }) => (
+                                        <Select onValueChange={field.onChange} value={field.value}>
+                                            <SelectTrigger id="element-sort-mode" className={cn(errors[AppConfigKeys.ELEMENT_SORT_MODE] && "border-destructive")}>
+                                                <SelectValue />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                {ELEMENT_SORT_MODES.map(mode => (
+                                                    <SelectItem key={mode} value={mode}>
+                                                        {t(mode === 'creation' ? 'signatureSortModeCreation' : mode === 'index' ? 'signatureSortModeIndex' : 'signatureSortModeName', preferredLanguage)}
+                                                    </SelectItem>
+                                                ))}
+                                            </SelectContent>
+                                        </Select>
+                                    )}
+                                />
+                                {errors[AppConfigKeys.ELEMENT_SORT_MODE] && <p className="text-xs text-destructive">{errors[AppConfigKeys.ELEMENT_SORT_MODE]?.message}</p>}
+                                <div className="flex items-start gap-2 pt-1">
+                                    <Checkbox
+                                        id="element-sort-reversed"
+                                        checked={watchedElementSortReversed}
+                                        onCheckedChange={checked => setValue(AppConfigKeys.ELEMENT_SORT_REVERSED, checked === true, { shouldDirty: true })}
+                                    />
+                                    <div className="grid gap-0.5">
+                                        <Label htmlFor="element-sort-reversed" className="cursor-pointer">{t('signatureSortElementsReverseLabel', preferredLanguage)}</Label>
+                                        <p className="text-xs text-muted-foreground">{t('signatureSortElementsReverseHint', preferredLanguage)}</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
 
                     {/* Network Settings Section */}

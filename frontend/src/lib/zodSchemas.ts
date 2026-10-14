@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import type { SignatureComponentIndexType } from '../../../backend/src/functionalities/signature/component/models';
 import type { ArchiveDocumentType } from '../../../backend/src/functionalities/archive/document/models';
-import { AppConfigKeys } from '../../../backend/src/functionalities/config/models';
+import { AppConfigKeys, COMPONENT_SORT_MODES, ELEMENT_SORT_MODES } from '../../../backend/src/functionalities/config/models';
 import { searchRequestSchema as backendSearchRequestSchema } from '../../../backend/src/utils/search_validation';
 // --- UPDATED: Import supportedLanguages and correct type ---
 import { supportedLanguages, type SupportedLanguage as BackendSupportedLanguage } from '../../../backend/src/functionalities/user/models'; // Import supportedLanguages
@@ -194,6 +194,12 @@ export const settingsSchema = z.object({
     [AppConfigKeys.HTTPS_CA_PATH]: z.string().max(1024, "Path too long").optional().nullable(),
     // Stored (and sent to the API) as a JSON array string of UiElementId values.
     [AppConfigKeys.HIDDEN_UI_ELEMENTS]: z.array(z.string()),
+    // Signature tree picker ordering. Plain z.boolean (not coerce) so the
+    // string "false" cannot be coerced into true.
+    [AppConfigKeys.COMPONENT_SORT_MODE]: z.enum(COMPONENT_SORT_MODES),
+    [AppConfigKeys.COMPONENT_SORT_REVERSED]: z.boolean(),
+    [AppConfigKeys.ELEMENT_SORT_MODE]: z.enum(ELEMENT_SORT_MODES),
+    [AppConfigKeys.ELEMENT_SORT_REVERSED]: z.boolean(),
 }).refine(data => !(data[AppConfigKeys.HTTPS_KEY_PATH] && !data[AppConfigKeys.HTTPS_CERT_PATH]), {
     message: "Certificate path is required if key path is provided.",
     path: [AppConfigKeys.HTTPS_CERT_PATH],

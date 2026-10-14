@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import LoadingSpinner from './LoadingSpinner';
 import { useAuth } from '@/hooks/useAuth';
 import api from '@/lib/api';
-import { compareSignatureComponents } from '@/lib/signatureComponentSort';
+import { useSignatureSort } from '@/context/SignatureSortContext';
 import type { SignatureComponent } from '../../../../backend/src/functionalities/signature/component/models';
 import type { SignatureElement, CreateSignatureElementInput } from '../../../../backend/src/functionalities/signature/element/models';
 import { cn } from '@/lib/utils';
@@ -34,15 +34,6 @@ interface ElementBrowserDialogContentProps { // Renamed interface
 const MAX_SEARCH_RESULTS = 200;
 const DEBOUNCE_DELAY = 300;
 
-const compareElements = (a: SignatureElement, b: SignatureElement): number => {
-    const valA = a.index ?? a.name ?? '';
-    const valB = b.index ?? b.name ?? '';
-    const numA = Number(valA);
-    const numB = Number(valB);
-    if (!isNaN(numA) && !isNaN(numB)) return numA - numB;
-    return valA.localeCompare(valB);
-};
-
 // Renamed component
 const ElementBrowserDialogContent: React.FC<ElementBrowserDialogContentProps> = ({
     onSelectSignature,
@@ -50,6 +41,7 @@ const ElementBrowserDialogContent: React.FC<ElementBrowserDialogContentProps> = 
     initialPath = [],
 }) => {
     const { token, user, preferredLanguage } = useAuth(); // Get preferredLanguage
+    const { sortComponents, sortElements } = useSignatureSort();
     const [components, setComponents] = useState<SignatureComponent[]>([]);
     const [selectedComponentId, setSelectedComponentId] = useState<string>('');
     const [elements, setElements] = useState<SignatureElement[]>([]);
@@ -107,14 +99,14 @@ const ElementBrowserDialogContent: React.FC<ElementBrowserDialogContentProps> = 
             setIsLoadingComponents(true);
             setError(null);
             try {
-                setComponents((await api.getAllSignatureComponents(token)).sort(compareSignatureComponents));
+                setComponents((await api.getAllSignatureComponents(token)).sort(sortComponents));
             } catch (err: any) {
                  const msg = err.message || t('componentLoadFailedError', preferredLanguage);
                 setError(msg);
             } finally { setIsLoadingComponents(false); }
         };
         fetchComps();
-    }, [token, preferredLanguage]); // Add preferredLanguage
+    }, [token, preferredLanguage, sortComponents]); // Add preferredLanguage
 
     useEffect(() => {
         const fetchElems = async () => {
@@ -167,7 +159,7 @@ const ElementBrowserDialogContent: React.FC<ElementBrowserDialogContentProps> = 
             setIsLoadingElements(true);
             try {
                 const response = await api.searchSignatureElements(searchRequest, token);
-                setElements(response.data.sort(compareElements));
+                setElements(response.data.sort(sortElements));
             } catch (err: any) {
                  const msg = err.message || t('elementLoadFailedError', preferredLanguage);
                 setError(msg); setElements([]);
@@ -184,7 +176,7 @@ const ElementBrowserDialogContent: React.FC<ElementBrowserDialogContentProps> = 
             }
         };
         fetchElems();
-    }, [token, selectedComponentId, mode, currentSignatureElements, debouncedSearchTerm, refetchElementsTrigger, preferredLanguage]); // Add preferredLanguage
+    }, [token, selectedComponentId, mode, currentSignatureElements, debouncedSearchTerm, refetchElementsTrigger, preferredLanguage, sortElements]); // Add preferredLanguage
 
     const handleSelectElement = useCallback((element: SignatureElement) => {
         setCurrentSignatureElements(prev => [...prev, element]);

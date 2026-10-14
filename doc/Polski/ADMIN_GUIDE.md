@@ -97,6 +97,19 @@ Ten przewodnik szczegółowo opisuje funkcjonalności dostępne wyłącznie dla 
 *   **Ukrycie zakładki zasobu archiwalnego zmienia również widok domyślny.** Użytkownicy zawsze trafiają na **pierwszą (najbardziej lewą) widoczną zakładkę**, więc ukrycie pierwszej z lewej przenosi domyślną rolę na następną. Jeśli ukryte są **wszystkie** zakładki zasobu archiwalnego, pasek zakładek nie jest w ogóle renderowany, a lista pokazuje wszystko.
 *   Istniejące dane pozostają nietknięte — ukryty przycisk *Nowe Drzewo* oznacza po prostu, że komponentów drzewa nie da się już utworzyć z interfejsu.
 
+### Sortowanie Drzew Sygnatur
+
+*   Wybierz, w jakiej kolejności **listy wyboru drzew sygnatur** oraz **menu po lewej stronie** prezentują swoje elementy. Dwa niezależne ustawienia, każde z własną opcją odwrócenia:
+    *   **Komponenty** — foldery na górze drzewa.
+        *   *Alfabetycznie (według nazwy)* lub *Według daty utworzenia (najstarsze najpierw)*.
+    *   **Elementy** — pozycje wewnątrz drzewa, na każdym poziomie zagnieżdżenia.
+        *   *Według indeksu*, *Alfabetycznie (według nazwy)* lub *Według daty utworzenia (najstarsze najpierw)*.
+*   **Komponenty główne zawsze pozostają na górze**, w każdym trybie i w obu kierunkach. Wybrany tryb i modyfikator odwrócenia porządkują pozycje jedynie *wewnątrz* grup komponentów głównych i pozostałych, więc podstawowa sygnatura nigdy nie trafia w środek listy.
+*   **Remisy są rozstrzygane rosnąco po identyfikatorze**, a kolejność identyfikatorów nie odwraca się po zaznaczeniu *odwrócenia* — pozycje o identycznych kluczach zachowują stabilne, przewidywalne miejsce.
+*   Dla elementów domyślny jest tryb *Według indeksu*. Odpowiada on temu, jak drzewo było uporządkowane przed wprowadzeniem tego ustawienia, więc pozostawienie ustawień bez zmian zachowuje dotychczasowy układ.
+*   **To wyłącznie ustawienie wyświetlania.** Żaden element ani komponent nie jest przenumerowywany, przenoszony ani usuwany — zmienia się jedynie kolejność ich listowania. Akcja *Reindeksuj* na komponencie faktycznie przepisuje wartości indeksów i pozostaje odrębną, jawną operacją.
+*   Ustawienie dotyczy list wyboru drzew oraz menu bocznego. Płaskie tabele na stronie *Sygnatur* zachowują stałe uporządkowanie.
+
 ### Porty Sieciowe (HTTP/HTTPS)
 
 *   Ustaw numery portów, na których serwer aplikacji nasłuchuje ruchu HTTP i HTTPS.
@@ -118,6 +131,7 @@ Ten przewodnik szczegółowo opisuje funkcjonalności dostępne wyłącznie dla 
 *   Zmiana **Portu HTTP** lub **Portu HTTPS** wymaga **ręcznego restartu** procesu serwera backendu.
 *   Zmiana **Domyślnego Języka** działa natychmiast dla nowych sesji/użytkowników bez ustawionych preferencji.
 *   Zmiana **Widoczności Interfejsu** działa natychmiast dla wszystkich użytkowników; restart nie jest wymagany.
+*   Zmiana **Sortowania Drzew Sygnatur** działa natychmiast dla wszystkich użytkowników; już otwarte listy wyboru przesortują się na miejscu, restart nie jest wymagany.
 *   Zmiana **Ścieżek HTTPS** działa natychmiast — serwer automatycznie przeładowuje lub zatrzymuje konfigurację HTTPS w razie potrzeby (potwierdzenie znajdziesz w logach serwera); restart nie jest wymagany.
 
 ---

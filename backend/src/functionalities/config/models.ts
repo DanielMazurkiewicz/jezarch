@@ -14,6 +14,79 @@ export enum AppConfigKeys {
   HTTPS_CA_PATH = 'https_ca_path', // New for Certificate Authority path
   // JSON array of UiElementId values whose UI controls stay hidden app-wide.
   HIDDEN_UI_ELEMENTS = 'hidden_ui_elements',
+  // Ordering applied to signature components (tree roots) in the pickers.
+  COMPONENT_SORT_MODE = 'signature_component_sort_mode',
+  COMPONENT_SORT_REVERSED = 'signature_component_sort_reversed',
+  // Ordering applied to signature elements at every level of those trees.
+  ELEMENT_SORT_MODE = 'signature_element_sort_mode',
+  ELEMENT_SORT_REVERSED = 'signature_element_sort_reversed',
+}
+
+// --- Signature tree sorting ---
+// Presentation-only preference: it decides in which order the signature tree
+// pickers (and the archive sidebar menu) render their nodes. The values are
+// stable strings because they are persisted in the config table.
+export const COMPONENT_SORT_MODES = ['name', 'creation'] as const;
+export type ComponentSortMode = typeof COMPONENT_SORT_MODES[number];
+
+// 'index' is the archival default (the element's own index, 1/2/10);
+// 'name' is plain alphabetical ordering; 'creation' is oldest first.
+export const ELEMENT_SORT_MODES = ['index', 'name', 'creation'] as const;
+export type ElementSortMode = typeof ELEMENT_SORT_MODES[number];
+
+// Defaults reproduce the ordering the app had before this setting existed.
+export const DEFAULT_COMPONENT_SORT_MODE: ComponentSortMode = 'name';
+export const DEFAULT_ELEMENT_SORT_MODE: ElementSortMode = 'index';
+
+const COMPONENT_SORT_MODE_SET: ReadonlySet<string> = new Set(COMPONENT_SORT_MODES);
+const ELEMENT_SORT_MODE_SET: ReadonlySet<string> = new Set(ELEMENT_SORT_MODES);
+
+export const isComponentSortMode = (value: unknown): value is ComponentSortMode =>
+  typeof value === 'string' && COMPONENT_SORT_MODE_SET.has(value);
+
+export const isElementSortMode = (value: unknown): value is ElementSortMode =>
+  typeof value === 'string' && ELEMENT_SORT_MODE_SET.has(value);
+
+/**
+ * Parses one of the two sort-mode config values. Used both at startup and by
+ * the write endpoint, so there is a single definition of what is valid.
+ * Returns the mode, or an error message for the API to surface.
+ */
+export function parseComponentSortMode(raw: string | null | undefined): { mode: ComponentSortMode } | { error: string } {
+  if (raw === null || raw === undefined || raw.trim() === '') {
+    return { mode: DEFAULT_COMPONENT_SORT_MODE };
+  }
+  const value = raw.trim();
+  if (!isComponentSortMode(value)) {
+    return { error: `Invalid signature component sort mode: '${value}'. Must be one of: ${COMPONENT_SORT_MODES.join(', ')}.` };
+  }
+  return { mode: value };
+}
+
+export function parseElementSortMode(raw: string | null | undefined): { mode: ElementSortMode } | { error: string } {
+  if (raw === null || raw === undefined || raw.trim() === '') {
+    return { mode: DEFAULT_ELEMENT_SORT_MODE };
+  }
+  const value = raw.trim();
+  if (!isElementSortMode(value)) {
+    return { error: `Invalid signature element sort mode: '${value}'. Must be one of: ${ELEMENT_SORT_MODES.join(', ')}.` };
+  }
+  return { mode: value };
+}
+
+/**
+ * Parses the two "reversed" flags. Accepts the case-insensitive strings the
+ * settings form sends over the wire; anything else is an error rather than a
+ * silent `false`, so a typo cannot quietly discard an admin's choice.
+ */
+export function parseSortReversed(raw: string | null | undefined): { reversed: boolean } | { error: string } {
+  if (raw === null || raw === undefined || raw.trim() === '') {
+    return { reversed: false };
+  }
+  const value = raw.trim().toLowerCase();
+  if (value === 'true') return { reversed: true };
+  if (value === 'false') return { reversed: false };
+  return { error: `Invalid sort reversed flag: '${raw}'. Must be 'true' or 'false'.` };
 }
 
 // --- Hideable UI elements ---

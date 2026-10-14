@@ -1,4 +1,4 @@
-import { AppConfigKeys, parseHiddenUiElements } from '../functionalities/config/models';
+import { AppConfigKeys, parseHiddenUiElements, parseComponentSortMode, parseElementSortMode, parseSortReversed } from '../functionalities/config/models';
 import { getConfig, setConfig } from '../functionalities/config/db';
 import { AppParams, AppParamsDefaults } from './app_params';
 import { actualDbPath } from './db'; // Single source of truth for the live DB path
@@ -130,6 +130,60 @@ export async function initializeConfigs() {
         await Log.info(`Stored default hidden UI elements (none) in database config.`, 'system', 'startup');
     }
 
+    // --- Signature tree sorting ---
+    // Presentation only, so no env/cmd override — same reasoning as the hidden
+    // UI elements above. Each value falls back to its default when the stored
+    // config is missing or unusable, so a bad row can never break startup.
+    const componentSortModeFromDb = await getConfig(AppConfigKeys.COMPONENT_SORT_MODE);
+    const parsedComponentSortMode = parseComponentSortMode(componentSortModeFromDb);
+    if ('error' in parsedComponentSortMode) {
+        await Log.warn(`Ignoring invalid '${AppConfigKeys.COMPONENT_SORT_MODE}' config value: ${parsedComponentSortMode.error}`, 'system', 'startup');
+        AppParams.componentSortMode = AppParamsDefaults.componentSortMode;
+    } else {
+        AppParams.componentSortMode = parsedComponentSortMode.mode;
+    }
+
+    const componentSortReversedFromDb = await getConfig(AppConfigKeys.COMPONENT_SORT_REVERSED);
+    const parsedComponentSortReversed = parseSortReversed(componentSortReversedFromDb);
+    if ('error' in parsedComponentSortReversed) {
+        await Log.warn(`Ignoring invalid '${AppConfigKeys.COMPONENT_SORT_REVERSED}' config value: ${parsedComponentSortReversed.error}`, 'system', 'startup');
+        AppParams.componentSortReversed = AppParamsDefaults.componentSortReversed;
+    } else {
+        AppParams.componentSortReversed = parsedComponentSortReversed.reversed;
+    }
+
+    const elementSortModeFromDb = await getConfig(AppConfigKeys.ELEMENT_SORT_MODE);
+    const parsedElementSortMode = parseElementSortMode(elementSortModeFromDb);
+    if ('error' in parsedElementSortMode) {
+        await Log.warn(`Ignoring invalid '${AppConfigKeys.ELEMENT_SORT_MODE}' config value: ${parsedElementSortMode.error}`, 'system', 'startup');
+        AppParams.elementSortMode = AppParamsDefaults.elementSortMode;
+    } else {
+        AppParams.elementSortMode = parsedElementSortMode.mode;
+    }
+
+    const elementSortReversedFromDb = await getConfig(AppConfigKeys.ELEMENT_SORT_REVERSED);
+    const parsedElementSortReversed = parseSortReversed(elementSortReversedFromDb);
+    if ('error' in parsedElementSortReversed) {
+        await Log.warn(`Ignoring invalid '${AppConfigKeys.ELEMENT_SORT_REVERSED}' config value: ${parsedElementSortReversed.error}`, 'system', 'startup');
+        AppParams.elementSortReversed = AppParamsDefaults.elementSortReversed;
+    } else {
+        AppParams.elementSortReversed = parsedElementSortReversed.reversed;
+    }
+
+    // Persist the defaults once so admins have rows to edit in the panel.
+    if (componentSortModeFromDb === undefined) {
+        await setConfig(AppConfigKeys.COMPONENT_SORT_MODE, AppParamsDefaults.componentSortMode);
+    }
+    if (componentSortReversedFromDb === undefined) {
+        await setConfig(AppConfigKeys.COMPONENT_SORT_REVERSED, String(AppParamsDefaults.componentSortReversed));
+    }
+    if (elementSortModeFromDb === undefined) {
+        await setConfig(AppConfigKeys.ELEMENT_SORT_MODE, AppParamsDefaults.elementSortMode);
+    }
+    if (elementSortReversedFromDb === undefined) {
+        await setConfig(AppConfigKeys.ELEMENT_SORT_REVERSED, String(AppParamsDefaults.elementSortReversed));
+    }
+
 
     // Log the final computed configuration parameters
     console.log(`* Config Initialization Complete. Effective Parameters:`);
@@ -141,5 +195,7 @@ export async function initializeConfigs() {
     console.log(`  - HTTPS Cert Path: ${AppParams.httpsCertPath ?? 'Not Set / Not Found'}`);
     console.log(`  - HTTPS CA Path: ${AppParams.httpsCaPath ?? 'Not Set / Not Found'}`);
     console.log(`  - Hidden UI Elements: ${AppParams.hiddenUiElements.length > 0 ? AppParams.hiddenUiElements.join(', ') : 'None'}`);
+    console.log(`  - Signature Component Sort: ${AppParams.componentSortMode}${AppParams.componentSortReversed ? ' (reversed)' : ''}`);
+    console.log(`  - Signature Element Sort: ${AppParams.elementSortMode}${AppParams.elementSortReversed ? ' (reversed)' : ''}`);
 
 }

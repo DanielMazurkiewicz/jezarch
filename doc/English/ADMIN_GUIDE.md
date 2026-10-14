@@ -101,6 +101,19 @@ Navigate to the "App Settings" tab within the Admin Panel. Changes here might re
 *   **Hiding an Archival Resources tab also changes the default view.** Users always land on the **first (leftmost) visible tab**, so hiding the leftmost one promotes the next tab to be the default. If *all* Archival Resources tabs are hidden, the tab bar is not rendered at all and the list shows everything.
 *   Existing records are untouched — a hidden *New Tree* button simply means tree components can no longer be created from the interface.
 
+### Signature Tree Sorting
+
+*   Choose in which order the **signature tree pickers** and the **left sidebar menu** list their items. Two independent settings, each with its own "reverse" checkbox:
+    *   **Components** — the folders at the top of each tree.
+        *   *Alphabetical (by name)* or *By creation date (oldest first)*.
+    *   **Elements** — the entries inside a tree, at every nesting level.
+        *   *By index*, *Alphabetical (by name)* or *By creation date (oldest first)*.
+*   **Main components always stay at the top**, in every mode and in both directions. The chosen mode and the reverse modifier only order the items *within* the main and non-main groups, so the main signature is never buried mid-list.
+*   **Ties are broken by id ascending**, and the id order never flips when you tick *reverse* — items with identical keys keep a stable, predictable position.
+*   *By index* is the default for elements. This matches how the tree was ordered before this setting existed, so leaving everything untouched keeps your current layout.
+*   **This is purely a display setting.** No element or component is renumbered, moved, or deleted — only the order they are listed in changes. The *Reindex* action on a component is what actually rewrites index values, and that remains a separate, explicit operation.
+*   The setting applies to the tree pickers and the sidebar menu. The flat tables on the *Signatures* page keep their fixed ordering.
+
 ### Network Ports (HTTP/HTTPS)
 
 *   Set the port numbers the application server listens on for HTTP and HTTPS traffic.
@@ -122,6 +135,7 @@ Navigate to the "App Settings" tab within the Admin Panel. Changes here might re
 *   Changing **HTTP Port** or **HTTPS Port** requires a **manual restart** of the backend server process.
 *   Changing **Default Language** takes effect immediately for new sessions/users without preferences.
 *   Changing **Interface Visibility** takes effect immediately for all users; no restart required.
+*   Changing **Signature Tree Sorting** takes effect immediately for all users; already-open pickers re-sort in place, no restart required.
 *   Changing **HTTPS Paths** takes effect immediately — the server automatically reloads or stops the HTTPS configuration as needed (check server logs for confirmation); no restart required.
 
 ---

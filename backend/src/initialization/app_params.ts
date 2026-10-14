@@ -1,5 +1,13 @@
 import { CmdParams } from './cmd';
-import { AppConfigKeys, DEFAULT_HIDDEN_UI_ELEMENTS, type UiElementId } from '../functionalities/config/models'; // Import AppConfigKeys
+import {
+    AppConfigKeys,
+    DEFAULT_HIDDEN_UI_ELEMENTS,
+    DEFAULT_COMPONENT_SORT_MODE,
+    DEFAULT_ELEMENT_SORT_MODE,
+    type UiElementId,
+    type ComponentSortMode,
+    type ElementSortMode,
+} from '../functionalities/config/models'; // Import AppConfigKeys
 
 // Updated interface to reflect new config structure
 export interface ApplicationParams {
@@ -14,6 +22,12 @@ export interface ApplicationParams {
     httpsCaPath: string | null; // New, stores path
 
     hiddenUiElements: UiElementId[]; // Cosmetically hidden UI controls, app-wide
+
+    // Signature tree picker ordering (presentation only, set by admins).
+    componentSortMode: ComponentSortMode;
+    componentSortReversed: boolean;
+    elementSortMode: ElementSortMode;
+    elementSortReversed: boolean;
 }
 
 // Updated defaults
@@ -29,6 +43,11 @@ export const AppParamsDefaults: ApplicationParams = {
     httpsCaPath: null,
 
     hiddenUiElements: [...DEFAULT_HIDDEN_UI_ELEMENTS],
+
+    componentSortMode: DEFAULT_COMPONENT_SORT_MODE,
+    componentSortReversed: false,
+    elementSortMode: DEFAULT_ELEMENT_SORT_MODE,
+    elementSortReversed: false,
 };
 
 export const AppParamsHttpsDefaults = {

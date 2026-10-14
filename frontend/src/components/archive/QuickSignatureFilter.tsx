@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { cn } from '@/lib/utils';
 import api from '@/lib/api';
-import { compareSignatureComponents } from '@/lib/signatureComponentSort';
+import { useSignatureSort } from '@/context/SignatureSortContext';
 import { useQuickFilterContext } from '@/context/QuickFilterContext';
 import type { SignatureComponent } from '../../../../backend/src/functionalities/signature/component/models';
 import type { SignatureElementSearchResult } from '../../../../backend/src/functionalities/signature/element/models';
@@ -37,6 +37,7 @@ const ElementNode: React.FC<ElementNodeProps> = ({
   onSelect,
 }) => {
   const { expandedElementIds, toggleElementExpanded, refreshKey } = useQuickFilterContext();
+  const { sortElements } = useSignatureSort();
   const [children, setChildren] = useState<SignatureElementSearchResult[]>([]);
   const [isLoading, setIsLoading] = useState(false);
 
@@ -56,10 +57,10 @@ const ElementNode: React.FC<ElementNodeProps> = ({
       page: 1,
       pageSize: MAX_RESULTS,
     }, token)
-      .then(res => setChildren(res.data))
+      .then(res => setChildren(res.data.sort(sortElements)))
       .catch(console.error)
       .finally(() => setIsLoading(false));
-  }, [isExpanded, refreshKey, id, token]);
+  }, [isExpanded, refreshKey, id, token, sortElements]);
 
   const handleToggle = useCallback((e: React.MouseEvent) => {
     e.stopPropagation();
@@ -161,6 +162,7 @@ const ComponentNode: React.FC<ComponentNodeProps> = ({
   onSelect,
 }) => {
   const { expandedComponentIds, toggleComponentExpanded, refreshKey } = useQuickFilterContext();
+  const { sortElements } = useSignatureSort();
   const [roots, setRoots] = useState<SignatureElementSearchResult[]>([]);
   const [isLoading, setIsLoading] = useState(false);
 
@@ -178,10 +180,10 @@ const ComponentNode: React.FC<ComponentNodeProps> = ({
       page: 1,
       pageSize: MAX_RESULTS,
     }, token)
-      .then(res => setRoots(res.data))
+      .then(res => setRoots(res.data.sort(sortElements)))
       .catch(console.error)
       .finally(() => setIsLoading(false));
-  }, [isExpanded, refreshKey, compId, token]);
+  }, [isExpanded, refreshKey, compId, token, sortElements]);
 
   const handleClick = useCallback((e: React.MouseEvent) => {
     e.stopPropagation();
@@ -249,6 +251,8 @@ const QuickSignatureFilter: React.FC<QuickSignatureFilterProps> = ({
     triggerRefresh,
   } = useQuickFilterContext();
 
+  const { sortComponents } = useSignatureSort();
+
   const [components, setComponents] = useState<SignatureComponent[]>([]);
   const [isLoadingComponents, setIsLoadingComponents] = useState(false);
   const [previewElements, setPreviewElements] = useState<SignatureElementSearchResult[]>([]);
@@ -266,10 +270,10 @@ const QuickSignatureFilter: React.FC<QuickSignatureFilterProps> = ({
     if (!token) return;
     setIsLoadingComponents(true);
     api.getAllSignatureComponents(token)
-      .then(comps => setComponents(comps.sort(compareSignatureComponents)))
+      .then(comps => setComponents(comps.sort(sortComponents)))
       .catch(console.error)
       .finally(() => setIsLoadingComponents(false));
-  }, [token]);
+  }, [token, sortComponents]);
 
   useEffect(() => {
     if (!token || !activePath || activePath.length === 0) {

@@ -1,6 +1,6 @@
 import { BunRequest } from 'bun';
 import { getConfig, setConfig } from './db';
-import { AppConfigKeys, parseHiddenUiElements, type UiElementId } from './models'; // Models now have updated keys
+import { AppConfigKeys, parseHiddenUiElements, parseComponentSortMode, parseElementSortMode, parseSortReversed, type UiElementId } from './models'; // Models now have updated keys
 import { getSessionAndUser, isAllowedRole } from '../session/controllers';
 import { Log } from '../log/db';
 // --- Import server control functions ---
@@ -59,6 +59,10 @@ export const getConfigController = async (req: BunRequest<":key">) => {
     // it has to honour the same visibility settings as admins and employees.
     const keysForAnyAuthenticatedRole: AppConfigKeys[] = [
          AppConfigKeys.HIDDEN_UI_ELEMENTS,
+         AppConfigKeys.COMPONENT_SORT_MODE,
+         AppConfigKeys.COMPONENT_SORT_REVERSED,
+         AppConfigKeys.ELEMENT_SORT_MODE,
+         AppConfigKeys.ELEMENT_SORT_REVERSED,
     ];
 
     // Basic Access Control
@@ -90,8 +94,8 @@ export const getConfigController = async (req: BunRequest<":key">) => {
     try {
         // Fetch directly from AppParams to reflect the *currently active* value
         // including overrides from env/cmd, not just the DB value.
-        let value: string | number | string[] | null | undefined;
-        let displayValue: string | number | string[] | null | undefined;
+        let value: string | number | string[] | boolean | null | undefined;
+        let displayValue: string | number | string[] | boolean | null | undefined;
 
          switch (key) {
              case AppConfigKeys.DEFAULT_LANGUAGE: value = AppParams.defaultLanguage; break;
@@ -101,6 +105,10 @@ export const getConfigController = async (req: BunRequest<":key">) => {
              case AppConfigKeys.HTTPS_CERT_PATH: value = AppParams.httpsCertPath; break;
              case AppConfigKeys.HTTPS_CA_PATH: value = AppParams.httpsCaPath; break;
              case AppConfigKeys.HIDDEN_UI_ELEMENTS: value = AppParams.hiddenUiElements; break;
+             case AppConfigKeys.COMPONENT_SORT_MODE: value = AppParams.componentSortMode; break;
+             case AppConfigKeys.COMPONENT_SORT_REVERSED: value = AppParams.componentSortReversed; break;
+             case AppConfigKeys.ELEMENT_SORT_MODE: value = AppParams.elementSortMode; break;
+             case AppConfigKeys.ELEMENT_SORT_REVERSED: value = AppParams.elementSortReversed; break;
              default:
                 // Fallback to DB for potentially unknown keys (shouldn't happen with enum check)
                 value = await getConfig(key);
@@ -158,10 +166,14 @@ export const setConfigController = async (req: BunRequest<":key">) => {
         }
 
         // --- Specific Validations and Processing ---
-        let originalValue: string | number | null | undefined;
-        let processedValue: string | number | null = value; // Start with input, process below
+        let originalValue: string | number | boolean | null | undefined;
+        let processedValue: string | number | boolean | null = value; // Start with input, process below
         // Parsed ids kept around so the runtime update below doesn't re-parse.
         let processedHiddenUiElements: UiElementId[] | null = null;
+        // Same for the signature sorting values.
+        let processedComponentSortMode: string | null = null;
+        let processedElementSortMode: string | null = null;
+        let processedSortReversed: boolean | null = null;
 
         switch (key) {
              case AppConfigKeys.HTTP_PORT:
@@ -221,6 +233,45 @@ export const setConfigController = async (req: BunRequest<":key">) => {
                 processedHiddenUiElements = parsedHidden.ids;
                 processedValue = JSON.stringify(parsedHidden.ids);
                 break;
+            case AppConfigKeys.COMPONENT_SORT_MODE:
+                originalValue = AppParams.componentSortMode;
+                if (typeof value !== 'string') {
+                    return new Response(JSON.stringify({ message: `Config key '${key}' requires a string value.` }), { status: 400 });
+                }
+                const parsedComponentMode = parseComponentSortMode(value);
+                if ('error' in parsedComponentMode) {
+                    return new Response(JSON.stringify({ message: parsedComponentMode.error }), { status: 400 });
+                }
+                processedComponentSortMode = parsedComponentMode.mode;
+                processedValue = parsedComponentMode.mode;
+                break;
+            case AppConfigKeys.ELEMENT_SORT_MODE:
+                originalValue = AppParams.elementSortMode;
+                if (typeof value !== 'string') {
+                    return new Response(JSON.stringify({ message: `Config key '${key}' requires a string value.` }), { status: 400 });
+                }
+                const parsedElementMode = parseElementSortMode(value);
+                if ('error' in parsedElementMode) {
+                    return new Response(JSON.stringify({ message: parsedElementMode.error }), { status: 400 });
+                }
+                processedElementSortMode = parsedElementMode.mode;
+                processedValue = parsedElementMode.mode;
+                break;
+            case AppConfigKeys.COMPONENT_SORT_REVERSED:
+            case AppConfigKeys.ELEMENT_SORT_REVERSED:
+                originalValue = key === AppConfigKeys.COMPONENT_SORT_REVERSED
+                    ? AppParams.componentSortReversed
+                    : AppParams.elementSortReversed;
+                if (typeof value !== 'string') {
+                    return new Response(JSON.stringify({ message: `Config key '${key}' requires a boolean value.` }), { status: 400 });
+                }
+                const parsedReversed = parseSortReversed(value);
+                if ('error' in parsedReversed) {
+                    return new Response(JSON.stringify({ message: parsedReversed.error }), { status: 400 });
+                }
+                processedSortReversed = parsedReversed.reversed;
+                processedValue = parsedReversed.reversed;
+                break;
         }
         // --- End Specific Validations ---
 
@@ -256,6 +307,19 @@ export const setConfigController = async (req: BunRequest<":key">) => {
              case AppConfigKeys.HTTPS_CA_PATH: AppParams.httpsCaPath = processedValue as string | null; break;
              case AppConfigKeys.HIDDEN_UI_ELEMENTS:
                  if (processedHiddenUiElements) AppParams.hiddenUiElements = processedHiddenUiElements;
+                 break;
+             case AppConfigKeys.COMPONENT_SORT_MODE:
+                 if (processedComponentSortMode) AppParams.componentSortMode = processedComponentSortMode as typeof AppParams.componentSortMode;
+                 break;
+             case AppConfigKeys.ELEMENT_SORT_MODE:
+                 if (processedElementSortMode) AppParams.elementSortMode = processedElementSortMode as typeof AppParams.elementSortMode;
+                 break;
+             case AppConfigKeys.COMPONENT_SORT_REVERSED:
+             case AppConfigKeys.ELEMENT_SORT_REVERSED:
+                 if (processedSortReversed !== null) {
+                     if (key === AppConfigKeys.COMPONENT_SORT_REVERSED) AppParams.componentSortReversed = processedSortReversed;
+                     else AppParams.elementSortReversed = processedSortReversed;
+                 }
                  break;
         }
         await Log.info(`Config updated: ${key} set to '${valueForDb}' (Runtime updated). Value changed: ${valueChanged}`, sessionAndUser.user.login, 'config');

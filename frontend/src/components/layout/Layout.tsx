@@ -5,6 +5,7 @@ import Header from './Header';
 import { cn } from '@/lib/utils'; // Import cn
 import { QuickFilterProvider } from '@/context/QuickFilterContext';
 import { UiVisibilityProvider } from '@/context/UiVisibilityContext';
+import { SignatureSortProvider } from '@/context/SignatureSortContext';
 
 const Layout: React.FC = () => {
   // State for mobile sidebar toggle if needed in the future
@@ -14,6 +15,7 @@ const Layout: React.FC = () => {
   return (
     <QuickFilterProvider>
     <UiVisibilityProvider>
+    <SignatureSortProvider>
     <div className="flex min-h-screen w-full bg-muted/40">
       {/* Sidebar - Always display as flex item */}
       <Sidebar className="flex" />
@@ -34,6 +36,7 @@ const Layout: React.FC = () => {
         </main>
       </div>
     </div>
+    </SignatureSortProvider>
     </UiVisibilityProvider>
     </QuickFilterProvider>
   );

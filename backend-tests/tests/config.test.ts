@@ -173,6 +173,104 @@ describe('hidden_ui_elements', () => {
   });
 });
 
+describe('signature tree sorting', () => {
+  const componentMode = 'signature_component_sort_mode';
+  const componentReversed = 'signature_component_sort_reversed';
+  const elementMode = 'signature_element_sort_mode';
+  const elementReversed = 'signature_element_sort_reversed';
+
+  const reset = async () => {
+    for (const [key, value] of [
+      [componentMode, 'name'],
+      [componentReversed, 'false'],
+      [elementMode, 'index'],
+      [elementReversed, 'false'],
+    ] as const) {
+      await expectStatus(await api(B, 'PUT', `/api/configs/${key}`, { key, value }, adminToken), 200);
+    }
+  };
+
+  test('every role can read all four keys — the archive sidebar is reachable by all of them', async () => {
+    for (const key of [componentMode, componentReversed, elementMode, elementReversed]) {
+      for (const token of [adminToken, employeeToken, userToken]) {
+        await expectStatus(await api(B, 'GET', `/api/configs/${key}`, undefined, token), 200);
+      }
+    }
+  });
+
+  test('anonymous access is denied', async () => {
+    for (const key of [componentMode, componentReversed, elementMode, elementReversed]) {
+      await expectStatus(await api(B, 'GET', `/api/configs/${key}`), 401);
+    }
+  });
+
+  test('admin can set and read back the component mode', async () => {
+    await expectStatus(await api(B, 'PUT', `/api/configs/${componentMode}`, { key: componentMode, value: 'creation' }, adminToken), 200);
+    const res = await api(B, 'GET', `/api/configs/${componentMode}`, undefined, userToken);
+    await expectStatus(res, 200);
+    expect((await res.json())[componentMode]).toBe('creation');
+
+    await reset();
+  });
+
+  test('admin can set and read back the element mode', async () => {
+    await expectStatus(await api(B, 'PUT', `/api/configs/${elementMode}`, { key: elementMode, value: 'name' }, adminToken), 200);
+    const res = await api(B, 'GET', `/api/configs/${elementMode}`, undefined, employeeToken);
+    await expectStatus(res, 200);
+    expect((await res.json())[elementMode]).toBe('name');
+
+    await reset();
+  });
+
+  test('the reversal flags come back as real booleans', async () => {
+    await expectStatus(await api(B, 'PUT', `/api/configs/${elementReversed}`, { key: elementReversed, value: 'true' }, adminToken), 200);
+    const res = await api(B, 'GET', `/api/configs/${elementReversed}`, undefined, adminToken);
+    await expectStatus(res, 200);
+    expect((await res.json())[elementReversed]).toBe(true);
+
+    await expectStatus(await api(B, 'PUT', `/api/configs/${componentReversed}`, { key: componentReversed, value: 'true' }, adminToken), 200);
+    const compRes = await api(B, 'GET', `/api/configs/${componentReversed}`, undefined, adminToken);
+    expect((await compRes.json())[componentReversed]).toBe(true);
+
+    await reset();
+  });
+
+  test('"false" is stored as false, not coerced away', async () => {
+    await expectStatus(await api(B, 'PUT', `/api/configs/${elementReversed}`, { key: elementReversed, value: 'false' }, adminToken), 200);
+    const res = await api(B, 'GET', `/api/configs/${elementReversed}`, undefined, adminToken);
+    expect((await res.json())[elementReversed]).toBe(false);
+  });
+
+  test('rejects an unknown component mode', async () => {
+    await expectStatus(await api(B, 'PUT', `/api/configs/${componentMode}`, { key: componentMode, value: 'index' }, adminToken), 400);
+  });
+
+  test('rejects an unknown element mode', async () => {
+    await expectStatus(await api(B, 'PUT', `/api/configs/${elementMode}`, { key: elementMode, value: 'sideways' }, adminToken), 400);
+  });
+
+  test('rejects a non-boolean reversal flag instead of silently defaulting', async () => {
+    await expectStatus(await api(B, 'PUT', `/api/configs/${componentReversed}`, { key: componentReversed, value: 'maybe' }, adminToken), 400);
+    await expectStatus(await api(B, 'PUT', `/api/configs/${elementReversed}`, { key: elementReversed, value: '1' }, adminToken), 400);
+  });
+
+  test('rejects null for the non-path keys', async () => {
+    for (const key of [componentMode, elementMode, componentReversed, elementReversed]) {
+      await expectStatus(await api(B, 'PUT', `/api/configs/${key}`, { key, value: null }, adminToken), 400);
+    }
+  });
+
+  test('rejects non-admin', async () => {
+    for (const [key, value] of [
+      [componentMode, 'creation'],
+      [elementMode, 'creation'],
+      [elementReversed, 'true'],
+    ] as const) {
+      await expectStatus(await api(B, 'PUT', `/api/configs/${key}`, { key, value }, employeeToken), 403);
+    }
+  });
+});
+
 test('DELETE /api/config/https clears HTTPS config', async () => {
   const res = await api(B, 'DELETE', '/api/config/https', undefined, adminToken);
   await expectStatus(res, 200);

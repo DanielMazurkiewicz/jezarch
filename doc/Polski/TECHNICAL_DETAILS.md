@@ -36,6 +36,10 @@ Parametry aplikacji (porty, ścieżka bazy danych, język, ustawienia HTTPS) są
 
 Ostateczne, obowiązujące parametry używane przez działającą aplikację są logowane do konsoli podczas uruchamiania serwera.
 
+### Ustawienia czysto prezentacyjne
+
+Dwa ustawienia znajdują się w tej samej tabeli `config`, ale celowo pomijają punkty 1–3 powyższego łańcucha: `hidden_ui_elements` oraz cztery klucze sortowania drzew sygnatur (`signature_component_sort_mode`, `signature_component_sort_reversed`, `signature_element_sort_mode`, `signature_element_sort_reversed`). Są to preferencje wyglądu całej aplikacji, a nie konfiguracja serwera, więc obowiązuje wyłącznie wartość z bazy danych i wartość domyślna. Nieczytelne wartości są zastępowane domyślnymi z ostrzeżeniem zamiast przerywać start, a oba ustawienia może odczytać każda uwierzytelniona rola, ponieważ rola `user` również ma dostęp do `/archive` i jego menu bocznego.
+
 ### Zmienne Środowiskowe
 
 *   `JEZARCH_DB_PATH` — ścieżka bazy danych SQLite (domyślnie `./jezarch.sqlite.db`).

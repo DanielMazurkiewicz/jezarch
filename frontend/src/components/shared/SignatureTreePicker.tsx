@@ -10,8 +10,7 @@ import ComponentForm from '@/components/signatures/ComponentForm';
 import ElementPreviewDialog from '@/components/signatures/ElementPreviewDialog';
 import ComponentPreviewDialog from '@/components/signatures/ComponentPreviewDialog';
 import api from '@/lib/api';
-import { compareSignatureComponents } from '@/lib/signatureComponentSort';
-import { compareSignatureElements } from '@/lib/signatureElementSort';
+import { useSignatureSort } from '@/context/SignatureSortContext';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import { t } from '@/translations/utils';
@@ -41,6 +40,8 @@ interface TreeActions {
     onPreviewElement: (element: SignatureElement) => void;
     onEditElement: (element: SignatureElement) => void;
     onAddChildToElement: (element: SignatureElement) => void;
+    /** Ordering from the admin setting; recomputed whenever it changes. */
+    sortElements: (a: SignatureElement, b: SignatureElement) => number;
 }
 
 interface ElementNodeProps {
@@ -69,10 +70,10 @@ const ElementNode: React.FC<ElementNodeProps> = ({ element: el, depth, pathEleme
             page: 1,
             pageSize: MAX_RESULTS,
         }, actions.token)
-            .then(res => setChildren(res.data.sort(compareSignatureElements)))
+            .then(res => setChildren(res.data.sort(actions.sortElements)))
             .catch(console.error)
             .finally(() => setIsLoading(false));
-    }, [isExpanded, actions.refreshKey, id, actions.token]);
+    }, [isExpanded, actions.refreshKey, id, actions.token, actions.sortElements]);
 
     const handleRowClick = useCallback((e: React.MouseEvent) => {
         e.stopPropagation();
@@ -185,10 +186,10 @@ const ComponentNode: React.FC<ComponentNodeProps> = ({ comp, actions }) => {
             page: 1,
             pageSize: MAX_RESULTS,
         }, actions.token)
-            .then(res => setRoots(res.data.sort(compareSignatureElements)))
+            .then(res => setRoots(res.data.sort(actions.sortElements)))
             .catch(console.error)
             .finally(() => setIsLoading(false));
-    }, [isExpanded, actions.refreshKey, compId, actions.token]);
+    }, [isExpanded, actions.refreshKey, compId, actions.token, actions.sortElements]);
 
     const handleRowClick = useCallback((e: React.MouseEvent) => {
         e.stopPropagation();
@@ -255,6 +256,7 @@ interface SignatureTreePickerProps {
 }
 
 const SignatureTreePicker: React.FC<SignatureTreePickerProps> = ({ token, preferredLanguage, canModify, activeElementId, onSelectPath }) => {
+    const { sortComponents, sortElements } = useSignatureSort();
     const [components, setComponents] = useState<SignatureComponent[]>([]);
     const [isLoadingComponents, setIsLoadingComponents] = useState(false);
     const [expandedComponentIds, setExpandedComponentIds] = useState<number[]>([]);
@@ -293,11 +295,11 @@ const SignatureTreePicker: React.FC<SignatureTreePickerProps> = ({ token, prefer
         let cancelled = false;
         setIsLoadingComponents(true);
         api.getAllSignatureComponents(token)
-            .then(comps => { if (!cancelled) setComponents(comps.sort(compareSignatureComponents)); })
+            .then(comps => { if (!cancelled) setComponents(comps.sort(sortComponents)); })
             .catch(console.error)
             .finally(() => { if (!cancelled) setIsLoadingComponents(false); });
         return () => { cancelled = true; };
-    }, [token, refreshKey]);
+    }, [token, refreshKey, sortComponents]);
 
     const toggleComponentExpanded = useCallback((id: number) => {
         setExpandedComponentIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
@@ -448,11 +450,13 @@ const SignatureTreePicker: React.FC<SignatureTreePickerProps> = ({ token, prefer
         onPreviewElement: handlePreviewElement,
         onEditElement: handleEditElement,
         onAddChildToElement: handleAddChildToElement,
+        sortElements,
     }), [
         token, canModify, activeElementId, refreshKey, expandedComponentIds, expandedElementIds, preferredLanguage,
         toggleComponentExpanded, toggleElementExpanded, onSelectPath,
         handlePreviewComponent, handleEditComponent, handleAddChildToComponent,
         handlePreviewElement, handleEditElement, handleAddChildToElement,
+        sortElements,
     ]);
 
     return (

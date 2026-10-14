@@ -36,6 +36,10 @@ Application parameters (ports, database path, language, HTTPS settings) are dete
 
 The final, effective parameters used by the running application are logged to the console on server startup.
 
+### Presentation-Only Settings
+
+Two settings live in the same `config` table but deliberately skip steps 1–3 of the chain above: `hidden_ui_elements` and the four signature tree sorting keys (`signature_component_sort_mode`, `signature_component_sort_reversed`, `signature_element_sort_mode`, `signature_element_sort_reversed`). They are app-wide UI preferences rather than server configuration, so only the database value and the hardcoded default apply. Unreadable values fall back to their defaults with a warning instead of aborting startup, and both are readable by every authenticated role because the `user` role reaches `/archive` and its sidebar.
+
 ### Environment Variables
 
 *   `JEZARCH_DB_PATH` — SQLite database path (default `./jezarch.sqlite.db`).

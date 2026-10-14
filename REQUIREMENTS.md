@@ -26,7 +26,7 @@ This document outlines the requirements for a web application designed to facili
     *   **Notes:** Create, read, update, and delete personal notes. Notes can be shared with other users. Supports tag assignment.
     *   **Users Management:** (Admin Only) — Manage user accounts, roles, tags, passwords, and language preferences.
     *   **Database:** (Admin Only) — Download backup of the SQLite database.
-    *   **Settings:** (Admin Only) — Configure default language, network ports (HTTP/HTTPS), and HTTPS/SSL paths.
+    *   **Settings:** (Admin Only) — Configure default language, interface visibility, signature tree sorting, network ports (HTTP/HTTPS), and HTTPS/SSL paths.
     *   **System Logs:** (Admin Only) — View, search, and purge application logs.
 *   **Search Functionality:** Robust search across documents, notes, signature elements, and system logs with various filter conditions (equals, contains, starts with, greater/less than, any-of, contains sequence). Search supports negation (NOT) and multiple criteria combined with AND.
 *   **Localization:** The front-end supports both Polish and English languages. Users can select their preferred language through the user menu or admin panel. User-specific language preferences are persisted.

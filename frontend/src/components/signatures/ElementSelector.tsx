@@ -6,7 +6,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from '@/hooks/useAuth';
 import api from '@/lib/api';
-import { compareSignatureComponents } from '@/lib/signatureComponentSort';
+import { useSignatureSort } from '@/context/SignatureSortContext';
 import type { SignatureComponent } from '../../../../backend/src/functionalities/signature/component/models';
 import type { SignatureElement } from '../../../../backend/src/functionalities/signature/element/models';
 import { cn } from '@/lib/utils';
@@ -33,6 +33,7 @@ const ElementSelector: React.FC<ElementSelectorProps> = ({
     className
 }) => {
     const { token, preferredLanguage } = useAuth();
+    const { sortComponents, sortElements } = useSignatureSort();
     const [availableComponents, setAvailableComponents] = useState<SignatureComponent[]>([]);
     const [searchComponentId, setSearchComponentId] = useState<string>(""); // Component ID to search within
     const [availableElements, setAvailableElements] = useState<SignatureElement[]>([]); // Elements in the selected component
@@ -52,7 +53,7 @@ const ElementSelector: React.FC<ElementSelectorProps> = ({
             setError(null);
             try {
                 const comps = await api.getAllSignatureComponents(token);
-                setAvailableComponents(comps.sort(compareSignatureComponents)); // Sort components (main first, then by name)
+                setAvailableComponents(comps.sort(sortComponents)); // Order follows the admin signature sorting setting
             } catch (err: any) {
                 setError(err.message || t('componentLoadFailedError', preferredLanguage));
             } finally {
@@ -60,7 +61,7 @@ const ElementSelector: React.FC<ElementSelectorProps> = ({
             }
         };
         fetchComps();
-    }, [token, preferredLanguage]);
+    }, [token, preferredLanguage, sortComponents]);
 
     // Fetch Elements when searchComponentId changes
     useEffect(() => {
@@ -77,7 +78,7 @@ const ElementSelector: React.FC<ElementSelectorProps> = ({
                  setAvailableElements(
                     elems
                         .filter(el => el.signatureElementId !== currentElementId)
-                        .sort((a,b) => (a.index ?? a.name).localeCompare(b.index ?? b.name)) // Sort elements
+                        .sort(sortElements) // Order follows the admin signature sorting setting
                  );
             } catch (err: any) {
                 setError(err.message || t('elementLoadFailedError', preferredLanguage));
@@ -87,7 +88,7 @@ const ElementSelector: React.FC<ElementSelectorProps> = ({
             }
         };
         fetchElems();
-    }, [token, searchComponentId, currentElementId, preferredLanguage]); // Add currentElementId dependency
+    }, [token, searchComponentId, currentElementId, preferredLanguage, sortElements]); // Add currentElementId dependency
 
 
     // Fetch details for selected elements (for badges) when selected IDs change
@@ -105,7 +106,7 @@ const ElementSelector: React.FC<ElementSelectorProps> = ({
                  );
                  const results = await Promise.all(detailsPromises);
                  setSelectedElementObjects(results.filter((el): el is SignatureElement => el !== null)
-                                            .sort((a,b) => a.name.localeCompare(b.name))); // Filter out nulls and sort
+                                            .sort(sortElements)); // Filter out nulls and sort
             } catch (err) {
                  console.error("Failed to fetch selected element details:", err);
                  setError(t('selectedElementLoadFailedError', preferredLanguage));
@@ -115,7 +116,7 @@ const ElementSelector: React.FC<ElementSelectorProps> = ({
             }
         };
         fetchSelectedDetails();
-    }, [token, selectedElementIds, preferredLanguage]);
+    }, [token, selectedElementIds, preferredLanguage, sortElements]);
 
 
     const handleSelectElement = (elementId: number) => {
