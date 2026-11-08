@@ -5,6 +5,7 @@ import { api, expectStatus, loginAs, createUser, assignRole } from '../helpers';
 let B: string;
 let adminToken: string;
 let employeeToken: string;
+let userToken: string;
 let componentId: number;
 
 beforeAll(async () => {
@@ -17,6 +18,11 @@ beforeAll(async () => {
   await assignRole(B, adminToken, 'selemp', 'employee');
   const emp = await loginAs(B, 'selemp', 'SelEmpl1');
   employeeToken = emp.token;
+
+  await createUser(B, 'selusr', 'SelUsr123');
+  await assignRole(B, adminToken, 'selusr', 'user');
+  const usr = await loginAs(B, 'selusr', 'SelUsr123');
+  userToken = usr.token;
 
   const compRes = await api(B, 'PUT', '/api/signature/component', { name: 'Element Test Comp', index_type: 'dec' }, adminToken);
   componentId = (await compRes.json()).signatureComponentId;
@@ -117,4 +123,27 @@ test('POST /api/signature/elements/search by component name', async () => {
 test('Elements endpoints require authentication', async () => {
   const res = await api(B, 'GET', `/api/signature/components/id/${componentId}/elements/all`);
   await expectStatus(res, 401);
+});
+
+test('User role can search elements (POST /api/signature/elements/search)', async () => {
+  const res = await api(B, 'POST', '/api/signature/elements/search', {
+    query: [{ field: 'name', condition: 'FRAGMENT', value: 'Element', not: false }],
+    page: 1, pageSize: 10,
+  }, userToken);
+  await expectStatus(res, 200);
+  const body = await res.json();
+  expect(body.data).toBeArray();
+});
+
+test('User role can read an element (GET /api/signature/element/:id)', async () => {
+  const elements = await (await api(B, 'GET', `/api/signature/components/id/${componentId}/elements/all`, undefined, adminToken)).json();
+  const id = elements.find((e: any) => e.name === 'Element B')!.signatureElementId;
+  const res = await api(B, 'GET', `/api/signature/element/${id}`, undefined, userToken);
+  await expectStatus(res, 200);
+  expect((await res.json()).name).toBe('Element B');
+});
+
+test('User role cannot create an element (PUT /api/signature/element)', async () => {
+  const res = await api(B, 'PUT', '/api/signature/element', { signatureComponentId: componentId, name: 'User Element' }, userToken);
+  await expectStatus(res, 403);
 });

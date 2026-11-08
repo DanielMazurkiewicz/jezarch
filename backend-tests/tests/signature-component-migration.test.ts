@@ -3,6 +3,7 @@ import { beforeAll, afterAll, test, expect } from 'bun:test';
 import { startTestServer } from '../setup';
 import { db } from '../../backend/src/initialization/db';
 import { initializeSignatureComponentTable } from '../../backend/src/functionalities/signature/component/db';
+import { initializeSignatureElementTable, initializeSignatureElementParentTable } from '../../backend/src/functionalities/signature/element/db';
 
 // Legacy pre-component-type schema: `name` carried a global UNIQUE constraint,
 // which SQLite refuses to drop and therefore requires a table rebuild.
@@ -59,10 +60,18 @@ beforeAll(async () => {
     await initializeSignatureComponentTable(); // triggers migrateComponentNameUniqueness()
 });
 
-afterAll(() => {
+afterAll(async () => {
     // Leave the shared DB pristine for later test files.
     try { db.query('DELETE FROM signature_elements WHERE signatureElementId = ?').run(legacyElementId); } catch { }
     try { db.query('DELETE FROM signature_components WHERE signatureComponentId = ?').run(legacyComponentId); } catch { }
+
+    // beforeAll dropped signature_element_parents (and the other two tables) to
+    // simulate the legacy schema; recreate them so later test files see the
+    // full modern schema. All initializations are CREATE TABLE IF NOT EXISTS /
+    // no-op-safe on the already-migrated tables.
+    await initializeSignatureElementParentTable();
+    await initializeSignatureElementTable();
+    await initializeSignatureComponentTable();
 });
 
 test('migration removes the global UNIQUE constraint and keeps the rows', () => {

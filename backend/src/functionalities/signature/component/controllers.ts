@@ -60,8 +60,8 @@ export const createComponentController = async (req: BunRequest) => {
 export const getAllComponentsController = async (req: BunRequest) => {
     const sessionAndUser = await getSessionAndUser(req);
     if (!sessionAndUser) return new Response("Unauthorized", { status: 401 });
-    // Allow admin and employees to read components. 'user' role cannot.
-    if (!isAllowedRole(sessionAndUser, 'admin', 'employee')) return new Response("Forbidden", { status: 403 });
+    // Allow admin, employees and the 'user' role to read components.
+    if (!isAllowedRole(sessionAndUser, 'admin', 'employee', 'user')) return new Response("Forbidden", { status: 403 });
 
     try {
         const components = await getAllComponents();

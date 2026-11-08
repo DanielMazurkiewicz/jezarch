@@ -5,6 +5,7 @@ import { api, expectStatus, loginAs, createUser, assignRole } from '../helpers';
 let B: string;
 let adminToken: string;
 let employeeToken: string;
+let userToken: string;
 
 beforeAll(async () => {
   await startTestServer();
@@ -16,6 +17,11 @@ beforeAll(async () => {
   await assignRole(B, adminToken, 'sigcompemp', 'employee');
   const emp = await loginAs(B, 'sigcompemp', 'SigComE1');
   employeeToken = emp.token;
+
+  await createUser(B, 'sigcompusr', 'SigComU1');
+  await assignRole(B, adminToken, 'sigcompusr', 'user');
+  const usr = await loginAs(B, 'sigcompusr', 'SigComU1');
+  userToken = usr.token;
 });
 
 afterAll(async () => {
@@ -103,6 +109,18 @@ test('Employee can create components', async () => {
 test('Components require authentication', async () => {
   const res = await api(B, 'GET', '/api/signature/components');
   await expectStatus(res, 401);
+});
+
+test('User role can read components (GET /api/signature/components)', async () => {
+  const res = await api(B, 'GET', '/api/signature/components', undefined, userToken);
+  await expectStatus(res, 200);
+  const body = await res.json();
+  expect(body).toBeArray();
+});
+
+test('User role cannot create a component (PUT /api/signature/component)', async () => {
+  const res = await api(B, 'PUT', '/api/signature/component', { name: 'User Series' }, userToken);
+  await expectStatus(res, 403);
 });
 
 // --- is_main (main component flag) ---

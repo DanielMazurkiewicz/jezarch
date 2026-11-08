@@ -161,8 +161,8 @@ export const getElementsByComponentController = async (req: BunRequest<":compone
 export const getElementByIdController = async (req: BunRequest<":id">) => {
     const sessionAndUser = await getSessionAndUser(req);
     if (!sessionAndUser) return new Response("Unauthorized", { status: 401 });
-    // Allow admin and employees to read elements
-    if (!isAllowedRole(sessionAndUser, 'admin', 'employee')) return new Response("Forbidden", { status: 403 });
+    // Allow admin, employees and the 'user' role to read elements
+    if (!isAllowedRole(sessionAndUser, 'admin', 'employee', 'user')) return new Response("Forbidden", { status: 403 });
 
      const url = new URL(req.url);
     const populateParams = url.searchParams.get('populate')?.split(',') ?? [];
@@ -308,8 +308,8 @@ export const deleteElementController = async (req: BunRequest<":id">) => {
 export const searchElementsController = async (req: BunRequest) => {
     const sessionAndUser = await getSessionAndUser(req);
     if (!sessionAndUser) return new Response("Unauthorized", { status: 401 });
-    // Allow admin and employees to search elements
-    if (!isAllowedRole(sessionAndUser, 'admin', 'employee')) return new Response("Forbidden", { status: 403 });
+    // Allow admin, employees and the 'user' role to search elements
+    if (!isAllowedRole(sessionAndUser, 'admin', 'employee', 'user')) return new Response("Forbidden", { status: 403 });
 
     try {
         const rawBody: unknown = await req.json();
