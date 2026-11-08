@@ -177,7 +177,7 @@ export const archiveTranslationsEN: ArchiveTranslationSet = {
   quickFilterMainOnlyLabel: 'Main components only',
   quickFilterRefreshTreeTooltip: 'Refresh tree',
   archiveTabUnits: 'Units',
-  archiveTabUnitsAndMainDocs: 'Units and main documents',
-  archiveTabMainDocs: 'Main documents',
+  archiveTabUnitsAndMainDocs: 'Units and unassigned documents',
+  archiveTabMainDocs: 'Unassigned documents',
   archiveTabEverything: 'Everything',
 };

@@ -179,7 +179,7 @@ export const archiveTranslationsPL: ArchiveTranslationSet = {
   quickFilterMainOnlyLabel: 'Tylko komponenty główne',
   quickFilterRefreshTreeTooltip: 'Odśwież drzewo',
   archiveTabUnits: 'Jednostki',
-  archiveTabUnitsAndMainDocs: 'Jednostki i dokumenty główne',
-  archiveTabMainDocs: 'Dokumenty główne',
+  archiveTabUnitsAndMainDocs: 'Jednostki i dokumenty nieprzypisane',
+  archiveTabMainDocs: 'Dokumenty nieprzypisane',
   archiveTabEverything: 'Wszystko',
 };
